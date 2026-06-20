@@ -25,12 +25,12 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Enable Corepack
         run: corepack enable
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 26
           cache: pnpm
@@ -86,12 +86,12 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/uchiyomi_test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Enable Corepack
         run: corepack enable
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 26
           cache: pnpm
@@ -107,4 +107,4 @@ jobs:
 
       - name: Coverage comment
         if: ${{ github.event_name == 'pull_request' && !cancelled() }}
-        uses: davelosert/vitest-coverage-report-action@2500dafcee7dd64f85ab689c0b83798a8359770e # v2.9.3
+        uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
