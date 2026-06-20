@@ -76,6 +76,36 @@ Nuxt 4 (Vue 3) + Nitro (single deployable) · **Vuetify** via `vuetify-nuxt-modu
 - Keep docs in sync: update this `CLAUDE.md` and/or add an ADR when a change
   affects architecture, the data model, conventions, or the tech stack.
 
+## Project structure
+
+**Frontend (`app/`) — modified atomic design.** Presentation components are pure and
+reusable with **no business logic**; domain logic lives under `features/`. (ADR-0013)
+
+```
+app/
+├── components/            # Pure, reusable — NO business logic
+│   ├── Atom/              # Buttons, inputs, chips
+│   ├── Molecule/          # Search bars, filter groups
+│   └── Organism/          # Tables, modal wrappers
+├── features/[feature]/    # Business logic per domain
+│   ├── components/        # Feature-specific components
+│   ├── composables/       # Feature-specific composables
+│   ├── modals/            # Feature-specific modals
+│   └── constants/
+├── pages/                 # File-based routing (Nuxt)
+├── layouts/               # e.g. DefaultLayout.vue
+├── store/                 # Pinia stores, by domain
+├── services/              # API layer, by domain
+├── composables/           # Global composables (useModal, useTheme…)
+├── types/                 # Global TypeScript types
+└── utils/                 # Pure utilities (date, string, array…)
+```
+
+**Server (`server/`) — Domain-Driven Design.** The Nitro backend (ADR-0005) is
+organised by domain with a DDD layering (domain / application / infrastructure);
+Prisma (overlay) and the Suwayomi client are infrastructure concerns. The detailed
+layering is defined in ADR-0013 and fleshed out as the server milestones land.
+
 ## Definition of done for a change
 
 1. Code compiles, `strict` types pass (`pnpm typecheck`).
