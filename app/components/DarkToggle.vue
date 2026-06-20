@@ -12,7 +12,7 @@ function toggleDark(): void {
 
 <template>
   <VBtn
-    :icon="isDark ? 'mdi-weather-night' : 'mdi-weather-sunny'"
+    :icon="isDark ? 'fa6-solid:moon' : 'fa6-solid:sun'"
     :aria-label="$t('actions.toggleTheme')"
     variant="text"
     @click="toggleDark"

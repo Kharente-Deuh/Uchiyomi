@@ -17,7 +17,7 @@ useHead({
       <VIcon
         size="64"
         color="primary"
-        icon="mdi-book-open-page-variant"
+        icon="fa6-solid:book-open"
         class="mb-4"
       />
       <h1 class="text-h4 mb-2">

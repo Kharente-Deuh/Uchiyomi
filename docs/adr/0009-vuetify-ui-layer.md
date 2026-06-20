@@ -14,8 +14,16 @@ vitesse-nuxt, which ships UnoCSS.
 
 Use **Vuetify 4** via **`vuetify-nuxt-module`** as the UI layer. Remove UnoCSS and
 `@nuxtjs/color-mode` from the vitesse base; Vuetify's theme system owns light/dark
-(`defaultTheme: 'system'` via SSR client hints). Icons use the `mdi` set. Vuetify
-options live in `vuetify.config.ts`.
+(`defaultTheme: 'system'` via SSR client hints). Vuetify options live in
+`vuetify.config.ts`.
+
+Icons use **Font Awesome 6 via Iconify**, wired as a custom Vuetify icon set
+(`defaultSet: 'custom'`, configured in the `vuetify-icons` plugin through the
+module's `vuetify:configuration` hook). Icon data is bundled offline from
+`@iconify-json/fa6-*` and rendered synchronously via `@iconify/vue`'s `getIcon`
+(SSR-safe). This deliberately avoids UnoCSS — the easiest Iconify path
+(`presetIcons`) would reintroduce it, which this ADR rules out — so colours stay
+owned by the theme (`currentColor`). MDI (`@mdi/font`) is not used.
 
 ## Alternatives considered
 

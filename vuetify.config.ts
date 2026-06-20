@@ -11,7 +11,9 @@ import { defineVuetifyConfiguration } from 'vuetify-nuxt-module/custom-configura
  */
 export default defineVuetifyConfiguration({
   icons: {
-    defaultSet: 'mdi',
+    // Icons are configured at runtime via the `vuetify-icons` plugin
+    // (Iconify custom set). 'custom' tells vuetify-nuxt-module to step back.
+    defaultSet: 'custom',
   },
   theme: {
     defaultTheme: 'dark',

@@ -32,7 +32,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@mdi/font": "catalog:frontend",
+    "@iconify/vue": "catalog:frontend",
     "@prisma/adapter-pg": "catalog:db",
     "@prisma/client": "catalog:db",
     "@vueuse/core": "catalog:frontend",
@@ -45,6 +45,8 @@
     "@antfu/eslint-config": "catalog:dev",
     "@commitlint/cli": "catalog:dev",
     "@commitlint/config-conventional": "catalog:dev",
+    "@iconify-json/fa6-regular": "catalog:dev",
+    "@iconify-json/fa6-solid": "catalog:dev",
     "@nuxt/devtools": "catalog:build",
     "@nuxt/eslint": "catalog:build",
     "@nuxt/test-utils": "catalog:dev",

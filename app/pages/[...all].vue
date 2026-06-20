@@ -12,7 +12,7 @@ const router = useRouter()
       <VIcon
         size="64"
         color="warning"
-        icon="mdi-alert-circle-outline"
+        icon="fa6-solid:circle-exclamation"
         class="mb-4"
       />
       <h1 class="text-h5 mb-4">
@@ -21,7 +21,7 @@ const router = useRouter()
       <VBtn
         color="primary"
         variant="tonal"
-        prepend-icon="mdi-arrow-left"
+        prepend-icon="fa6-solid:arrow-left"
         @click="router.back()"
       >
         Back

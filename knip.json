@@ -10,6 +10,7 @@
     "app/pages/**/*.vue",
     "app/layouts/**/*.vue",
     "app/components/**/*.vue",
+    "app/plugins/**/*.ts",
     "server/**/*.ts"
   ],
   "project": [
@@ -21,7 +22,6 @@
     "prisma/generated/**"
   ],
   "ignoreDependencies": [
-    "@mdi/font",
     "sass-embedded",
     "@commitlint/config-conventional",
     "happy-dom",

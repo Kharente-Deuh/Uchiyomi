@@ -9,7 +9,7 @@ const available = computed(() => locales.value.map(l => (typeof l === 'string' ?
   <VMenu>
     <template #activator="{ props }">
       <VBtn
-        icon="mdi-translate"
+        icon="fa6-solid:language"
         :aria-label="t('actions.switchLanguage')"
         variant="text"
         v-bind="props"
