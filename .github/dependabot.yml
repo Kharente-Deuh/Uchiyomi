@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Keep GitHub Actions up to date — including the SHA-pinned third-party
+  # actions in ci.yml (Dependabot bumps both the SHA and its `# vX.Y.Z` comment).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      # Produce Conventional Commits so commitlint + release-please stay happy.
+      prefix: ci
+    groups:
+      # One PR per run for all action bumps, instead of one PR per action.
+      github-actions:
+        patterns:
+          - '*'
+
+  # Keep npm/pnpm dependencies up to date (pnpm workspace + catalogs supported).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      # One PR per run for all dependency bumps, instead of one PR per package.
+      npm:
+        patterns:
+          - '*'
