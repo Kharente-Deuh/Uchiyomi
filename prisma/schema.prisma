@@ -28,6 +28,51 @@ enum AuthProvider {
   OIDC
 }
 
+enum SeriesType {
+  MANGA
+  WEBTOON
+  COMIC
+}
+
+enum SeriesStatus {
+  ONGOING
+  COMPLETED
+  HIATUS
+  UNKNOWN
+}
+
+enum LibraryStatus {
+  READING
+  STOPPED
+}
+
+enum ReadingMode {
+  PAGED
+  LONG_STRIP
+}
+
+enum ReadingDirection {
+  LTR
+  RTL
+}
+
+enum DownloadStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum DownloadPriority {
+  NEW_CHAPTER
+  BACKFILL
+}
+
+enum ExtensionHealth {
+  OK
+  ERROR
+}
+
 model AppUser {
   id                  String   @id @default(cuid())
   email               String   @unique
@@ -39,11 +84,13 @@ model AppUser {
   allowNsfw           Boolean  @default(false) @map("allow_nsfw")
   createdAt           DateTime @default(now()) @map("created_at")
 
-  identities       AuthIdentity[]
-  sessions         Session[]
-  subscriptions    Subscription[]
-  categories       Category[]
-  readingProgress  ReadingProgress[]
+  identities           AuthIdentity[]
+  sessions             Session[]
+  subscriptions        Subscription[]
+  categories           Category[]
+  readingProgress      ReadingProgress[]
+  installedExtensions  Extension[]               @relation("InstalledExtensions")
+  extensionActivations UserExtensionActivation[]
 
   @@map("app_user")
 }
@@ -112,6 +159,7 @@ model Category {
   name   String
   order  Int    @default(0)
 
+  user          AppUser                @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscriptions SubscriptionCategory[]
 
   @@unique([userId, name])
@@ -146,4 +194,52 @@ model ReadingProgress {
   @@unique([userId, chapterId])
   @@index([userId, mangaId])
   @@map("reading_progress")
+}
+
+model Extension {
+  id                  String          @id @default(cuid())
+  pkgName             String          @unique @map("pkg_name")
+  name                String
+  lang                String
+  iconUrl             String?         @map("icon_url")
+  isNsfw              Boolean         @default(false) @map("is_nsfw")
+  installedByUserId   String?         @map("installed_by_user_id")
+  installedAt         DateTime        @default(now()) @map("installed_at")
+  health              ExtensionHealth @default(OK)
+  consecutiveFailures Int             @default(0) @map("consecutive_failures")
+  lastErrorAt         DateTime?       @map("last_error_at")
+  lastErrorMessage    String?         @map("last_error_message")
+
+  installedBy AppUser?                  @relation("InstalledExtensions", fields: [installedByUserId], references: [id], onDelete: SetNull)
+  activations UserExtensionActivation[]
+  errors      ExtensionErrorLog[]
+
+  @@index([installedByUserId])
+  @@map("extension")
+}
+
+model UserExtensionActivation {
+  userId      String   @map("user_id")
+  extensionId String   @map("extension_id")
+  activatedAt DateTime @default(now()) @map("activated_at")
+
+  user      AppUser   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  extension Extension @relation(fields: [extensionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, extensionId])
+  @@index([extensionId])
+  @@map("user_extension_activation")
+}
+
+model ExtensionErrorLog {
+  id          String   @id @default(cuid())
+  extensionId String   @map("extension_id")
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+  message     String
+  context     String?
+
+  extension Extension @relation(fields: [extensionId], references: [id], onDelete: Cascade)
+
+  @@index([extensionId, occurredAt])
+  @@map("extension_error_log")
 }

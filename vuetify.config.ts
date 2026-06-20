@@ -14,7 +14,7 @@ export default defineVuetifyConfiguration({
     defaultSet: 'mdi',
   },
   theme: {
-    defaultTheme: 'system',
+    defaultTheme: 'dark',
     themes: {
       light: {
         dark: false,

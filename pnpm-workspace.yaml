@@ -47,8 +47,10 @@ catalogs:
     vue: ^3.5.30
     vuetify: ^4.1.2
 
-onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - esbuild
-  - sass-embedded
-  - unrs-resolver
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+  sass-embedded: true
+  unrs-resolver: true
