@@ -92,6 +92,7 @@ model AppUser {
   readingPreferences   UserReadingPreference[]
   installedExtensions  Extension[]               @relation("InstalledExtensions")
   extensionActivations UserExtensionActivation[]
+  downloadJobs         DownloadJob[]             @relation("RequestedDownloads")
 
   @@map("app_user")
 }
@@ -264,6 +265,7 @@ model Series {
 
   chapters      Chapter[]
   subscriptions Subscription[]
+  downloadJobs  DownloadJob[]
 
   @@unique([mangaId, sourceId])
   @@index([lastChapterAt])
@@ -284,6 +286,7 @@ model Chapter {
 
   series          Series            @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   readingProgress ReadingProgress[]
+  downloadJob     DownloadJob?
 
   @@unique([seriesId, chapterId])
   @@index([seriesId, uploadedAt])
@@ -300,4 +303,27 @@ model UserReadingPreference {
 
   @@id([userId, type])
   @@map("user_reading_preference")
+}
+
+model DownloadJob {
+  id                String           @id @default(cuid())
+  chapterId         String           @map("chapter_id")
+  seriesId          String           @map("series_id")
+  status            DownloadStatus   @default(PENDING)
+  priority          DownloadPriority @default(BACKFILL)
+  attempts          Int              @default(0)
+  lastError         String?          @map("last_error")
+  requestedByUserId String?          @map("requested_by_user_id")
+  nextAttemptAt     DateTime?        @map("next_attempt_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  series      Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  requestedBy AppUser? @relation("RequestedDownloads", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([chapterId])
+  @@index([status, priority, createdAt])
+  @@index([seriesId])
+  @@map("download_job")
 }
