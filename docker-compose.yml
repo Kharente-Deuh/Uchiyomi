@@ -19,5 +19,33 @@ services:
       timeout: 5s
       retries: 10
 
+  # Headless Suwayomi engine (ADR-0001). Source/download engine only — accessed
+  # by the app over its API, never by end users. Pinned to a stable version for
+  # reproducible local builds. In production (M6.1) this stays internal; locally
+  # it publishes 4567 because the app runs on the host (outside this network).
+  suwayomi:
+    image: ghcr.io/suwayomi/suwayomi-server:v2.2.2100
+    restart: unless-stopped
+    environment:
+      # No auth on the internal engine; the app is the only client.
+      AUTH_MODE: none
+      # WebUI kept on for local debugging (GraphQL playground at :4567).
+      WEB_UI_ENABLED: 'true'
+      # ADR-0012: all downloads flow through the overlay queue; disable
+      # Suwayomi's own auto-download.
+      AUTO_DOWNLOAD_CHAPTERS: 'false'
+    ports:
+      - '4567:4567'
+    volumes:
+      # Persists library, downloads, extensions, and config.
+      - uchiyomi-suwayomi:/home/suwayomi/.local/share/Tachidesk
+    healthcheck:
+      test: [CMD, curl, -fsS, 'http://localhost:4567/api/v1/settings/about']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
 volumes:
   uchiyomi-db:
+  uchiyomi-suwayomi:

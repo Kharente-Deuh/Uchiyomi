@@ -1,3 +1,4 @@
+import process from 'node:process'
 import { pwa } from './app/config/pwa'
 import { appDescription } from './app/constants/index'
 
@@ -38,6 +39,12 @@ export default defineNuxtConfig({
     '~/assets/styles/global.scss',
     '~/assets/styles/vuetify-overrides.scss',
   ],
+
+  runtimeConfig: {
+    // Server-only base URL of the headless Suwayomi engine (ADR-0001). Never
+    // exposed to the client bundle. Override at runtime with NUXT_SUWAYOMI_URL.
+    suwayomiUrl: process.env.SUWAYOMI_URL || 'http://localhost:4567',
+  },
 
   future: {
     compatibilityVersion: 4,
