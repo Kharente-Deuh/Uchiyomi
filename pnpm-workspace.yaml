@@ -8,7 +8,6 @@ packages: []
 
 catalogs:
   build:
-    '@nuxt/devtools': ^3.2.4
     '@nuxt/eslint': ^1.16.0
     '@nuxtjs/i18n': ^10.4.0
     '@pinia/nuxt': ^0.11.3
@@ -25,6 +24,7 @@ catalogs:
     '@antfu/eslint-config': ^9.0.0
     '@commitlint/cli': ^21.0.2
     '@commitlint/config-conventional': ^21.0.2
+    '@commitlint/types': ^21.0.0
     '@iconify-json/fa6-regular': ^1.2.4
     '@iconify-json/fa6-solid': ^1.2.4
     '@nuxt/test-utils': ^4.0.3
