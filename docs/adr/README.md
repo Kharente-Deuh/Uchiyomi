@@ -19,5 +19,6 @@ old one rather than editing it.
 | [0009](./0009-vuetify-ui-layer.md) | Vuetify as the UI component framework | Accepted |
 | [0010](./0010-frontend-scaffold-and-tooling.md) | Frontend scaffold and tooling baseline | Accepted |
 | [0011](./0011-i18n-english-french.md) | Internationalization with English and French | Accepted |
+| [0012](./0012-catalogue-cache-and-queue-driven-downloads.md) | Catalogue cache, per-user extension activation, and queue-driven downloads | Accepted |
 | [0013](./0013-application-structure.md) | Application structure: atomic-design frontend, DDD server | Accepted |
 | [0014](./0014-in-process-background-jobs.md) | Background jobs and scheduling run in-process in Nitro | Accepted |

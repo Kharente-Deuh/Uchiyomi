@@ -44,6 +44,14 @@ architectural or cross-cutting decision, write (or update) an ADR.
   light/dark. (ADR-0009)
 - **i18n everywhere.** No hard-coded user-facing strings; all copy goes through
   `@nuxtjs/i18n` keys (English + French). (ADR-0011)
+- **Catalogue is cached, not reparsed.** `series`/`chapter` overlay tables mirror
+  Suwayomi metadata for *followed* series only; Suwayomi remains the source of truth.
+  (ADR-0012)
+- **Extensions are installed globally; activation is per-user.** "My sources" is the
+  `user_extension_activation` overlay; never expose another user's activated sources.
+  (ADR-0012)
+- **All downloads go through the overlay queue.** Suwayomi auto-download is disabled;
+  `download_job` is paced globally, new chapters outrank backfill. (ADR-0012)
 
 ## Tech stack (authoritative)
 
