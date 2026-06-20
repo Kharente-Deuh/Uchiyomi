@@ -11,10 +11,12 @@ import { defineVuetifyConfiguration } from 'vuetify-nuxt-module/custom-configura
  */
 export default defineVuetifyConfiguration({
   icons: {
-    defaultSet: 'mdi',
+    // Icons are configured at runtime via the `vuetify-icons` plugin
+    // (Iconify custom set). 'custom' tells vuetify-nuxt-module to step back.
+    defaultSet: 'custom',
   },
   theme: {
-    defaultTheme: 'system',
+    defaultTheme: 'dark',
     themes: {
       light: {
         dark: false,
@@ -60,6 +62,79 @@ export default defineVuetifyConfiguration({
           'warning': '#d99a2b',
         },
       },
+    },
+  },
+  defaults: {
+    VTextField: {
+      density: 'comfortable',
+      // bgColor: 'field-background',
+      class: 'text-field-override',
+      clearIcon: 'fa6-solid:xmark',
+      color: 'primary',
+      variant: 'outlined',
+    },
+    VSelect: {
+      clearIcon: 'fa6-solid:xmark',
+      density: 'comfortable',
+      // bgColor: 'field-background',
+      class: 'text-field-override',
+      color: 'primary',
+      variant: 'outlined',
+      menuIcon: 'fa6-solid:caret-down',
+    },
+    VAutocomplete: {
+      density: 'comfortable',
+      // bgColor: 'field-background',
+      class: 'text-field-override',
+      color: 'primary',
+      clearIcon: 'fa6-solid:xmark',
+      menuIcon: 'fa6-solid:caret-down',
+      variant: 'outlined',
+    },
+    VTextarea: {
+      clearIcon: 'fa6-solid:xmark',
+      density: 'comfortable',
+      // bgColor: 'field-background',
+      class: 'text-field-override',
+      color: 'primary',
+      variant: 'outlined',
+      maxRows: 3,
+      noResize: true,
+    },
+    VBtn: {
+      variant: 'tonal',
+      rounded: 'lg',
+      color: 'primary',
+      class: 'w-fit-content text-capitalize font-weight-bold',
+    },
+    VNumberInput: {
+      density: 'comfortable',
+      // bgColor: 'field-background',
+      class: 'text-field-override',
+      clearIcon: 'fa6-solid:xmark',
+      color: 'primary',
+      variant: 'outlined',
+      iconColor: 'primary',
+      hideDetails: true,
+      controlVariant: 'stacked',
+      inset: true,
+    },
+    VDataTable: {
+      sortDescIcon: 'fa6-solid:caret-down',
+      sortAscIcon: 'fa6-solid:caret-up',
+    },
+    VIcon: {
+      size: 'small',
+    },
+    VCheckbox: {
+      color: 'primary',
+      density: 'comfortable',
+      trueIcon: 'fa6-solid:square-check',
+      falseIcon: 'fa6-regular:square',
+      indeterminateIcon: 'fa6-regular:square',
+    },
+    VChip: {
+      closeIcon: 'fa6-solid:xmark',
     },
   },
 })

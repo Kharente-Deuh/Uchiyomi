@@ -3,9 +3,9 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@11.8.0",
   "description": "Self-hosted manga & webtoon server with a modern PWA, built on Suwayomi.",
   "license": "AGPL-3.0-or-later",
-  "packageManager": "pnpm@11.8.0",
   "engines": {
     "node": ">=26.0.0",
     "pnpm": ">=11.0.0"
@@ -32,7 +32,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@mdi/font": "catalog:frontend",
+    "@iconify/vue": "catalog:frontend",
     "@prisma/adapter-pg": "catalog:db",
     "@prisma/client": "catalog:db",
     "@vueuse/core": "catalog:frontend",
@@ -45,7 +45,9 @@
     "@antfu/eslint-config": "catalog:dev",
     "@commitlint/cli": "catalog:dev",
     "@commitlint/config-conventional": "catalog:dev",
-    "@nuxt/devtools": "catalog:build",
+    "@commitlint/types": "catalog:dev",
+    "@iconify-json/fa6-regular": "catalog:dev",
+    "@iconify-json/fa6-solid": "catalog:dev",
     "@nuxt/eslint": "catalog:build",
     "@nuxt/test-utils": "catalog:dev",
     "@nuxtjs/i18n": "catalog:build",
@@ -60,7 +62,6 @@
     "happy-dom": "catalog:dev",
     "husky": "catalog:dev",
     "knip": "catalog:dev",
-    "lint-staged": "catalog:dev",
     "nuxt": "catalog:build",
     "prisma": "catalog:db",
     "sass-embedded": "catalog:dev",
@@ -69,8 +70,5 @@
     "vitest": "catalog:dev",
     "vue-tsc": "catalog:dev",
     "vuetify-nuxt-module": "catalog:build"
-  },
-  "lint-staged": {
-    "*": "eslint --fix"
   }
 }

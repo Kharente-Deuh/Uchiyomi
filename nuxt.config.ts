@@ -33,7 +33,11 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/styles/reset.scss'],
+  css: [
+    '~/assets/styles/reset.scss',
+    '~/assets/styles/global.scss',
+    '~/assets/styles/vuetify-overrides.scss',
+  ],
 
   future: {
     compatibilityVersion: 4,
@@ -59,6 +63,16 @@ export default defineNuxtConfig({
     },
   },
 
+  vite: {
+    optimizeDeps: {
+      include: [
+        '@iconify/vue',
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+      ],
+    },
+  },
+
   eslint: {
     config: {
       standalone: false,
@@ -72,7 +86,6 @@ export default defineNuxtConfig({
     vueI18n: 'i18n.config.ts',
     strategy: 'no_prefix',
     defaultLocale: 'en',
-    lazy: true,
     detectBrowserLanguage: {
       useCookie: true,
       cookieKey: 'uchiyomi_lang',
@@ -83,6 +96,8 @@ export default defineNuxtConfig({
       { code: 'fr', language: 'fr-FR', name: 'Français', file: 'fr.json' },
     ],
   },
+
+  pwa,
 
   vuetify: {
     moduleOptions: {
@@ -97,6 +112,4 @@ export default defineNuxtConfig({
     },
     vuetifyOptions: './vuetify.config.ts',
   },
-
-  pwa,
 })

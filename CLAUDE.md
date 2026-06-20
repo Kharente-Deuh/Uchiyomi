@@ -44,6 +44,14 @@ architectural or cross-cutting decision, write (or update) an ADR.
   light/dark. (ADR-0009)
 - **i18n everywhere.** No hard-coded user-facing strings; all copy goes through
   `@nuxtjs/i18n` keys (English + French). (ADR-0011)
+- **Catalogue is cached, not reparsed.** `series`/`chapter` overlay tables mirror
+  Suwayomi metadata for *followed* series only; Suwayomi remains the source of truth.
+  (ADR-0012)
+- **Extensions are installed globally; activation is per-user.** "My sources" is the
+  `user_extension_activation` overlay; never expose another user's activated sources.
+  (ADR-0012)
+- **All downloads go through the overlay queue.** Suwayomi auto-download is disabled;
+  `download_job` is paced globally, new chapters outrank backfill. (ADR-0012)
 
 ## Tech stack (authoritative)
 
@@ -68,10 +76,43 @@ Nuxt 4 (Vue 3) + Nitro (single deployable) · **Vuetify** via `vuetify-nuxt-modu
   `sass-embedded` — no runtime cost. Use SCSS for structure/layout only; **colours and
   light/dark stay owned by the Vuetify theme** (theme variables, not hard-coded
   palettes). (ADR-0009)
+- **i18n in templates uses the global `$t`**, never a `t` destructured from
+  `useI18n()`. In `<script setup>` (where `$t` is unavailable), use `useI18n().t`.
+  Still no hard-coded user-facing strings. (ADR-0011)
 - Lint and type-check must pass before a change is considered done. Add or update
   tests (Vitest) for behavior changes.
 - Keep docs in sync: update this `CLAUDE.md` and/or add an ADR when a change
   affects architecture, the data model, conventions, or the tech stack.
+
+## Project structure
+
+**Frontend (`app/`) — modified atomic design.** Presentation components are pure and
+reusable with **no business logic**; domain logic lives under `features/`. (ADR-0013)
+
+```
+app/
+├── components/            # Pure, reusable — NO business logic
+│   ├── Atom/              # Buttons, inputs, chips
+│   ├── Molecule/          # Search bars, filter groups
+│   └── Organism/          # Tables, modal wrappers
+├── features/[feature]/    # Business logic per domain
+│   ├── components/        # Feature-specific components
+│   ├── composables/       # Feature-specific composables
+│   ├── modals/            # Feature-specific modals
+│   └── constants/
+├── pages/                 # File-based routing (Nuxt)
+├── layouts/               # e.g. DefaultLayout.vue
+├── store/                 # Pinia stores, by domain
+├── services/              # API layer, by domain
+├── composables/           # Global composables (useModal, useTheme…)
+├── types/                 # Global TypeScript types
+└── utils/                 # Pure utilities (date, string, array…)
+```
+
+**Server (`server/`) — Domain-Driven Design.** The Nitro backend (ADR-0005) is
+organised by domain with a DDD layering (domain / application / infrastructure);
+Prisma (overlay) and the Suwayomi client are infrastructure concerns. The detailed
+layering is defined in ADR-0013 and fleshed out as the server milestones land.
 
 ## Definition of done for a change
 
