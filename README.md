@@ -1,11 +1,17 @@
-# Uchiyomi
+<p align="center">
+  <img src="app/assets/images/logo-horizontal-subtitle.webp" style="width: 60%">
+</p>
+<p align="center">
+  <span>Self-hosted manga & webtoon server with a modern, installable PWA.</span>
+</p>
+
+
 
 [![CI](https://github.com/Kharente-Deuh/Uchiyomi/actions/workflows/ci.yml/badge.svg)](https://github.com/Kharente-Deuh/Uchiyomi/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Kharente-Deuh/Uchiyomi/branch/master/graph/badge.svg)](https://codecov.io/gh/Kharente-Deuh/Uchiyomi)
 [![Latest stable release](https://img.shields.io/github/v/release/Kharente-Deuh/Uchiyomi?label=stable)](https://github.com/Kharente-Deuh/Uchiyomi/releases/latest)
 [![Latest release](https://img.shields.io/github/v/release/Kharente-Deuh/Uchiyomi?include_prereleases&label=latest)](https://github.com/Kharente-Deuh/Uchiyomi/releases)
-
-> Self-hosted manga & webtoon server with a modern, installable PWA.
+---
 
 Uchiyomi runs [Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server)
 headless as its source/download engine (Tachiyomi/Mihon extensions) and adds the
