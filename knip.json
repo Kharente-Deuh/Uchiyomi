@@ -19,6 +19,7 @@
     "pg",
     "@types/pg",
     "@vueuse/core",
-    "vue-tsc"
+    "vue-tsc",
+    "eslint-formatter-checkstyle"
   ]
 }

@@ -17,6 +17,22 @@ try {
 // for component/app tests.
 export default defineConfig(async () => ({
   test: {
+    // Native GitHub Actions annotations for test failures when running in CI.
+    reporters: process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['default'],
+    coverage: {
+      provider: 'v8',
+      // json-summary + json feed the PR coverage-comment action; text shows in logs.
+      reporter: ['text', 'json', 'json-summary'],
+      // Still emit a report when tests fail so the PR comment stays populated.
+      reportOnFailure: true,
+      exclude: [
+        'prisma/generated/**',
+        '.nuxt/**',
+        '**/*.config.{ts,mjs,js}',
+        'test/**',
+        '**/*.d.ts',
+      ],
+    },
     projects: [
       {
         test: {
