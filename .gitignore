@@ -31,6 +31,9 @@ coverage
 # Prisma generated client
 prisma/generated
 
+# GraphQL generated client (Suwayomi)
+server/utils/suwayomi/generated
+
 PROJECT_BRIEF.md
 ENGINEERING.md
 .env

@@ -13,13 +13,13 @@
     "**/*.{ts,vue}"
   ],
   "ignoreDependencies": [
-    "sass-embedded",
-    "vitest-environment-nuxt",
     "@prisma/client",
-    "pg",
     "@types/pg",
     "@vueuse/core",
-    "vue-tsc",
-    "eslint-formatter-checkstyle"
+    "eslint-formatter-checkstyle",
+    "pg",
+    "sass-embedded",
+    "vitest-environment-nuxt",
+    "vue-tsc"
   ]
 }
