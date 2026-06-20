@@ -33,7 +33,11 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/styles/reset.scss'],
+  css: [
+    '~/assets/styles/reset.scss',
+    '~/assets/styles/global.scss',
+    '~/assets/styles/vuetify-overrides.scss',
+  ],
 
   future: {
     compatibilityVersion: 4,
