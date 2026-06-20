@@ -7,8 +7,10 @@ services:
       POSTGRES_USER: uchiyomi
       POSTGRES_PASSWORD: uchiyomi
       POSTGRES_DB: uchiyomi
+    # Host port 5433 to avoid clashing with a native Postgres (e.g. Postgres.app)
+    # already bound to 5432. The container still listens on 5432 internally.
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
       - uchiyomi-db:/var/lib/postgresql/data
     healthcheck:
