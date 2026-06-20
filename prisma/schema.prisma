@@ -243,3 +243,45 @@ model ExtensionErrorLog {
   @@index([extensionId, occurredAt])
   @@map("extension_error_log")
 }
+
+model Series {
+  id                String       @id @default(cuid())
+  mangaId           Int          @map("manga_id")
+  sourceId          String       @map("source_id")
+  mangaUrl          String       @map("manga_url")
+  title             String
+  thumbnailUrl      String?      @map("thumbnail_url")
+  type              SeriesType
+  typeSetByUserId   String?      @map("type_set_by_user_id")
+  status            SeriesStatus @default(UNKNOWN)
+  lastChapterAt     DateTime?    @map("last_chapter_at")
+  lastChapterNumber Float?       @map("last_chapter_number")
+  resumedAt         DateTime?    @map("resumed_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  chapters Chapter[]
+
+  @@unique([mangaId, sourceId])
+  @@index([lastChapterAt])
+  @@index([type])
+  @@index([status])
+  @@map("series")
+}
+
+model Chapter {
+  id         String   @id @default(cuid())
+  chapterId  Int      @map("chapter_id")
+  seriesId   String   @map("series_id")
+  number     Float
+  name       String
+  scanlator  String?
+  uploadedAt DateTime @map("uploaded_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([seriesId, chapterId])
+  @@index([seriesId, uploadedAt])
+  @@map("chapter")
+}
