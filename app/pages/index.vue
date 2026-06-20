@@ -21,13 +21,13 @@ useHead({
         class="mb-4"
       />
       <h1 class="text-h4 mb-2">
-        {{ t('welcome.title') }}
+        {{ $t('welcome.title') }}
       </h1>
       <p class="text-medium-emphasis mb-1">
-        {{ t('welcome.subtitle') }}
+        {{ $t('welcome.subtitle') }}
       </p>
       <p class="text-medium-emphasis">
-        {{ t('app.tagline') }}
+        {{ $t('app.tagline') }}
       </p>
     </VCol>
   </VRow>

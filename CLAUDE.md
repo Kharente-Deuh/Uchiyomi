@@ -68,6 +68,9 @@ Nuxt 4 (Vue 3) + Nitro (single deployable) · **Vuetify** via `vuetify-nuxt-modu
   `sass-embedded` — no runtime cost. Use SCSS for structure/layout only; **colours and
   light/dark stay owned by the Vuetify theme** (theme variables, not hard-coded
   palettes). (ADR-0009)
+- **i18n in templates uses the global `$t`**, never a `t` destructured from
+  `useI18n()`. In `<script setup>` (where `$t` is unavailable), use `useI18n().t`.
+  Still no hard-coded user-facing strings. (ADR-0011)
 - Lint and type-check must pass before a change is considered done. Add or update
   tests (Vitest) for behavior changes.
 - Keep docs in sync: update this `CLAUDE.md` and/or add an ADR when a change
