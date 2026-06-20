@@ -8,10 +8,12 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 function createClient(): PrismaClient {
   // Prisma 7 requires a driver adapter for a direct connection.
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+
   return new PrismaClient({ adapter })
 }
 
 export const prisma: PrismaClient = globalForPrisma.prisma ?? createClient()
 
-if (import.meta.dev)
+if (import.meta.dev) {
   globalForPrisma.prisma = prisma
+}

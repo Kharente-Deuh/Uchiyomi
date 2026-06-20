@@ -83,6 +83,8 @@ export default defineNuxtConfig({
     ],
   },
 
+  pwa,
+
   vuetify: {
     moduleOptions: {
       ssrClientHints: {
@@ -96,6 +98,4 @@ export default defineNuxtConfig({
     },
     vuetifyOptions: './vuetify.config.ts',
   },
-
-  pwa,
 })

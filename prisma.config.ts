@@ -6,8 +6,7 @@ import { defineConfig, env } from 'prisma/config'
 // (`prisma migrate`, `prisma db ...`). `prisma generate` does not need a URL.
 try {
   process.loadEnvFile()
-}
-catch {
+} catch {
   // No .env file (e.g. CI or `prisma generate`); env vars come from the environment.
 }
 

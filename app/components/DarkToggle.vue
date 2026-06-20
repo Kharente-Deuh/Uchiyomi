@@ -2,11 +2,10 @@
 import { useTheme } from 'vuetify'
 
 const theme = useTheme()
-const { t } = useI18n()
 
 const isDark = computed(() => theme.global.current.value.dark)
 
-function toggleDark() {
+function toggleDark(): void {
   theme.change(isDark.value ? 'light' : 'dark')
 }
 </script>
@@ -14,7 +13,7 @@ function toggleDark() {
 <template>
   <VBtn
     :icon="isDark ? 'mdi-weather-night' : 'mdi-weather-sunny'"
-    :aria-label="t('actions.toggleTheme')"
+    :aria-label="$t('actions.toggleTheme')"
     variant="text"
     @click="toggleDark"
   />
