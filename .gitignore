@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Nuxt / Nitro build artifacts
+.nuxt
+.nitro
+.cache
+.output
+dist
+
+# Logs
+*.log
+logs
+
+# Environment & secrets (NUXT_SESSION_PASSWORD etc. — never commit)
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Test / coverage
+coverage
+
+PROJECT_BRIEF.md
+ENGINEERING.md
