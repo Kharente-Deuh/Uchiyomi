@@ -22,3 +22,4 @@ old one rather than editing it.
 | [0012](./0012-catalogue-cache-and-queue-driven-downloads.md) | Catalogue cache, per-user extension activation, and queue-driven downloads | Accepted |
 | [0013](./0013-application-structure.md) | Application structure: atomic-design frontend, DDD server | Accepted |
 | [0014](./0014-in-process-background-jobs.md) | Background jobs and scheduling run in-process in Nitro | Accepted |
+| [0015](./0015-suwayomi-graphql-codegen-pipeline.md) | Typed Suwayomi access via graphql-codegen and a committed SDL snapshot | Accepted |
