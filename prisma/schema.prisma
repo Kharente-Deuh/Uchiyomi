@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Uchiyomi per-user overlay (ADR-0004). Suwayomi integer IDs are referenced
+// without FK; (sourceId, mangaUrl) is a natural-key fallback.
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma 7: the connection URL lives in prisma.config.ts (for Migrate/CLI);
+  // the runtime client connects via the `pg` driver adapter (server/utils/prisma.ts).
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum AuthProvider {
+  LOCAL
+  OIDC
+}
+
+model AppUser {
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  displayName         String   @map("display_name")
+  role                Role     @default(USER)
+  status              UserStatus @default(ACTIVE)
+  canManageExtensions Boolean  @default(false) @map("can_manage_extensions")
+  canDownload         Boolean  @default(false) @map("can_download")
+  allowNsfw           Boolean  @default(false) @map("allow_nsfw")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  identities       AuthIdentity[]
+  sessions         Session[]
+  subscriptions    Subscription[]
+  categories       Category[]
+  readingProgress  ReadingProgress[]
+
+  @@map("app_user")
+}
+
+model AuthIdentity {
+  id           String       @id @default(cuid())
+  userId       String       @map("user_id")
+  provider     AuthProvider
+  subject      String
+  passwordHash String?      @map("password_hash")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([userId])
+  @@map("auth_identity")
+}
+
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  userAgent String?  @map("user_agent")
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Invite {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  email           String?
+  role            Role      @default(USER)
+  createdByUserId String?   @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  expiresAt       DateTime? @map("expires_at")
+  acceptedAt      DateTime? @map("accepted_at")
+
+  @@map("invite")
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  mangaId   Int      @map("manga_id")
+  sourceId  String?  @map("source_id")
+  mangaUrl  String?  @map("manga_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user       AppUser                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories SubscriptionCategory[]
+
+  @@unique([userId, mangaId])
+  @@index([userId])
+  @@map("subscription")
+}
+
+model Category {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  name   String
+  order  Int    @default(0)
+
+  subscriptions SubscriptionCategory[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("category")
+}
+
+model SubscriptionCategory {
+  subscriptionId String @map("subscription_id")
+  categoryId     String @map("category_id")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([subscriptionId, categoryId])
+  @@index([categoryId])
+  @@map("subscription_category")
+}
+
+model ReadingProgress {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  chapterId Int      @map("chapter_id")
+  mangaId   Int      @map("manga_id")
+  lastPage  Int      @default(0) @map("last_page")
+  pageCount Int      @default(0) @map("page_count")
+  completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId])
+  @@index([userId, mangaId])
+  @@map("reading_progress")
+}

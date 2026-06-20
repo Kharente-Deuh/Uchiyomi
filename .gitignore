@@ -28,5 +28,11 @@ logs
 # Test / coverage
 coverage
 
+# Prisma generated client
+prisma/generated
+
 PROJECT_BRIEF.md
 ENGINEERING.md
+.env
+docs/superpowers
+docs/design

@@ -1,0 +1,14 @@
+{
+  "app": {
+    "name": "Uchiyomi",
+    "tagline": "Votre bibliothèque de mangas et webtoons auto-hébergée"
+  },
+  "welcome": {
+    "title": "Bienvenue sur Uchiyomi",
+    "subtitle": "L'ossature est prête. À nous de jouer."
+  },
+  "actions": {
+    "toggleTheme": "Changer de thème",
+    "switchLanguage": "Changer de langue"
+  }
+}
