@@ -3,9 +3,9 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@11.8.0",
   "description": "Self-hosted manga & webtoon server with a modern PWA, built on Suwayomi.",
   "license": "AGPL-3.0-or-later",
-  "packageManager": "pnpm@11.8.0",
   "engines": {
     "node": ">=26.0.0",
     "pnpm": ">=11.0.0"
@@ -60,7 +60,6 @@
     "happy-dom": "catalog:dev",
     "husky": "catalog:dev",
     "knip": "catalog:dev",
-    "lint-staged": "catalog:dev",
     "nuxt": "catalog:build",
     "prisma": "catalog:db",
     "sass-embedded": "catalog:dev",
@@ -69,8 +68,5 @@
     "vitest": "catalog:dev",
     "vue-tsc": "catalog:dev",
     "vuetify-nuxt-module": "catalog:build"
-  },
-  "lint-staged": {
-    "*": "eslint --fix"
   }
 }

@@ -20,7 +20,7 @@ stripped of demo content, and standardize on:
 - **Lint/format:** `@antfu/eslint-config` (single tool; UnoCSS preset removed),
   integrated with `@nuxt/eslint`.
 - **Commits:** Conventional Commits enforced by **commitlint**, via **husky**
-  hooks — `commit-msg` (commitlint), `pre-commit` (lint-staged), `pre-push`
+  hooks — `commit-msg` (commitlint), `pre-push`
   (`typecheck → lint → knip → test`).
 - **Dependency hygiene:** **knip** (unused files/deps/exports) and **taze**
   (`pnpm up` = interactive upgrades).
