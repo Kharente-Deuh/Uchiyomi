@@ -15,3 +15,7 @@ old one rather than editing it.
 | [0005](./0005-nuxt-nitro-monolith.md) | Backend as a Nuxt/Nitro monolith, not a separate NestJS service | Accepted |
 | [0006](./0006-auth-local-and-sso.md) | Local accounts + SSO with revocable sessions and pragmatic RBAC | Accepted |
 | [0007](./0007-license-agpl-3.md) | License: AGPL-3.0-or-later | Accepted |
+| [0008](./0008-prisma-overlay-data-access.md) | Prisma as the data-access layer for the PostgreSQL overlay | Accepted |
+| [0009](./0009-vuetify-ui-layer.md) | Vuetify as the UI component framework | Accepted |
+| [0010](./0010-frontend-scaffold-and-tooling.md) | Frontend scaffold and tooling baseline | Accepted |
+| [0011](./0011-i18n-english-french.md) | Internationalization with English and French | Accepted |

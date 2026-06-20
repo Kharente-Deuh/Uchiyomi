@@ -2,9 +2,9 @@
 
 This file is the operating guide for Claude (and any AI assistant) working on
 Uchiyomi. It doubles as the basis for the Claude Project's custom instructions.
-For full context, read [`PROJECT_BRIEF.md`](./PROJECT_BRIEF.md),
-[`ENGINEERING.md`](./ENGINEERING.md), and the ADRs in
-[`docs/adr/`](./docs/adr/).
+For full context, read the ADRs in [`docs/adr/`](./docs/adr/). (`PROJECT_BRIEF.md`
+and `ENGINEERING.md` are local-only working notes, kept out of the repo via
+`.gitignore`; the committed source of truth is this file plus the ADRs.)
 
 ## What Uchiyomi is
 
@@ -37,12 +37,21 @@ architectural or cross-cutting decision, write (or update) an ADR.
   authenticate to the App, never to Suwayomi.
 - **Auth:** local accounts + optional OIDC via `nuxt-auth-utils`, with
   server-side **revocable** sessions. No HTTP Basic auth. (ADR-0006)
+- **Overlay data access is Prisma.** The schema in `prisma/schema.prisma` is the
+  source of truth for overlay tables; the generated client is not committed.
+  (ADR-0008)
+- **UI is Vuetify** (`vuetify-nuxt-module`); no UnoCSS. Vuetify's theme owns
+  light/dark. (ADR-0009)
+- **i18n everywhere.** No hard-coded user-facing strings; all copy goes through
+  `@nuxtjs/i18n` keys (English + French). (ADR-0011)
 
 ## Tech stack (authoritative)
 
-Nuxt (Vue 3) + Nitro (single deployable) · PWA via `@vite-pwa/nuxt` · TypeScript
-in `strict` mode · typed GraphQL client to Suwayomi · PostgreSQL · `nuxt-auth-utils`
-+ `nuxt-authorization` · Vitest · `@nuxt/eslint`.
+Nuxt 4 (Vue 3) + Nitro (single deployable) · **Vuetify** via `vuetify-nuxt-module`
+· PWA via `@vite-pwa/nuxt` · i18n via `@nuxtjs/i18n` (en/fr) · TypeScript in
+`strict` mode · typed GraphQL client to Suwayomi · **PostgreSQL via Prisma** ·
+`nuxt-auth-utils` + `nuxt-authorization` · Vitest · `@antfu/eslint-config` · knip
+· taze. pnpm 11 (catalog) · Node 26. (Scaffold/tooling: ADR-0010.)
 
 ## Hard conventions
 
@@ -55,18 +64,23 @@ in `strict` mode · typed GraphQL client to Suwayomi · PostgreSQL · `nuxt-auth
 - **SemVer**, releases automated from commits (release-please).
 - **License: AGPL-3.0-or-later.** Add `SPDX-License-Identifier: AGPL-3.0-or-later`
   to source files.
+- **Component styles are SCSS** (`<style lang="scss" scoped>`), compiled at build by
+  `sass-embedded` — no runtime cost. Use SCSS for structure/layout only; **colours and
+  light/dark stay owned by the Vuetify theme** (theme variables, not hard-coded
+  palettes). (ADR-0009)
 - Lint and type-check must pass before a change is considered done. Add or update
   tests (Vitest) for behavior changes.
-- Keep docs in sync: update `PROJECT_BRIEF.md` / `ENGINEERING.md` / ADRs when a
-  change affects them.
+- Keep docs in sync: update this `CLAUDE.md` and/or add an ADR when a change
+  affects architecture, the data model, conventions, or the tech stack.
 
 ## Definition of done for a change
 
-1. Code compiles, `strict` types pass.
-2. `@nuxt/eslint` passes (no new warnings).
-3. Tests added/updated and passing.
-4. Conventional Commit message(s), in English.
-5. Docs/ADRs updated if architecture, data model, or conventions changed.
+1. Code compiles, `strict` types pass (`pnpm typecheck`).
+2. ESLint (`@antfu/eslint-config`) passes with no new warnings (`pnpm lint`).
+3. `pnpm knip` is clean (no unused files/deps/exports).
+4. Tests added/updated and passing (`pnpm test`).
+5. Conventional Commit message(s), in English.
+6. Docs/ADRs updated if architecture, data model, or conventions changed.
 
 ## When unsure
 

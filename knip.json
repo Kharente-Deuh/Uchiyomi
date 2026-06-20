@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "nuxt.config.ts",
+    "vuetify.config.ts",
+    "prisma.config.ts",
+    "i18n/i18n.config.ts",
+    "prisma/schema.prisma",
+    "app/app.vue",
+    "app/pages/**/*.vue",
+    "app/layouts/**/*.vue",
+    "app/components/**/*.vue",
+    "server/**/*.ts"
+  ],
+  "project": [
+    "**/*.{ts,vue}"
+  ],
+  "ignore": [
+    ".nuxt/**",
+    ".output/**",
+    "prisma/generated/**"
+  ],
+  "ignoreDependencies": [
+    "@mdi/font",
+    "sass-embedded",
+    "@commitlint/config-conventional",
+    "happy-dom",
+    "@prisma/client",
+    "pg",
+    "@types/pg"
+  ],
+  "ignoreBinaries": [
+    "commitlint"
+  ]
+}
