@@ -89,6 +89,7 @@ model AppUser {
   subscriptions        Subscription[]
   categories           Category[]
   readingProgress      ReadingProgress[]
+  readingPreferences   UserReadingPreference[]
   installedExtensions  Extension[]               @relation("InstalledExtensions")
   extensionActivations UserExtensionActivation[]
 
@@ -138,18 +139,19 @@ model Invite {
 }
 
 model Subscription {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  mangaId   Int      @map("manga_id")
-  sourceId  String?  @map("source_id")
-  mangaUrl  String?  @map("manga_url")
-  createdAt DateTime @default(now()) @map("created_at")
+  id        String        @id @default(cuid())
+  userId    String        @map("user_id")
+  seriesId  String        @map("series_id")
+  status    LibraryStatus @default(READING)
+  createdAt DateTime      @default(now()) @map("created_at")
 
   user       AppUser                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  series     Series                 @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   categories SubscriptionCategory[]
 
-  @@unique([userId, mangaId])
+  @@unique([userId, seriesId])
   @@index([userId])
+  @@index([seriesId])
   @@map("subscription")
 }
 
@@ -182,17 +184,17 @@ model SubscriptionCategory {
 model ReadingProgress {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  chapterId Int      @map("chapter_id")
-  mangaId   Int      @map("manga_id")
+  chapterId String   @map("chapter_id")
   lastPage  Int      @default(0) @map("last_page")
   pageCount Int      @default(0) @map("page_count")
   completed Boolean  @default(false)
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   @@unique([userId, chapterId])
-  @@index([userId, mangaId])
+  @@index([userId])
   @@map("reading_progress")
 }
 
@@ -260,7 +262,8 @@ model Series {
   createdAt         DateTime     @default(now()) @map("created_at")
   updatedAt         DateTime     @updatedAt @map("updated_at")
 
-  chapters Chapter[]
+  chapters      Chapter[]
+  subscriptions Subscription[]
 
   @@unique([mangaId, sourceId])
   @@index([lastChapterAt])
@@ -279,9 +282,22 @@ model Chapter {
   uploadedAt DateTime @map("uploaded_at")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  series          Series            @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  readingProgress ReadingProgress[]
 
   @@unique([seriesId, chapterId])
   @@index([seriesId, uploadedAt])
   @@map("chapter")
+}
+
+model UserReadingPreference {
+  userId    String           @map("user_id")
+  type      SeriesType
+  mode      ReadingMode
+  direction ReadingDirection
+
+  user AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, type])
+  @@map("user_reading_preference")
 }
