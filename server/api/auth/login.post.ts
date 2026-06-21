@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import type { LoginRequestDto } from '#shared/dto/identity/auth.request'
+import { z } from 'zod'
+import * as Auth from '../../domains/identity/auth/auth.domain'
+import { login, loginRateLimiter } from '../../utils/identity'
+
+const Body = z.object({ email: z.email(), password: z.string() }) satisfies z.ZodType<LoginRequestDto>
+
+export default defineEventHandler(async (event) => {
+  const parsed = await readValidatedBody(event, Body.safeParse)
+  if (!parsed.success) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
+  }
+
+  const body = parsed.data
+  // xForwardedFor: true is safe only because this app is deployed behind a
+  // trusted reverse proxy that authoritatively sets X-Forwarded-For (ADR-0005,
+  // single-instance self-hosted assumption). The rate-limit key also includes
+  // the email address, so single-account brute force is still capped even if
+  // the IP portion cannot be fully trusted.
+  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
+  const key = `${ip}:${body.email}`
+  if (!loginRateLimiter.check({ key })) {
+    throw createError({ statusCode: 429, statusMessage: 'Too many attempts' })
+  }
+
+  try {
+    const session = await login.execute({
+      email: body.email,
+      password: body.password,
+      userAgent: getHeader(event, 'user-agent') ?? undefined,
+      ip,
+    })
+    loginRateLimiter.reset({ key })
+    await setUserSession(event, { sessionId: session.id })
+
+    return { ok: true }
+  } catch (err) {
+    if (err instanceof Auth.AuthError) {
+      throw createError({ statusCode: 401, statusMessage: 'Invalid email or password' })
+    }
+
+    throw err
+  }
+})

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Chapter, MangaDetails, MangaSummary, Source } from '../domain/types'
+import * as Chapter from '../../../chapter.domain'
+import * as Manga from '../../../manga.domain'
+import * as Source from '../../../source.domain'
 
 // SourceNode mirrors the GraphQL SourceType selection from LIST_SOURCES.
 export interface SourceNode {
@@ -10,18 +12,18 @@ export interface SourceNode {
   isNsfw: boolean
 }
 
-export function mapSource(node: SourceNode): Source {
-  return {
+export function sourceToDomain(node: SourceNode): Source.Model {
+  return new Source.Model({
     id: node.id,
     name: node.name,
     lang: node.lang,
     iconUrl: node.iconUrl,
     isNsfw: node.isNsfw,
-  }
+  })
 }
 
 // NOTE: MangaType.id is Int! in the SDL — codegen maps it to number.
-// Domain MangaSummary.id is string; we convert with String().
+// Domain Manga.Summary.id is string; we convert with String().
 export interface MangaSummaryNode {
   id: number
   title: string
@@ -46,31 +48,34 @@ export interface MangaDetailsNode extends MangaSummaryNode {
   chapters: { nodes: ChapterNode[] }
 }
 
-export function mapMangaSummary(node: MangaSummaryNode): MangaSummary {
-  return {
+export function mangaSummaryToDomain(node: MangaSummaryNode): Manga.Summary {
+  return new Manga.Summary({
     id: String(node.id),
     title: node.title,
-    thumbnailUrl: node.thumbnailUrl ?? null,
+    thumbnailUrl: node.thumbnailUrl ?? undefined,
     inLibrary: node.inLibrary,
-  }
+  })
 }
 
-export function mapChapter(node: ChapterNode): Chapter {
-  return {
+export function chapterToDomain(node: ChapterNode): Chapter.Model {
+  return new Chapter.Model({
     id: String(node.id),
     name: node.name,
     chapterNumber: node.chapterNumber,
     uploadDate: node.uploadDate,
     isDownloaded: node.isDownloaded,
-  }
+  })
 }
 
-export function mapMangaDetails(node: MangaDetailsNode): MangaDetails {
-  return {
-    ...mapMangaSummary(node),
-    author: node.author ?? null,
-    description: node.description ?? null,
+export function mangaDetailsToDomain(node: MangaDetailsNode): Manga.Details {
+  return new Manga.Details({
+    id: String(node.id),
+    title: node.title,
+    thumbnailUrl: node.thumbnailUrl ?? undefined,
+    inLibrary: node.inLibrary,
+    author: node.author ?? undefined,
+    description: node.description ?? undefined,
     status: node.status,
-    chapters: node.chapters.nodes.map(n => mapChapter(n)),
-  }
+    chapters: node.chapters.nodes.map(n => chapterToDomain(n)),
+  })
 }

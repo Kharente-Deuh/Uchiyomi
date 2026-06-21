@@ -11,6 +11,8 @@ export default defineNuxtConfig({
     '@nuxtjs/i18n',
     '@vite-pwa/nuxt',
     '@nuxt/eslint',
+    'nuxt-auth-utils',
+    'nuxt-authorization',
   ],
 
   devtools: {
@@ -44,6 +46,34 @@ export default defineNuxtConfig({
     // Server-only base URL of the headless Suwayomi engine (ADR-0001). Never
     // exposed to the client bundle. Override at runtime with NUXT_SUWAYOMI_URL.
     suwayomiUrl: process.env.SUWAYOMI_URL || 'http://localhost:4567',
+
+    // Pin sealed-session cookie flags explicitly so a future nuxt-auth-utils or
+    // h3 default change cannot silently downgrade them.
+    // Shape: runtimeConfig.session (SessionConfig from h3) with a cookie sub-object
+    // (CookieSerializeOptions from cookie-es). maxAge and password are siblings of
+    // cookie, not nested inside it. Password is intentionally omitted here — it is
+    // injected at runtime from NUXT_SESSION_PASSWORD by nuxt-auth-utils.
+    // secure is false in dev/test (NODE_ENV !== 'production') so that the e2e suite,
+    // which runs a plain-HTTP test server, still receives and threads the cookie.
+    session: {
+      cookie: {
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+
+    // Server-only authentication policy constants. Domain methods receive these
+    // as params (never read config themselves); routes read minPasswordLength for
+    // zod validation. Override at runtime with NUXT_AUTH_* env vars.
+    auth: {
+      sessionTtlMs: 30 * 24 * 60 * 60 * 1000,
+      sessionRefreshThresholdMs: 7 * 24 * 60 * 60 * 1000,
+      minPasswordLength: 10,
+      loginRateLimitMaxAttempts: 10,
+      loginRateLimitWindowMs: 15 * 60 * 1000,
+    },
   },
 
   future: {
