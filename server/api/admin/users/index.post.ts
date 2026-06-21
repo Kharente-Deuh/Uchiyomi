@@ -7,7 +7,7 @@ import { createUser } from '../../../utils/identity'
 export default defineEventHandler(async (event) => {
   const cfg = useRuntimeConfig(event).auth
   const Body = z.object({
-    email: z.string().email(),
+    email: z.email(),
     displayName: z.string().min(1),
     password: z.string().min(cfg.minPasswordLength),
     canManageExtensions: z.boolean().optional(),

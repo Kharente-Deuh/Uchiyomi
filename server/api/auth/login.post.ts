@@ -4,7 +4,7 @@ import { z } from 'zod'
 import * as Auth from '../../domains/identity/auth/auth.domain'
 import { login, loginRateLimiter } from '../../utils/identity'
 
-const Body = z.object({ email: z.string().email(), password: z.string() }) satisfies z.ZodType<LoginRequestDto>
+const Body = z.object({ email: z.email(), password: z.string() }) satisfies z.ZodType<LoginRequestDto>
 
 export default defineEventHandler(async (event) => {
   const parsed = await readValidatedBody(event, Body.safeParse)

@@ -57,7 +57,7 @@ catalogs:
   server:
     graphql: ^16.14.2
     graphql-request: ^7.4.0
-    zod: ^3.24.0
+    zod: ^4.4.3
 
 allowBuilds:
   '@parcel/watcher': true
