@@ -45,6 +45,8 @@
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
     "vuetify": "catalog:frontend",
+    "yup": "catalog:frontend",
+    "yup-locales": "catalog:frontend",
     "zod": "catalog:server"
   },
   "devDependencies": {

@@ -54,6 +54,8 @@ catalogs:
     pinia: ^3.0.4
     vue: ^3.5.30
     vuetify: ^4.1.2
+    yup: ^1.7.1
+    yup-locales: ^1.2.28
   server:
     graphql: ^16.14.2
     graphql-request: ^7.4.0

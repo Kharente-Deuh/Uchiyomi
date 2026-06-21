@@ -23,5 +23,44 @@
   },
   "login": {
     "placeholder": "La connexion arrive bientôt."
+  },
+  "validation": {
+    "mixed": {
+      "default": "Champ invalide",
+      "required": "Champ obligatoire",
+      "oneOf": "{path} doit être l'une des valeurs suivantes : {values}",
+      "notOneOf": "{path} ne doit pas être l'une des valeurs suivantes : {values}"
+    },
+    "string": {
+      "length": "{path} doit contenir exactement {length} caractères",
+      "min": "{path} doit contenir au moins {min} caractères",
+      "max": "{path} doit contenir au plus {max} caractères",
+      "matches": "{path} doit correspondre à : \"{regex}\"",
+      "email": "{path} doit être un email valide",
+      "url": "{path} doit être une URL valide",
+      "trim": "{path} ne doit pas contenir d'espaces superflus",
+      "lowercase": "{path} doit être en minuscules",
+      "uppercase": "{path} doit être en majuscules"
+    },
+    "number": {
+      "min": "{path} doit être supérieur ou égal à {min}",
+      "max": "{path} doit être inférieur ou égal à {max}",
+      "lessThan": "{path} doit être inférieur à {less}",
+      "moreThan": "{path} doit être supérieur à {more}",
+      "positive": "{path} doit être un nombre positif",
+      "negative": "{path} doit être un nombre négatif",
+      "integer": "{path} doit être un entier"
+    },
+    "date": {
+      "min": "{path} doit être au plus tard le {min}",
+      "max": "{path} doit être au plus tôt le {max}"
+    },
+    "object": {
+      "noUnknown": "{path} ne peut pas avoir de clés non spécifiées dans la forme de l'objet"
+    },
+    "array": {
+      "min": "Champ obligatoire, {min} minimum",
+      "max": "Champ obligatoire, {max} maximum"
+    }
   }
 }
