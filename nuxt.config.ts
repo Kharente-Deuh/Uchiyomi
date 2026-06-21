@@ -4,6 +4,7 @@ import { appDescription } from './app/constants/index'
 
 // SPDX-License-Identifier: AGPL-3.0-or-later
 export default defineNuxtConfig({
+
   modules: [
     '@vueuse/nuxt',
     '@pinia/nuxt',
@@ -13,6 +14,11 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     'nuxt-auth-utils',
     'nuxt-authorization',
+  ],
+
+  ssr: false,
+  components: [
+    { path: '~/components', pathPrefix: false },
   ],
 
   // Feature-colocated data-access layer (ADR-0013): auto-import the per-feature

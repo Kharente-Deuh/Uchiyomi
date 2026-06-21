@@ -3,12 +3,25 @@
     "name": "Uchiyomi",
     "tagline": "Your self-hosted manga & webtoon library"
   },
-  "welcome": {
-    "title": "Welcome to Uchiyomi",
-    "subtitle": "The scaffold is ready. Time to build."
-  },
   "actions": {
     "toggleTheme": "Toggle theme",
     "switchLanguage": "Switch language"
+  },
+  "nav": {
+    "home": "Home",
+    "settings": "Settings"
+  },
+  "states": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "empty": "Nothing here yet",
+    "retry": "Retry"
+  },
+  "orientation": {
+    "title": "Rotate your device",
+    "message": "Uchiyomi works best in portrait. Please rotate your device."
+  },
+  "login": {
+    "placeholder": "Sign-in is coming soon."
   }
 }

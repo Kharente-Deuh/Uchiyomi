@@ -3,14 +3,14 @@
 const { t } = useI18n()
 
 useHead({
-  title: () => t('nav.home'),
+  title: () => t('nav.settings'),
 })
 </script>
 
 <template>
   <EmptyState
-    icon="fa6-solid:house"
-    :title="$t('nav.home')"
+    icon="fa6-solid:gear"
+    :title="$t('nav.settings')"
     :description="$t('states.empty')"
   />
 </template>
