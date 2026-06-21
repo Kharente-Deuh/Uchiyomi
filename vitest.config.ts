@@ -52,6 +52,13 @@ export default defineConfig(async () => ({
           name: 'nuxt',
           environment: 'nuxt',
           include: ['app/**/*.{test,spec}.ts'],
+          // entry.mjs must come first: it calls setupNuxt() in a beforeAll,
+          // which initialises the Nuxt app. setup.ts then installs Vuetify in
+          // its own beforeAll, which runs after setupNuxt() completes.
+          setupFiles: [
+            'node_modules/@nuxt/test-utils/dist/runtime/entry.mjs',
+            'app/test/setup.ts',
+          ],
         },
       }),
     ],
