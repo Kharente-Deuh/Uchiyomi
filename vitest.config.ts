@@ -40,6 +40,11 @@ export default defineConfig(async () => ({
           name: 'node',
           environment: 'node',
           include: ['test/**/*.test.ts'],
+          // Integration/e2e tests share the single TEST_DATABASE_URL database and
+          // each wipe `appUser`; running their files in parallel makes them clobber
+          // one another. Serialise this project's files (the DB tests dominate
+          // wall-clock anyway, so the cost is negligible).
+          fileParallelism: false,
         },
       },
       await defineVitestProject({
