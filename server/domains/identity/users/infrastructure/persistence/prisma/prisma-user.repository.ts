@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import type { PrismaClient } from '../../../../../../../prisma/generated/client'
+import type * as User from '../../../user.domain'
+import { toDomain } from './prisma-user-repository.mapper'
+
+export class PrismaUserRepository implements User.Repository {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  countUsers(): Promise<number> {
+    return this.prisma.appUser.count()
+  }
+
+  async findByEmail(params: User.FindByEmailParams): Promise<User.Model | undefined> {
+    const row = await this.prisma.appUser.findUnique({
+      where: { email: params.email },
+      include: { identities: { where: { provider: 'LOCAL' }, take: 1 } },
+    })
+    if (!row) {
+      return undefined
+    }
+
+    const user = toDomain(row)
+    user.passwordHash = row.identities[0]?.passwordHash ?? undefined
+
+    return user
+  }
+
+  async findById(params: User.FindByIdParams): Promise<User.Model | undefined> {
+    const row = await this.prisma.appUser.findUnique({ where: { id: params.id } })
+
+    return row ? toDomain(row) : undefined
+  }
+
+  createWithLocalIdentity(
+    params: User.CreateWithLocalIdentityParams,
+    opts?: User.CreateWithLocalIdentityOpts,
+  ): Promise<Omit<User.Model, 'passwordHash'>> {
+    return this.prisma.$transaction(async (tx) => {
+      // Race-safe first-run guard: re-check emptiness inside the transaction.
+      if (opts?.onlyIfEmpty && (await tx.appUser.count()) > 0) {
+        throw new Error('setup_closed: a user already exists')
+      }
+
+      // SECURITY: only safe fields are written — plaintext `params.password` is
+      // intentionally excluded. The hashed credential lives exclusively in
+      // `identities.create.passwordHash`.
+      const created = await tx.appUser.create({
+        data: {
+          email: params.email,
+          displayName: params.displayName,
+          role: params.role ?? 'USER',
+          canManageExtensions: params.canManageExtensions ?? false,
+          canDownload: params.canDownload ?? false,
+          allowNsfw: params.allowNsfw ?? false,
+          identities: {
+            create: {
+              provider: 'LOCAL',
+              subject: params.email,
+              passwordHash: params.passwordHash,
+            },
+          },
+        },
+      })
+
+      return toDomain(created)
+    })
+  }
+
+  async setStatus(params: User.SetStatusParams): Promise<void> {
+    await this.prisma.appUser.update({ where: { id: params.id }, data: { status: params.status } })
+  }
+}

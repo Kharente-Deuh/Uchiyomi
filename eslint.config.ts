@@ -6,7 +6,6 @@ import nuxt from './.nuxt/eslint.config.mjs'
 const customCfg: TypedFlatConfigItem = {
   rules: {
     'pnpm/yaml-enforce-settings': 'off',
-    'ts/no-namespace': 'off',
     'unicorn/no-null': 'off',
     'ts/explicit-function-return-type': ['error', { allowExpressions: true }],
     'no-unused-private-class-members': 'error',
