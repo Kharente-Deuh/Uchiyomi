@@ -183,3 +183,105 @@ inward and the shared DTOs guaranteeing the wire contract can't drift.
 As with the server idioms, the specifics are **exercised and refined when M3.1 lands**
 (first on the identity/session slice); this revision records the agreed shape up front
 because it gates every feature UI. No tooling change.
+
+### Service error handling — Result type, never throw (settled in M3.1)
+
+Services do **not** throw. Every service method returns a discriminated
+**Result**, so the wire/error boundary is explicit and callers cannot reach the
+data without first handling failure:
+
+```ts
+// app/utils/api/api-error.ts
+export type ApiResponse<T> =
+  | { success: true, data: T }
+  | { success: false, error: ApiError }
+```
+
+- The service `try`/`catch`es `$fetch` and maps any failure to a normalised
+  `ApiError` (via `ApiError.fromFetchError`), returning `{ success: false, error }`;
+  success returns `{ success: true, data }`. `$fetch` is called **without an
+  explicit generic** — the response type is inferred from Nitro's typed routes and
+  constrained by the method's `ApiResponse<T>` return type (no duplicated contract).
+- The API layer lives in `features/<Feature>/api/<feature>.api.ts` and exports a
+  **stateless factory** named `create<Feature>Api()` (not `use…`, which is reserved
+  for reactive composables) returning an object typed by a `<Feature>Api` interface.
+- **Composables** consume the Result: they branch on `res.success`, push
+  `res.error` into a reactive `error` ref, and write `res.data` to the store
+  through its actions. The reactive layer (`pending`/`error`) lives in the
+  composable, not the service.
+
+This pattern is used by **every** frontend service (no mix of throw/Result).
+
+### Pinia store convention (settled in M3.1)
+
+Stores are written as **setup stores** (composition API) and return their state,
+getters, and actions **raw** — never wrapped in `storeToRefs`. `defineStore`'s
+returned `useXxxStore` composable is the public surface; do not wrap it in a
+custom function that re-exposes `storeToRefs(store)`, which would re-wrap getters
+into refs (breaking auto-unwrap and template rendering) and drop the real Pinia
+store API (`$patch`, `$reset`, actions).
+
+```ts
+// app/features/auth/store/auth.store.ts
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref<UserDto>()
+  const isAuthenticated = computed(() => user.value !== undefined)
+  const capabilities = computed(() => ({ /* … */ }))
+
+  function setUser(value: UserDto): void { user.value = value }
+  function clear(): void { user.value = undefined }
+
+  return { user, isAuthenticated, capabilities, setUser, clear }
+})
+```
+
+- **Mutation goes through named actions** (`setUser`, `clear`) — the single
+  intention-revealing write point. Consumers (composables/components) never poke
+  state refs from the outside (`store.user.value = …`); that scatters mutation and
+  couples callers to the store's internal ref shape.
+- **Reactivity at the consumer:** reading via the instance (`store.isAuthenticated`)
+  is reactive (the store is a reactive proxy); **destructuring the store directly
+  breaks reactivity**. To destructure state/getters while keeping it, use
+  `storeToRefs` *at the call site* — `const { user, isAuthenticated } = storeToRefs(store)`.
+  **Actions** destructure directly (`const { setUser, clear } = store`) — they are
+  already bound and need no `storeToRefs`.
+- **Stores hold state only; they do not fetch.** Fetching/orchestration lives in
+  the composable, which writes to the store through its actions (the dependency
+  points inward: composable → store).
+
+## Revision — 2026-06-21 (feature-colocated data access)
+
+The original Frontend section placed the data-access layer in three **top-level**
+directories (`services/`, `store/`, `composables/`). Building M3.1 showed this
+scatters one domain's slice across the tree. We instead **colocate the trio inside
+the feature** (matching the team's backoffice front), so everything for a domain
+lives together. Top-level `services/` and `store/` are **removed**; only genuinely
+global composables (`useTheme`, `useModal`) stay in a top-level `composables/`.
+
+```
+app/
+├── components/ Atom|Molecule|Organism      # pure, reusable UI (unchanged)
+├── composables/                            # ONLY app-global composables
+├── utils/                                  # pure utils (e.g. utils/api/api-error.ts: ApiError + ApiResponse)
+└── features/<Feature>/                     # PascalCase, e.g. Auth/
+    ├── api/<feature>.api.ts                # create<Feature>Api() — typed $fetch + Result
+    ├── store/<feature>.store.ts            # use<Feature>Store — Pinia setup store
+    ├── composables/<feature>.composable.ts # use<Feature>() — reactive orchestration
+    ├── components/ modals/ constants/      # feature-scoped UI (as needed)
+    └── *.test.ts                           # co-located, next to each file
+```
+
+**Filename role-suffixes:** `*.api.ts`, `*.store.ts`, `*.composable.ts` (mirrors the
+server's `*.use-case.ts` / `*.domain.ts` style and the backoffice front).
+
+**Auto-import (wired in `nuxt.config.ts`):**
+- Composables — `imports.dirs: ['features/**/composables']` (Nuxt scans these dirs;
+  the auto-imported name is the exported function, e.g. `useAuth`).
+- Pinia stores — `pinia.storesDirs: ['features/**/store']` (paths are resolved
+  relative to the app dir by `@pinia/nuxt`, **not** prefixed with `app/`).
+- The **API layer is not auto-imported** — composables import their `create<Feature>Api`
+  explicitly; `ApiError`/`ApiResponse` come from `~/utils/api`.
+
+The dependency direction (`components → composables → api`, with the store as
+inward global state) and the Result/store conventions above are unchanged; only the
+*location* moves from top-level dirs into the feature.

@@ -2,8 +2,8 @@
 
 A friendly tour of how the Nitro backend (`server/`) is organised. The formal
 decision lives in [ADR-0013](./adr/0013-application-structure.md); this page is
-the narrated version with examples. The frontend (`app/`) has its own shape
-(atomic design) — see the ADR.
+the narrated version with examples. The frontend (`app/`) has its own shape —
+jump to [Frontend architecture](#frontend-architecture) below.
 
 ## TL;DR
 
@@ -249,9 +249,214 @@ that need a value take it as a parameter (e.g. `session.shouldRefresh(now, thres
 - **End-to-end**: HTTP tests that boot the app (`@nuxt/test-utils/e2e`) and exercise routes against the test DB.
 - DB-backed test files run serially (`fileParallelism: false` on the vitest `node` project) because they share one test database.
 
+---
+
+# Frontend architecture
+
+A tour of how the Nuxt frontend (`app/`) talks to the backend. The formal decision
+(and its 2026-06-21 frontend revisions) lives in
+[ADR-0013](./adr/0013-application-structure.md); this is the narrated version.
+
+## TL;DR
+
+The data-access layer is **colocated by feature** — one domain's slice lives
+together under `app/features/<Feature>/`, not scattered across top-level dirs:
+
+- **API** (`api/<feature>.api.ts`) — typed `$fetch` over the **shared DTOs**, the
+  only place that knows route paths. Returns a **Result** (`ApiResponse<T>`), it
+  **never throws**. A stateless `create<Feature>Api()` factory.
+- **Composable** (`composables/<feature>.composable.ts`) — reactive orchestration
+  (`loading`, store hydration); the unit components consume. Auto-imported.
+- **Store** (`store/<feature>.store.ts`) — Pinia setup store, **global state only**
+  (current user + capabilities). Auto-imported.
+
+Pure reusable UI stays in `components/Atom|Molecule|Organism`; truly app-global
+composables (`useTheme`, `useModal`) in the top-level `composables/`. Failures are
+normalised to a front-only `ApiError` (`utils/api/`).
+
+```
+        component (page / form)
+             │ consumes
+        ┌────▼─────────┐   features/<F>/composables/*.composable.ts
+        │  Composable  │   reactive: loading, orchestration, store hydration
+        └────┬─────────┘
+             │ calls (Result)            ┌──────────────┐  Pinia, global state
+             ▼                           │    Store     │◄─ writes via actions
+        ┌──────────────┐   features/<F>/api/*.api.ts   └──────────────┘
+        │     API      │   typed $fetch over #shared DTOs → ApiResponse<T>
+        └────┬─────────┘
+             │ $fetch
+             ▼  /api/** (Nitro routes)
+```
+
+Dependencies point **inward**: component → composable → API; the store is inward
+global state the composable writes through its actions. Because the API is typed on
+the **same `shared/` DTOs** the server presenters produce, the wire contract can't
+drift.
+
+## The layers, with real examples
+
+We'll use the **Auth** feature (`app/features/Auth/`), the identity/session slice.
+
+### 1. API — `<feature>.api.ts` (Result, never throws)
+
+The only place that knows route paths. `$fetch` is called **without an explicit
+generic** — the response type is inferred from Nitro's typed routes and constrained
+by the method's `ApiResponse<T>` return type.
+
+```ts
+// app/features/Auth/api/auth.api.ts — consumed as: createAuthApi()
+export interface AuthApi {
+  login: (body: LoginRequestDto) => Promise<ApiResponse<void>>
+  me: () => Promise<ApiResponse<UserDto>>
+  // … setup, logout, isSetupStatusRequired
+}
+
+async function me(): Promise<ApiResponse<UserDto>> {
+  try {
+    const res = await $fetch('/api/auth/me')          // typed by Nitro: { user: UserDto }
+
+    return { success: true, data: res.user }
+  } catch (error) {
+    return { success: false, error: ApiError.fromFetchError(error) }   // normalise, don't throw
+  }
+}
+
+export function createAuthApi(): AuthApi { return { /* login, me, … */ } }
+```
+
+### 2. Composable — `<feature>.composable.ts`
+
+Reactive orchestration over the API: owns `loading`, hydrates the store, exposes
+computed views of global state. Consumes the auto-imported store and
+`nuxt-auth-utils`' `useUserSession()` (used **only** as a cookie signal — the sealed
+cookie carries just `{ sessionId }`, so the user comes from `/api/auth/me`).
+
+```ts
+// app/features/Auth/composables/auth.composable.ts — consumed as: useAuth()
+export function useAuth(): AuthComposable {
+  const authStore = useAuthStore()        // auto-imported Pinia store
+  const session = useUserSession()        // cookie signal only
+  const loading = ref(false)
+
+  async function login(body: LoginRequestDto): Promise<ApiResponse<void>> {
+    loading.value = true
+    const res = await authApi.login(body)
+    if (res.success) {
+      await fetchMe()                      // login returns { ok } → hydrate user via /me
+    }
+    loading.value = false
+
+    return res                             // Result flows out; the caller decides (e.g. toast on failure)
+  }
+
+  return { user: computed(() => authStore.user), isAuthenticated: computed(() => authStore.isAuthenticated), loading, login /* … */ }
+}
+```
+
+The composable returns the **Result** rather than throwing or surfacing an in-page
+error ref, because errors are shown as **toasts** (an imperative side-effect the
+caller — or a future centralised handler — triggers from `res.error`). `loading`
+stays reactive for button/spinner binding.
+
+### 3. Store — `<feature>.store.ts` (Pinia, global state only)
+
+A **setup store** returning state, getters, and actions **raw** (never wrapped in
+`storeToRefs`). It holds state; it does **not** fetch — the composable writes to it
+through named actions.
+
+```ts
+// app/features/Auth/store/auth.store.ts — consumed as: useAuthStore()
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref<UserDto>()
+  const isAuthenticated = computed(() => user.value !== undefined)
+  const capabilities = computed(() => ({ /* canManageExtensions, canDownload, allowNsfw */ }))
+
+  function setUser(value: UserDto): void { user.value = value }
+  function clear(): void { user.value = undefined }
+
+  return { user, isAuthenticated, capabilities, setUser, clear }
+})
+```
+
+**Mutation goes through actions** (`setUser`/`clear`) — never poke `store.user.value`
+from outside. **Reactivity at the consumer:** read via the instance
+(`store.isAuthenticated`) is reactive; to *destructure* state/getters use
+`storeToRefs(store)` at the call site; actions destructure directly.
+
+### 4. Component (the consumer)
+
+Components stay dumb — they consume the composable, bind `loading`, and act on the
+returned Result:
+
+```vue
+<script setup lang="ts">
+const { login, loading } = useAuth()
+
+async function onSubmit(): Promise<void> {
+  const res = await login(form.value)
+  if (res.success) {
+    await navigateTo('/')
+  }
+  // else: show res.error via a toast (M3.2 snackbar infra)
+}
+</script>
+```
+
+## Errors — `ApiError` + `ApiResponse`
+
+`utils/api/api-error.ts` holds a front-only normalised error and the Result type
+(neither is a wire contract — the wire stays H3's `{ statusCode, statusMessage }`):
+
+```ts
+export class ApiError extends Error {
+  readonly status: number
+  static fromFetchError(err: unknown): ApiError { /* maps ofetch FetchError → status + message */ }
+}
+export type ApiResponse<T> = { success: true, data: T } | { success: false, error: ApiError }
+```
+
+The API layer turns every `$fetch` failure into `{ success: false, error }`; the UI
+maps `error.status` to i18n copy. The data layer never holds user-facing strings.
+
+## Auto-import wiring
+
+`nuxt.config.ts` registers the per-feature dirs so components use `useX()` / stores
+without manual imports:
+
+```ts
+imports: { dirs: ['features/**/composables'] }       // *.composable.ts → e.g. useAuth
+pinia:   { storesDirs: ['features/**/store'] }        // *.store.ts → e.g. useAuthStore (resolved relative to app/)
+```
+
+The **API layer is not auto-imported** — composables import their
+`create<Feature>Api` explicitly; `ApiError`/`ApiResponse` come from `~/utils/api`.
+Test files (`*.test.ts`) export nothing and are excluded from the scan.
+
+## Testing
+
+Front tests run in the Vitest **nuxt** project (`app/**/*.{test,spec}.ts`),
+co-located next to each file:
+
+- **API** — stub the global `$fetch` (`vi.stubGlobal`); assert path/body/Result
+  unwrapping and `FetchError → ApiError` normalisation.
+- **Composable** — `vi.mock` the API barrel (a `vi.hoisted` `mockApi`), mock
+  `useUserSession` via `mockNuxtImport`, use a real Pinia
+  (`setActivePinia(createPinia())`); assert store hydration, the silent-401 path,
+  and the returned Result.
+- **Store** — real Pinia; assert getters and the `setUser`/`clear` actions.
+
+## Recipes
+
+### Add a data slice to a feature
+1. `features/<F>/api/<f>.api.ts`: `create<F>Api()` returning an `<F>Api` interface; one method per route, each returning `ApiResponse<T>`.
+2. `features/<F>/store/<f>.store.ts` *(only if the state is genuinely global)*: a setup store with actions.
+3. `features/<F>/composables/<f>.composable.ts`: `use<F>()` orchestrating the API + store, owning `loading`.
+4. Co-locate `*.test.ts` for each; the composable/store auto-import once their dirs match the config globs.
+
 ## See also
 
-- [ADR-0013](./adr/0013-application-structure.md) — the structural decision (and its 2026-06-21 server revision).
+- [ADR-0013](./adr/0013-application-structure.md) — the structural decision (and its 2026-06-21 server + frontend revisions).
 - [ADR-0005](./adr/0005-nuxt-nitro-monolith.md) — why a single Nuxt/Nitro monolith.
 - [ADR-0006](./adr/0006-auth-local-and-sso.md) — the auth/session model.
 - [ADR-0008](./adr/0008-prisma-overlay-data-access.md) — Prisma overlay.
