@@ -454,9 +454,38 @@ co-located next to each file:
 3. `features/<F>/composables/<f>.composable.ts`: `use<F>()` orchestrating the API + store, owning `loading`.
 4. Co-locate `*.test.ts` for each; the composable/store auto-import once their dirs match the config globs.
 
+## Shell & navigation
+
+The app shell is a **prerendered static SPA** (`ssr: false`, with `nitro.prerender.routes: ['/']`),
+cached by the service worker and instantly painted on every launch — no SSR per-request DB hit.
+The client hydrates the identity store from `GET /api/auth/me` before route middleware gates
+access; the middleware is **UX routing only**, not a security boundary (ADR-0016).
+
+The shell layout (`app/layouts/default.vue`) composes two pure Organism components:
+- `AppBarChrome` — an app bar (top, always visible).
+- `AppNavigation` — an adaptive navigation component fed by the global `useNavigation` registry;
+  renders a bottom navigation bar on mobile (`max-width: 600px`) and a navigation rail on
+  desktop. Destinations (`NavItem`) are registered globally (`useNavigation(): { items }`);
+  currently Home and Settings, extensible for future routes.
+
+Auth is wired by two plugins:
+- `auth.client.ts` (boot hook, `defineNuxtPlugin`) — hydrates the identity store from
+  `GET /api/auth/me` before the app renders, so the guard sees the correct auth state.
+- `auth.global.ts` (route middleware) — calls a pure decision function `resolveAuthGuard(path, isAuthenticated)`
+  to decide whether to redirect to `/login` (protects unauthenticated visits); the guard never
+  throws and returns `{ redirect?: string }`.
+
+Mobile UX locks orientation to portrait via the `useOrientationLock` composable (per-route opt-out
+via route metadata), with an overlay fallback (screen rotation badge) when `useOrientationLock` is
+unavailable.
+
+See [ADR-0016](./adr/0016-client-rendered-spa-shell.md) for the rendering decision,
+threat model, and why `ssr: false` is the right choice for a fully authenticated PWA.
+
 ## See also
 
 - [ADR-0013](./adr/0013-application-structure.md) — the structural decision (and its 2026-06-21 server + frontend revisions).
 - [ADR-0005](./adr/0005-nuxt-nitro-monolith.md) — why a single Nuxt/Nitro monolith.
 - [ADR-0006](./adr/0006-auth-local-and-sso.md) — the auth/session model.
 - [ADR-0008](./adr/0008-prisma-overlay-data-access.md) — Prisma overlay.
+- [ADR-0016](./adr/0016-client-rendered-spa-shell.md) — client-rendered SPA shell decision.
