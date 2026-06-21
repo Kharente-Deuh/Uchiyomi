@@ -44,7 +44,8 @@
     "pg": "catalog:db",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
-    "vuetify": "catalog:frontend"
+    "vuetify": "catalog:frontend",
+    "zod": "catalog:server"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:dev",
@@ -73,6 +74,8 @@
     "husky": "catalog:dev",
     "knip": "catalog:dev",
     "nuxt": "catalog:build",
+    "nuxt-auth-utils": "catalog:build",
+    "nuxt-authorization": "catalog:build",
     "prisma": "catalog:db",
     "sass-embedded": "catalog:dev",
     "taze": "catalog:dev",
