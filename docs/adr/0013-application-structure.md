@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-06-20
-- Revised: 2026-06-21 (server layer — see "Revision" below)
+- Revised: 2026-06-21 (server layer + frontend data-access layer — see "Revision" below)
 
 ## Context
 
@@ -42,6 +42,31 @@ app/
 
 i18n in templates uses the global `$t`; `<script setup>` uses `useI18n().t`
 (ADR-0011).
+
+#### Frontend data access — services / composables / stores
+
+The frontend talks to the backend through three cooperating layers; **no component
+calls `$fetch` ad hoc**. The dependency points inward, mirroring the server:
+components → composables → services → HTTP/DTOs.
+
+- **`services/<domain>.ts`** — the only place that knows route paths. Typed HTTP calls
+  against the **shared DTOs** (`#shared/dto/...`): request bodies typed against the
+  request DTO, responses as the response DTO. Stateless functions over `$fetch`, no
+  reactivity. e.g. `authService.login(body: LoginRequestDto): Promise<UserDto>`.
+- **Composables** — reactive orchestration over a service (`loading`/`error`,
+  `useUserSession`, optimistic updates); this is what components consume. Global ones
+  live in `composables/use<Domain>.ts`, feature-scoped ones in
+  `features/<feature>/composables/`.
+- **`store/<domain>.ts`** — Pinia, reserved for genuinely **global** state (current
+  user, capabilities, theme). Not every domain needs a store: prefer a composable
+  until shared cross-route state is real.
+
+Because the DTOs are the exact types the server produces via its presenters (the
+`shared/` layer), the wire contract cannot drift between the two sides.
+
+This convention is **exercised and refined in roadmap M3.2** (front data-access layer),
+first on the identity/session slice — the way the server idioms below were settled by
+the auth spine (M2.2).
 
 ### Server (`server/`) — hexagonal, rich-domain, organised by (sub-)domain
 
@@ -143,3 +168,18 @@ Rationale: the original "DDD" sketch was anaemic (interfaces + functions). The
 team's other services (NestJS) use a rich-domain, ports-and-adapters style; this
 aligns the Nitro backend with that shared mental model while staying idiomatic
 ESM (no `namespace`, `shared/` for the wire contract, `runtimeConfig` for ops).
+
+## Revision — 2026-06-21 (frontend data-access layer)
+
+The original Frontend section named the `services/`, `composables/`, and `store/`
+directories but left their responsibilities and relationship undefined. The roadmap
+rework that integrated the frontend milestones (a dedicated "Frontend foundations"
+phase) made the data-access layer an explicit foundation milestone (M3.2), so the
+Frontend section above now spells out the convention: **services** (typed HTTP over
+the shared DTOs, the only place that knows route paths) → **composables** (reactive
+orchestration) → **stores** (Pinia, global state only), with components depending
+inward and the shared DTOs guaranteeing the wire contract can't drift.
+
+As with the server idioms, the specifics are **exercised and refined when M3.2 lands**
+(first on the identity/session slice); this revision records the agreed shape up front
+because it gates every feature UI. No tooling change.
