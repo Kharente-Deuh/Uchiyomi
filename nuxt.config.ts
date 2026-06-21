@@ -15,6 +15,14 @@ export default defineNuxtConfig({
     'nuxt-authorization',
   ],
 
+  // Feature-colocated data-access layer (ADR-0013): auto-import the per-feature
+  // composables (`features/<Feature>/composables/*.composable.ts`) so components
+  // consume `useX()` without manual imports. Pinia stores are wired separately
+  // via `pinia.storesDirs` below.
+  imports: {
+    dirs: ['features/**/composables'],
+  },
+
   devtools: {
     enabled: true,
   },
@@ -132,6 +140,12 @@ export default defineNuxtConfig({
       { code: 'en', language: 'en-US', name: 'English', file: 'en.json' },
       { code: 'fr', language: 'fr-FR', name: 'Français', file: 'fr.json' },
     ],
+  },
+
+  // Pinia auto-import for the per-feature stores
+  // (`features/<Feature>/store/*.store.ts`), exposing `useXStore()` app-wide.
+  pinia: {
+    storesDirs: ['features/**/store'],
   },
 
   pwa,

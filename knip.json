@@ -17,6 +17,7 @@
     "@types/pg",
     "@vueuse/core",
     "eslint-formatter-checkstyle",
+    "ofetch",
     "pg",
     "sass-embedded",
     "vitest-environment-nuxt",
