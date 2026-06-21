@@ -31,6 +31,7 @@ function getByPath(obj: Record<string, any>, path: string): any {
 /** Build the Vuetify-ready props bag for a field (inlined adapter). */
 function toVuetifyProps<T>(
   field: Omit<FieldApi<T>, 'props'>,
+  isFieldValid: () => boolean,
   formOptions?: { disabled?: Ref<boolean>, readonly?: Ref<boolean> },
 ): ComputedRef<VuetifyFieldProps<T>> {
   return computed(() => ({
@@ -43,6 +44,12 @@ function toVuetifyProps<T>(
     'required': field.required,
     'disabled': formOptions?.disabled?.value,
     'readonly': formOptions?.readonly?.value,
+    // Required fields are marked; once a required field validates clean it also
+    // gets `field-valid`. Optional fields carry neither marker.
+    'class': [
+      field.required && 'field-required',
+      field.required && isFieldValid() && 'field-valid',
+    ].filter((c): c is string => typeof c === 'string'),
   }))
 }
 
@@ -217,7 +224,11 @@ export function useForm<S extends AnyObjectSchema>(
     }
 
     const api: FieldApi<any> = Object.assign(base, {
-      props: toVuetifyProps(base, { disabled: options.disabled, readonly: options.readonly }),
+      props: toVuetifyProps(
+        base,
+        () => fieldErrors(path).length === 0,
+        { disabled: options.disabled, readonly: options.readonly },
+      ),
     })
 
     fieldCache.set(path, api)

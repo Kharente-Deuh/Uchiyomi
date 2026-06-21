@@ -55,6 +55,12 @@ export interface VuetifyFieldProps<T> {
   'required'?: boolean
   'disabled'?: boolean
   'readonly'?: boolean
+  /**
+   * Validity-driven marker classes:
+   * - `field-required` when the field is required;
+   * - `field-valid` additionally when a required field currently has no errors.
+   */
+  'class': string[]
 }
 
 export interface FieldApi<T> {
