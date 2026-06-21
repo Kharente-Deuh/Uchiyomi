@@ -64,7 +64,7 @@ components → composables → services → HTTP/DTOs.
 Because the DTOs are the exact types the server produces via its presenters (the
 `shared/` layer), the wire contract cannot drift between the two sides.
 
-This convention is **exercised and refined in roadmap M3.2** (front data-access layer),
+This convention is **exercised and refined in roadmap M3.1** (front data-access layer),
 first on the identity/session slice — the way the server idioms below were settled by
 the auth spine (M2.2).
 
@@ -174,12 +174,12 @@ ESM (no `namespace`, `shared/` for the wire contract, `runtimeConfig` for ops).
 The original Frontend section named the `services/`, `composables/`, and `store/`
 directories but left their responsibilities and relationship undefined. The roadmap
 rework that integrated the frontend milestones (a dedicated "Frontend foundations"
-phase) made the data-access layer an explicit foundation milestone (M3.2), so the
+phase) made the data-access layer an explicit foundation milestone (M3.1), so the
 Frontend section above now spells out the convention: **services** (typed HTTP over
 the shared DTOs, the only place that knows route paths) → **composables** (reactive
 orchestration) → **stores** (Pinia, global state only), with components depending
 inward and the shared DTOs guaranteeing the wire contract can't drift.
 
-As with the server idioms, the specifics are **exercised and refined when M3.2 lands**
+As with the server idioms, the specifics are **exercised and refined when M3.1 lands**
 (first on the identity/session slice); this revision records the agreed shape up front
 because it gates every feature UI. No tooling change.
