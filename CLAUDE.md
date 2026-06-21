@@ -36,7 +36,9 @@ architectural or cross-cutting decision, write (or update) an ADR.
 - **Only the App is exposed.** Suwayomi and PostgreSQL stay internal. End users
   authenticate to the App, never to Suwayomi.
 - **Auth:** local accounts + optional OIDC via `nuxt-auth-utils`, with
-  server-side **revocable** sessions. No HTTP Basic auth. (ADR-0006)
+  server-side **revocable** sessions. No HTTP Basic auth. **No email is ever sent** —
+  onboarding and password reset use single-use links handed over out-of-band; email
+  verification is omitted. (ADR-0006)
 - **Overlay data access is Prisma.** The schema in `prisma/schema.prisma` is the
   source of truth for overlay tables; the generated client is not committed.
   (ADR-0008)

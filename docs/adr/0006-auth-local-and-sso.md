@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-06-20
+- Revised: 2026-06-21 (no-email onboarding/reset — see "Revision" below)
 
 ## Context
 
@@ -42,3 +43,28 @@ app↔Suwayomi link is service-to-service; end users never receive a Suwayomi to
   retrofit (Suwayomi exposes no clean rating; some tagging will be needed).
 - Security must-dos apply: login rate-limiting, `httpOnly`/`Secure`/`SameSite`
   cookies, `NUXT_SESSION_PASSWORD` out of the repo, no secrets in logs.
+
+## Revision — 2026-06-21 (no email is sent)
+
+Uchiyomi targets a small, self-hosted circle of users, and we decided the server
+**never sends email** — no SMTP dependency, no deliverability concerns, nothing to
+configure on the NAS. This reshapes the onboarding and recovery flows:
+
+- **Onboarding = single-use invite link.** The admin generates an expirable,
+  single-use invite link; the user opens it, chooses a password, and the account
+  activates. The admin transmits the link **out-of-band** (chat, in person, …),
+  not by email. The admin-created-account path from the original decision remains.
+- **Password reset = admin-initiated single-use link.** No self-service "forgot my
+  password" email. The admin generates an expirable, single-use reset link for a
+  user (same mechanic as the invite), transmitted out-of-band; consuming it sets a
+  new password and revokes the user's existing sessions.
+- **Email verification is removed.** With no email sent, there is nothing to verify;
+  `email` is an identifier, not a verified channel.
+
+Consequences:
+- A reusable single-use-token mechanism (expirable, one-time burn, constant-time
+  lookup, never logged) backs both invites and resets (roadmap M7.1 → M7.2/M7.3).
+- No mail adapter, queue, or templates are needed; this removes an entire
+  infrastructure concern. If transactional email is ever wanted, it would be a new
+  ADR, not an assumed default.
+- OIDC/SSO (M7.4) is unaffected — it involves no email either.
