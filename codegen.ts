@@ -5,7 +5,7 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
 // in CI and postinstall without Suwayomi. Refresh the snapshot with `pnpm suwayomi:schema`.
 const config: CodegenConfig = {
   schema: 'server/utils/suwayomi/schema.graphql',
-  documents: ['server/domains/**/infrastructure/operations.ts'],
+  documents: ['server/domains/**/*.operations.ts'],
   ignoreNoDocuments: true,
   generates: {
     'server/utils/suwayomi/generated/': {
