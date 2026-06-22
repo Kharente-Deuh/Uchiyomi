@@ -4,21 +4,23 @@ import { appDescription } from './app/constants/index'
 
 // SPDX-License-Identifier: AGPL-3.0-or-later
 export default defineNuxtConfig({
-
   modules: [
     '@vueuse/nuxt',
     '@pinia/nuxt',
     'vuetify-nuxt-module',
     '@nuxtjs/i18n',
-    '@vite-pwa/nuxt',
     '@nuxt/eslint',
+    '@vite-pwa/nuxt',
+    '@nuxt/fonts',
     'nuxt-auth-utils',
     'nuxt-authorization',
   ],
 
   ssr: false,
   components: [
-    { path: '~/components', pathPrefix: false },
+    { path: '~/components', pathPrefix: true },
+    { path: '~/features/auth/components', prefix: 'Auth' },
+    { path: '~/features/settings/components', prefix: 'Settings' },
   ],
 
   // Feature-colocated data-access layer (ADR-0013): auto-import the per-feature
@@ -35,7 +37,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      viewport: 'width=device-width,initial-scale=1',
+      viewport: 'width=device-width,initial-scale=1,viewport-fit=cover',
       link: [
         { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
@@ -54,6 +56,7 @@ export default defineNuxtConfig({
     '~/assets/styles/reset.scss',
     '~/assets/styles/global.scss',
     '~/assets/styles/vuetify-overrides.scss',
+    '~/assets/styles/constants.scss',
   ],
 
   runtimeConfig: {
@@ -131,6 +134,18 @@ export default defineNuxtConfig({
         sortConfigKeys: true,
       },
     },
+  },
+
+  fonts: {
+    defaults: {
+      weights: [100, 300, 400, 500, 700, 900],
+      styles: ['normal', 'italic'],
+    },
+    families: [
+      { name: 'Inter', provider: 'google' },
+      { name: 'Spectral', provider: 'google' },
+    ],
+
   },
 
   i18n: {
