@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-06-20
-- Revised: 2026-06-21 (no-email onboarding/reset — see "Revision" below)
+- Revised: 2026-06-21 (no-email onboarding/reset); 2026-06-22 (account-name identifier) — see "Revision" sections below
 
 ## Context
 
@@ -68,3 +68,21 @@ Consequences:
   infrastructure concern. If transactional email is ever wanted, it would be a new
   ADR, not an assumed default.
 - OIDC/SSO (M7.4) is unaffected — it involves no email either.
+
+## Revision — 2026-06-22 (account name replaces email)
+
+The local login identifier is an **immutable, lowercase account name**, not an
+email. Email is **removed** — not stored, not validated, never sent.
+
+- **Identifier:** `account_name` (was `email`), unique, format `^[a-z0-9_-]{3,32}$`.
+- **Case-insensitive:** inputs are trimmed + lowercased before validation, lookup
+  and persistence, so `Admin` and `admin` are the same account. `display_name`
+  remains the free, cased, human-facing name.
+- **Immutable:** set once at account creation; there is no edit path (a self-service
+  / admin profile-edit capability is Lot B).
+- **Rule source:** one shared definition (`shared/dto/identity/account-name.ts`)
+  feeds the server zod schema and the front yup rule.
+
+This supersedes the "username/email" language in Context above: read "username/email"
+as "account name". The vestigial `Invite.email` column is dropped (link-based invites
+carry no email).
