@@ -15,6 +15,10 @@ export default defineVuetifyConfiguration({
     // (Iconify custom set). 'custom' tells vuetify-nuxt-module to step back.
     defaultSet: 'custom',
   },
+
+  display: {
+    mobileBreakpoint: 'sm',
+  },
   theme: {
     defaultTheme: 'dark',
     themes: {
@@ -67,7 +71,7 @@ export default defineVuetifyConfiguration({
   defaults: {
     VTextField: {
       density: 'comfortable',
-      // bgColor: 'field-background',
+      bgColor: 'surface-variant',
       class: 'text-field-override',
       clearIcon: 'fa6-solid:xmark',
       color: 'primary',
@@ -76,7 +80,7 @@ export default defineVuetifyConfiguration({
     VSelect: {
       clearIcon: 'fa6-solid:xmark',
       density: 'comfortable',
-      // bgColor: 'field-background',
+      bgColor: 'surface-variant',
       class: 'text-field-override',
       color: 'primary',
       variant: 'outlined',
@@ -84,7 +88,7 @@ export default defineVuetifyConfiguration({
     },
     VAutocomplete: {
       density: 'comfortable',
-      // bgColor: 'field-background',
+      bgColor: 'surface-variant',
       class: 'text-field-override',
       color: 'primary',
       clearIcon: 'fa6-solid:xmark',
@@ -94,7 +98,7 @@ export default defineVuetifyConfiguration({
     VTextarea: {
       clearIcon: 'fa6-solid:xmark',
       density: 'comfortable',
-      // bgColor: 'field-background',
+      bgColor: 'surface-variant',
       class: 'text-field-override',
       color: 'primary',
       variant: 'outlined',
@@ -109,8 +113,8 @@ export default defineVuetifyConfiguration({
     },
     VNumberInput: {
       density: 'comfortable',
-      // bgColor: 'field-background',
       class: 'text-field-override',
+      bgColor: 'surface-variant',
       clearIcon: 'fa6-solid:xmark',
       color: 'primary',
       variant: 'outlined',

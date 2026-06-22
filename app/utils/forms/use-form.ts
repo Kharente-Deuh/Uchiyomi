@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { ComputedRef, Ref } from 'vue'
+import type { Ref } from 'vue'
 import type { InferType } from 'yup'
 import type { AnyObjectSchema, ArrayFieldApi, FieldApi, UseFormOptions, UseFormReturn, VuetifyFieldProps } from './types'
-import { computed, readonly, ref, toRaw, watch } from 'vue'
+import { computed, reactive, readonly, ref, toRaw, watch } from 'vue'
 import { getFieldMeta, validateValues } from './schema'
 
 function flatten(obj: Record<string, any>, prefix = ''): Record<string, true> {
@@ -28,29 +28,39 @@ function getByPath(obj: Record<string, any>, path: string): any {
   return acc
 }
 
-/** Build the Vuetify-ready props bag for a field (inlined adapter). */
+/**
+ * Build the Vuetify-ready props bag for a field (inlined adapter).
+ *
+ * Returns a `reactive` object — NOT a `ComputedRef` — so consumers can bind it
+ * directly with `v-bind="form.field('x').props"` in a template. Vue only
+ * auto-unwraps top-level refs from the setup state; a `ComputedRef` reached
+ * through a method call (`form.field('x').props`) is NOT unwrapped, so its
+ * props would silently never reach the component. A reactive object is a plain
+ * (proxied) object and binds correctly regardless of nesting, while the
+ * `computed()` getters inside keep every prop reactive.
+ */
 function toVuetifyProps<T>(
   field: Omit<FieldApi<T>, 'props'>,
   isFieldValid: () => boolean,
   formOptions?: { disabled?: Ref<boolean>, readonly?: Ref<boolean> },
-): ComputedRef<VuetifyFieldProps<T>> {
-  return computed(() => ({
-    'modelValue': field.value.value,
+): VuetifyFieldProps<T> {
+  return reactive({
+    'modelValue': computed(() => field.value.value),
     'onUpdate:modelValue': field.handleChange,
     'onBlur': field.handleBlur,
-    'errorMessages': field.errors.value,
-    'hideDetails': field.errors.value.length > 0 ? false : 'auto',
+    'errorMessages': computed(() => field.errors.value),
+    'hideDetails': computed(() => (field.errors.value.length > 0 ? false : 'auto')),
     'label': field.label,
     'required': field.required,
-    'disabled': formOptions?.disabled?.value,
-    'readonly': formOptions?.readonly?.value,
+    'disabled': computed(() => formOptions?.disabled?.value),
+    'readonly': computed(() => formOptions?.readonly?.value),
     // Required fields are marked; once a required field validates clean it also
     // gets `field-valid`. Optional fields carry neither marker.
-    'class': [
+    'class': computed(() => [
       field.required && 'field-required',
       field.required && isFieldValid() && 'field-valid',
-    ].filter((c): c is string => typeof c === 'string'),
-  }))
+    ].filter((c): c is string => typeof c === 'string')),
+  }) as VuetifyFieldProps<T>
 }
 
 export function useForm<S extends AnyObjectSchema>(

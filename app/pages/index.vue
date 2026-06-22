@@ -8,7 +8,7 @@ useHead({
 </script>
 
 <template>
-  <EmptyState
+  <MoleculeEmptyState
     icon="fa6-solid:house"
     :title="$t('nav.home')"
     :description="$t('states.empty')"

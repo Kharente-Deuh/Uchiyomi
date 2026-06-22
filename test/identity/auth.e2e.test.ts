@@ -35,6 +35,7 @@ describeIf('auth spine e2e', async () => {
   it('setup → login → me → disable revokes', async () => {
     const setupStatus = await $fetch('/api/auth/setup')
     expect(setupStatus.required).toBe(true)
+    expect(setupStatus.minPasswordLength).toBe(10)
 
     // First-run setup creates the admin and returns a session cookie.
     const setupRes = await fetch('/api/auth/setup', {

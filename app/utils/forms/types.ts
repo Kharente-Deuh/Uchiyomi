@@ -73,8 +73,12 @@ export interface FieldApi<T> {
   label?: string
   handleChange: (value: T) => void
   handleBlur: () => void
-  /** Vuetify-ready props — spread onto a v-text-field/v-select/etc. */
-  props: ComputedRef<VuetifyFieldProps<T>>
+  /**
+   * Vuetify-ready props — a reactive object, spread onto a v-text-field/etc.
+   * with `v-bind="field.props"`. Reactive (not a ComputedRef) so it binds
+   * directly in templates through `form.field('x').props` without manual `.value`.
+   */
+  props: VuetifyFieldProps<T>
 }
 
 export interface ArrayFieldApi<T> {

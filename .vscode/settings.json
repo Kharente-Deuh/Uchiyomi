@@ -40,6 +40,8 @@
     "yaml"
   ],
   "interline-translate.knownPopularWordCount": 6000,
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.displayLanguage": "en",
   "iconify.annotations": true,
   "iconify.inplace": true,
   "i18n-ally.localesPaths": [

@@ -38,4 +38,18 @@ describe('useAuthStore', () => {
     expect(store.user).toBeUndefined()
     expect(store.isAuthenticated).toBe(false)
   })
+
+  it('setSetupStatus records needsAdmin and the password policy', () => {
+    const store = useAuthStore()
+    store.setSetupStatus({ required: true, minPasswordLength: 10 })
+    expect(store.needsAdmin).toBe(true)
+    expect(store.minPasswordLength).toBe(10)
+  })
+
+  it('markAdminCreated clears needsAdmin', () => {
+    const store = useAuthStore()
+    store.setSetupStatus({ required: true, minPasswordLength: 10 })
+    store.markAdminCreated()
+    expect(store.needsAdmin).toBe(false)
+  })
 })

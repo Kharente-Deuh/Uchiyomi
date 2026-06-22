@@ -1,18 +1,90 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Stub login route so the auth guard has a redirect target. M3.3 replaces this
-// with the real sign-in form and its own auth layout.
-definePageMeta({ layout: false })
+import type { LoginRequestDto } from '#shared/dto/identity'
+import { object, string } from 'yup'
+import { useForm } from '~/utils/forms/use-form'
+
+definePageMeta({ layout: 'auth' })
+
+const { t } = useI18n()
+const route = useRoute()
+const { login, loading } = useAuth()
+
+const formError = ref('')
+
+const notice = computed(() => {
+  const reason = route.query.reason
+  if (reason === 'expired') {
+    return t('login.notice.expired')
+  }
+
+  if (reason === 'setupClosed') {
+    return t('login.notice.setupClosed')
+  }
+
+  return ''
+})
+
+function safeRedirect(raw: unknown): string {
+  return typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/'
+}
+
+function mapError(status: number): string {
+  if (status === 401) {
+    return t('login.error.invalid')
+  }
+
+  if (status === 429) {
+    return t('login.error.tooMany')
+  }
+
+  return t('login.error.generic')
+}
+
+async function onSubmit(values: LoginRequestDto): Promise<void> {
+  formError.value = ''
+  const res = await login(values)
+  if (res.success) {
+    await navigateTo(safeRedirect(route.query.redirect))
+
+    return
+  }
+
+  formError.value = mapError(res.error.status)
+}
+
+const { field, handleSubmit } = useForm({
+  schema: object({
+    email: string().email().required().label(t('login.email')),
+    password: string().required().label(t('login.password')),
+  }),
+  initialValues: {
+    email: '',
+    password: '',
+  },
+  onSubmit,
+})
 </script>
 
 <template>
-  <VApp>
-    <VMain>
-      <div class="d-flex align-center justify-center" style="min-height: 100dvh">
-        <p class="text-medium-emphasis">
-          {{ $t('login.placeholder') }}
-        </p>
-      </div>
-    </VMain>
-  </VApp>
+  <AuthCard
+    :title="$t('login.title')"
+    :subtitle="$t('login.subtitle')"
+    :error="formError"
+    :loading="loading"
+    :on-submit="handleSubmit"
+    :notice
+    :submit-text="$t('login.submit')"
+  >
+    <VTextField
+      v-bind="field('email').props"
+      type="email"
+      data-test="login-email"
+    />
+
+    <AtomInputPassword
+      v-bind="field('password').props"
+      data-test="login-password"
+    />
+  </AuthCard>
 </template>

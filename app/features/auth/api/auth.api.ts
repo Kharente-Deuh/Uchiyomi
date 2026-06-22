@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { LoginRequestDto, SetupRequestDto, UserDto } from '#shared/dto/identity'
+import type { LoginRequestDto, SetupRequestDto, SetupStatusDto, UserDto } from '#shared/dto/identity'
 import type { ApiResponse } from '~/utils/api'
-import { ApiError } from '~/utils/api'
+import { ApiError, apiFetch } from '~/utils/api'
 
 export interface AuthApi {
-  isSetupStatusRequired: () => Promise<ApiResponse<boolean>>
+  getSetupStatus: () => Promise<ApiResponse<SetupStatusDto>>
   setup: (body: SetupRequestDto) => Promise<ApiResponse<UserDto>>
   login: (body: LoginRequestDto) => Promise<ApiResponse<void>>
   me: () => Promise<ApiResponse<UserDto>>
   logout: () => Promise<ApiResponse<void>>
 }
 
-async function isSetupStatusRequired(): Promise<ApiResponse<boolean>> {
+async function getSetupStatus(): Promise<ApiResponse<SetupStatusDto>> {
   try {
-    const res = await $fetch('/api/auth/setup')
+    const res = await apiFetch('/api/auth/setup')
 
-    return { success: true, data: res.required }
+    return { success: true, data: res }
   } catch (error) {
     return { success: false, error: ApiError.fromFetchError(error) }
   }
@@ -23,7 +23,7 @@ async function isSetupStatusRequired(): Promise<ApiResponse<boolean>> {
 
 async function setup(body: SetupRequestDto): Promise<ApiResponse<UserDto>> {
   try {
-    const res = await $fetch('/api/auth/setup', { method: 'POST', body })
+    const res = await apiFetch('/api/auth/setup', { method: 'POST', body })
 
     return { success: true, data: res.user }
   } catch (error) {
@@ -33,7 +33,7 @@ async function setup(body: SetupRequestDto): Promise<ApiResponse<UserDto>> {
 
 async function login(body: LoginRequestDto): Promise<ApiResponse<void>> {
   try {
-    await $fetch('/api/auth/login', { method: 'POST', body })
+    await apiFetch('/api/auth/login', { method: 'POST', body })
 
     return { success: true, data: undefined }
   } catch (error) {
@@ -43,7 +43,7 @@ async function login(body: LoginRequestDto): Promise<ApiResponse<void>> {
 
 async function logout(): Promise<ApiResponse<void>> {
   try {
-    await $fetch('/api/auth/logout', { method: 'POST' })
+    await apiFetch('/api/auth/logout', { method: 'POST' })
 
     return { success: true, data: undefined }
   } catch (error) {
@@ -53,7 +53,7 @@ async function logout(): Promise<ApiResponse<void>> {
 
 async function me(): Promise<ApiResponse<UserDto>> {
   try {
-    const res = await $fetch('/api/auth/me')
+    const res = await apiFetch('/api/auth/me')
 
     return { success: true, data: res.user }
   } catch (error) {
@@ -63,7 +63,7 @@ async function me(): Promise<ApiResponse<UserDto>> {
 
 export function createAuthApi(): AuthApi {
   return {
-    isSetupStatusRequired,
+    getSetupStatus,
     setup,
     login,
     logout,

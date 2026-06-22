@@ -5,10 +5,15 @@ body,
   margin: 0;
   padding: 0;
   overflow-y: auto !important;
+  font-family: 'Inter', sans-serif !important;
 }
 
 html {
   overflow-y: auto !important;
+}
+
+.font-title {
+  font-family: 'Spectral', serif !important;
 }
 
 /* Chrome, Safari, Edge, Opera */
@@ -64,4 +69,28 @@ input::-webkit-inner-spin-button {
   &.field-valid .v-field-label::after {
     color: rgb(var(--v-theme-primary));
   }
+}
+
+.w-fit {
+  width: fit-content;
+}
+
+.h-fit {
+  height: fit-content;
+}
+
+.elevation-down {
+  box-shadow: rgba(0, 0, 0, 0.04) 0px 3px 5px;
+}
+
+.border-thin-primary {
+  border: 1px solid rgb(var(--v-theme-primary), 0.5);
+}
+
+.border-thin-secondary {
+  border: 1px solid rgb(var(--v-theme-secondary), 0.5);
+}
+
+.border-thin-error {
+  border: 1px solid rgb(var(--v-theme-error), 0.5);
 }

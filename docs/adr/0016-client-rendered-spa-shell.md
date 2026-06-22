@@ -56,5 +56,6 @@ rendering empty authenticated shells to signed-out visitors.
 
 - The shell and all pages render on the client; route middleware is UX-only.
 - Server stays a pure API + static host; the download queue is unaffected.
-- The PWA manifest `orientation` lock is wired later (M6.1); the in-app portrait
-  lock ships now (M3.2) via `useOrientationLock`.
+- Orientation is left to the device. An in-app portrait lock shipped with M3.2
+  (`useOrientationLock` + an overlay) but was **dropped on 2026-06-22** as not worth
+  the complexity; no PWA manifest `orientation` lock is planned either.
