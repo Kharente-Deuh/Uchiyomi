@@ -10,9 +10,9 @@ export class PrismaUserRepository implements User.Repository {
     return this.prisma.appUser.count()
   }
 
-  async findByEmail(params: User.FindByEmailParams): Promise<User.Model | undefined> {
+  async findByAccountName(params: User.FindByAccountNameParams): Promise<User.Model | undefined> {
     const row = await this.prisma.appUser.findUnique({
-      where: { email: params.email },
+      where: { accountName: params.accountName },
       include: { identities: { where: { provider: 'LOCAL' }, take: 1 } },
     })
     if (!row) {
@@ -46,7 +46,7 @@ export class PrismaUserRepository implements User.Repository {
       // `identities.create.passwordHash`.
       const created = await tx.appUser.create({
         data: {
-          email: params.email,
+          accountName: params.accountName,
           displayName: params.displayName,
           role: params.role ?? 'USER',
           canManageExtensions: params.canManageExtensions ?? false,
@@ -55,7 +55,7 @@ export class PrismaUserRepository implements User.Repository {
           identities: {
             create: {
               provider: 'LOCAL',
-              subject: params.email,
+              subject: params.accountName,
               passwordHash: params.passwordHash,
             },
           },

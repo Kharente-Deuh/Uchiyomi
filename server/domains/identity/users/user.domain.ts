@@ -7,14 +7,14 @@ export type ModelProps = Omit<Model, 'canManageUsers' | 'isActive'>
 
 export class Model {
   declare id: string
-  declare email: string
+  declare accountName: string
   declare displayName: string
   declare role: Role
   declare status: Status
   declare canManageExtensions: boolean
   declare canDownload: boolean
   declare allowNsfw: boolean
-  // Stays on the Model (findByEmail carries it for credential checks); NEVER
+  // Stays on the Model (findByAccountName carries it for credential checks); NEVER
   // crosses HTTP — routes return DTOs via the presenter, never the raw Model.
   declare passwordHash?: string
 
@@ -32,7 +32,7 @@ export class Model {
 }
 
 export interface CreateParams {
-  email: string
+  accountName: string
   displayName: string
   password: string
   role?: Role
@@ -41,8 +41,8 @@ export interface CreateParams {
   allowNsfw?: boolean
 }
 
-export interface FindByEmailParams {
-  email: string
+export interface FindByAccountNameParams {
+  accountName: string
 }
 
 export interface FindByIdParams {
@@ -63,7 +63,7 @@ export interface SetStatusParams {
 // The PORT — adapters in infrastructure implement it.
 export interface Repository {
   countUsers: () => Promise<number>
-  findByEmail: (params: FindByEmailParams) => Promise<Model | undefined>
+  findByAccountName: (params: FindByAccountNameParams) => Promise<Model | undefined>
   findById: (params: FindByIdParams) => Promise<Model | undefined>
   createWithLocalIdentity: (
     params: CreateWithLocalIdentityParams,

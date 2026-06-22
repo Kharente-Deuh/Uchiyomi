@@ -23,27 +23,26 @@ describeIf('prisma identity repositories (live DB)', () => {
     await prisma.$disconnect()
   })
 
-  it('createWithLocalIdentity persists a user + LOCAL identity and findByEmail returns the hash', async () => {
-    await users.createWithLocalIdentity({ email: 'a@b.c', displayName: 'A', password: 'x', role: 'ADMIN', passwordHash: 'HASH' })
-    const found = await users.findByEmail({ email: 'a@b.c' })
+  it('createWithLocalIdentity persists a user + LOCAL identity and findByAccountName returns the hash', async () => {
+    await users.createWithLocalIdentity({ accountName: 'alice', displayName: 'A', password: 'x', role: 'ADMIN', passwordHash: 'HASH' })
+    const found = await users.findByAccountName({ accountName: 'alice' })
     expect(found?.passwordHash).toBe('HASH')
     expect(found?.role).toBe('ADMIN')
   })
 
   it('onlyIfEmpty rejects a second create', async () => {
-    await users.createWithLocalIdentity({ email: 'a@b.c', displayName: 'A', password: 'x', role: 'ADMIN', passwordHash: 'H' }, { onlyIfEmpty: true })
+    await users.createWithLocalIdentity({ accountName: 'alice', displayName: 'A', password: 'x', role: 'ADMIN', passwordHash: 'H' }, { onlyIfEmpty: true })
     await expect(
-      users.createWithLocalIdentity({ email: 'b@b.c', displayName: 'B', password: 'x', role: 'ADMIN', passwordHash: 'H' }, { onlyIfEmpty: true }),
+      users.createWithLocalIdentity({ accountName: 'bob', displayName: 'B', password: 'x', role: 'ADMIN', passwordHash: 'H' }, { onlyIfEmpty: true }),
     ).rejects.toBeTruthy()
     expect(await users.countUsers()).toBe(1)
   })
 
   it('session create/findValid/touch/delete and deleteAllForUser', async () => {
-    const u = await users.createWithLocalIdentity({ email: 'a@b.c', displayName: 'A', password: 'x', role: 'USER', passwordHash: 'H' })
+    const u = await users.createWithLocalIdentity({ accountName: 'alice', displayName: 'A', password: 'x', role: 'USER', passwordHash: 'H' })
     const now = new Date()
     const s = await sessions.create({ userId: u.id, expiresAt: new Date(now.getTime() + 60_000), ip: '127.0.0.1' })
     expect(await sessions.findValid({ sessionId: s.id, now })).not.toBeUndefined()
-    // expired lookup returns undefined
     expect(await sessions.findValid({ sessionId: s.id, now: new Date(now.getTime() + 120_000) })).toBeUndefined()
     await sessions.deleteAllForUser({ userId: u.id })
     expect(await sessions.findValid({ sessionId: s.id, now })).toBeUndefined()

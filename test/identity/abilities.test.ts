@@ -6,7 +6,7 @@ import * as User from '../../server/domains/identity/users/user.domain'
 function user(overrides: Partial<User.ModelProps> = {}): User.Model {
   return new User.Model({
     id: 'u1',
-    email: 'a@b.c',
+    accountName: 'alice',
     displayName: 'A',
     role: 'USER',
     status: 'ACTIVE',

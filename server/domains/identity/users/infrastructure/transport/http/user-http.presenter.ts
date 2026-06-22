@@ -7,7 +7,7 @@ import type * as User from '../../../user.domain'
 export function toUserDto(user: Omit<User.Model, 'passwordHash'>): UserDto {
   return {
     id: user.id,
-    email: user.email,
+    accountName: user.accountName,
     displayName: user.displayName,
     role: user.role,
     status: user.status,

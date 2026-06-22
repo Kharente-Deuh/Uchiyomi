@@ -3,7 +3,7 @@ import * as User from '../../../user.domain'
 
 export interface UserRow {
   id: string
-  email: string
+  accountName: string
   displayName: string
   role: 'ADMIN' | 'USER'
   status: 'ACTIVE' | 'DISABLED'
@@ -15,7 +15,7 @@ export interface UserRow {
 export function toDomain(row: UserRow): User.Model {
   return new User.Model({
     id: row.id,
-    email: row.email,
+    accountName: row.accountName,
     displayName: row.displayName,
     role: row.role,
     status: row.status,
