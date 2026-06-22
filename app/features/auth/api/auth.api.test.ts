@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { UserDto } from '#shared/dto/identity'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createAuthApi } from '~/features/auth/api/auth.api'
-import { ApiError } from '~/utils/api'
+
+const apiFetch = vi.fn()
+vi.mock('~/utils/api/api-fetch', () => ({ apiFetch }))
+
+const { createAuthApi } = await import('~/features/auth/api/auth.api')
+const { ApiError } = await import('~/utils/api')
 
 const user: UserDto = {
   id: 'u1',
@@ -16,45 +20,40 @@ const user: UserDto = {
 }
 
 describe('authApi', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
+  afterEach(() => apiFetch.mockReset())
+
+  it('getSetupStatus resolves the full status', async () => {
+    apiFetch.mockResolvedValue({ required: true, minPasswordLength: 10 })
+    const res = await createAuthApi().getSetupStatus()
+    expect(res).toEqual({ success: true, data: { required: true, minPasswordLength: 10 } })
   })
 
-  it('isSetupStatusRequired resolves a success Result unwrapping res.required', async () => {
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ required: true }))
-    const res = await createAuthApi().isSetupStatusRequired()
-    expect(res).toEqual({ success: true, data: true })
-  })
-
-  it('setup posts the body and resolves a success Result with res.user', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ user })
-    vi.stubGlobal('$fetch', fetchMock)
+  it('setup posts the body and unwraps res.user', async () => {
+    apiFetch.mockResolvedValue({ user })
     const body = { email: 'a@b.c', displayName: 'A', password: 'secret1234' }
     const res = await createAuthApi().setup(body)
     expect(res).toEqual({ success: true, data: user })
-    expect(fetchMock).toHaveBeenCalledWith('/api/auth/setup', { method: 'POST', body })
+    expect(apiFetch).toHaveBeenCalledWith('/api/auth/setup', { method: 'POST', body })
   })
 
-  it('login posts to /api/auth/login and resolves a success Result', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
-    vi.stubGlobal('$fetch', fetchMock)
+  it('login posts to /api/auth/login', async () => {
+    apiFetch.mockResolvedValue({ ok: true })
     const res = await createAuthApi().login({ email: 'a@b.c', password: 'secret1234' })
     expect(res).toEqual({ success: true, data: undefined })
-    expect(fetchMock).toHaveBeenCalledWith('/api/auth/login', { method: 'POST', body: { email: 'a@b.c', password: 'secret1234' } })
+    expect(apiFetch).toHaveBeenCalledWith('/api/auth/login', { method: 'POST', body: { email: 'a@b.c', password: 'secret1234' } })
   })
 
-  it('me resolves a success Result unwrapping res.user', async () => {
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ user }))
+  it('me unwraps res.user', async () => {
+    apiFetch.mockResolvedValue({ user })
     const res = await createAuthApi().me()
     expect(res).toEqual({ success: true, data: user })
   })
 
-  it('returns a failure Result with a normalised ApiError instead of throwing', async () => {
-    const fetchErr = Object.assign(new Error('Unauthenticated'), {
+  it('returns a normalised ApiError instead of throwing', async () => {
+    apiFetch.mockRejectedValue(Object.assign(new Error('Unauthenticated'), {
       statusCode: 401,
       data: { statusMessage: 'Unauthenticated' },
-    })
-    vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(fetchErr))
+    }))
     const res = await createAuthApi().me()
     expect(res.success).toBe(false)
     if (!res.success) {

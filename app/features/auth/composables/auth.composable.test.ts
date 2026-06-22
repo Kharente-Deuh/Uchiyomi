@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
-    isSetupStatusRequired: vi.fn(),
+    getSetupStatus: vi.fn(),
     setup: vi.fn(),
     login: vi.fn(),
     logout: vi.fn(),
@@ -113,10 +113,21 @@ describe('useAuth', () => {
     expect(clearMock).not.toHaveBeenCalled()
   })
 
-  it('setupRequired passes through the api Result', async () => {
-    mockApi.isSetupStatusRequired.mockResolvedValue({ success: true, data: true })
-    const auth = useAuth()
-    const res = await auth.setupRequired()
-    expect(res).toEqual({ success: true, data: true })
+  it('getSetupStatus records the status in the store', async () => {
+    mockApi.getSetupStatus.mockResolvedValue({ success: true, data: { required: true, minPasswordLength: 10 } })
+    const { getSetupStatus, needsAdmin, minPasswordLength } = useAuth()
+    const res = await getSetupStatus()
+    expect(res.success).toBe(true)
+    expect(needsAdmin.value).toBe(true)
+    expect(minPasswordLength.value).toBe(10)
+  })
+
+  it('setup marks the admin created on success', async () => {
+    mockApi.setup.mockResolvedValue({ success: true, data: user })
+    const store = useAuthStore()
+    store.setSetupStatus({ required: true, minPasswordLength: 8 })
+    const { setup, needsAdmin } = useAuth()
+    await setup({ email: 'a@b.c', displayName: 'A', password: 'longenough1' })
+    expect(needsAdmin.value).toBe(false)
   })
 })

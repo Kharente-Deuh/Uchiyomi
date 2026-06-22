@@ -1,6 +1,6 @@
-import type { ComputedRef, Ref } from 'vue'
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { LoginRequestDto, SetupRequestDto, UserDto } from '#shared/dto/identity'
+import type { ComputedRef, Ref } from 'vue'
+import type { LoginRequestDto, SetupRequestDto, SetupStatusDto, UserDto } from '#shared/dto/identity'
 import type { ApiResponse } from '~/utils/api'
 import { createAuthApi } from '../api'
 
@@ -10,7 +10,9 @@ export interface AuthComposable {
   user: ComputedRef<UserDto | undefined>
   isAuthenticated: ComputedRef<boolean>
   loading: Ref<boolean>
-  setupRequired: () => Promise<ApiResponse<boolean>>
+  needsAdmin: ComputedRef<boolean>
+  minPasswordLength: ComputedRef<number>
+  getSetupStatus: () => Promise<ApiResponse<SetupStatusDto>>
   fetchMe: () => Promise<void>
   login: (body: LoginRequestDto) => Promise<ApiResponse<void>>
   setup: (body: SetupRequestDto) => Promise<ApiResponse<UserDto>>
@@ -39,6 +41,15 @@ export function useAuth(): AuthComposable {
     }
   }
 
+  async function getSetupStatus(): Promise<ApiResponse<SetupStatusDto>> {
+    const res = await authApi.getSetupStatus()
+    if (res.success) {
+      authStore.setSetupStatus(res.data)
+    }
+
+    return res
+  }
+
   async function login(body: LoginRequestDto): Promise<ApiResponse<void>> {
     loading.value = true
 
@@ -59,6 +70,7 @@ export function useAuth(): AuthComposable {
     const res = await authApi.setup(body)
     if (res.success) {
       authStore.setUser(res.data)
+      authStore.markAdminCreated()
     }
 
     loading.value = false
@@ -84,7 +96,9 @@ export function useAuth(): AuthComposable {
     user: computed(() => authStore.user),
     isAuthenticated: computed(() => authStore.isAuthenticated),
     loading,
-    setupRequired: authApi.isSetupStatusRequired,
+    needsAdmin: computed(() => authStore.needsAdmin),
+    minPasswordLength: computed(() => authStore.minPasswordLength),
+    getSetupStatus,
     fetchMe,
     login,
     setup,
