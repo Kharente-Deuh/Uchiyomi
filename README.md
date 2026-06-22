@@ -8,7 +8,7 @@
 
 
 [![CI](https://github.com/Kharente-Deuh/Uchiyomi/actions/workflows/ci.yml/badge.svg)](https://github.com/Kharente-Deuh/Uchiyomi/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/Kharente-Deuh/Uchiyomi/branch/master/graph/badge.svg)](https://codecov.io/gh/Kharente-Deuh/Uchiyomi)
+[![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Kharente-Deuh/2cc6c60da922faeb492b67b2681f6e9c/raw/uchiyomi-coverage.json)](https://github.com/Kharente-Deuh/Uchiyomi/actions/workflows/ci.yml)
 [![Latest stable release](https://img.shields.io/github/v/release/Kharente-Deuh/Uchiyomi?label=stable)](https://github.com/Kharente-Deuh/Uchiyomi/releases/latest)
 [![Latest release](https://img.shields.io/github/v/release/Kharente-Deuh/Uchiyomi?include_prereleases&label=latest)](https://github.com/Kharente-Deuh/Uchiyomi/releases)
 ---
