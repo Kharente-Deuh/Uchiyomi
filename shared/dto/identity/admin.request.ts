@@ -9,6 +9,10 @@ export interface CreateUserRequestDto {
   allowNsfw?: boolean
 }
 
+export interface UpdateUserRequestDto {
+  displayName: string
+}
+
 export interface SetUserStatusRequestDto {
   status: 'ACTIVE' | 'DISABLED'
 }
