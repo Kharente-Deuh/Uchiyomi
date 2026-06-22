@@ -7,6 +7,7 @@ import { useDisplay } from 'vuetify'
 
 const { mobile } = useDisplay()
 const { logout } = useAuth()
+const { messages } = useToast()
 
 async function onLogout(): Promise<void> {
   const res = await logout()
@@ -68,5 +69,7 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
       v-if="mobile"
       :items="bottomNavigationItems"
     />
+
+    <VSnackbarQueue v-model="messages" />
   </VApp>
 </template>

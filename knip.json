@@ -15,7 +15,6 @@
   "ignoreDependencies": [
     "@prisma/client",
     "@types/pg",
-    "@vueuse/core",
     "eslint-formatter-checkstyle",
     "ofetch",
     "pg",
