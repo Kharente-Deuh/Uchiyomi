@@ -4,7 +4,7 @@
 // unions instead of the server domain types. Never carries `passwordHash`.
 export interface UserDto {
   id: string
-  email: string
+  accountName: string
   displayName: string
   role: 'ADMIN' | 'USER'
   status: 'ACTIVE' | 'DISABLED'

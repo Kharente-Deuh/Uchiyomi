@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Request wire contracts for the admin user-management routes.
 export interface CreateUserRequestDto {
-  email: string
+  accountName: string
   displayName: string
   password: string
   canManageExtensions?: boolean

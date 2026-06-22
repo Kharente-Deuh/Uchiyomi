@@ -8,7 +8,7 @@ interface Bucket {
 
 /**
  * In-memory fixed-window limiter (single-instance app). Key is typically
- * `${ip}:${email}`. Implements the `Auth.RateLimiter` port.
+ * `${ip}:${accountName}`. Implements the `Auth.RateLimiter` port.
  */
 export class MemoryLoginRateLimiter implements Auth.RateLimiter {
   private readonly maxAttempts: number

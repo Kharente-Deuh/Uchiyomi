@@ -2,9 +2,10 @@
 import type { LoginRequestDto } from '#shared/dto/identity/auth.request'
 import { z } from 'zod'
 import * as Auth from '../../domains/identity/auth/auth.domain'
+import { accountNameSchema } from '../../utils/account-name'
 import { login, loginRateLimiter } from '../../utils/identity'
 
-const Body = z.object({ email: z.email(), password: z.string() }) satisfies z.ZodType<LoginRequestDto>
+const Body = z.object({ accountName: accountNameSchema, password: z.string() }) satisfies z.ZodType<LoginRequestDto>
 
 export default defineEventHandler(async (event) => {
   const parsed = await readValidatedBody(event, Body.safeParse)
@@ -15,18 +16,18 @@ export default defineEventHandler(async (event) => {
   const body = parsed.data
   // xForwardedFor: true is safe only because this app is deployed behind a
   // trusted reverse proxy that authoritatively sets X-Forwarded-For (ADR-0005,
-  // single-instance self-hosted assumption). The rate-limit key also includes
-  // the email address, so single-account brute force is still capped even if
-  // the IP portion cannot be fully trusted.
+  // single-instance self-hosted assumption). The rate-limit key includes the
+  // (normalized) account name, so single-account brute force is capped even
+  // when the IP portion cannot be fully trusted.
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
-  const key = `${ip}:${body.email}`
+  const key = `${ip}:${body.accountName}`
   if (!loginRateLimiter.check({ key })) {
     throw createError({ statusCode: 429, statusMessage: 'Too many attempts' })
   }
 
   try {
     const session = await login.execute({
-      email: body.email,
+      accountName: body.accountName,
       password: body.password,
       userAgent: getHeader(event, 'user-agent') ?? undefined,
       ip,
@@ -37,7 +38,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true }
   } catch (err) {
     if (err instanceof Auth.AuthError) {
-      throw createError({ statusCode: 401, statusMessage: 'Invalid email or password' })
+      throw createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
     }
 
     throw err
