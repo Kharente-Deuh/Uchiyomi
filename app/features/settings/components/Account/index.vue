@@ -20,9 +20,9 @@ const showUpdatePassword = ref(false)
       />
     </SettingsCardItem>
     <VDivider />
-    <SettingsCardItem :title="$t('settings.account.email')">
+    <SettingsCardItem :title="$t('settings.account.accountName')">
       <VTextField
-        :model-value="user.email"
+        :model-value="user.accountName"
         style="max-width: 15rem !important;"
         hide-details
         density="compact"

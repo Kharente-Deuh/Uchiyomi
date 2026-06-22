@@ -8,7 +8,7 @@ import UpdatePassword from './Modal/UpdatePassword.vue'
 
 const user: UserDto = {
   id: 'u1',
-  email: 'admin@uchiyomi.test',
+  accountName: 'admin',
   displayName: 'Admin',
   role: 'ADMIN',
   status: 'ACTIVE',
@@ -35,11 +35,11 @@ function useAuthMock(): ReturnType<typeof useAuth> {
 mockNuxtImport('useAuth', () => useAuthMock)
 
 describe('settingsAccount', () => {
-  it('renders the current displayName and email values', async () => {
+  it('renders the current displayName and account name values', async () => {
     const wrapper = await mountSuspended(Account)
     const values = wrapper.findAll('input').map(i => (i.element as HTMLInputElement).value)
     expect(values).toContain('Admin')
-    expect(values).toContain('admin@uchiyomi.test')
+    expect(values).toContain('admin')
   })
 
   it('wires a change-password trigger and mounts the modal closed', async () => {

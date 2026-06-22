@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { CreateUserRequestDto } from '#shared/dto/identity/admin.request'
 import { z } from 'zod'
+import { Prisma } from '../../../../prisma/generated/client'
 import { toUserDto } from '../../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
+import { accountNameSchema } from '../../../utils/account-name'
 import { createUser } from '../../../utils/identity'
 
 export default defineEventHandler(async (event) => {
   const cfg = useRuntimeConfig(event).auth
   const Body = z.object({
-    email: z.email(),
+    accountName: accountNameSchema,
     displayName: z.string().min(1),
     password: z.string().min(cfg.minPasswordLength),
     canManageExtensions: z.boolean().optional(),
@@ -25,7 +27,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
   }
 
-  const user = await createUser.execute(parsed.data)
+  try {
+    const user = await createUser.execute(parsed.data)
 
-  return { user: toUserDto(user) }
+    return { user: toUserDto(user) }
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw createError({ statusCode: 409, statusMessage: 'Account name already taken' })
+    }
+
+    throw err
+  }
 })

@@ -75,7 +75,7 @@ enum ExtensionHealth {
 
 model AppUser {
   id                  String   @id @default(cuid())
-  email               String   @unique
+  accountName         String   @unique @map("account_name")
   displayName         String   @map("display_name")
   role                Role     @default(USER)
   status              UserStatus @default(ACTIVE)
@@ -129,7 +129,6 @@ model Session {
 model Invite {
   id              String    @id @default(cuid())
   code            String    @unique
-  email           String?
   role            Role      @default(USER)
   createdByUserId String?   @map("created_by_user_id")
   createdAt       DateTime  @default(now()) @map("created_at")

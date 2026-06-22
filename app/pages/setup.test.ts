@@ -44,13 +44,13 @@ mockNuxtImport('navigateTo', () => navigateToMock)
  */
 async function fillAndSubmit(
   wrapper: Awaited<ReturnType<typeof mountSuspended<typeof Setup>>>,
-  email: string,
+  accountName: string,
   displayName: string,
   password: string,
   confirmPassword: string,
 ): Promise<void> {
   const state = (wrapper.vm as any).$.setupState
-  state.field('email').handleChange(email)
+  state.field('accountName').handleChange(accountName)
   state.field('displayName').handleChange(displayName)
   state.field('password').handleChange(password)
   state.field('confirmPassword').handleChange(confirmPassword)
@@ -67,7 +67,7 @@ describe('setup page', () => {
 
   it('renders all four fields', async () => {
     const wrapper = await mountSuspended(Setup)
-    expect(wrapper.find('[data-test="setup-email"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="setup-accountName"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="setup-displayName"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="setup-password"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="setup-confirm"]').exists()).toBe(true)
@@ -75,15 +75,15 @@ describe('setup page', () => {
 
   it('does not submit when the passwords differ', async () => {
     const wrapper = await mountSuspended(Setup)
-    await fillAndSubmit(wrapper, 'a@b.c', 'Admin', 'longenough1', 'different99')
+    await fillAndSubmit(wrapper, 'admin', 'Admin', 'longenough1', 'different99')
     expect(setupMock).not.toHaveBeenCalled()
   })
 
   it('submits and redirects home on success', async () => {
     setupMock.mockResolvedValue({ success: true, data: {} })
     const wrapper = await mountSuspended(Setup)
-    await fillAndSubmit(wrapper, 'a@b.c', 'Admin', 'longenough1', 'longenough1')
-    expect(setupMock).toHaveBeenCalledWith({ email: 'a@b.c', displayName: 'Admin', password: 'longenough1' })
+    await fillAndSubmit(wrapper, 'admin', 'Admin', 'longenough1', 'longenough1')
+    expect(setupMock).toHaveBeenCalledWith({ accountName: 'admin', displayName: 'Admin', password: 'longenough1' })
     expect(navigateToMock).toHaveBeenCalledWith('/')
   })
 })

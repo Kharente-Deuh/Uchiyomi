@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { Prisma } from '../../../prisma/generated/client'
 import * as Session from '../../domains/identity/sessions/session.domain'
 import { toUserDto } from '../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
+import { accountNameSchema } from '../../utils/account-name'
 import { sessionRepository, setupFirstAdmin } from '../../utils/identity'
 
 function isSetupClosed(err: unknown): boolean {
@@ -14,7 +15,7 @@ function isSetupClosed(err: unknown): boolean {
 export default defineEventHandler(async (event) => {
   const cfg = useRuntimeConfig(event).auth
   const Body = z.object({
-    email: z.email(),
+    accountName: accountNameSchema,
     displayName: z.string().min(1),
     password: z.string().min(cfg.minPasswordLength),
   }) satisfies z.ZodType<SetupRequestDto>

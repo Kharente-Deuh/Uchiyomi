@@ -10,7 +10,7 @@ const { ApiError } = await import('~/utils/api')
 
 const user: UserDto = {
   id: 'u1',
-  email: 'admin@uchiyomi.test',
+  accountName: 'admin',
   displayName: 'Admin',
   role: 'ADMIN',
   status: 'ACTIVE',
@@ -30,7 +30,7 @@ describe('authApi', () => {
 
   it('setup posts the body and unwraps res.user', async () => {
     apiFetch.mockResolvedValue({ user })
-    const body = { email: 'a@b.c', displayName: 'A', password: 'secret1234' }
+    const body = { accountName: 'alice', displayName: 'A', password: 'secret1234' }
     const res = await createAuthApi().setup(body)
     expect(res).toEqual({ success: true, data: user })
     expect(apiFetch).toHaveBeenCalledWith('/api/auth/setup', { method: 'POST', body })
@@ -38,9 +38,9 @@ describe('authApi', () => {
 
   it('login posts to /api/auth/login', async () => {
     apiFetch.mockResolvedValue({ ok: true })
-    const res = await createAuthApi().login({ email: 'a@b.c', password: 'secret1234' })
+    const res = await createAuthApi().login({ accountName: 'alice', password: 'secret1234' })
     expect(res).toEqual({ success: true, data: undefined })
-    expect(apiFetch).toHaveBeenCalledWith('/api/auth/login', { method: 'POST', body: { email: 'a@b.c', password: 'secret1234' } })
+    expect(apiFetch).toHaveBeenCalledWith('/api/auth/login', { method: 'POST', body: { accountName: 'alice', password: 'secret1234' } })
   })
 
   it('me unwraps res.user', async () => {

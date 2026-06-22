@@ -32,19 +32,18 @@ describeIf('auth spine e2e', async () => {
     await prisma.$disconnect()
   })
 
-  it('setup → login → me → disable revokes', async () => {
+  it('setup → login (case-insensitive) → me → duplicate 409 → disable revokes', async () => {
     const setupStatus = await $fetch('/api/auth/setup')
     expect(setupStatus.required).toBe(true)
     expect(setupStatus.minPasswordLength).toBe(10)
 
-    // First-run setup creates the admin and returns a session cookie.
     const setupRes = await fetch('/api/auth/setup', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@x.io', displayName: 'Admin', password: 'longenough1' }),
+      body: JSON.stringify({ accountName: 'admin', displayName: 'Admin', password: 'longenough1' }),
     })
     const adminCookie = setupRes.headers.getSetCookie?.().join('; ') ?? setupRes.headers.get('set-cookie') ?? ''
-    expect(adminCookie).toBeTruthy() // fail here, not on a downstream 401, if no cookie was set
+    expect(adminCookie).toBeTruthy()
     const setupStatusAfter = await $fetch('/api/auth/setup')
     expect(setupStatusAfter.required).toBe(false)
 
@@ -52,29 +51,36 @@ describeIf('auth spine e2e', async () => {
     await $fetch('/api/admin/users', {
       method: 'POST',
       headers: { cookie: adminCookie },
-      body: { email: 'user@x.io', displayName: 'User', password: 'longenough2' },
+      body: { accountName: 'user', displayName: 'User', password: 'longenough2' },
     })
 
-    // The new user logs in and reads /me.
+    // Duplicate account name (case-insensitive) → 409.
+    await expect($fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { cookie: adminCookie },
+      body: { accountName: 'USER', displayName: 'User2', password: 'longenough9' },
+    })).rejects.toMatchObject({ statusCode: 409 })
+
+    // Login is case-insensitive: `USER` logs into the `user` account.
     const loginRes = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: 'user@x.io', password: 'longenough2' }),
+      body: JSON.stringify({ accountName: 'USER', password: 'longenough2' }),
     })
     const userCookie = loginRes.headers.getSetCookie?.().join('; ') ?? loginRes.headers.get('set-cookie') ?? ''
-    expect(userCookie).toBeTruthy() // fail here, not on a downstream 401, if no cookie was set
+    expect(userCookie).toBeTruthy()
     const me = await $fetch('/api/auth/me', { headers: { cookie: userCookie } })
-    expect(me.user.email).toBe('user@x.io')
+    expect(me.user.accountName).toBe('user')
 
     // A non-admin cannot create users (authorization 403).
     await expect($fetch('/api/admin/users', {
       method: 'POST',
       headers: { cookie: userCookie },
-      body: { email: 'nope@x.io', displayName: 'No', password: 'longenough3' },
+      body: { accountName: 'nope', displayName: 'No', password: 'longenough3' },
     })).rejects.toMatchObject({ statusCode: 403 })
 
     // Admin disables the user → the user's session is revoked immediately.
-    const userRow = await prisma.appUser.findUnique({ where: { email: 'user@x.io' } })
+    const userRow = await prisma.appUser.findUnique({ where: { accountName: 'user' } })
     await $fetch(`/api/admin/users/${userRow!.id}/status`, {
       method: 'POST',
       headers: { cookie: adminCookie },
@@ -85,18 +91,16 @@ describeIf('auth spine e2e', async () => {
 
   it('rejects bad credentials with a generic 401', async () => {
     await expect(
-      $fetch('/api/auth/login', { method: 'POST', body: { email: 'admin@x.io', password: 'wrongpass11' } }),
+      $fetch('/api/auth/login', { method: 'POST', body: { accountName: 'admin', password: 'wrongpass11' } }),
     ).rejects.toMatchObject({ statusCode: 401 })
   })
 
   it('rejects a too-short password on setup with 400', async () => {
-    // The password-length rule lives in the zod schema on the route — zod validation → 400, not 422.
-    // We need to clear users first so setup is available (re-use a fresh state).
     await prisma.appUser.deleteMany()
     await expect(
       $fetch('/api/auth/setup', {
         method: 'POST',
-        body: { email: 'admin@x.io', displayName: 'Admin', password: 'short' },
+        body: { accountName: 'admin', displayName: 'Admin', password: 'short' },
       }),
     ).rejects.toMatchObject({ statusCode: 400 })
   })

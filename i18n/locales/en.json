@@ -18,7 +18,7 @@
   },
   "login": {
     "title": "Welcome back",
-    "email": "Email",
+    "accountName": "Account name",
     "password": "Password",
     "submit": "Sign in",
     "notice": {
@@ -26,7 +26,7 @@
       "setupClosed": "Setup is already complete. Please sign in."
     },
     "error": {
-      "invalid": "Invalid email or password.",
+      "invalid": "Invalid account name or password.",
       "tooMany": "Too many attempts. Please try again later.",
       "generic": "Sign-in failed. Please try again."
     },
@@ -35,7 +35,7 @@
   "setup": {
     "title": "Let's begin",
     "subtitle": "Please create your administrator account. There is no password recovery by email.",
-    "email": "Email",
+    "accountName": "Account name",
     "displayName": "Display name",
     "password": "Password",
     "confirmPassword": "Confirm password",
@@ -116,7 +116,7 @@
           "newPasswordSameAsCurrent": "Cannot be the same as current"
         }
       },
-      "email": "Email"
+      "accountName": "Account name"
     }
   },
   "actions": {

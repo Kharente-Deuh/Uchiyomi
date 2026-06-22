@@ -7,7 +7,7 @@ import * as User from '../../server/domains/identity/users/user.domain'
 
 const newUser = new User.Model({
   id: 'u2',
-  email: 'u@b.c',
+  accountName: 'newbie',
   displayName: 'U',
   role: 'USER',
   status: 'ACTIVE',
@@ -23,11 +23,11 @@ function fakeHasher(): { hash: ReturnType<typeof vi.fn>, verify: ReturnType<type
 describe('createUser', () => {
   it('hashes and creates a USER (default role), no onlyIfEmpty guard', async () => {
     const hasher = fakeHasher()
-    const users = { createWithLocalIdentity: vi.fn(async () => newUser), countUsers: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(), setStatus: vi.fn() }
-    const result = await new CreateUser.UseCase(users, hasher).execute({ email: 'u@b.c', displayName: 'U', password: 'longenough1' })
+    const users = { createWithLocalIdentity: vi.fn(async () => newUser), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), setStatus: vi.fn() }
+    const result = await new CreateUser.UseCase(users, hasher).execute({ accountName: 'newbie', displayName: 'U', password: 'longenough1' })
     expect(hasher.hash).toHaveBeenCalledWith({ password: 'longenough1' })
     expect(users.createWithLocalIdentity).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'u@b.c', role: 'USER', passwordHash: 'h:longenough1' }),
+      expect.objectContaining({ accountName: 'newbie', role: 'USER', passwordHash: 'h:longenough1' }),
     )
     expect(result.id).toBe('u2')
   })
@@ -35,7 +35,7 @@ describe('createUser', () => {
 
 describe('setUserStatus', () => {
   it('revokes all sessions when disabling', async () => {
-    const users = { setStatus: vi.fn(), countUsers: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn() }
+    const users = { setStatus: vi.fn(), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn() }
     const sessions = { deleteAllForUser: vi.fn(), create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn() }
     await new SetUserStatus.UseCase(users, sessions).execute({ userId: 'u2', status: 'DISABLED' })
     expect(users.setStatus).toHaveBeenCalledWith({ id: 'u2', status: 'DISABLED' })
@@ -43,7 +43,7 @@ describe('setUserStatus', () => {
   })
 
   it('does not touch sessions when enabling', async () => {
-    const users = { setStatus: vi.fn(), countUsers: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn() }
+    const users = { setStatus: vi.fn(), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn() }
     const sessions = { deleteAllForUser: vi.fn(), create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn() }
     await new SetUserStatus.UseCase(users, sessions).execute({ userId: 'u2', status: 'ACTIVE' })
     expect(users.setStatus).toHaveBeenCalledWith({ id: 'u2', status: 'ACTIVE' })

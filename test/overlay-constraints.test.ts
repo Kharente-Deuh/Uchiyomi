@@ -59,7 +59,7 @@ describe.skipIf(!connectionString)('overlay constraints', () => {
 
   it('enforces one Subscription per (user, series) and cascades on user delete', async () => {
     const series = await makeSeries('1003')
-    const user = await prisma.appUser.create({ data: { email: 'u1003@test.local', displayName: 'U' } })
+    const user = await prisma.appUser.create({ data: { accountName: 'user1003', displayName: 'U' } })
     await prisma.subscription.create({ data: { userId: user.id, seriesId: series.id } })
     await expect(
       prisma.subscription.create({ data: { userId: user.id, seriesId: series.id } }),
@@ -75,7 +75,7 @@ describe.skipIf(!connectionString)('overlay constraints', () => {
       data: { chapterId: 1, seriesId: series.id, number: 1, name: 'c1', uploadedAt: new Date() },
     })
     const ext = await prisma.extension.create({ data: { pkgName: 'pkg-1004', name: 'E', lang: 'en' } })
-    const user = await prisma.appUser.create({ data: { email: 'u1004@test.local', displayName: 'U' } })
+    const user = await prisma.appUser.create({ data: { accountName: 'user1004', displayName: 'U' } })
     await prisma.readingProgress.create({ data: { userId: user.id, chapterId: chapter.id } })
     await prisma.userExtensionActivation.create({ data: { userId: user.id, extensionId: ext.id } })
 

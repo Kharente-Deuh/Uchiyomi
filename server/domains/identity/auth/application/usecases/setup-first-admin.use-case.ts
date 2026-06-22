@@ -2,9 +2,10 @@
 import type { IUseCase } from '../../../../../shared/use-case'
 import type * as Password from '../../../password/password.domain'
 import type * as User from '../../../users/user.domain'
+import { normalizeAccountName } from '../../../../../../shared/dto/identity/account-name'
 
 export interface Opts {
-  email: string
+  accountName: string
   displayName: string
   password: string
 }
@@ -20,7 +21,7 @@ export class UseCase implements IUseCase<Opts, Omit<User.Model, 'passwordHash'>>
 
     return this.userRepository.createWithLocalIdentity(
       {
-        email: opts.email,
+        accountName: normalizeAccountName(opts.accountName),
         displayName: opts.displayName,
         password: opts.password,
         role: 'ADMIN',

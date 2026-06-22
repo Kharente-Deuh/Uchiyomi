@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { LoginRequestDto } from '#shared/dto/identity'
 import { object, string } from 'yup'
+import { accountNameRule } from '~/features/auth/utils/account-name'
 import { useForm } from '~/utils/forms/use-form'
 
 definePageMeta({ layout: 'auth' })
@@ -55,11 +56,11 @@ async function onSubmit(values: LoginRequestDto): Promise<void> {
 
 const { field, handleSubmit } = useForm({
   schema: object({
-    email: string().email().required().label(t('login.email')),
+    accountName: accountNameRule(t('login.accountName')),
     password: string().required().label(t('login.password')),
   }),
   initialValues: {
-    email: '',
+    accountName: '',
     password: '',
   },
   onSubmit,
@@ -77,9 +78,10 @@ const { field, handleSubmit } = useForm({
     :submit-text="$t('login.submit')"
   >
     <VTextField
-      v-bind="field('email').props"
-      type="email"
-      data-test="login-email"
+      v-bind="field('accountName').props"
+      type="text"
+      autocomplete="username"
+      data-test="login-accountName"
     />
 
     <AtomInputPassword
