@@ -11,3 +11,8 @@ export interface LoginRequestDto {
   email: string
   password: string
 }
+
+export interface SetupStatusDto {
+  required: boolean
+  minPasswordLength: number
+}
