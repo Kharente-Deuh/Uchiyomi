@@ -3,13 +3,12 @@
     "name": "Uchiyomi",
     "tagline": "Your self-hosted manga & webtoon library"
   },
-  "actions": {
-    "toggleTheme": "Toggle theme",
-    "switchLanguage": "Switch language"
-  },
   "nav": {
     "home": "Home",
-    "settings": "Settings"
+    "settings": "Settings",
+    "system": {
+      "title": "System"
+    }
   },
   "states": {
     "loading": "Loading…",
@@ -17,12 +16,38 @@
     "empty": "Nothing here yet",
     "retry": "Retry"
   },
-  "orientation": {
-    "title": "Rotate your device",
-    "message": "Uchiyomi works best in portrait. Please rotate your device."
-  },
   "login": {
-    "placeholder": "Sign-in is coming soon."
+    "title": "Welcome back",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "notice": {
+      "expired": "Your session has expired. Please sign in again.",
+      "setupClosed": "Setup is already complete. Please sign in."
+    },
+    "error": {
+      "invalid": "Invalid email or password.",
+      "tooMany": "Too many attempts. Please try again later.",
+      "generic": "Sign-in failed. Please try again."
+    },
+    "subtitle": "Sign in to your Uchiyomi server"
+  },
+  "setup": {
+    "title": "Let's begin",
+    "subtitle": "Please create your administrator account. There is no password recovery by email.",
+    "email": "Email",
+    "displayName": "Display name",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match.",
+    "submit": "Create account",
+    "error": {
+      "generic": "Could not create the account. Please try again."
+    }
+  },
+  "auth": {
+    "account": "Account",
+    "signOut": "Sign out"
   },
   "validation": {
     "mixed": {
@@ -62,5 +87,41 @@
       "min": "Required field, minimum {min}",
       "max": "Required field, maximum {max}"
     }
+  },
+  "settings": {
+    "appearance": {
+      "title": "Appearance",
+      "subtitle": "Personalize your experience",
+      "theme": {
+        "title": "Theme",
+        "dark": "Dark",
+        "light": "Light"
+      },
+      "language": "Language"
+    },
+    "adminOnly": "Admin",
+    "title": "Settings",
+    "subtitle": "Per-user preferences. Server controls appear only for admins.",
+    "account": {
+      "title": "Account",
+      "subtitle": "Your identity on this server.",
+      "displayName": "Display name",
+      "password": {
+        "title": "Password",
+        "change": "Change password",
+        "update": {
+          "confirmNewPassword": "Confirm new password",
+          "newPassword": "New password",
+          "currentPassword": "Current password",
+          "newPasswordSameAsCurrent": "Cannot be the same as current"
+        }
+      },
+      "email": "Email"
+    }
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "continue": "Continue"
   }
 }
