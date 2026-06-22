@@ -21,9 +21,9 @@ export default defineConfig(async () => ({
     reporters: process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['default'],
     coverage: {
       provider: 'v8',
-      // json-summary + json feed the PR coverage-comment action; text shows in
-      // logs; lcov is uploaded to Codecov for the README coverage badge.
-      reporter: ['text', 'json', 'json-summary', 'lcov'],
+      // json-summary + json feed the PR coverage-comment action and the Gist
+      // badge step; text shows in logs.
+      reporter: ['text', 'json', 'json-summary'],
       // Still emit a report when tests fail so the PR comment stays populated.
       reportOnFailure: true,
       exclude: [

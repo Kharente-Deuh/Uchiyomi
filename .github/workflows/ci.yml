@@ -109,10 +109,25 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && !cancelled() }}
         uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
 
-      - name: Upload coverage to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      # On master only: read the line-coverage % from the json-summary report and
+      # publish it to a Gist that shields.io renders as the README badge. The
+      # coverage figure never leaves our own GitHub assets.
+      - name: Read coverage percentage
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && !cancelled() }}
+        id: coverage
+        run: |
+          pct=$(node -p "require('./coverage/coverage-summary.json').total.lines.pct")
+          echo "pct=$pct" >> "$GITHUB_OUTPUT"
+
+      - name: Update coverage badge Gist
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && !cancelled() }}
+        uses: schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501 # v1.8.0
         with:
-          files: ./coverage/lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.COVERAGE_GIST_ID }}
+          filename: uchiyomi-coverage.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.pct }}%
+          valColorRange: ${{ steps.coverage.outputs.pct }}
+          minColorRange: 50
+          maxColorRange: 90
