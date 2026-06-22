@@ -60,6 +60,7 @@
     "@iconify-json/fa6-regular": "catalog:dev",
     "@iconify-json/fa6-solid": "catalog:dev",
     "@nuxt/eslint": "catalog:build",
+    "@nuxt/fonts": "catalog:build",
     "@nuxt/test-utils": "catalog:dev",
     "@nuxtjs/i18n": "catalog:build",
     "@pinia/nuxt": "catalog:build",
