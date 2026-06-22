@@ -2,9 +2,10 @@
 import type { UpdateMeRequestDto } from '#shared/dto/identity/me.request'
 import { z } from 'zod'
 import { toUserDto } from '../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
+import { displayNameSchema } from '../../utils/display-name'
 import { updateDisplayName } from '../../utils/identity'
 
-const Body = z.object({ displayName: z.string().trim().min(1).max(64) }) satisfies z.ZodType<UpdateMeRequestDto>
+const Body = z.object({ displayName: displayNameSchema }) satisfies z.ZodType<UpdateMeRequestDto>
 
 export default defineEventHandler(async (event) => {
   const actor = event.context.authUser
