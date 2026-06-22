@@ -35,7 +35,7 @@
   "setup": {
     "title": "Commençons",
     "subtitle": "Veuillez créer votre compte administrateur. \nIl n'y a pas de récupération de mot de passe par email.",
-    "accountName": "Nom de compte",
+    "accountName": "Nom du compte (identifiant)",
     "displayName": "Nom affiché",
     "password": "Mot de passe",
     "confirmPassword": "Confirmer le mot de passe",
@@ -106,15 +106,20 @@
       "subtitle": "Votre identité sur ce serveur.",
       "title": "Compte",
       "displayName": "Nom d'affichage",
+      "displayNameUpdated": "Nom d'affichage mis à jour.",
+      "displayNameError": "Impossible de mettre à jour le nom d'affichage.",
       "accountName": "Nom de compte",
       "password": {
         "title": "Mot de passe",
         "change": "Changer le mot de passe",
+        "updated": "Mot de passe modifié.",
+        "updateError": "Mot de passe actuel incorrect.",
         "update": {
           "newPassword": "Nouveau mot de passe",
           "currentPassword": "Mot de passe actuel",
           "confirmNewPassword": "Confirmation nouveau mot de passe",
-          "newPasswordSameAsCurrent": "Ne peut pas être identique à l'actuel"
+          "newPasswordSameAsCurrent": "Ne peut pas être identique à l'actuel",
+          "logoutOtherDevices": "Se déconnecter des autres appareils"
         }
       }
     }

@@ -35,7 +35,7 @@
   "setup": {
     "title": "Let's begin",
     "subtitle": "Please create your administrator account. There is no password recovery by email.",
-    "accountName": "Account name",
+    "accountName": "Account name (identifier)",
     "displayName": "Display name",
     "password": "Password",
     "confirmPassword": "Confirm password",
@@ -106,14 +106,19 @@
       "title": "Account",
       "subtitle": "Your identity on this server.",
       "displayName": "Display name",
+      "displayNameUpdated": "Display name updated.",
+      "displayNameError": "Could not update the display name.",
       "password": {
         "title": "Password",
         "change": "Change password",
+        "updated": "Password changed.",
+        "updateError": "Current password is incorrect.",
         "update": {
           "confirmNewPassword": "Confirm new password",
           "newPassword": "New password",
           "currentPassword": "Current password",
-          "newPasswordSameAsCurrent": "Cannot be the same as current"
+          "newPasswordSameAsCurrent": "Cannot be the same as current",
+          "logoutOtherDevices": "Logout from other devices"
         }
       },
       "accountName": "Account name"
