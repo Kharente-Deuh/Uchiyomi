@@ -49,9 +49,9 @@ mockNuxtImport('useRoute', () => useRouteMock)
  * proxiedModel in jsdom. The `form.trigger('submit.prevent')` exercises the real
  * AuthCard submit wiring.
  */
-async function fillAndSubmit(wrapper: Awaited<ReturnType<typeof mountSuspended<typeof Login>>>, email: string, password: string): Promise<void> {
+async function fillAndSubmit(wrapper: Awaited<ReturnType<typeof mountSuspended<typeof Login>>>, accountName: string, password: string): Promise<void> {
   const state = (wrapper.vm as any).$.setupState
-  state.field('email').handleChange(email)
+  state.field('accountName').handleChange(accountName)
   state.field('password').handleChange(password)
   await flushPromises()
   await wrapper.find('form').trigger('submit.prevent')
@@ -65,9 +65,9 @@ describe('login page', () => {
     query = {}
   })
 
-  it('renders the email + password fields and a submit button', async () => {
+  it('renders the account name + password fields and a submit button', async () => {
     const wrapper = await mountSuspended(Login)
-    expect(wrapper.find('[data-test="login-email"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="login-accountName"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="login-password"]').exists()).toBe(true)
     expect(wrapper.find('button[type="submit"]').exists()).toBe(true)
   })
@@ -84,15 +84,15 @@ describe('login page', () => {
     query = { redirect: '/settings' }
     loginMock.mockResolvedValue({ success: true, data: undefined })
     const wrapper = await mountSuspended(Login)
-    await fillAndSubmit(wrapper, 'a@b.c', 'longenough1')
-    expect(loginMock).toHaveBeenCalledWith({ email: 'a@b.c', password: 'longenough1' })
+    await fillAndSubmit(wrapper, 'alice', 'longenough1')
+    expect(loginMock).toHaveBeenCalledWith({ accountName: 'alice', password: 'longenough1' })
     expect(navigateToMock).toHaveBeenCalledWith('/settings')
   })
 
   it('shows the invalid-credentials error on a 401', async () => {
     loginMock.mockResolvedValue({ success: false, error: { status: 401, message: 'x' } })
     const wrapper = await mountSuspended(Login)
-    await fillAndSubmit(wrapper, 'a@b.c', 'longenough1')
+    await fillAndSubmit(wrapper, 'alice', 'longenough1')
     const errorEl = wrapper.find('[data-test="auth-form-error"]')
     expect(errorEl.exists()).toBe(true)
     expect(errorEl.text()).not.toBe('')

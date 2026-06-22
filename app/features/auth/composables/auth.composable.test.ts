@@ -30,7 +30,7 @@ const { ApiError } = await import('~/utils/api')
 
 const user: UserDto = {
   id: 'u1',
-  email: 'admin@uchiyomi.test',
+  accountName: 'admin',
   displayName: 'Admin',
   role: 'ADMIN',
   status: 'ACTIVE',
@@ -49,7 +49,7 @@ describe('useAuth', () => {
     mockApi.login.mockResolvedValue({ success: true, data: undefined })
     mockApi.me.mockResolvedValue({ success: true, data: user })
     const auth = useAuth()
-    const res = await auth.login({ email: 'a@b.c', password: 'secret1234' })
+    const res = await auth.login({ accountName: 'alice', password: 'secret1234' })
     expect(res).toEqual({ success: true, data: undefined })
     expect(useAuthStore().user).toEqual(user)
     expect(auth.isAuthenticated.value).toBe(true)
@@ -57,10 +57,10 @@ describe('useAuth', () => {
   })
 
   it('login failure returns the Result, skips /me and leaves the store empty', async () => {
-    const error = new ApiError('Invalid email or password', 401)
+    const error = new ApiError('Invalid credentials', 401)
     mockApi.login.mockResolvedValue({ success: false, error })
     const auth = useAuth()
-    const res = await auth.login({ email: 'a@b.c', password: 'wrong' })
+    const res = await auth.login({ accountName: 'alice', password: 'wrong' })
     expect(res).toEqual({ success: false, error })
     expect(mockApi.me).not.toHaveBeenCalled()
     expect(useAuthStore().user).toBeUndefined()
@@ -70,7 +70,7 @@ describe('useAuth', () => {
   it('setup hydrates the store from the setup Result', async () => {
     mockApi.setup.mockResolvedValue({ success: true, data: user })
     const auth = useAuth()
-    const res = await auth.setup({ email: 'a@b.c', displayName: 'A', password: 'secret1234' })
+    const res = await auth.setup({ accountName: 'alice', displayName: 'A', password: 'secret1234' })
     expect(res).toEqual({ success: true, data: user })
     expect(useAuthStore().user).toEqual(user)
   })
@@ -127,7 +127,7 @@ describe('useAuth', () => {
     const store = useAuthStore()
     store.setSetupStatus({ required: true, minPasswordLength: 8 })
     const { setup, needsAdmin } = useAuth()
-    await setup({ email: 'a@b.c', displayName: 'A', password: 'longenough1' })
+    await setup({ accountName: 'alice', displayName: 'A', password: 'longenough1' })
     expect(needsAdmin.value).toBe(false)
   })
 })

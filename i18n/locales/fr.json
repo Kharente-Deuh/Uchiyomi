@@ -18,7 +18,7 @@
   },
   "login": {
     "title": "Bienvenue",
-    "email": "E-mail",
+    "accountName": "Nom de compte",
     "password": "Mot de passe",
     "submit": "Se connecter",
     "notice": {
@@ -26,7 +26,7 @@
       "setupClosed": "La configuration est déjà terminée. Veuillez vous connecter."
     },
     "error": {
-      "invalid": "E-mail ou mot de passe invalide.",
+      "invalid": "Nom de compte ou mot de passe invalide.",
       "tooMany": "Trop de tentatives. Veuillez réessayer plus tard.",
       "generic": "Échec de la connexion. Veuillez réessayer."
     },
@@ -35,7 +35,7 @@
   "setup": {
     "title": "Commençons",
     "subtitle": "Veuillez créer votre compte administrateur. \nIl n'y a pas de récupération de mot de passe par email.",
-    "email": "E-mail",
+    "accountName": "Nom de compte",
     "displayName": "Nom affiché",
     "password": "Mot de passe",
     "confirmPassword": "Confirmer le mot de passe",
@@ -106,7 +106,7 @@
       "subtitle": "Votre identité sur ce serveur.",
       "title": "Compte",
       "displayName": "Nom d'affichage",
-      "email": "E-mail",
+      "accountName": "Nom de compte",
       "password": {
         "title": "Mot de passe",
         "change": "Changer le mot de passe",

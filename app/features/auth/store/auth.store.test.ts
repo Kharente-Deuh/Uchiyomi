@@ -6,7 +6,7 @@ import { useAuthStore } from '~/features/auth/store/auth.store'
 
 const adminUser: UserDto = {
   id: 'u1',
-  email: 'admin@uchiyomi.test',
+  accountName: 'admin',
   displayName: 'Admin',
   role: 'ADMIN',
   status: 'ACTIVE',
