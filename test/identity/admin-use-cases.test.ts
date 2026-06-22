@@ -23,7 +23,7 @@ function fakeHasher(): { hash: ReturnType<typeof vi.fn>, verify: ReturnType<type
 describe('createUser', () => {
   it('hashes and creates a USER (default role), no onlyIfEmpty guard', async () => {
     const hasher = fakeHasher()
-    const users = { createWithLocalIdentity: vi.fn(async () => newUser), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), setStatus: vi.fn() }
+    const users = { createWithLocalIdentity: vi.fn(async () => newUser), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), setStatus: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
     const result = await new CreateUser.UseCase(users, hasher).execute({ accountName: 'newbie', displayName: 'U', password: 'longenough1' })
     expect(hasher.hash).toHaveBeenCalledWith({ password: 'longenough1' })
     expect(users.createWithLocalIdentity).toHaveBeenCalledWith(
@@ -35,16 +35,16 @@ describe('createUser', () => {
 
 describe('setUserStatus', () => {
   it('revokes all sessions when disabling', async () => {
-    const users = { setStatus: vi.fn(), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn() }
-    const sessions = { deleteAllForUser: vi.fn(), create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn() }
+    const users = { setStatus: vi.fn(), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
+    const sessions = { deleteAllForUser: vi.fn(), create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUserExcept: vi.fn() }
     await new SetUserStatus.UseCase(users, sessions).execute({ userId: 'u2', status: 'DISABLED' })
     expect(users.setStatus).toHaveBeenCalledWith({ id: 'u2', status: 'DISABLED' })
     expect(sessions.deleteAllForUser).toHaveBeenCalledWith({ userId: 'u2' })
   })
 
   it('does not touch sessions when enabling', async () => {
-    const users = { setStatus: vi.fn(), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn() }
-    const sessions = { deleteAllForUser: vi.fn(), create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn() }
+    const users = { setStatus: vi.fn(), countUsers: vi.fn(), findByAccountName: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
+    const sessions = { deleteAllForUser: vi.fn(), create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUserExcept: vi.fn() }
     await new SetUserStatus.UseCase(users, sessions).execute({ userId: 'u2', status: 'ACTIVE' })
     expect(users.setStatus).toHaveBeenCalledWith({ id: 'u2', status: 'ACTIVE' })
     expect(sessions.deleteAllForUser).not.toHaveBeenCalled()

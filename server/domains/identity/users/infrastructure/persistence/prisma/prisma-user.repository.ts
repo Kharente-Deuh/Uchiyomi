@@ -69,4 +69,29 @@ export class PrismaUserRepository implements User.Repository {
   async setStatus(params: User.SetStatusParams): Promise<void> {
     await this.prisma.appUser.update({ where: { id: params.id }, data: { status: params.status } })
   }
+
+  async updateDisplayName(params: User.UpdateDisplayNameParams): Promise<Omit<User.Model, 'passwordHash'>> {
+    const row = await this.prisma.appUser.update({
+      where: { id: params.id },
+      data: { displayName: params.displayName },
+    })
+
+    return toDomain(row)
+  }
+
+  async updateLocalPasswordHash(params: User.UpdateLocalPasswordHashParams): Promise<void> {
+    await this.prisma.authIdentity.updateMany({
+      where: { userId: params.userId, provider: 'LOCAL' },
+      data: { passwordHash: params.passwordHash },
+    })
+  }
+
+  async findLocalPasswordHash(params: User.FindLocalPasswordHashParams): Promise<string | undefined> {
+    const row = await this.prisma.authIdentity.findFirst({
+      where: { userId: params.userId, provider: 'LOCAL' },
+      select: { passwordHash: true },
+    })
+
+    return row?.passwordHash ?? undefined
+  }
 }

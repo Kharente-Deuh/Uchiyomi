@@ -45,6 +45,9 @@ describe('setupFirstAdmin', () => {
       findByAccountName: vi.fn(),
       findById: vi.fn(),
       setStatus: vi.fn(),
+      updateDisplayName: vi.fn(),
+      updateLocalPasswordHash: vi.fn(),
+      findLocalPasswordHash: vi.fn(),
     }
     const result = await new SetupFirstAdmin.UseCase(users, hasher).execute({ accountName: 'alice', displayName: 'Admin', password: 'longenough1' })
     expect(hasher.hash).toHaveBeenCalledWith({ password: 'longenough1' })
@@ -58,16 +61,16 @@ describe('setupFirstAdmin', () => {
 
 describe('login', () => {
   it('throws invalid_credentials when the user is missing', async () => {
-    const users = { findByAccountName: vi.fn(async () => {}), countUsers: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn() }
-    const sessions = { create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn() }
+    const users = { findByAccountName: vi.fn(async () => {}), countUsers: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
+    const sessions = { create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn(), deleteAllForUserExcept: vi.fn() }
     await expect(new Login.UseCase(users, sessions, fakeHasher(), TTL_MS).execute({ accountName: 'ghost', password: 'longenough1' }))
       .rejects
       .toMatchObject({ code: 'invalid_credentials' })
   })
 
   it('throws invalid_credentials for a disabled user (no session created)', async () => {
-    const users = { findByAccountName: vi.fn(async () => withHash({ status: 'DISABLED' })), countUsers: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn() }
-    const sessions = { create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn() }
+    const users = { findByAccountName: vi.fn(async () => withHash({ status: 'DISABLED' })), countUsers: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
+    const sessions = { create: vi.fn(), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn(), deleteAllForUserExcept: vi.fn() }
     await expect(new Login.UseCase(users, sessions, fakeHasher(), TTL_MS).execute({ accountName: 'alice', password: 'longenough1' }))
       .rejects
       .toMatchObject({ code: 'invalid_credentials' })
@@ -77,8 +80,8 @@ describe('login', () => {
   it('creates a session with a TTL in the future on success', async () => {
     const now = new Date('2026-06-21T00:00:00Z')
     const created = new Session.Model({ id: 's1', userId: 'u1', expiresAt: new Date(now.getTime() + TTL_MS) })
-    const users = { findByAccountName: vi.fn(async () => withHash()), countUsers: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn() }
-    const sessions = { create: vi.fn(async () => created), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn() }
+    const users = { findByAccountName: vi.fn(async () => withHash()), countUsers: vi.fn(), findById: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
+    const sessions = { create: vi.fn(async () => created), findValid: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn(), deleteAllForUserExcept: vi.fn() }
     const result = await new Login.UseCase(users, sessions, fakeHasher(), TTL_MS, () => now).execute({ accountName: 'alice', password: 'longenough1' })
     expect(sessions.create).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1', expiresAt: new Date(now.getTime() + TTL_MS) }))
     expect(result.id).toBe('s1')
@@ -87,8 +90,8 @@ describe('login', () => {
 
 describe('getCurrentUser', () => {
   it('throws unauthenticated when the session is missing/expired', async () => {
-    const users = { findById: vi.fn(), countUsers: vi.fn(), findByAccountName: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn() }
-    const sessions = { findValid: vi.fn(async () => {}), create: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn() }
+    const users = { findById: vi.fn(), countUsers: vi.fn(), findByAccountName: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
+    const sessions = { findValid: vi.fn(async () => {}), create: vi.fn(), touch: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn(), deleteAllForUserExcept: vi.fn() }
     await expect(new GetCurrentUser.UseCase(users, sessions, TTL_MS, REFRESH_MS).execute({ sessionId: 's-missing' })).rejects.toMatchObject({ code: 'unauthenticated' })
   })
 
@@ -96,8 +99,8 @@ describe('getCurrentUser', () => {
     const now = new Date('2026-06-21T00:00:00Z')
     // expires in 1 day → within the 7-day refresh threshold → should be touched
     const session = new Session.Model({ id: 's1', userId: 'u1', expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000) })
-    const sessions = { findValid: vi.fn(async () => session), touch: vi.fn(), create: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn() }
-    const users = { findById: vi.fn(async () => admin()), countUsers: vi.fn(), findByAccountName: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn() }
+    const sessions = { findValid: vi.fn(async () => session), touch: vi.fn(), create: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn(), deleteAllForUserExcept: vi.fn() }
+    const users = { findById: vi.fn(async () => admin()), countUsers: vi.fn(), findByAccountName: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
     const result = await new GetCurrentUser.UseCase(users, sessions, TTL_MS, REFRESH_MS, () => now).execute({ sessionId: 's1' })
     expect(result.id).toBe('u1')
     expect(sessions.touch).toHaveBeenCalledWith({ sessionId: 's1', expiresAt: new Date(now.getTime() + TTL_MS) })
@@ -106,8 +109,8 @@ describe('getCurrentUser', () => {
   it('throws unauthenticated when the user is disabled', async () => {
     const now = new Date('2026-06-21T00:00:00Z')
     const session = new Session.Model({ id: 's1', userId: 'u1', expiresAt: new Date(now.getTime() + TTL_MS) })
-    const sessions = { findValid: vi.fn(async () => session), touch: vi.fn(), create: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn() }
-    const users = { findById: vi.fn(async () => admin({ status: 'DISABLED' })), countUsers: vi.fn(), findByAccountName: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn() }
+    const sessions = { findValid: vi.fn(async () => session), touch: vi.fn(), create: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn(), deleteAllForUserExcept: vi.fn() }
+    const users = { findById: vi.fn(async () => admin({ status: 'DISABLED' })), countUsers: vi.fn(), findByAccountName: vi.fn(), createWithLocalIdentity: vi.fn(), setStatus: vi.fn(), updateDisplayName: vi.fn(), updateLocalPasswordHash: vi.fn(), findLocalPasswordHash: vi.fn() }
     await expect(new GetCurrentUser.UseCase(users, sessions, TTL_MS, REFRESH_MS, () => now).execute({ sessionId: 's1' })).rejects.toMatchObject({ code: 'unauthenticated' })
   })
 })

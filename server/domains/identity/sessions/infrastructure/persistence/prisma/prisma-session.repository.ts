@@ -41,4 +41,8 @@ export class PrismaSessionRepository implements Session.Repository {
   async deleteAllForUser(p: Session.DeleteAllForUserParams): Promise<void> {
     await this.prisma.session.deleteMany({ where: { userId: p.userId } })
   }
+
+  async deleteAllForUserExcept(p: Session.DeleteAllForUserExceptParams): Promise<void> {
+    await this.prisma.session.deleteMany({ where: { userId: p.userId, NOT: { id: p.exceptSessionId } } })
+  }
 }

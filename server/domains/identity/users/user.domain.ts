@@ -60,6 +60,20 @@ export interface SetStatusParams {
   status: Status
 }
 
+export interface UpdateDisplayNameParams {
+  id: string
+  displayName: string
+}
+
+export interface UpdateLocalPasswordHashParams {
+  userId: string
+  passwordHash: string
+}
+
+export interface FindLocalPasswordHashParams {
+  userId: string
+}
+
 // The PORT — adapters in infrastructure implement it.
 export interface Repository {
   countUsers: () => Promise<number>
@@ -70,4 +84,7 @@ export interface Repository {
     opts?: CreateWithLocalIdentityOpts,
   ) => Promise<Omit<Model, 'passwordHash'>>
   setStatus: (params: SetStatusParams) => Promise<void>
+  updateDisplayName: (params: UpdateDisplayNameParams) => Promise<Omit<Model, 'passwordHash'>>
+  updateLocalPasswordHash: (params: UpdateLocalPasswordHashParams) => Promise<void>
+  findLocalPasswordHash: (params: FindLocalPasswordHashParams) => Promise<string | undefined>
 }
