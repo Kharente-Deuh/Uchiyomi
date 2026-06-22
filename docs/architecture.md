@@ -475,10 +475,6 @@ Auth is wired by two plugins:
   to decide whether to redirect to `/login` (protects unauthenticated visits); the guard never
   throws and returns `{ redirect?: string }`.
 
-Mobile UX locks orientation to portrait via the `useOrientationLock` composable (per-route opt-out
-via route metadata), with an overlay fallback (screen rotation badge) when `useOrientationLock` is
-unavailable.
-
 See [ADR-0016](./adr/0016-client-rendered-spa-shell.md) for the rendering decision,
 threat model, and why `ssr: false` is the right choice for a fully authenticated PWA.
 
