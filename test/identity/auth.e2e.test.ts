@@ -104,4 +104,111 @@ describeIf('auth spine e2e', async () => {
       }),
     ).rejects.toMatchObject({ statusCode: 400 })
   })
+
+  it('self-service: PATCH /me changes displayName and /me reflects it', async () => {
+    await prisma.appUser.deleteMany()
+    const setupRes = await fetch('/api/auth/setup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountName: 'admin', displayName: 'Admin', password: 'longenough1' }),
+    })
+    const cookie = setupRes.headers.getSetCookie?.().join('; ') ?? setupRes.headers.get('set-cookie') ?? ''
+    const patched = await $fetch('/api/auth/me', { method: 'PATCH', headers: { cookie }, body: { displayName: 'Renamed' } })
+    expect(patched.user.displayName).toBe('Renamed')
+    const me = await $fetch('/api/auth/me', { headers: { cookie } })
+    expect(me.user.displayName).toBe('Renamed')
+  })
+
+  it('self-service: change password — new works, old fails; logoutOtherDevices keeps current and revokes others', async () => {
+    await prisma.appUser.deleteMany()
+    await fetch('/api/auth/setup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountName: 'admin', displayName: 'Admin', password: 'oldpass1234' }),
+    })
+    // Two independent sessions for the same account (two logins).
+    const login = async (password: string): Promise<string> => {
+      const r = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ accountName: 'admin', password }),
+      })
+
+      return r.headers.getSetCookie?.().join('; ') ?? r.headers.get('set-cookie') ?? ''
+    }
+
+    const sessionA = await login('oldpass1234')
+    const sessionB = await login('oldpass1234')
+
+    // Change the password from session A, revoking other devices.
+    await $fetch('/api/auth/me/password', {
+      method: 'POST',
+      headers: { cookie: sessionA },
+      body: { currentPassword: 'oldpass1234', newPassword: 'newpass1234', logoutOtherDevices: true },
+    })
+
+    // Session A (current) still valid; session B revoked.
+    const meA = await $fetch('/api/auth/me', { headers: { cookie: sessionA } })
+    expect(meA.user.accountName).toBe('admin')
+    await expect($fetch('/api/auth/me', { headers: { cookie: sessionB } })).rejects.toMatchObject({ statusCode: 401 })
+
+    // New password logs in; old password is rejected.
+    await expect(login('oldpass1234').then(c => $fetch('/api/auth/me', { headers: { cookie: c } })))
+      .rejects
+      .toMatchObject({ statusCode: 401 })
+    const fresh = await login('newpass1234')
+    const meFresh = await $fetch('/api/auth/me', { headers: { cookie: fresh } })
+    expect(meFresh.user.accountName).toBe('admin')
+  })
+
+  it('self-service: wrong current password → 400', async () => {
+    await prisma.appUser.deleteMany()
+    const setupRes = await fetch('/api/auth/setup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountName: 'admin', displayName: 'Admin', password: 'longenough1' }),
+    })
+    const cookie = setupRes.headers.getSetCookie?.().join('; ') ?? setupRes.headers.get('set-cookie') ?? ''
+    await expect($fetch('/api/auth/me/password', {
+      method: 'POST',
+      headers: { cookie },
+      body: { currentPassword: 'wrongpass99', newPassword: 'newpass1234' },
+    })).rejects.toMatchObject({ statusCode: 400 })
+  })
+
+  it('admin: PATCH /users/[id] by admin works; by non-admin 403; unknown id 404', async () => {
+    await prisma.appUser.deleteMany()
+    const setupRes = await fetch('/api/auth/setup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountName: 'admin', displayName: 'Admin', password: 'longenough1' }),
+    })
+    const adminCookie = setupRes.headers.getSetCookie?.().join('; ') ?? setupRes.headers.get('set-cookie') ?? ''
+    const created = await $fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { cookie: adminCookie },
+      body: { accountName: 'user', displayName: 'User', password: 'longenough2' },
+    })
+    const userId = created.user.id
+
+    // Admin renames the user.
+    const patched = await $fetch(`/api/admin/users/${userId}`, { method: 'PATCH', headers: { cookie: adminCookie }, body: { displayName: 'Renamed' } })
+    expect(patched.user.displayName).toBe('Renamed')
+
+    // Non-admin is forbidden.
+    const loginRes = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountName: 'user', password: 'longenough2' }),
+    })
+    const userCookie = loginRes.headers.getSetCookie?.().join('; ') ?? loginRes.headers.get('set-cookie') ?? ''
+    await expect($fetch(`/api/admin/users/${userId}`, { method: 'PATCH', headers: { cookie: userCookie }, body: { displayName: 'Nope' } }))
+      .rejects
+      .toMatchObject({ statusCode: 403 })
+
+    // Unknown id → 404.
+    await expect($fetch('/api/admin/users/does-not-exist', { method: 'PATCH', headers: { cookie: adminCookie }, body: { displayName: 'X' } }))
+      .rejects
+      .toMatchObject({ statusCode: 404 })
+  })
 })

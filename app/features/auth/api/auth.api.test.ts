@@ -49,6 +49,21 @@ describe('authApi', () => {
     expect(res).toEqual({ success: true, data: user })
   })
 
+  it('updateMe PATCHes /api/auth/me and unwraps res.user', async () => {
+    apiFetch.mockResolvedValue({ user })
+    const res = await createAuthApi().updateMe({ displayName: 'New Name' })
+    expect(res).toEqual({ success: true, data: user })
+    expect(apiFetch).toHaveBeenCalledWith('/api/auth/me', { method: 'PATCH', body: { displayName: 'New Name' } })
+  })
+
+  it('changePassword posts to /api/auth/me/password', async () => {
+    apiFetch.mockResolvedValue({ ok: true })
+    const body = { currentPassword: 'old1234567', newPassword: 'new1234567', logoutOtherDevices: true }
+    const res = await createAuthApi().changePassword(body)
+    expect(res).toEqual({ success: true, data: undefined })
+    expect(apiFetch).toHaveBeenCalledWith('/api/auth/me/password', { method: 'POST', body })
+  })
+
   it('returns a normalised ApiError instead of throwing', async () => {
     apiFetch.mockRejectedValue(Object.assign(new Error('Unauthenticated'), {
       statusCode: 401,

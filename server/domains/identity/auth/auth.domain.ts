@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Flat ESM module, consumed via `import * as Auth`.
-export type ErrorCode = 'invalid_credentials' | 'setup_closed' | 'unauthenticated'
+export type ErrorCode = 'invalid_credentials' | 'setup_closed' | 'unauthenticated' | 'invalid_password'
 
 export class AuthError extends Error {
   readonly code: ErrorCode

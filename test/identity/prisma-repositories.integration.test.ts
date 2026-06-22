@@ -47,4 +47,33 @@ describeIf('prisma identity repositories (live DB)', () => {
     await sessions.deleteAllForUser({ userId: u.id })
     expect(await sessions.findValid({ sessionId: s.id, now })).toBeUndefined()
   })
+
+  it('updateDisplayName changes the name and findById reflects it', async () => {
+    const u = await users.createWithLocalIdentity({ accountName: 'alice', displayName: 'Old', password: 'x', role: 'USER', passwordHash: 'H' })
+    const updated = await users.updateDisplayName({ id: u.id, displayName: 'New Name' })
+    expect(updated.displayName).toBe('New Name')
+    const found = await users.findById({ id: u.id })
+    expect(found?.displayName).toBe('New Name')
+  })
+
+  it('updateDisplayName throws for a missing id', async () => {
+    await expect(users.updateDisplayName({ id: 'does-not-exist', displayName: 'X' })).rejects.toBeTruthy()
+  })
+
+  it('updateLocalPasswordHash + findLocalPasswordHash round-trip', async () => {
+    const u = await users.createWithLocalIdentity({ accountName: 'bob', displayName: 'B', password: 'x', role: 'USER', passwordHash: 'H1' })
+    expect(await users.findLocalPasswordHash({ userId: u.id })).toBe('H1')
+    await users.updateLocalPasswordHash({ userId: u.id, passwordHash: 'H2' })
+    expect(await users.findLocalPasswordHash({ userId: u.id })).toBe('H2')
+  })
+
+  it('deleteAllForUserExcept keeps the named session and deletes the rest', async () => {
+    const u = await users.createWithLocalIdentity({ accountName: 'carol', displayName: 'C', password: 'x', role: 'USER', passwordHash: 'H' })
+    const now = new Date()
+    const keep = await sessions.create({ userId: u.id, expiresAt: new Date(now.getTime() + 60_000) })
+    const drop = await sessions.create({ userId: u.id, expiresAt: new Date(now.getTime() + 60_000) })
+    await sessions.deleteAllForUserExcept({ userId: u.id, exceptSessionId: keep.id })
+    expect(await sessions.findValid({ sessionId: keep.id, now })).not.toBeUndefined()
+    expect(await sessions.findValid({ sessionId: drop.id, now })).toBeUndefined()
+  })
 })

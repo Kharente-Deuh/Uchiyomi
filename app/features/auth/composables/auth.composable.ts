@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ComputedRef, Ref } from 'vue'
-import type { LoginRequestDto, SetupRequestDto, SetupStatusDto, UserDto } from '#shared/dto/identity'
+import type { ChangePasswordRequestDto, LoginRequestDto, SetupRequestDto, SetupStatusDto, UpdateMeRequestDto, UserDto } from '#shared/dto/identity'
 import type { ApiResponse } from '~/utils/api'
 import { createAuthApi } from '../api'
 
@@ -16,6 +16,8 @@ export interface AuthComposable {
   fetchMe: () => Promise<void>
   login: (body: LoginRequestDto) => Promise<ApiResponse<void>>
   setup: (body: SetupRequestDto) => Promise<ApiResponse<UserDto>>
+  updateDisplayName: (body: UpdateMeRequestDto) => Promise<ApiResponse<UserDto>>
+  changePassword: (body: ChangePasswordRequestDto) => Promise<ApiResponse<void>>
   logout: () => Promise<ApiResponse<void>>
 }
 
@@ -78,6 +80,29 @@ export function useAuth(): AuthComposable {
     return res
   }
 
+  async function updateDisplayName(body: UpdateMeRequestDto): Promise<ApiResponse<UserDto>> {
+    loading.value = true
+
+    const res = await authApi.updateMe(body)
+    if (res.success) {
+      authStore.setUser(res.data)
+    }
+
+    loading.value = false
+
+    return res
+  }
+
+  async function changePassword(body: ChangePasswordRequestDto): Promise<ApiResponse<void>> {
+    loading.value = true
+
+    const res = await authApi.changePassword(body)
+
+    loading.value = false
+
+    return res
+  }
+
   async function logout(): Promise<ApiResponse<void>> {
     loading.value = true
 
@@ -102,6 +127,8 @@ export function useAuth(): AuthComposable {
     fetchMe,
     login,
     setup,
+    updateDisplayName,
+    changePassword,
     logout,
   }
 }

@@ -1,13 +1,15 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import * as ChangePassword from '../domains/identity/auth/application/usecases/change-password.use-case'
 import * as Login from '../domains/identity/auth/application/usecases/login.use-case'
 import * as Logout from '../domains/identity/auth/application/usecases/logout.use-case'
 import * as SetupFirstAdmin from '../domains/identity/auth/application/usecases/setup-first-admin.use-case'
-// SPDX-License-Identifier: AGPL-3.0-or-later
 import { MemoryLoginRateLimiter } from '../domains/identity/auth/infrastructure/persistence/memory/memory-login-rate-limiter'
 import { ScryptPasswordHasher } from '../domains/identity/password/infrastructure/security/scrypt/scrypt-password.hasher'
 import * as GetCurrentUser from '../domains/identity/sessions/application/usecases/get-current-user.use-case'
 import { PrismaSessionRepository } from '../domains/identity/sessions/infrastructure/persistence/prisma/prisma-session.repository'
 import * as CreateUser from '../domains/identity/users/application/usecases/create-user.use-case'
 import * as SetUserStatus from '../domains/identity/users/application/usecases/set-user-status.use-case'
+import * as UpdateDisplayName from '../domains/identity/users/application/usecases/update-display-name.use-case'
 import { PrismaUserRepository } from '../domains/identity/users/infrastructure/persistence/prisma/prisma-user.repository'
 import { prisma } from './prisma'
 
@@ -34,3 +36,5 @@ export const getCurrentUser = new GetCurrentUser.UseCase(
 )
 export const createUser = new CreateUser.UseCase(userRepository, passwordHasher)
 export const setUserStatus = new SetUserStatus.UseCase(userRepository, sessionRepository)
+export const updateDisplayName = new UpdateDisplayName.UseCase(userRepository)
+export const changePassword = new ChangePassword.UseCase(userRepository, sessionRepository, passwordHasher)

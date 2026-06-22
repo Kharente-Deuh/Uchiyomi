@@ -46,10 +46,16 @@ export interface DeleteAllForUserParams {
   userId: string
 }
 
+export interface DeleteAllForUserExceptParams {
+  userId: string
+  exceptSessionId: string
+}
+
 export interface Repository {
   create: (p: CreateParams) => Promise<Model>
   findValid: (p: FindValidParams) => Promise<Model | undefined>
   touch: (p: TouchParams) => Promise<void>
   delete: (p: DeleteParams) => Promise<void>
   deleteAllForUser: (p: DeleteAllForUserParams) => Promise<void>
+  deleteAllForUserExcept: (p: DeleteAllForUserExceptParams) => Promise<void>
 }

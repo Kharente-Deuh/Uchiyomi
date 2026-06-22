@@ -11,6 +11,8 @@ const { mockApi } = vi.hoisted(() => ({
     login: vi.fn(),
     logout: vi.fn(),
     me: vi.fn(),
+    updateMe: vi.fn(),
+    changePassword: vi.fn(),
   },
 }))
 
@@ -73,6 +75,37 @@ describe('useAuth', () => {
     const res = await auth.setup({ accountName: 'alice', displayName: 'A', password: 'secret1234' })
     expect(res).toEqual({ success: true, data: user })
     expect(useAuthStore().user).toEqual(user)
+  })
+
+  it('updateDisplayName updates the store from the result on success', async () => {
+    const updated = { ...user, displayName: 'New Name' }
+    mockApi.updateMe.mockResolvedValue({ success: true, data: updated })
+    const auth = useAuth()
+    const res = await auth.updateDisplayName({ displayName: 'New Name' })
+    expect(res).toEqual({ success: true, data: updated })
+    expect(useAuthStore().user).toEqual(updated)
+    expect(auth.loading.value).toBe(false)
+  })
+
+  it('updateDisplayName leaves the store untouched on failure', async () => {
+    mockApi.updateMe.mockResolvedValue({ success: false, error: new ApiError('Invalid body', 400) })
+    const store = useAuthStore()
+    store.setUser(user)
+    const auth = useAuth()
+    const res = await auth.updateDisplayName({ displayName: '' })
+    expect(res.success).toBe(false)
+    expect(store.user).toEqual(user)
+  })
+
+  it('changePassword returns the result and leaves the store untouched', async () => {
+    mockApi.changePassword.mockResolvedValue({ success: true, data: undefined })
+    const store = useAuthStore()
+    store.setUser(user)
+    const auth = useAuth()
+    const res = await auth.changePassword({ currentPassword: 'old1234567', newPassword: 'new1234567' })
+    expect(res).toEqual({ success: true, data: undefined })
+    expect(store.user).toEqual(user)
+    expect(auth.loading.value).toBe(false)
   })
 
   it('logout clears the store and the session cookie on success', async () => {
