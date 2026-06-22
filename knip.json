@@ -7,7 +7,6 @@
     "app/layouts/**/*.vue",
     "app/components/**/*.vue",
     "app/plugins/**/*.ts",
-    "app/types/**/*.ts",
     "server/**/*.ts"
   ],
   "project": [

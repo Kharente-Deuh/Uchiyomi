@@ -19,10 +19,15 @@
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     border-radius: 8px !important;
+    border: 1px solid rgb(0, 0, 0, 0.5);
+    font-size: 0.9rem;
 
-    // .v-list-item {
-    //   background-color: rgb(var(--v-theme-field-background));
-    // }
+    .v-list-item {
+      background-color: rgb(var(--v-theme-surface-variant));
+      &:hover {
+        color: rgb(var(--v-theme-primary)) !important;
+      }
+    }
 
     .v-list-item__overlay {
       display: none !important;
@@ -35,10 +40,11 @@
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     border-radius: 8px !important;
+    font-size: 0.9rem;
 
-    // .v-list-item {
-    //   background-color: rgb(var(--v-theme-field-background));
-    // }
+    .v-list-item {
+      background-color: rgb(var(--v-theme-surface-variant));
+    }
 
     .v-list-item__overlay {
       display: none !important;
@@ -71,6 +77,22 @@
 
     .v-field {
       border-radius: 10px;
+
+      .v-field__field {
+        .v-field-label {
+          font-size: 0.9rem;
+        }
+
+        input {
+          padding: 0 0.7rem;
+          font-size: 0.9rem;
+        }
+      }
+    }
+
+    .v-field__input {
+      padding: 0 0.7rem;
+      font-size: 0.9rem;
     }
 
     .v-field--focused {
@@ -79,4 +101,9 @@
       }
     }
   }
+}
+
+.v-input--density-compact {
+  --v-input-control-height: 30px;
+  --v-input-padding-top: 4px;
 }
