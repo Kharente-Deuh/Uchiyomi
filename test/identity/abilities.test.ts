@@ -3,8 +3,8 @@
 import { describe, expect, it } from 'vitest'
 import * as User from '../../server/domains/identity/users/user.domain'
 
-function user(overrides: Partial<User.ModelProps> = {}): User.Model {
-  return new User.Model({
+function user(overrides: Partial<User.UserModelProps> = {}): User.UserModel {
+  return new User.UserModel({
     id: 'u1',
     accountName: 'alice',
     displayName: 'A',

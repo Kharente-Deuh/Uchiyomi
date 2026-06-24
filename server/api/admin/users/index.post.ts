@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { CreateUserRequestDto } from '#shared/dto/identity/admin.request'
 import { z } from 'zod'
+import { createUser } from '~~/server/domains/identity/auth/application'
 import { Prisma } from '../../../../prisma/generated/client'
 import { toUserDto } from '../../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 import { accountNameSchema } from '../../../utils/account-name'
-import { createUser } from '../../../utils/identity'
 
 export default defineEventHandler(async (event) => {
   const cfg = useRuntimeConfig(event).auth

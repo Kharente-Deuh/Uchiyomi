@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { getCurrentUser } from '../utils/identity'
+import { getCurrentUser } from '../domains/identity/auth/application'
 
 // Loads the DB-backed session/user per request and attaches it to the context.
 // The sealed cookie carries only { sessionId }; the session table is source of truth.

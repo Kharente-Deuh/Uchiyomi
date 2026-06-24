@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../../shared/use-case'
-import type * as Password from '../../../password/password.domain'
-import type * as User from '../../user.domain'
+import type { PasswordHasher } from '../../../password/password.domain'
+import type { CreateUserWithLocalIdentityParams, UserModel, UsersRepository } from '../../user.domain'
 import { normalizeAccountName } from '../../../../../../shared/dto/identity/account-name'
 
-export type Opts = User.CreateParams
+export type CreateUserUseCaseOpts = Omit<CreateUserWithLocalIdentityParams, 'passwordHash'>
 
-export class UseCase implements IUseCase<Opts, Omit<User.Model, 'passwordHash'>> {
+export class CreateUserUseCase implements IUseCase<CreateUserUseCaseOpts, Omit<UserModel, 'passwordHash'>> {
   constructor(
-    private readonly userRepository: User.Repository,
-    private readonly passwordHasher: Password.Hasher,
+    private readonly userRepository: UsersRepository,
+    private readonly passwordHasher: PasswordHasher,
   ) {}
 
-  async execute(opts: Opts): Promise<Omit<User.Model, 'passwordHash'>> {
+  async execute(opts: CreateUserUseCaseOpts): Promise<Omit<UserModel, 'passwordHash'>> {
     const passwordHash = await this.passwordHasher.hash({ password: opts.password })
 
     return this.userRepository.createWithLocalIdentity({

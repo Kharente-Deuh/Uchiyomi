@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ChangePasswordRequestDto } from '#shared/dto/identity/me.request'
 import { z } from 'zod'
-import * as Auth from '../../../domains/identity/auth/auth.domain'
-import { changePassword } from '../../../utils/identity'
+import { changePassword } from '~~/server/domains/identity/auth/application'
+import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
 
 export default defineEventHandler(async (event) => {
   const cfg = useRuntimeConfig(event).auth
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
 
     return { ok: true }
   } catch (err) {
-    if (err instanceof Auth.AuthError) {
+    if (err instanceof AuthError) {
       throw createError({ statusCode: 400, statusMessage: 'Invalid password' })
     }
 

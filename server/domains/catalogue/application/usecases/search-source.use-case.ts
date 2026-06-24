@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../shared/use-case'
-import type * as Catalogue from '../../catalogue.domain'
+import type { CatalogueRepository, SearchMangaResult } from '../../catalogue.domain'
 
-export interface Opts {
+export interface SearchSourceUseCaseParams {
   sourceId: string
   query: string
   page: number
 }
 
-export class UseCase implements IUseCase<Opts, Catalogue.SearchResult> {
-  constructor(private readonly catalogueRepository: Catalogue.Repository) {}
+export class SearchSourceUseCase implements IUseCase<SearchSourceUseCaseParams, SearchMangaResult> {
+  constructor(private readonly catalogueRepository: CatalogueRepository) {}
 
-  execute(opts: Opts): Promise<Catalogue.SearchResult> {
+  execute(opts: SearchSourceUseCaseParams): Promise<SearchMangaResult> {
     return this.catalogueRepository.searchSource({ sourceId: opts.sourceId, query: opts.query, page: opts.page })
   }
 }

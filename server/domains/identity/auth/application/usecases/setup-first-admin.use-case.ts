@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../../shared/use-case'
-import type * as Password from '../../../password/password.domain'
-import type * as User from '../../../users/user.domain'
+import type { PasswordHasher } from '../../../password/password.domain'
+import type { UserModel, UsersRepository } from '../../../users/user.domain'
 import { normalizeAccountName } from '../../../../../../shared/dto/identity/account-name'
 
-export interface Opts {
+export interface SetupFirstAdminUseCaseOpts {
   accountName: string
   displayName: string
   password: string
 }
 
-export class UseCase implements IUseCase<Opts, Omit<User.Model, 'passwordHash'>> {
+export class SetupFirstAdminUseCase implements IUseCase<SetupFirstAdminUseCaseOpts, Omit<UserModel, 'passwordHash'>> {
   constructor(
-    private readonly userRepository: User.Repository,
-    private readonly passwordHasher: Password.Hasher,
+    private readonly userRepository: UsersRepository,
+    private readonly passwordHasher: PasswordHasher,
   ) {}
 
-  async execute(opts: Opts): Promise<Omit<User.Model, 'passwordHash'>> {
+  async execute(opts: SetupFirstAdminUseCaseOpts): Promise<Omit<UserModel, 'passwordHash'>> {
     const passwordHash = await this.passwordHasher.hash({ password: opts.password })
 
     return this.userRepository.createWithLocalIdentity(
@@ -26,6 +26,9 @@ export class UseCase implements IUseCase<Opts, Omit<User.Model, 'passwordHash'>>
         password: opts.password,
         role: 'ADMIN',
         passwordHash,
+        canManageExtensions: true,
+        canDownload: true,
+        allowNsfw: true,
       },
       { onlyIfEmpty: true },
     )

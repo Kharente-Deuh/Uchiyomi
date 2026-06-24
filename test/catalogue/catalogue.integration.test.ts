@@ -19,7 +19,7 @@ describeIf('catalogue integration (live Suwayomi)', () => {
   )
 
   it('lists sources from the live server', async () => {
-    const sources = await new ListSources.UseCase(repo).execute()
+    const sources = await new ListSources.ListSourcesUseCase(repo).execute()
     expect(Array.isArray(sources)).toBe(true)
     // A fresh server may have zero sources; assert the shape is well-formed when present.
     for (const s of sources) {
@@ -36,7 +36,7 @@ describeSearch('catalogue search (live source)', () => {
     createSuwayomiClient({ endpoint: `${base}/api/graphql` }),
   )
   it('returns a well-formed search page', async () => {
-    const result = await new SearchSource.UseCase(repo).execute({ sourceId: testSourceId!, query: 'a', page: 1 })
+    const result = await new SearchSource.SearchSourceUseCase(repo).execute({ sourceId: testSourceId!, query: 'a', page: 1 })
     expect(Array.isArray(result.mangas)).toBe(true)
     expect(typeof result.hasNextPage).toBe('boolean')
   })
@@ -48,7 +48,7 @@ describeDetails('catalogue manga details (live)', () => {
     createSuwayomiClient({ endpoint: `${base}/api/graphql` }),
   )
   it('returns details with chapters', async () => {
-    const details = await new GetMangaDetails.UseCase(repo).execute({ mangaId: testMangaId! })
+    const details = await new GetMangaDetails.GetMangaDetailsUseCase(repo).execute({ mangaId: testMangaId! })
     expect(typeof details.title).toBe('string')
     expect(Array.isArray(details.chapters)).toBe(true)
   })

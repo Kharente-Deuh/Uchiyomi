@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { SetUserStatusRequestDto } from '#shared/dto/identity/admin.request'
 import { z } from 'zod'
-import { setUserStatus } from '../../../../utils/identity'
+import { setUserStatus } from '~~/server/domains/identity/auth/application'
 
 const Body = z.object({ status: z.enum(['ACTIVE', 'DISABLED']) }) satisfies z.ZodType<SetUserStatusRequestDto>
 

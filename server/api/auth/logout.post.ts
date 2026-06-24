@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { logout } from '../../utils/identity'
+
+import { logout } from '~~/server/domains/identity/auth/application'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)

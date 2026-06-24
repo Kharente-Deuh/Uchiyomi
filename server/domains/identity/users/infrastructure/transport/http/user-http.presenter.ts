@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { UserDto } from '#shared/dto/identity/user.dto'
-import type * as User from '../../../user.domain'
+import type { UserModel } from '../../../user.domain'
 
 // Maps a (password-free) user Model to the wire DTO. Explicitly NO `passwordHash`
 // — the Model never crosses HTTP.
-export function toUserDto(user: Omit<User.Model, 'passwordHash'>): UserDto {
+export function toUserDto(user: Omit<UserModel, 'passwordHash'>): UserDto {
   return {
     id: user.id,
     accountName: user.accountName,
@@ -14,5 +14,6 @@ export function toUserDto(user: Omit<User.Model, 'passwordHash'>): UserDto {
     canManageExtensions: user.canManageExtensions,
     canDownload: user.canDownload,
     allowNsfw: user.allowNsfw,
+    showNsfw: user.showNsfw,
   }
 }

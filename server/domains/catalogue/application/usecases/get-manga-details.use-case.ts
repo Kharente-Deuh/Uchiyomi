@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../shared/use-case'
-import type * as Catalogue from '../../catalogue.domain'
-import type * as Manga from '../../manga.domain'
+import type { CatalogueRepository } from '../../catalogue.domain'
+import type { MangaDetailsModel } from '../../manga.domain'
 
-export interface Opts {
+export interface GetMangaDetailsUseCaseParams {
   mangaId: string
 }
 
-export class UseCase implements IUseCase<Opts, Manga.Details> {
-  constructor(private readonly catalogueRepository: Catalogue.Repository) {}
+export class GetMangaDetailsUseCase implements IUseCase<GetMangaDetailsUseCaseParams, MangaDetailsModel> {
+  constructor(private readonly catalogueRepository: CatalogueRepository) {}
 
-  execute(opts: Opts): Promise<Manga.Details> {
+  execute(opts: GetMangaDetailsUseCaseParams): Promise<MangaDetailsModel> {
     return this.catalogueRepository.getMangaDetails({ mangaId: opts.mangaId })
   }
 }

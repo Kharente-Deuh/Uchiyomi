@@ -2,14 +2,14 @@
 // hashPassword / verifyPassword are nuxt-auth-utils server utils (scrypt) declared
 // as ambient globals in .nuxt/types/nitro-imports.d.ts (via nitro.d.ts). No explicit
 // import is needed or possible — vue-tsc project-references mode resolves them as globals.
-import type * as Password from '../../../password.domain'
+import type { PasswordHasher, PasswordHashParams, PasswordVerifyParams } from '../../../password.domain'
 
-export class ScryptPasswordHasher implements Password.Hasher {
-  hash(p: Password.HashParams): Promise<string> {
+export class ScryptPasswordHasher implements PasswordHasher {
+  hash(p: PasswordHashParams): Promise<string> {
     return hashPassword(p.password)
   }
 
-  verify(p: Password.VerifyParams): Promise<boolean> {
+  verify(p: PasswordVerifyParams): Promise<boolean> {
     return verifyPassword(p.hash, p.password)
   }
 }

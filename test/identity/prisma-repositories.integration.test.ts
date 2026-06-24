@@ -24,10 +24,11 @@ describeIf('prisma identity repositories (live DB)', () => {
   })
 
   it('createWithLocalIdentity persists a user + LOCAL identity and findByAccountName returns the hash', async () => {
-    await users.createWithLocalIdentity({ accountName: 'alice', displayName: 'A', password: 'x', role: 'ADMIN', passwordHash: 'HASH' })
+    const user = await users.createWithLocalIdentity({ accountName: 'alice', displayName: 'A', password: 'x', role: 'ADMIN', passwordHash: 'HASH' })
     const found = await users.findByAccountName({ accountName: 'alice' })
     expect(found?.passwordHash).toBe('HASH')
     expect(found?.role).toBe('ADMIN')
+    expect(user.showNsfw).toBe(false)
   })
 
   it('onlyIfEmpty rejects a second create', async () => {

@@ -1,11 +1,16 @@
+import type { UserModel } from '~~/server/domains/identity/users/user.domain'
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { UpdateMeRequestDto } from '#shared/dto/identity/me.request'
 import { z } from 'zod'
+import { updateNsfwPreference, updateUserName } from '~~/server/domains/identity/auth/application'
 import { toUserDto } from '../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 import { displayNameSchema } from '../../utils/display-name'
-import { updateDisplayName } from '../../utils/identity'
 
-const Body = z.object({ displayName: displayNameSchema }) satisfies z.ZodType<UpdateMeRequestDto>
+const Body = z
+  .object({ displayName: displayNameSchema.optional(), showNsfw: z.boolean().optional() })
+  .refine(b => b.displayName !== undefined || b.showNsfw !== undefined, {
+    message: 'At least one field is required',
+  }) satisfies z.ZodType<UpdateMeRequestDto>
 
 export default defineEventHandler(async (event) => {
   const actor = event.context.authUser
@@ -18,7 +23,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
   }
 
-  const user = await updateDisplayName.execute({ id: actor.id, displayName: parsed.data.displayName })
+  // actor is UserModel (see server/types/auth.d.ts); it is assignable to
+  // Omit<UserModel, 'passwordHash'> — used as the initial value so the type is
+  // always satisfied. The .refine above guarantees at least one branch runs and
+  // reassigns `user` with a fresh DB-backed result.
+  let user: Omit<UserModel, 'passwordHash'> = actor
+  if (parsed.data.displayName !== undefined) {
+    user = await updateUserName.execute({ id: actor.id, displayName: parsed.data.displayName })
+  }
+
+  if (parsed.data.showNsfw !== undefined) {
+    user = await updateNsfwPreference.execute({ id: actor.id, showNsfw: parsed.data.showNsfw })
+  }
 
   return { user: toUserDto(user) }
 })

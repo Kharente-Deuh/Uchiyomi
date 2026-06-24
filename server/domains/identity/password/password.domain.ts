@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Flat ESM module, consumed via `import * as Password`.
-export interface HashParams {
+export interface PasswordHashParams {
   password: string
 }
 
-export interface VerifyParams {
+export interface PasswordVerifyParams {
   hash: string
   password: string
 }
 
 // The PORT — the scrypt adapter implements it.
-export interface Hasher {
-  hash: (p: HashParams) => Promise<string>
-  verify: (p: VerifyParams) => Promise<boolean>
+export interface PasswordHasher {
+  hash: (p: PasswordHashParams) => Promise<string>
+  verify: (p: PasswordVerifyParams) => Promise<boolean>
 }

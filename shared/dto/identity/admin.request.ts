@@ -10,7 +10,10 @@ export interface CreateUserRequestDto {
 }
 
 export interface UpdateUserRequestDto {
-  displayName: string
+  displayName?: string
+  canManageExtensions?: boolean
+  canDownload?: boolean
+  allowNsfw?: boolean
 }
 
 export interface SetUserStatusRequestDto {

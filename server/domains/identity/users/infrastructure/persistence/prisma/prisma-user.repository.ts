@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PrismaClient } from '../../../../../../../prisma/generated/client'
-import type * as User from '../../../user.domain'
+import type { CreateUserWithLocalIdentityOpts, CreateUserWithLocalIdentityParams, FindUserByAccountNameParams, FindUserByIdParams, FindUserLocalPasswordHashParams, SetUserStatusParams, UpdateUserCapabilitiesParams, UpdateUserDisplayNameParams, UpdateUserLocalPasswordHashParams, UpdateUserNsfwPreferenceParams, UserModel, UsersRepository } from '../../../user.domain'
 import { toDomain } from './prisma-user-repository.mapper'
 
-export class PrismaUserRepository implements User.Repository {
+export class PrismaUserRepository implements UsersRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   countUsers(): Promise<number> {
     return this.prisma.appUser.count()
   }
 
-  async findByAccountName(params: User.FindByAccountNameParams): Promise<User.Model | undefined> {
+  async findByAccountName(params: FindUserByAccountNameParams): Promise<UserModel | undefined> {
     const row = await this.prisma.appUser.findUnique({
       where: { accountName: params.accountName },
       include: { identities: { where: { provider: 'LOCAL' }, take: 1 } },
@@ -25,16 +25,16 @@ export class PrismaUserRepository implements User.Repository {
     return user
   }
 
-  async findById(params: User.FindByIdParams): Promise<User.Model | undefined> {
+  async findById(params: FindUserByIdParams): Promise<UserModel | undefined> {
     const row = await this.prisma.appUser.findUnique({ where: { id: params.id } })
 
     return row ? toDomain(row) : undefined
   }
 
   createWithLocalIdentity(
-    params: User.CreateWithLocalIdentityParams,
-    opts?: User.CreateWithLocalIdentityOpts,
-  ): Promise<Omit<User.Model, 'passwordHash'>> {
+    params: CreateUserWithLocalIdentityParams,
+    opts?: CreateUserWithLocalIdentityOpts,
+  ): Promise<Omit<UserModel, 'passwordHash'>> {
     return this.prisma.$transaction(async (tx) => {
       // Race-safe first-run guard: re-check emptiness inside the transaction.
       if (opts?.onlyIfEmpty && (await tx.appUser.count()) > 0) {
@@ -52,6 +52,7 @@ export class PrismaUserRepository implements User.Repository {
           canManageExtensions: params.canManageExtensions ?? false,
           canDownload: params.canDownload ?? false,
           allowNsfw: params.allowNsfw ?? false,
+          showNsfw: params.showNsfw ?? false,
           identities: {
             create: {
               provider: 'LOCAL',
@@ -66,11 +67,11 @@ export class PrismaUserRepository implements User.Repository {
     })
   }
 
-  async setStatus(params: User.SetStatusParams): Promise<void> {
+  async setStatus(params: SetUserStatusParams): Promise<void> {
     await this.prisma.appUser.update({ where: { id: params.id }, data: { status: params.status } })
   }
 
-  async updateDisplayName(params: User.UpdateDisplayNameParams): Promise<Omit<User.Model, 'passwordHash'>> {
+  async updateDisplayName(params: UpdateUserDisplayNameParams): Promise<Omit<UserModel, 'passwordHash'>> {
     const row = await this.prisma.appUser.update({
       where: { id: params.id },
       data: { displayName: params.displayName },
@@ -79,19 +80,41 @@ export class PrismaUserRepository implements User.Repository {
     return toDomain(row)
   }
 
-  async updateLocalPasswordHash(params: User.UpdateLocalPasswordHashParams): Promise<void> {
+  async updateNsfwPreference(params: UpdateUserNsfwPreferenceParams): Promise<Omit<UserModel, 'passwordHash'>> {
+    const row = await this.prisma.appUser.update({
+      where: { id: params.id },
+      data: { showNsfw: params.showNsfw },
+    })
+
+    return toDomain(row)
+  }
+
+  async updateLocalPasswordHash(params: UpdateUserLocalPasswordHashParams): Promise<void> {
     await this.prisma.authIdentity.updateMany({
       where: { userId: params.userId, provider: 'LOCAL' },
       data: { passwordHash: params.passwordHash },
     })
   }
 
-  async findLocalPasswordHash(params: User.FindLocalPasswordHashParams): Promise<string | undefined> {
+  async findLocalPasswordHash(params: FindUserLocalPasswordHashParams): Promise<string | undefined> {
     const row = await this.prisma.authIdentity.findFirst({
       where: { userId: params.userId, provider: 'LOCAL' },
       select: { passwordHash: true },
     })
 
     return row?.passwordHash ?? undefined
+  }
+
+  async updateCapabilities(params: UpdateUserCapabilitiesParams): Promise<Omit<UserModel, 'passwordHash'>> {
+    const row = await this.prisma.appUser.update({
+      where: { id: params.id },
+      data: {
+        ...(params.canManageExtensions !== undefined && { canManageExtensions: params.canManageExtensions }),
+        ...(params.canDownload !== undefined && { canDownload: params.canDownload }),
+        ...(params.allowNsfw !== undefined && { allowNsfw: params.allowNsfw }),
+      },
+    })
+
+    return toDomain(row)
   }
 }

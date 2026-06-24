@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { LoginRequestDto } from '#shared/dto/identity/auth.request'
 import { z } from 'zod'
-import * as Auth from '../../domains/identity/auth/auth.domain'
+import { login, loginRateLimiter } from '~~/server/domains/identity/auth/application'
+import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
 import { accountNameSchema } from '../../utils/account-name'
-import { login, loginRateLimiter } from '../../utils/identity'
 
 const Body = z.object({ accountName: accountNameSchema, password: z.string() }) satisfies z.ZodType<LoginRequestDto>
 
@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
     return { ok: true }
   } catch (err) {
-    if (err instanceof Auth.AuthError) {
+    if (err instanceof AuthError) {
       throw createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
     }
 

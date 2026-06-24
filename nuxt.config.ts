@@ -14,6 +14,7 @@ export default defineNuxtConfig({
     '@nuxt/fonts',
     'nuxt-auth-utils',
     'nuxt-authorization',
+    '@pinia/colada-nuxt',
   ],
 
   ssr: false,
@@ -21,12 +22,9 @@ export default defineNuxtConfig({
     { path: '~/components', pathPrefix: true },
     { path: '~/features/auth/components', prefix: 'Auth' },
     { path: '~/features/settings/components', prefix: 'Settings' },
+    { path: '~/features/extensions/components', prefix: 'Extensions' },
   ],
 
-  // Feature-colocated data-access layer (ADR-0013): auto-import the per-feature
-  // composables (`features/<Feature>/composables/*.composable.ts`) so components
-  // consume `useX()` without manual imports. Pinia stores are wired separately
-  // via `pinia.storesDirs` below.
   imports: {
     dirs: ['features/**/composables'],
   },
@@ -63,6 +61,10 @@ export default defineNuxtConfig({
     // Server-only base URL of the headless Suwayomi engine (ADR-0001). Never
     // exposed to the client bundle. Override at runtime with NUXT_SUWAYOMI_URL.
     suwayomiUrl: process.env.SUWAYOMI_URL || 'http://localhost:4567',
+
+    // Boot-time Suwayomi settings reconciler (ADR-0012). Defence in depth +
+    // repo seeding. Disable with NUXT_SUWAYOMI_SETTINGS_RECONCILE=false.
+    suwayomiSettingsReconcile: process.env.SUWAYOMI_SETTINGS_RECONCILE !== 'false',
 
     // Pin sealed-session cookie flags explicitly so a future nuxt-auth-utils or
     // h3 default change cannot silently downgrade them.
@@ -123,6 +125,8 @@ export default defineNuxtConfig({
         '@iconify/vue',
         '@vue/devtools-core',
         '@vue/devtools-kit',
+        'yup',
+        'yup-locales',
       ],
     },
   },

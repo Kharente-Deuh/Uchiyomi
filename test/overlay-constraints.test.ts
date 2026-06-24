@@ -69,19 +69,16 @@ describe.skipIf(!connectionString)('overlay constraints', () => {
     expect(await prisma.subscription.count({ where: { userId: user.id } })).toBe(0)
   })
 
-  it('cascades reading progress and activations on user delete', async () => {
+  it('cascades reading progress on user delete', async () => {
     const series = await makeSeries('1004')
     const chapter = await prisma.chapter.create({
       data: { chapterId: 1, seriesId: series.id, number: 1, name: 'c1', uploadedAt: new Date() },
     })
-    const ext = await prisma.extension.create({ data: { pkgName: 'pkg-1004', name: 'E', lang: 'en' } })
     const user = await prisma.appUser.create({ data: { accountName: 'user1004', displayName: 'U' } })
     await prisma.readingProgress.create({ data: { userId: user.id, chapterId: chapter.id } })
-    await prisma.userExtensionActivation.create({ data: { userId: user.id, extensionId: ext.id } })
 
     await prisma.appUser.delete({ where: { id: user.id } })
 
     expect(await prisma.readingProgress.count({ where: { userId: user.id } })).toBe(0)
-    expect(await prisma.userExtensionActivation.count({ where: { userId: user.id } })).toBe(0)
   })
 })
