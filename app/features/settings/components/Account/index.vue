@@ -3,9 +3,10 @@
 import { useDebounceFn } from '@vueuse/core'
 import { displayNameRule } from '~/features/auth/utils/display-name'
 
-const { user, updateDisplayName } = useAuth()
+const { user, updateDisplayName, loading: authLoading } = useAuth()
 const { t } = useI18n()
 const toast = useToast()
+const { mobile } = useDisplay()
 
 const showUpdatePassword = ref(false)
 
@@ -40,12 +41,14 @@ const saveDisplayName = useDebounceFn(async (value: string): Promise<void> => {
     displayName.value = current
   }
 }, 500)
+
+const loading = computed(() => !user.value && authLoading.value)
 </script>
 
 <template>
-  <SettingsAccountModalUpdatePassword v-model="showUpdatePassword" />
+  <SettingsAccountModalUpdatePassword v-if="user" v-model="showUpdatePassword" />
   <SettingsCard
-    v-if="user"
+    :loading
     :title="$t('settings.account.title')"
     :subtitle="$t('settings.account.subtitle')"
   >
@@ -62,7 +65,7 @@ const saveDisplayName = useDebounceFn(async (value: string): Promise<void> => {
     <VDivider />
     <SettingsCardItem :title="$t('settings.account.accountName')">
       <VTextField
-        :model-value="user.accountName"
+        :model-value="user?.accountName ?? ''"
         disabled
         style="max-width: 15rem !important;"
         hide-details
@@ -74,8 +77,10 @@ const saveDisplayName = useDebounceFn(async (value: string): Promise<void> => {
     <SettingsCardItem :title="$t('settings.account.password.title')">
       <VBtn
         class="border-thin-secondary"
+        :class="mobile ? 'text-body-small' : undefined"
         variant="tonal"
         color="secondary"
+        :size="mobile ? 'small' : undefined"
         :text="$t('settings.account.password.change')"
         @click="showUpdatePassword = true"
       />

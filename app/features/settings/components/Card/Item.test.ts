@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
-import { h } from 'vue'
+import { h, ref } from 'vue'
 import Item from './Item.vue'
+
+// The card is responsive: the subtitle lives in the desktop branch only. Force
+// the desktop layout so these tests cover it deterministically (the test env
+// otherwise resolves `mobile` to true).
+function useDisplayMock(): { mobile: ReturnType<typeof ref<boolean>> } {
+  return { mobile: ref(false) }
+}
+
+mockNuxtImport('useDisplay', () => useDisplayMock)
 
 type ItemProps = InstanceType<typeof Item>['$props']
 

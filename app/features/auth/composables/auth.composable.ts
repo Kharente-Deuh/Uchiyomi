@@ -17,6 +17,7 @@ export interface AuthComposable {
   login: (body: LoginRequestDto) => Promise<ApiResponse<void>>
   setup: (body: SetupRequestDto) => Promise<ApiResponse<UserDto>>
   updateDisplayName: (body: UpdateMeRequestDto) => Promise<ApiResponse<UserDto>>
+  updateShowNsfw: (value: boolean) => Promise<ApiResponse<UserDto>>
   changePassword: (body: ChangePasswordRequestDto) => Promise<ApiResponse<void>>
   logout: () => Promise<ApiResponse<void>>
 }
@@ -93,6 +94,18 @@ export function useAuth(): AuthComposable {
     return res
   }
 
+  async function updateShowNsfw(value: boolean): Promise<ApiResponse<UserDto>> {
+    loading.value = true
+    const res = await authApi.updateMe({ showNsfw: value })
+    if (res.success) {
+      authStore.setUser(res.data)
+    }
+
+    loading.value = false
+
+    return res
+  }
+
   async function changePassword(body: ChangePasswordRequestDto): Promise<ApiResponse<void>> {
     loading.value = true
 
@@ -128,6 +141,7 @@ export function useAuth(): AuthComposable {
     login,
     setup,
     updateDisplayName,
+    updateShowNsfw,
     changePassword,
     logout,
   }

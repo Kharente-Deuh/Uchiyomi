@@ -5,6 +5,7 @@ export interface AuthCapabilities {
   canManageExtensions: boolean
   canDownload: boolean
   allowNsfw: boolean
+  showNsfw: boolean
 }
 
 export interface AuthStore {
@@ -28,6 +29,7 @@ export const useAuthStore = defineStore('auth', (): AuthStore => {
     canManageExtensions: user.value?.canManageExtensions ?? false,
     canDownload: user.value?.canDownload ?? false,
     allowNsfw: user.value?.allowNsfw ?? false,
+    showNsfw: user.value?.showNsfw ?? false,
   }))
   const needsAdmin = ref(false)
   const minPasswordLength = ref(0)

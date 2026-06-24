@@ -51,6 +51,7 @@ const modalCardProps = computed((): ModalCardProps => {
     :persistent="loading || globalLoading || persistent"
   >
     <OrganismModalCard
+      class="border-thin"
       v-bind="modalCardProps"
       @close="show = false"
       @submit="$emit('submit')"

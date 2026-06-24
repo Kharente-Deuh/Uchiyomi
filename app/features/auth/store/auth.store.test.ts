@@ -13,6 +13,7 @@ const adminUser: UserDto = {
   canManageExtensions: true,
   canDownload: true,
   allowNsfw: false,
+  showNsfw: false,
 }
 
 describe('useAuthStore', () => {
@@ -25,7 +26,7 @@ describe('useAuthStore', () => {
     expect(store.user).toBeUndefined()
     expect(store.isAuthenticated).toBe(false)
     expect(store.isAdmin).toBe(false)
-    expect(store.capabilities).toEqual({ canManageExtensions: false, canDownload: false, allowNsfw: false })
+    expect(store.capabilities).toEqual({ canManageExtensions: false, canDownload: false, allowNsfw: false, showNsfw: false })
   })
 
   it('reflects the user after setUser, and resets on clear', () => {
@@ -33,7 +34,7 @@ describe('useAuthStore', () => {
     store.setUser(adminUser)
     expect(store.isAuthenticated).toBe(true)
     expect(store.isAdmin).toBe(true)
-    expect(store.capabilities).toEqual({ canManageExtensions: true, canDownload: true, allowNsfw: false })
+    expect(store.capabilities).toEqual({ canManageExtensions: true, canDownload: true, allowNsfw: false, showNsfw: false })
     store.clear()
     expect(store.user).toBeUndefined()
     expect(store.isAuthenticated).toBe(false)

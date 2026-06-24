@@ -1,9 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
-import { h } from 'vue'
+import { h, ref } from 'vue'
 import { VApp } from 'vuetify/components'
 import Card from './index.vue'
+
+// The card dispatches to a desktop/mobile sub-component via `useDisplay`. The
+// subtitle is rendered by the desktop variant only, so force desktop here (the
+// test env otherwise resolves `mobile` to true).
+function useDisplayMock(): { mobile: ReturnType<typeof ref<boolean>> } {
+  return { mobile: ref(false) }
+}
+
+mockNuxtImport('useDisplay', () => useDisplayMock)
 
 type CardProps = InstanceType<typeof Card>['$props']
 

@@ -88,6 +88,57 @@
       "max": "Champ obligatoire, {max} maximum"
     }
   },
+  "extensions": {
+    "title": "Extensions",
+    "empty": {
+      "title": "Aucune extension installée pour le moment"
+    },
+    "health": {
+      "ok": "Fonctionnelle",
+      "error": "Erreur"
+    },
+    "actions": {
+      "install": "Installer",
+      "uninstall": "Désinstaller"
+    },
+    "toasts": {
+      "installed": "Extension installée",
+      "uninstalled": "Extension désinstallée",
+      "sourceEnabled": "Source activée",
+      "sourceDisabled": "Source désactivée"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger les extensions",
+      "actionFailed": "Échec de l'action"
+    },
+    "admin": {
+      "title": "Gérer les extensions"
+    },
+    "filters": {
+      "nsfw": "NSFW",
+      "healthy": "Fonctionnelle",
+      "installed": "Installée",
+      "hasUpdate": "À jour"
+    },
+    "filterOptions": {
+      "all": "Tout",
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "uninstall": {
+      "confirmation": "Voulez-vous vraiment désinstaller l’extension suivante ?"
+    }
+  },
+  "library": {
+    "badges": {
+      "sourceOffline": "Source coupée"
+    }
+  },
+  "sources": {
+    "settings": {
+      "title": "Réglages de la source"
+    }
+  },
   "settings": {
     "appearance": {
       "title": "Apparence",
@@ -102,6 +153,9 @@
     "adminOnly": "Admin",
     "subtitle": "Préférences par utilisateur. \nLes contrôles du serveur apparaissent uniquement pour les administrateurs.",
     "title": "Paramètres",
+    "nsfw": {
+      "label": "Afficher le contenu adulte (NSFW)"
+    },
     "account": {
       "subtitle": "Votre identité sur ce serveur.",
       "title": "Compte",
@@ -122,11 +176,31 @@
           "logoutOtherDevices": "Se déconnecter des autres appareils"
         }
       }
+    },
+    "sensitiveContent": {
+      "title": "Contenu sensible",
+      "nsfw": "Afficher le contenu NSFW"
     }
   },
   "actions": {
     "cancel": "Annuler",
     "save": "Sauvegarder",
     "continue": "Continuer"
+  },
+  "browse": {
+    "title": "Parcourir",
+    "subtitle": "Gérer les extensions et importer de nouvelles séries",
+    "extensions": {
+      "subtitle": "Parcourez et gérez vos extensions"
+    },
+    "series": {
+      "subtitle": "Trouver de nouvelles séries"
+    }
+  },
+  "series": {
+    "title": "Séries"
+  },
+  "fields": {
+    "search": "Recherche"
   }
 }

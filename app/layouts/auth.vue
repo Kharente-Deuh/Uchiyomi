@@ -9,7 +9,7 @@ const isDark = computed(() => theme.global.current.value.dark)
 
 <template>
   <VApp>
-    <VMain class="bg-bimo-grey-darken-2 d-flex flex-column justify-center h-100">
+    <VMain class="bg-bimo-grey-darken-2 d-flex flex-column justify-center h-100 gradient-background">
       <div
         style="width: 23rem;"
         class="ma-auto d-flex flex-column ga-6 justify-center"
@@ -28,9 +28,5 @@ const isDark = computed(() => theme.global.current.value.dark)
 <style lang="scss" scoped>
 .auth-card {
   margin-inline: auto;
-}
-
-.v-main {
-  background: linear-gradient(0deg, rgb(var(--v-theme-surface)) 50%, rgb(var(--v-theme-primary-darken-1)) 400%);
 }
 </style>
