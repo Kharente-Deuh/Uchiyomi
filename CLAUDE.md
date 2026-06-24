@@ -49,9 +49,10 @@ architectural or cross-cutting decision, write (or update) an ADR.
 - **Catalogue is cached, not reparsed.** `series`/`chapter` overlay tables mirror
   Suwayomi metadata for *followed* series only; Suwayomi remains the source of truth.
   (ADR-0012)
-- **Extensions are installed globally; activation is per-user.** "My sources" is the
-  `user_extension_activation` overlay; never expose another user's activated sources.
-  (ADR-0012)
+- **Extensions are admin-managed globally.** An admin (`canManageExtensions`)
+  installs/uninstalls; all users see the installed set. There is no per-user
+  activation. NSFW sources are gated per-user by `allowNsfw` (admin-granted) AND
+  `showNsfw` (self-serve preference). (ADR-0012, revised M4.1a)
 - **All downloads go through the overlay queue.** Suwayomi auto-download is disabled;
   `download_job` is paced globally, new chapters outrank backfill. (ADR-0012)
 
@@ -85,6 +86,14 @@ Nuxt 4 (Vue 3) + Nitro (single deployable) · **Vuetify** via `vuetify-nuxt-modu
   tests (Vitest) for behavior changes.
 - Keep docs in sync: update this `CLAUDE.md` and/or add an ADR when a change
   affects architecture, the data model, conventions, or the tech stack.
+- **Keep the tracker in sync with the specs.** Work is tracked as GitHub
+  milestones (one per phase) and issues (one per `Mx.y`), mirroring
+  [`docs/superpowers/roadmap.md`](./docs/superpowers/roadmap.md). Whenever a spec or
+  the roadmap changes mid-flight — scope added, split, dropped, re-sequenced, or a
+  milestone discovered already done — **create, edit, or close the matching
+  issue/milestone in the same change** so the tracker never drifts from reality.
+  Close issues that are done (link the PR), edit those whose scope moved, and open
+  new ones for newly-carved work; update the roadmap statuses alongside.
 
 ## Project structure
 
@@ -111,10 +120,36 @@ app/
 └── utils/                 # Pure utilities (date, string, array…)
 ```
 
-**Server (`server/`) — Domain-Driven Design.** The Nitro backend (ADR-0005) is
-organised by domain with a DDD layering (domain / application / infrastructure);
-Prisma (overlay) and the Suwayomi client are infrastructure concerns. The detailed
-layering is defined in ADR-0013 and fleshed out as the server milestones land.
+**Server (`server/`) — hexagonal DDD.** The Nitro backend (ADR-0005) is organised
+by domain with a ports-and-adapters layering (domain / application /
+infrastructure); Prisma and the Suwayomi client are infrastructure concerns. Full
+per-layer idioms are in ADR-0013; the key wiring pattern is summarised below.
+
+### Use-case classes + composition root (ADR-0013)
+
+- **Use cases** are classes implementing `IUseCase<Opts, Result>` (interface in
+  `server/shared/use-case.ts`), each in its own `application/usecases/<name>.use-case.ts`
+  module. The single public method is `execute(opts)`. Dependencies (repositories,
+  ports, hashers, policy primitives such as TTL or a `now: () => Date` clock) are
+  injected via the constructor as `private readonly` fields. Naming: class `XUseCase`,
+  opts type `XUseCaseOpts` (or `…Params`), result type `XUseCaseResult`.
+- **Barrel** `application/usecases/index.ts` re-exports every use-case module
+  (`export * from './x.use-case'`).
+- **Composition root** `application/index.ts` (one per domain): reads
+  `useRuntimeConfig()`, instantiates all infrastructure adapters and use cases, and
+  exports them as pre-wired singletons. It may also export shared infrastructure
+  singletons (e.g. `userRepository`) and small domain helpers.
+- **Routes** (`server/api/**`) import the pre-wired singletons from
+  `~~/server/domains/<domain>/application` and call `.execute(...)`. They do not wire
+  dependencies themselves. The old `server/utils/<domain>.ts` wiring files were
+  removed; `server/utils/` now holds **pure helpers only** (e.g. `account-name.ts`,
+  `prisma.ts`).
+- **Presenters** are pure functions named `toXDto(...)` under
+  `infrastructure/transport/http/`, typed against domain models.
+- **`shared/` import rule in node-tested code:** use a **relative path** (not `~~` or
+  `#shared`) when importing from `server/shared/` in files tested by the Vitest `node`
+  project — the `node` project has no path aliases. See the comment in
+  `server/utils/account-name.ts` for the canonical example.
 
 ## Definition of done for a change
 

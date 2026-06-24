@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-06-20
 - Revised: 2026-06-21 (server layer + frontend data-access layer — see "Revision" below)
+- Revised: 2026-06-25 (composition root moved into domain; use-case barrel; shared import rule — see "Revision" below)
 
 ## Context
 
@@ -91,13 +92,16 @@ Every grouping is a **flat ES module consumed via `import * as`** (no TS
   constructor. Use cases depend only on ports; **no input validation here**.
 - **Infrastructure** (`infrastructure/<category>/<tech>/`): the adapters that
   implement the ports — classes such as `PrismaUserRepository implements
-  User.Repository`. The category names the concern (`persistence`, `transport`,
+  UsersRepository`. The category names the concern (`persistence`, `transport`,
   `security`, …); the tech folder names the implementation (`prisma`, `graphql`,
   `scrypt`, `memory`). Mappers (`*-repository.mapper.ts`, `toDomain`) build
   domain Models from raw rows/responses.
-- **Composition root** (`server/utils/<domain>.ts`): reads `runtimeConfig`,
-  instantiates the adapters + use cases, and exports the ready-to-call instances
-  the routes consume.
+- **Composition root** (`application/index.ts` inside the domain): reads
+  `runtimeConfig`, instantiates the adapters + use cases, and exports the
+  ready-to-call singletons the routes consume. May also export shared
+  infrastructure singletons and small domain helpers. The old
+  `server/utils/<domain>.ts` wiring files were removed; `server/utils/` now
+  holds **pure helpers only** (e.g. `account-name.ts`, `prisma.ts`).
 - **DTOs live in the Nuxt `shared/` layer** (`shared/dto/...`) so server and
   client share one wire contract (the client cannot import from `server/`).
   Routes map domain Models to DTOs via a server-side presenter
@@ -109,16 +113,19 @@ Every grouping is a **flat ES module consumed via `import * as`** (no TS
 
 ```
 server/
-├── api/                                     # Nitro routes (interface layer) — thin
-├── shared/use-case.ts                       # IUseCase<Opts, Result>
+├── api/                                          # Nitro routes (interface layer) — thin
+├── shared/use-case.ts                            # IUseCase<Opts, Result>
 ├── domains/[domain]/[sub-domain]/
-│   ├── <entity>.domain.ts                   # rich class Model + ports + *Params/*Opts/*Result
-│   ├── application/usecases/*.use-case.ts   # class UseCase implements IUseCase
-│   └── infrastructure/<category>/<tech>/    # class adapters implementing the ports + mappers
-├── middleware/ plugins/                     # Nitro cross-cutting (e.g. session middleware)
-└── utils/                                   # composition roots (<domain>.ts) + shared singletons (Prisma, Suwayomi)
+│   ├── <entity>.domain.ts                        # rich class Model + ports + *Params/*Opts/*Result
+│   ├── application/
+│   │   ├── usecases/<name>.use-case.ts           # class XUseCase implements IUseCase<XUseCaseOpts, XUseCaseResult>
+│   │   ├── usecases/index.ts                     # barrel: export * from './x.use-case'
+│   │   └── index.ts                              # composition root: wires + exports pre-built singletons
+│   └── infrastructure/<category>/<tech>/         # class adapters implementing the ports + mappers
+├── middleware/ plugins/                          # Nitro cross-cutting (e.g. session middleware)
+└── utils/                                        # pure helpers only (account-name.ts, prisma.ts, …)
 
-shared/dto/[domain]/*.dto.ts                 # wire contract (DTOs) shared by server + client
+shared/dto/[domain]/*.dto.ts                      # wire contract (DTOs) shared by server + client
 ```
 
 Domains map to the overlay model and roadmap: `identity` (split into the
@@ -285,3 +292,45 @@ server's `*.use-case.ts` / `*.domain.ts` style and the backoffice front).
 The dependency direction (`components → composables → api`, with the store as
 inward global state) and the Result/store conventions above are unchanged; only the
 *location* moves from top-level dirs into the feature.
+
+## Revision — 2026-06-25 (composition root + use-case wiring pattern)
+
+Building the extensions domain (M4.1a) settled the last open idiom: where the
+composition root lives and how the barrel is structured.
+
+**What changed:**
+
+- **Composition root moves into the domain.** The old `server/utils/<domain>.ts`
+  wiring files (`utils/extensions.ts`, `utils/identity.ts`,
+  `utils/suwayomi-settings.ts`) were removed and replaced by
+  `application/index.ts` inside each domain slice. This keeps all wiring
+  co-located with the domain it serves and removes the cross-layer coupling from
+  `server/utils/` into `server/domains/`. `server/utils/` now holds **pure
+  helpers only** (e.g. `account-name.ts`, `prisma.ts`).
+
+- **Use-case barrel.** A sibling `application/usecases/index.ts` re-exports every
+  use-case module (`export * from './x.use-case'`). The composition root imports
+  from this barrel; routes never import individual use-case modules directly.
+
+- **Naming convention locked down.** Class `XUseCase`, opts type `XUseCaseOpts`
+  (or `…Params`), result type `XUseCaseResult`. Constructor dependencies are
+  `private readonly`; policy primitives (TTL, rate-limit window, a
+  `now: () => Date` clock for testability) are injected there rather than via
+  `runtimeConfig` in the use case itself.
+
+- **Routes consume singletons.** `server/api/**` handlers import the pre-wired
+  singleton directly from `~~/server/domains/<domain>/application` and call
+  `.execute(opts)`. No wiring inside the route handler.
+
+- **Presenters are pure functions** named `toXDto(...)` located under
+  `infrastructure/transport/http/`. They receive a domain Model and return the
+  shared DTO; they never import Prisma or Suwayomi.
+
+- **`shared/` relative-import rule.** Files tested by the Vitest `node` project
+  (which has no path aliases) **must** import from `server/shared/` using a
+  **relative path** — not `~~` or `#shared`. The canonical example is the comment
+  in `server/utils/account-name.ts`. This applies to any utility or use-case
+  that imports `IUseCase` or any other shared type while also being covered by
+  `node`-project tests.
+
+The Server section and directory tree above have been updated to reflect this.
