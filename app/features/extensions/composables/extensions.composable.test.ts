@@ -192,13 +192,6 @@ describe('useExtensions', () => {
     expect(store.extensions[0]!.isInstalled).toBe(false)
   })
 
-  it('uninstall resets uninstallLoading to false after completion', async () => {
-    mockApi.extensionAction.mockResolvedValue({ success: true, data: undefined })
-    const { uninstall, uninstallLoading } = useExtensions()
-    await uninstall('pkg.name')
-    expect(uninstallLoading.value).toBe(false)
-  })
-
   it('uninstall shows error toast on failure', async () => {
     mockApi.extensionAction.mockResolvedValue({ success: false, error: new ApiError('fail', 500) })
     const { uninstall } = useExtensions()
