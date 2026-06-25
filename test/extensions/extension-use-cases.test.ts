@@ -4,6 +4,8 @@ import * as InstallExtension from '../../server/domains/extensions/application/u
 import * as ListExtensionSources from '../../server/domains/extensions/application/usecases/list-extension-sources.use-case'
 import * as ListExtensions from '../../server/domains/extensions/application/usecases/list-extensions.use-case'
 import * as SetSourceEnabled from '../../server/domains/extensions/application/usecases/set-source-enabled.use-case'
+import * as UninstallExtension from '../../server/domains/extensions/application/usecases/uninstall-extension.use-case'
+import * as UpdateExtension from '../../server/domains/extensions/application/usecases/update-extension.use-case'
 
 function avail(pkgName: string, isNsfw: boolean): { pkgName: string, name: string, lang: string, isNsfw: boolean, isInstalled: boolean, hasUpdate: boolean, versionName: string } {
   return { pkgName, name: pkgName, lang: 'en', isNsfw, isInstalled: true, hasUpdate: false, versionName: '1' }
@@ -75,16 +77,17 @@ describe('listExtensions.UseCase', () => {
 })
 
 describe('install-extension', () => {
-  it('installs in Suwayomi then upserts the overlay row', async () => {
+  it('installs in Suwayomi, upserts the overlay row and returns the installed extension', async () => {
     const suwayomi = { install: vi.fn().mockResolvedValue(), getExtension: vi.fn().mockResolvedValue(avail('p1', true)), listSources: vi.fn().mockResolvedValue([]) } as never
-    const overlay = { upsertInstalled: vi.fn().mockResolvedValue(), recordSuccess: vi.fn(), recordFailure: vi.fn() } as never
+    const overlay = { upsertInstalled: vi.fn().mockResolvedValue(), recordSuccess: vi.fn(), recordFailure: vi.fn(), findHealth: vi.fn().mockResolvedValue() } as never
     const sources = { syncForExtension: vi.fn().mockResolvedValue() } as never
     const useCase = new InstallExtension.InstallExtensionUseCase(suwayomi, overlay, sources)
 
-    await useCase.execute({ pkgName: 'p1', actorId: 'admin1' })
+    const res = await useCase.execute({ pkgName: 'p1', actorId: 'admin1' })
 
     expect(suwayomi.install).toHaveBeenCalledWith('p1')
     expect(overlay.upsertInstalled).toHaveBeenCalledWith(expect.objectContaining({ pkgName: 'p1', isNsfw: true, installedByUserId: 'admin1' }))
+    expect(res).toMatchObject({ pkgName: 'p1', isInstalled: true, isHealthy: true })
   })
 
   it('records a failure when Suwayomi install throws', async () => {
@@ -105,7 +108,7 @@ describe('install-extension', () => {
       install: async () => {},
       listSources: async () => [{ id: 's1', name: 'S1', lang: 'en', isNsfw: false, isConfigurable: true }],
     } as any
-    const overlay = { upsertInstalled: async () => {}, recordSuccess: async () => {}, recordFailure: async () => {} } as any
+    const overlay = { upsertInstalled: async () => {}, recordSuccess: async () => {}, recordFailure: async () => {}, findHealth: async () => {} } as any
     const sources = { syncForExtension: async (pkgName: string, s: any[]) => {
       calls.push({ pkgName, ids: s.map(x => x.id) })
     } } as any
@@ -113,6 +116,82 @@ describe('install-extension', () => {
     const uc = new InstallExtension.InstallExtensionUseCase(suwayomi, overlay, sources)
     await uc.execute({ pkgName: 'p', actorId: 'u1' })
     expect(calls).toEqual([{ pkgName: 'p', ids: ['s1'] }])
+  })
+})
+
+describe('update-extension', () => {
+  it('updates in Suwayomi, records success, re-syncs sources and returns the post-update extension', async () => {
+    const before = { ...avail('p1', false), hasUpdate: true } // installed + outdated
+    const after = { ...avail('p1', false), hasUpdate: false } // installed + up-to-date after the update
+    const suwayomi = {
+      getExtension: vi.fn().mockResolvedValueOnce(before).mockResolvedValueOnce(after),
+      update: vi.fn().mockResolvedValue(),
+      listSources: vi.fn().mockResolvedValue([{ id: 's1', name: 'S1', lang: 'en', isNsfw: false, isConfigurable: true }]),
+    } as never
+    const overlay = {
+      recordSuccess: vi.fn().mockResolvedValue(),
+      recordFailure: vi.fn(),
+      findHealth: vi.fn().mockResolvedValue({ pkgName: 'p1', health: 'OK', consecutiveFailures: 0 }),
+    } as never
+    const sources = { syncForExtension: vi.fn().mockResolvedValue() } as never
+    const uc = new UpdateExtension.UpdateExtensionUseCase(suwayomi, overlay, sources)
+
+    const res = await uc.execute({ pkgName: 'p1' })
+
+    expect(suwayomi.update).toHaveBeenCalledWith('p1')
+    expect(overlay.recordSuccess).toHaveBeenCalledWith('p1')
+    expect(sources.syncForExtension).toHaveBeenCalledWith('p1', [expect.objectContaining({ id: 's1' })])
+    expect(res).toMatchObject({ pkgName: 'p1', hasUpdate: false, isHealthy: true })
+  })
+
+  it('records a failure with context "update" and rethrows when Suwayomi update throws', async () => {
+    const suwayomi = { getExtension: vi.fn().mockResolvedValue(avail('p1', false)), update: vi.fn().mockRejectedValue(new Error('boom')), listSources: vi.fn() } as never
+    const overlay = { recordSuccess: vi.fn(), recordFailure: vi.fn().mockResolvedValue() } as never
+    const sources = { syncForExtension: vi.fn() } as never
+    const uc = new UpdateExtension.UpdateExtensionUseCase(suwayomi, overlay, sources)
+
+    await expect(uc.execute({ pkgName: 'p1' })).rejects.toThrow('boom')
+    expect(overlay.recordFailure).toHaveBeenCalledWith(expect.objectContaining({ pkgName: 'p1', context: 'update' }))
+    expect(overlay.recordSuccess).not.toHaveBeenCalled()
+  })
+
+  it('throws and does not call update when the extension is not installed', async () => {
+    const notInstalled = { pkgName: 'p1', name: 'P1', lang: 'en', isNsfw: false, isInstalled: false, hasUpdate: true, versionName: '1' }
+    const suwayomi = { getExtension: vi.fn().mockResolvedValue(notInstalled), update: vi.fn() } as never
+    const uc = new UpdateExtension.UpdateExtensionUseCase(suwayomi, { recordFailure: vi.fn() } as never, { syncForExtension: vi.fn() } as never)
+
+    await expect(uc.execute({ pkgName: 'p1' })).rejects.toThrow('not installed')
+    expect(suwayomi.update).not.toHaveBeenCalled()
+  })
+
+  it('throws and does not call update when the extension is not found', async () => {
+    const suwayomi = { getExtension: vi.fn().mockResolvedValue(), update: vi.fn() } as never
+    const uc = new UpdateExtension.UpdateExtensionUseCase(suwayomi, { recordFailure: vi.fn() } as never, { syncForExtension: vi.fn() } as never)
+
+    await expect(uc.execute({ pkgName: 'nope' })).rejects.toThrow('not found')
+    expect(suwayomi.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('uninstall-extension', () => {
+  it('uninstalls in Suwayomi, deletes the overlay row and returns the now-uninstalled extension', async () => {
+    const suwayomi = { getExtension: vi.fn().mockResolvedValue(avail('p1', false)), uninstall: vi.fn().mockResolvedValue() } as never
+    const overlay = { deleteByPkgName: vi.fn().mockResolvedValue() } as never
+    const uc = new UninstallExtension.UninstallExtensionUseCase(suwayomi, overlay)
+
+    const res = await uc.execute({ pkgName: 'p1' })
+
+    expect(suwayomi.uninstall).toHaveBeenCalledWith('p1')
+    expect(overlay.deleteByPkgName).toHaveBeenCalledWith('p1')
+    expect(res).toMatchObject({ pkgName: 'p1', isInstalled: false })
+  })
+
+  it('throws and does not call uninstall when the extension is not found', async () => {
+    const suwayomi = { getExtension: vi.fn().mockResolvedValue(), uninstall: vi.fn() } as never
+    const uc = new UninstallExtension.UninstallExtensionUseCase(suwayomi, { deleteByPkgName: vi.fn() } as never)
+
+    await expect(uc.execute({ pkgName: 'nope' })).rejects.toThrow('not found')
+    expect(suwayomi.uninstall).not.toHaveBeenCalled()
   })
 })
 

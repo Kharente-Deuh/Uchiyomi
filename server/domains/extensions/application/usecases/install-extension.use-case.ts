@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../shared/use-case'
-import type { ExtensionSourceRepository, ExtensionsOverlayRepository, SuwayomiExtensionsPort } from '../../extension.domain'
+import type { ExtensionSourceRepository, ExtensionsOverlayRepository, ListedExtension, SuwayomiExtensionsPort } from '../../extension.domain'
+import { toListedExtension } from '../../extension.domain'
 
 export interface InstallExtensionUseCaseOpts {
   pkgName: string
   actorId: string
 }
 
-export class InstallExtensionUseCase implements IUseCase<InstallExtensionUseCaseOpts, void> {
+export class InstallExtensionUseCase implements IUseCase<InstallExtensionUseCaseOpts, ListedExtension> {
   constructor(
     private readonly suwayomi: SuwayomiExtensionsPort,
     private readonly overlay: ExtensionsOverlayRepository,
     private readonly sources: ExtensionSourceRepository,
   ) {}
 
-  async execute(opts: InstallExtensionUseCaseOpts): Promise<void> {
+  async execute(opts: InstallExtensionUseCaseOpts): Promise<ListedExtension> {
     const meta = await this.suwayomi.getExtension(opts.pkgName)
     if (!meta) {
       throw new Error(`Extension not found: ${opts.pkgName}`)
@@ -38,5 +39,10 @@ export class InstallExtensionUseCase implements IUseCase<InstallExtensionUseCase
 
       throw err
     }
+
+    // Return the now-installed state so callers don't need a refetch.
+    const health = await this.overlay.findHealth(opts.pkgName)
+
+    return toListedExtension({ ...meta, isInstalled: true }, health)
   }
 }

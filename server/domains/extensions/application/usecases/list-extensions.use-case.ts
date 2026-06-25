@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../shared/use-case'
 import type { ExtensionsOverlayRepository, ListedExtension, ListExtensionsFilters, SuwayomiExtensionsPort } from '../../extension.domain'
+import { toListedExtension } from '../../extension.domain'
 
 export interface ListExtensionsUseCaseFilters {
   pkgName?: string
@@ -45,14 +46,8 @@ export class ListExtensionsUseCase implements IUseCase<ListExtensionsUseCaseOpts
 
     const pageResult = await this.suwayomi.listExtensions({ page, pageSize, filters: effectiveFilters })
     const healthRows = await this.overlay.listHealthByPkgNames(pageResult.items.map(e => e.pkgName))
-    const healthByPkg = new Map(healthRows.map(h => [h.pkgName, h.health]))
-    const items = pageResult.items.map<ListedExtension>(e => ({
-      ...e,
-      // Health only applies to installed extensions; undefined otherwise.
-      isHealthy: e.isInstalled
-        ? (healthByPkg.has(e.pkgName) ? healthByPkg.get(e.pkgName) === 'OK' : true)
-        : undefined,
-    }))
+    const healthByPkg = new Map(healthRows.map(h => [h.pkgName, h]))
+    const items = pageResult.items.map(e => toListedExtension(e, healthByPkg.get(e.pkgName)))
 
     return { items, page, pageSize, totalCount: pageResult.totalCount }
   }

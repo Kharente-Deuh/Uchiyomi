@@ -44,6 +44,10 @@ export class GraphqlSuwayomiExtensionsAdapter implements SuwayomiExtensionsPort 
     await this.client.execute(UPDATE_EXTENSION, { id: pkgName, patch: { uninstall: true } })
   }
 
+  async update(pkgName: string): Promise<void> {
+    await this.client.execute(UPDATE_EXTENSION, { id: pkgName, patch: { update: true } })
+  }
+
   async listSources(pkgName: string): Promise<ExtensionSource[]> {
     const data = await this.client.execute(GET_EXTENSION_SOURCES, { pkgName })
 

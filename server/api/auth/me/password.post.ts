@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { authService } from '~~/server/domains/identity/auth/application/auth.service'
 import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<void> => {
   const cfg = useRuntimeConfig(event).auth
   const actor = event.context.authUser
   if (!actor) {
@@ -38,8 +38,6 @@ export default defineEventHandler(async (event) => {
       logoutOtherDevices: body.logoutOtherDevices ?? false,
       currentSessionId,
     })
-
-    return { ok: true }
   } catch (err) {
     if (err instanceof AuthError) {
       throw createError({ statusCode: 400, statusMessage: 'Invalid password' })

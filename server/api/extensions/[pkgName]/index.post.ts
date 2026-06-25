@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { ExtensionDto } from '~~/shared/dto/extensions/extension.dto'
 import type { ExtensionActionRequestDto } from '#shared/dto/extensions/extensions.request'
 import { z } from 'zod'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
+import { toExtensionDto } from '../../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
-const Body = z.object({ action: z.enum(['install', 'uninstall']) }) satisfies z.ZodType<ExtensionActionRequestDto>
+const Body = z.object({
+  action: z.enum(['install', 'uninstall', 'update']),
+}) satisfies z.ZodType<ExtensionActionRequestDto>
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<ExtensionDto> => {
   const actor = event.context.authUser
-  if (!actor || !actor.canManageExtensions) {
+  if (!actor?.canManageExtensions) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
@@ -21,12 +25,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
   }
 
-  const { installExtension, uninstallExtension } = extensionsService()
+  const { installExtension, uninstallExtension, updateExtension } = extensionsService()
+  let extension
   if (parsed.data.action === 'install') {
-    await installExtension({ pkgName, actorId: actor.id })
+    extension = await installExtension({ pkgName, actorId: actor.id })
+  } else if (parsed.data.action === 'update') {
+    extension = await updateExtension({ pkgName })
   } else {
-    await uninstallExtension({ pkgName })
+    extension = await uninstallExtension({ pkgName })
   }
 
-  return { ok: true }
+  return toExtensionDto(extension)
 })

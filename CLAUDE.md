@@ -152,6 +152,11 @@ per-layer idioms are in ADR-0013; the key wiring pattern is summarised below.
   module. The old `server/utils/<domain>.ts` wiring files were removed;
   `server/utils/` now holds **pure helpers only** (e.g. `account-name.ts`,
   `prisma.ts`).
+- **No success envelope.** Routes never return an acknowledgment wrapper such as
+  `{ ok: true }`. Return the **concerned resource** (its DTO, e.g.
+  `return toExtensionDto(ext)`) or **nothing** — `Promise<void>`, i.e. an empty 2xx —
+  when there is no resource to hand back. Success is conveyed by the HTTP status and
+  handled on the client; failures are raised with `createError`.
 - **Presenters** are pure functions named `toXDto(...)` under
   `infrastructure/transport/http/`, typed against domain models.
 - **`shared/` import rule in node-tested code:** use a **relative path** (not `~~` or

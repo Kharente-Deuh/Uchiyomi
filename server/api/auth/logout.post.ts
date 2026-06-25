@@ -2,7 +2,7 @@
 
 import { authService } from '~~/server/domains/identity/auth/application/auth.service'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<void> => {
   const session = await getUserSession(event)
   const sessionId = (session as { sessionId?: string }).sessionId
   if (sessionId) {
@@ -10,6 +10,4 @@ export default defineEventHandler(async (event) => {
   }
 
   await clearUserSession(event)
-
-  return { ok: true }
 })

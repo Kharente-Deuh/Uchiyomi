@@ -50,6 +50,17 @@ export interface ListedExtension extends ExtensionModel {
   isHealthy?: boolean
 }
 
+// Annotate a Suwayomi extension with overlay-derived health. Health only applies
+// to installed extensions (undefined otherwise); a missing health row is treated
+// as healthy. Shared by the list / install / uninstall / update use cases so the
+// isHealthy rule lives in one place.
+export function toListedExtension(ext: ExtensionModel, health?: ExtensionHealthRow): ListedExtension {
+  return {
+    ...ext,
+    isHealthy: ext.isInstalled ? (health ? health.health === 'OK' : true) : undefined,
+  }
+}
+
 export interface ExtensionSource {
   id: string
   name: string
@@ -109,6 +120,7 @@ export interface SuwayomiExtensionsPort {
   getExtension: (pkgName: string) => Promise<ExtensionModel | undefined>
   install: (pkgName: string) => Promise<void>
   uninstall: (pkgName: string) => Promise<void>
+  update: (pkgName: string) => Promise<void>
   listSources: (pkgName: string) => Promise<ExtensionSource[]>
   listSourcePreferences: (sourceId: string) => Promise<ExtensionSourcePreferenceModel[]>
   updateSourcePreference: (p: UpdatePreferenceParams) => Promise<ExtensionSourcePreferenceModel[]>

@@ -7,7 +7,7 @@ import { accountNameSchema } from '../../utils/account-name'
 
 const Body = z.object({ accountName: accountNameSchema, password: z.string() }) satisfies z.ZodType<LoginRequestDto>
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<void> => {
   const parsed = await readValidatedBody(event, Body.safeParse)
   if (!parsed.success) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
@@ -34,8 +34,6 @@ export default defineEventHandler(async (event) => {
     })
     loginRateLimiter.reset({ key })
     await setUserSession(event, { sessionId: session.id })
-
-    return { ok: true }
   } catch (err) {
     if (err instanceof AuthError) {
       throw createError({ statusCode: 401, statusMessage: 'Invalid credentials' })

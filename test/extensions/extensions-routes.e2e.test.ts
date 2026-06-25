@@ -114,6 +114,15 @@ describeIf('extensions routes e2e', async () => {
     expect(res.status).toBe(403)
   })
 
+  it('pOST /api/extensions/foo { action: update } → 403 for non-admin user', async () => {
+    const res = await fetch('/api/extensions/foo', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'cookie': nonAdminCookie },
+      body: JSON.stringify({ action: 'update' }),
+    })
+    expect(res.status).toBe(403)
+  })
+
   // ----------------------------------------------------------------
   // Authenticated happy-path assertions — gated on SUWAYOMI_URL.
   // When SUWAYOMI_URL is unset, these tests are individually skipped
