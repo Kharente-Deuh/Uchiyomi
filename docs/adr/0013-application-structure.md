@@ -4,6 +4,7 @@
 - Date: 2026-06-20
 - Revised: 2026-06-21 (server layer + frontend data-access layer — see "Revision" below)
 - Revised: 2026-06-25 (composition root moved into domain; use-case barrel; shared import rule — see "Revision" below)
+- Revised: 2026-06-25 (application surface is a per-domain service factory — see "Revision" below)
 
 ## Context
 
@@ -96,12 +97,19 @@ Every grouping is a **flat ES module consumed via `import * as`** (no TS
   `security`, …); the tech folder names the implementation (`prisma`, `graphql`,
   `scrypt`, `memory`). Mappers (`*-repository.mapper.ts`, `toDomain`) build
   domain Models from raw rows/responses.
-- **Composition root** (`application/index.ts` inside the domain): reads
-  `runtimeConfig`, instantiates the adapters + use cases, and exports the
-  ready-to-call singletons the routes consume. May also export shared
-  infrastructure singletons and small domain helpers. The old
-  `server/utils/<domain>.ts` wiring files were removed; `server/utils/` now
-  holds **pure helpers only** (e.g. `account-name.ts`, `prisma.ts`).
+- **Application surface** (`application/<domain>.service.ts` inside the domain):
+  reads `runtimeConfig`, instantiates the adapters at module scope, and exposes the
+  use cases as a **service factory** — an exported `XService` interface plus an
+  `xService()` function returning one thin method per use case (each method news-up
+  its use case and calls `.execute`). Routes call `xService().method(opts)`; they
+  never touch use-case classes or `.execute` directly. Cross-domain **shared
+  infrastructure singletons** (repositories such as `userRepository`,
+  `sessionRepository`) live in a dependency-free `application/index.ts` so several
+  service factories can share them without importing one another; stateful infra
+  scoped to a single domain (e.g. `loginRateLimiter`) is exported from that domain's
+  service module. The old `server/utils/<domain>.ts` wiring files were removed;
+  `server/utils/` now holds **pure helpers only** (e.g. `account-name.ts`,
+  `prisma.ts`). See the "service-factory" revision below.
 - **DTOs live in the Nuxt `shared/` layer** (`shared/dto/...`) so server and
   client share one wire contract (the client cannot import from `server/`).
   Routes map domain Models to DTOs via a server-side presenter
@@ -120,7 +128,8 @@ server/
 │   ├── application/
 │   │   ├── usecases/<name>.use-case.ts           # class XUseCase implements IUseCase<XUseCaseOpts, XUseCaseResult>
 │   │   ├── usecases/index.ts                     # barrel: export * from './x.use-case'
-│   │   └── index.ts                              # composition root: wires + exports pre-built singletons
+│   │   ├── <domain>.service.ts                    # service factory: xService() exposing one method per use case
+│   │   └── index.ts                              # OPTIONAL: dependency-free shared infra singletons (e.g. userRepository)
 │   └── infrastructure/<category>/<tech>/         # class adapters implementing the ports + mappers
 ├── middleware/ plugins/                          # Nitro cross-cutting (e.g. session middleware)
 └── utils/                                        # pure helpers only (account-name.ts, prisma.ts, …)
@@ -318,9 +327,11 @@ composition root lives and how the barrel is structured.
   `now: () => Date` clock for testability) are injected there rather than via
   `runtimeConfig` in the use case itself.
 
-- **Routes consume singletons.** `server/api/**` handlers import the pre-wired
-  singleton directly from `~~/server/domains/<domain>/application` and call
-  `.execute(opts)`. No wiring inside the route handler.
+- **Routes consume the application surface.** `server/api/**` handlers import from
+  `~~/server/domains/<domain>/application` and call into the application layer; no
+  wiring inside the route handler. *(Superseded same-day: this revision exported
+  pre-wired use-case singletons consumed via `.execute`; the service-factory
+  revision below replaced that with `xService().method(opts)`.)*
 
 - **Presenters are pure functions** named `toXDto(...)` located under
   `infrastructure/transport/http/`. They receive a domain Model and return the
@@ -334,3 +345,38 @@ composition root lives and how the barrel is structured.
   `node`-project tests.
 
 The Server section and directory tree above have been updated to reflect this.
+
+## Revision — 2026-06-25 (service-factory application surface)
+
+Immediately after the composition-root revision above landed, exposing every use
+case as a bare pre-wired singleton (`export const login = new LoginUseCase(...)`,
+routes calling `login.execute(...)`) proved leaky: routes coupled to use-case
+classes and their `.execute` shape, the `identity/auth` composition root bundled
+use cases from three sub-domains (`auth`, `users`, `sessions`) behind one import,
+and there was no stable, mockable seam per domain. The extensions domain (M4.1a)
+introduced a **service factory** instead, now the standard for every domain:
+
+- **One `application/<domain>.service.ts` per domain.** It exports an `XService`
+  **interface** and a factory `xService(): XService`. The factory returns an object
+  with **one thin method per use case**; each method instantiates its use case
+  (dependencies wired once at module scope) and calls `.execute`. Adapters and
+  `runtimeConfig` reads stay module-private inside the service file.
+- **Callers use `xService().method(opts)`.** Routes, middleware and plugins import
+  from `…/application/<domain>.service`; they never import use-case classes nor call
+  `.execute`. The service interface is the domain's only application-layer surface.
+- **One service per domain.** The former cross-domain `auth` composition root was
+  split into `authService` (`setupFirstAdmin`/`login`/`logout`/`changePassword`),
+  `usersService` (`createUser`/`setUserStatus`/`updateUserName`/
+  `updateNsfwPreference`/`updateUserCapabilities`) and `sessionsService`
+  (`getCurrentUser`), each in its own sub-domain; `catalogue` and `suwayomi-settings`
+  got their factories too.
+- **Shared infra stays out of the cycle.** Repositories reused across services
+  (`userRepository`, `sessionRepository`) live in a dependency-free
+  `application/index.ts` that imports only its Prisma adapter, so service modules can
+  share them without importing one another (which would cycle
+  `users.service ↔ sessions.service`). Stateful infra local to one domain
+  (`loginRateLimiter`) is exported from that domain's service module.
+
+This is now the **required** pattern: a new domain exposes its use cases through a
+`<domain>.service.ts` factory; `application/index.ts` exists only when shared infra
+singletons must cross domain boundaries.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { SetupRequestDto } from '#shared/dto/identity/auth.request'
 import { z } from 'zod'
-import { setupFirstAdmin } from '~~/server/domains/identity/auth/application'
+import { authService } from '~~/server/domains/identity/auth/application/auth.service'
 import { sessionRepository } from '~~/server/domains/identity/sessions/application'
 import { newSessionExpiry } from '~~/server/domains/identity/sessions/session.domain'
 import { Prisma } from '../../../prisma/generated/client'
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
 
   const body = parsed.data
   try {
-    const admin = await setupFirstAdmin.execute(body)
+    const admin = await authService().setupFirstAdmin(body)
     // Auto-login the new admin.
     const session = await sessionRepository.create({
       userId: admin.id,

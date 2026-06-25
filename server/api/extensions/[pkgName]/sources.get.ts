@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { listExtensionSources } from '~~/server/domains/extensions/application'
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { toSourceDto } from '../../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 export default defineEventHandler(async (event) => {
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing pkgName' })
   }
 
-  const sources = await listExtensionSources.execute({
+  const sources = await extensionsService().listExtensionSources({
     pkgName,
     isAdmin: !!actor.canManageExtensions,
     viewerCanSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,

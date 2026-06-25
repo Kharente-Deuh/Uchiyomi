@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { UpdateUserRequestDto } from '#shared/dto/identity/admin.request'
 import { z } from 'zod'
-import { updateUserCapabilities, updateUserName } from '~~/server/domains/identity/auth/application'
+import { usersService } from '~~/server/domains/identity/users/application/users.service'
 import { Prisma } from '../../../../prisma/generated/client'
 import { toUserDto } from '../../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 import { displayNameSchema } from '../../../utils/display-name'
@@ -38,11 +38,11 @@ export default defineEventHandler(async (event) => {
     let user
     const { displayName, ...caps } = parsed.data
     if (displayName !== undefined) {
-      user = await updateUserName.execute({ id, displayName })
+      user = await usersService().updateUserName({ id, displayName })
     }
 
     if (caps.canManageExtensions !== undefined || caps.canDownload !== undefined || caps.allowNsfw !== undefined) {
-      user = await updateUserCapabilities.execute({ id, ...caps })
+      user = await usersService().updateUserCapabilities({ id, ...caps })
     }
 
     return { user: toUserDto(user!) }

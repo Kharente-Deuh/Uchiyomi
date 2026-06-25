@@ -1,0 +1,96 @@
+import type { ExtensionSourcePreferenceModel, StoredExtensionSource, UpdatePreferenceParams } from '../extension.domain'
+import type { GetExtensionHealthUseCaseOpts, GetExtensionHealthUseCaseResult, InstallExtensionUseCaseOpts, ListExtensionSourcesUseCaseOpts, ListExtensionsUseCaseOpts, ListExtensionsUseCaseResult, ListSourcePreferencesUseCaseOpts, SetSourceEnabledUseCaseOpts, UninstallExtensionUseCaseOpts } from './usecases'
+import { PrismaExtensionRepository } from '../infrastructure/persistence/prisma/prisma-extension.repository'
+import { PrismaSourceRepository } from '../infrastructure/persistence/prisma/prisma-source.repository'
+import { GraphqlSuwayomiExtensionsAdapter } from '../infrastructure/transport/graphql/graphql-suwayomi-extensions.adapter'
+import { GetExtensionHealthUseCase, InstallExtensionUseCase, ListExtensionSourcesUseCase, ListExtensionsUseCase, ListSourcePreferencesUseCase, SetSourceEnabledUseCase, UninstallExtensionUseCase, UpdateSourcePreferenceUseCase } from './usecases'
+
+export interface ExtensionsService {
+  listExtensions: (opts: ListExtensionsUseCaseOpts) => Promise<ListExtensionsUseCaseResult>
+  installExtension: (opts: InstallExtensionUseCaseOpts) => Promise<void>
+  uninstallExtension: (opts: UninstallExtensionUseCaseOpts) => Promise<void>
+  listSourcePreferences: (opts: ListSourcePreferencesUseCaseOpts) => Promise<ExtensionSourcePreferenceModel[]>
+  updateSourcePreference: (opts: UpdatePreferenceParams) => Promise<ExtensionSourcePreferenceModel[]>
+  getExtensionHealth: (opts: GetExtensionHealthUseCaseOpts) => Promise<GetExtensionHealthUseCaseResult | undefined>
+  listExtensionSources: (opts: ListExtensionSourcesUseCaseOpts) => Promise<StoredExtensionSource[]>
+  setSourceEnabled: (opts: SetSourceEnabledUseCaseOpts) => Promise<StoredExtensionSource>
+  resolveExtensionIconUrl: (pkgName: string, opts: { isAdmin: boolean, viewerCanSeeNsfw: boolean }) => Promise<string | undefined>
+}
+
+const { suwayomiUrl } = useRuntimeConfig()
+const suwayomiClient = createSuwayomiClient({ endpoint: `${suwayomiUrl}/api/graphql` })
+const suwayomiExtensionsPort = new GraphqlSuwayomiExtensionsAdapter(suwayomiClient)
+const cachedAvailable = defineCachedFunction(
+  () => suwayomiExtensionsPort.listAll(),
+  { maxAge: 60, name: 'suwayomi-catalogue', getKey: () => 'all' },
+)
+
+const overlay = new PrismaExtensionRepository(prisma)
+const sourceOverlay = new PrismaSourceRepository(prisma)
+
+function listExtensions(opts: ListExtensionsUseCaseOpts): Promise<ListExtensionsUseCaseResult> {
+  return new ListExtensionsUseCase(suwayomiExtensionsPort, overlay).execute(opts)
+}
+
+function installExtension(opts: InstallExtensionUseCaseOpts): Promise<void> {
+  return new InstallExtensionUseCase(suwayomiExtensionsPort, overlay, sourceOverlay).execute(opts)
+}
+
+function uninstallExtension(opts: UninstallExtensionUseCaseOpts): Promise<void> {
+  return new UninstallExtensionUseCase(suwayomiExtensionsPort, overlay).execute(opts)
+}
+
+function listSourcePreferences(opts: ListSourcePreferencesUseCaseOpts): Promise<ExtensionSourcePreferenceModel[]> {
+  return new ListSourcePreferencesUseCase(suwayomiExtensionsPort).execute(opts)
+}
+
+function updateSourcePreference(opts: UpdatePreferenceParams): Promise<ExtensionSourcePreferenceModel[]> {
+  return new UpdateSourcePreferenceUseCase(suwayomiExtensionsPort).execute(opts)
+}
+
+function getExtensionHealth(opts: GetExtensionHealthUseCaseOpts): Promise<GetExtensionHealthUseCaseResult | undefined> {
+  return new GetExtensionHealthUseCase(overlay).execute(opts)
+}
+
+function listExtensionSources(opts: ListExtensionSourcesUseCaseOpts): Promise<StoredExtensionSource[]> {
+  return new ListExtensionSourcesUseCase(sourceOverlay).execute(opts)
+}
+
+function setSourceEnabled(opts: SetSourceEnabledUseCaseOpts): Promise<StoredExtensionSource> {
+  return new SetSourceEnabledUseCase(sourceOverlay).execute(opts)
+}
+
+async function resolveExtensionIconUrl(
+  pkgName: string,
+  opts: { isAdmin: boolean, viewerCanSeeNsfw: boolean },
+): Promise<string | undefined> {
+  const available = await cachedAvailable()
+  const ext = available.find(e => e.pkgName === pkgName)
+  if (!ext || !ext.iconUrl) {
+    return
+  }
+
+  if (!opts.isAdmin && !ext.isInstalled) {
+    return
+  }
+
+  if (!opts.viewerCanSeeNsfw && ext.isNsfw) {
+    return
+  }
+
+  return ext.iconUrl
+}
+
+export function extensionsService(): ExtensionsService {
+  return {
+    resolveExtensionIconUrl,
+    listExtensions,
+    installExtension,
+    uninstallExtension,
+    listSourcePreferences,
+    updateSourcePreference,
+    getExtensionHealth,
+    listExtensionSources,
+    setSourceEnabled,
+  }
+}

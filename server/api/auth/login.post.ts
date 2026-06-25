@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { LoginRequestDto } from '#shared/dto/identity/auth.request'
 import { z } from 'zod'
-import { login, loginRateLimiter } from '~~/server/domains/identity/auth/application'
+import { authService, loginRateLimiter } from '~~/server/domains/identity/auth/application/auth.service'
 import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
 import { accountNameSchema } from '../../utils/account-name'
 
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const session = await login.execute({
+    const session = await authService().login({
       accountName: body.accountName,
       password: body.password,
       userAgent: getHeader(event, 'user-agent') ?? undefined,

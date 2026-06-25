@@ -125,7 +125,7 @@ by domain with a ports-and-adapters layering (domain / application /
 infrastructure); Prisma and the Suwayomi client are infrastructure concerns. Full
 per-layer idioms are in ADR-0013; the key wiring pattern is summarised below.
 
-### Use-case classes + composition root (ADR-0013)
+### Use-case classes + service factory (ADR-0013)
 
 - **Use cases** are classes implementing `IUseCase<Opts, Result>` (interface in
   `server/shared/use-case.ts`), each in its own `application/usecases/<name>.use-case.ts`
@@ -135,14 +135,22 @@ per-layer idioms are in ADR-0013; the key wiring pattern is summarised below.
   opts type `XUseCaseOpts` (or `…Params`), result type `XUseCaseResult`.
 - **Barrel** `application/usecases/index.ts` re-exports every use-case module
   (`export * from './x.use-case'`).
-- **Composition root** `application/index.ts` (one per domain): reads
-  `useRuntimeConfig()`, instantiates all infrastructure adapters and use cases, and
-  exports them as pre-wired singletons. It may also export shared infrastructure
-  singletons (e.g. `userRepository`) and small domain helpers.
-- **Routes** (`server/api/**`) import the pre-wired singletons from
-  `~~/server/domains/<domain>/application` and call `.execute(...)`. They do not wire
-  dependencies themselves. The old `server/utils/<domain>.ts` wiring files were
-  removed; `server/utils/` now holds **pure helpers only** (e.g. `account-name.ts`,
+- **Service factory** `application/<domain>.service.ts` (one per domain): reads
+  `useRuntimeConfig()`, instantiates all infrastructure adapters at module scope, and
+  exposes the use cases through an exported `XService` interface plus an
+  `xService(): XService` factory whose methods are one-per-use-case thin wrappers
+  (each news-up its use case and calls `.execute`). This service interface is the
+  domain's only application-layer surface.
+- **Routes** (`server/api/**`), middleware and plugins import the factory from
+  `~~/server/domains/<domain>/application/<domain>.service` and call
+  `xService().method(...)`. They never import use-case classes nor call `.execute`,
+  and do not wire dependencies themselves.
+- **Shared infrastructure singletons** reused across domains (e.g. `userRepository`,
+  `sessionRepository`) live in a dependency-free `application/index.ts` so service
+  factories can share them without importing one another; stateful infra local to a
+  single domain (e.g. `loginRateLimiter`) is exported from that domain's service
+  module. The old `server/utils/<domain>.ts` wiring files were removed;
+  `server/utils/` now holds **pure helpers only** (e.g. `account-name.ts`,
   `prisma.ts`).
 - **Presenters** are pure functions named `toXDto(...)` under
   `infrastructure/transport/http/`, typed against domain models.

@@ -2,7 +2,7 @@ import type { UserModel } from '~~/server/domains/identity/users/user.domain'
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { UpdateMeRequestDto } from '#shared/dto/identity/me.request'
 import { z } from 'zod'
-import { updateNsfwPreference, updateUserName } from '~~/server/domains/identity/auth/application'
+import { usersService } from '~~/server/domains/identity/users/application/users.service'
 import { toUserDto } from '../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 import { displayNameSchema } from '../../utils/display-name'
 
@@ -29,11 +29,11 @@ export default defineEventHandler(async (event) => {
   // reassigns `user` with a fresh DB-backed result.
   let user: Omit<UserModel, 'passwordHash'> = actor
   if (parsed.data.displayName !== undefined) {
-    user = await updateUserName.execute({ id: actor.id, displayName: parsed.data.displayName })
+    user = await usersService().updateUserName({ id: actor.id, displayName: parsed.data.displayName })
   }
 
   if (parsed.data.showNsfw !== undefined) {
-    user = await updateNsfwPreference.execute({ id: actor.id, showNsfw: parsed.data.showNsfw })
+    user = await usersService().updateNsfwPreference({ id: actor.id, showNsfw: parsed.data.showNsfw })
   }
 
   return { user: toUserDto(user) }

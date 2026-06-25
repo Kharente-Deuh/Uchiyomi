@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ExtensionActionRequestDto } from '#shared/dto/extensions/extensions.request'
 import { z } from 'zod'
-import { installExtension, uninstallExtension } from '~~/server/domains/extensions/application'
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 
 const Body = z.object({ action: z.enum(['install', 'uninstall']) }) satisfies z.ZodType<ExtensionActionRequestDto>
 
@@ -21,10 +21,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
   }
 
+  const { installExtension, uninstallExtension } = extensionsService()
   if (parsed.data.action === 'install') {
-    await installExtension.execute({ pkgName, actorId: actor.id })
+    await installExtension({ pkgName, actorId: actor.id })
   } else {
-    await uninstallExtension.execute({ pkgName })
+    await uninstallExtension({ pkgName })
   }
 
   return { ok: true }

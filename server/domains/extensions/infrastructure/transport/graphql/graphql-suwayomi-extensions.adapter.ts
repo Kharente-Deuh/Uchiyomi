@@ -64,17 +64,17 @@ export class GraphqlSuwayomiExtensionsAdapter implements SuwayomiExtensionsPort 
       throw new Error(`No preference at position ${p.position}`)
     }
 
-    const data = await this.client.execute(UPDATE_SOURCE_PREFERENCE, {
+    const source = await this.client.execute(UPDATE_SOURCE_PREFERENCE, {
       source: p.sourceId,
       change: toChangeInput(target.type, p),
     })
 
     // updateSourcePreference returns null if the source is not found.
-    if (!data.updateSourcePreference) {
+    if (!source.updateSourcePreference) {
       throw new Error(`updateSourcePreference returned null for source ${p.sourceId}`)
     }
 
-    return data.updateSourcePreference.preferences.map((n, i) => preferenceToDomain(n, i))
+    return source.updateSourcePreference.preferences.map((n, i) => preferenceToDomain(n, i))
   }
 }
 

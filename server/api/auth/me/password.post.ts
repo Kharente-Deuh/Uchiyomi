@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ChangePasswordRequestDto } from '#shared/dto/identity/me.request'
 import { z } from 'zod'
-import { changePassword } from '~~/server/domains/identity/auth/application'
+import { authService } from '~~/server/domains/identity/auth/application/auth.service'
 import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
 
 export default defineEventHandler(async (event) => {
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
   const body = parsed.data
   try {
-    await changePassword.execute({
+    await authService().changePassword({
       userId: actor.id,
       currentPassword: body.currentPassword,
       newPassword: body.newPassword,

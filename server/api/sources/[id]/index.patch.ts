@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { UpdateSourceRequestDto } from '#shared/dto/extensions/extensions.request'
 import { z } from 'zod'
-import { setSourceEnabled } from '~~/server/domains/extensions/application'
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { toSourceDto } from '../../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 const Body = z.object({ isEnabled: z.boolean() }) satisfies z.ZodType<UpdateSourceRequestDto>
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const source = await setSourceEnabled.execute({ sourceId: id, isEnabled: parsed.data.isEnabled })
+    const source = await extensionsService().setSourceEnabled({ sourceId: id, isEnabled: parsed.data.isEnabled })
 
     return { source: toSourceDto(source) }
   } catch (err) {

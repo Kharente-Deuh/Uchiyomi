@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { z } from 'zod'
-import { listExtensions } from '~~/server/domains/extensions/application'
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { toExtensionListResponseDto } from '../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 // `?flag=true|false` arrives as a string; coerce to an optional boolean.
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
 
   const { page, pageSize, search, isInstalled, hasUpdate, nsfw } = parsed.data
 
-  const result = await listExtensions.execute({
+  const result = await extensionsService().listExtensions({
     isAdmin: !!actor.canManageExtensions,
     viewerCanSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
     page,

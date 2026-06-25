@@ -1,5 +1,5 @@
-import { getExtensionHealth, listExtensions } from '~~/server/domains/extensions/application'
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { toExtensionDto, toHealthDto } from '../../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 export default defineEventHandler(async (event) => {
@@ -13,7 +13,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing pkgName' })
   }
 
-  const { items } = await listExtensions.execute({
+  const { getExtensionHealth, listExtensions } = extensionsService()
+  const { items } = await listExtensions({
     isAdmin: !!actor.canManageExtensions,
     viewerCanSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
     page: 1,
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Extension not available' })
   }
 
-  const healthResult = await getExtensionHealth.execute({ pkgName })
+  const healthResult = await getExtensionHealth({ pkgName })
 
   return {
     extension: toExtensionDto(extension),

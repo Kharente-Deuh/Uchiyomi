@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { UpdateSourcePreferenceRequestDto } from '#shared/dto/extensions/extensions.request'
 import { z } from 'zod'
-import { updateSourcePreference } from '~~/server/domains/extensions/application'
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { toPreferenceDto } from '../../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 const Body = z.object({
@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
   }
 
-  const prefs = await updateSourcePreference.execute({
+  const prefs = await extensionsService().updateSourcePreference({
     sourceId: id,
     position: parsed.data.position,
     booleanValue: parsed.data.booleanValue,

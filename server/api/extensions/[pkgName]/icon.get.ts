@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Buffer } from 'node:buffer'
-import { resolveExtensionIconUrl } from '~~/server/domains/extensions/application'
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 
 // Proxies an extension icon from the internal Suwayomi server (ADR-0001: Suwayomi
 // is never exposed to clients). Suwayomi's `/api/v1/extension/icon/<apk>` route
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing pkgName' })
   }
 
-  const iconPath = await resolveExtensionIconUrl(pkgName, {
+  const iconPath = await extensionsService().resolveExtensionIconUrl(pkgName, {
     isAdmin: !!actor.canManageExtensions,
     viewerCanSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
   })

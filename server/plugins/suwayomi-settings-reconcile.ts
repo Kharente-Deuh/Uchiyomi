@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { reconcileSuwayomiSettings } from '../domains/suwayomi-settings/application'
+import { suwayomiSettingsService } from '../domains/suwayomi-settings/application/suwayomi-settings.service'
 
 // Reconcile the Suwayomi settings Uchiyomi depends on at boot (ADR-0012):
 // ENFORCE invariants (auto-download off) and SEED_IF_EMPTY the default repo.
@@ -12,7 +12,7 @@ export default defineNitroPlugin(async () => {
   }
 
   try {
-    const report = await reconcileSuwayomiSettings.execute()
+    const report = await suwayomiSettingsService().reconcile()
     // Only log when something actually changed; a healthy steady-state boot stays quiet.
     if (report.changed) {
       console.warn('[suwayomi-settings] reconciled:', report.changes.join('; '))

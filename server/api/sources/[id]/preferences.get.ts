@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { listSourcePreferences } from '~~/server/domains/extensions/application'
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { toPreferenceDto } from '../../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 export default defineEventHandler(async (event) => {
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing id' })
   }
 
-  const prefs = await listSourcePreferences.execute({ sourceId: id })
+  const prefs = await extensionsService().listSourcePreferences({ sourceId: id })
 
   return { preferences: prefs.map(p => toPreferenceDto(p)) }
 })
