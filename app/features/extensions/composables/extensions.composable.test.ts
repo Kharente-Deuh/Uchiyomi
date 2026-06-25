@@ -58,9 +58,13 @@ function useI18nMock(): { t: (key: string) => string } {
   return { t: (key: string) => key }
 }
 
+function displayNoMobileMock(): { mobile: { value: false } } {
+  return { mobile: { value: false } }
+}
+
 mockNuxtImport('useToast', () => useToastMock)
 mockNuxtImport('useI18n', () => useI18nMock)
-mockNuxtImport('useDisplay', () => () => ({ mobile: { value: false } }))
+mockNuxtImport('useDisplay', () => displayNoMobileMock)
 
 const { useExtensions } = await import('~/features/extensions/composables/extensions.composable')
 const { useExtensionsStore } = await import('~/features/extensions/store/extensions.store')
