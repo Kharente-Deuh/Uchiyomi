@@ -17,16 +17,21 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing pkgName' })
   }
 
-  const iconPath = await extensionsService().resolveExtensionIconUrl(pkgName, {
-    isAdmin: !!actor.canManageExtensions,
-    viewerCanSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
-  })
-  if (!iconPath) {
-    throw createError({ statusCode: 404, statusMessage: 'Icon not found' })
+  const extension = await extensionsService().getExtensionByPkgName({ pkgName })
+  if (!extension) {
+    throw createError({ statusCode: 404, statusMessage: 'Extension not found' })
+  }
+
+  if (!actor.canManageExtensions && !extension.isInstalled) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  }
+
+  if (!actor.allowNsfw && extension.isNsfw) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
   const { suwayomiUrl } = useRuntimeConfig(event)
-  const upstream = await fetch(`${suwayomiUrl}${iconPath}`)
+  const upstream = await fetch(`${suwayomiUrl}${extension.iconUrl}`)
   if (!upstream.ok) {
     throw createError({ statusCode: 502, statusMessage: 'Failed to fetch icon from Suwayomi' })
   }
