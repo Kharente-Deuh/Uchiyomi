@@ -185,7 +185,10 @@
   "actions": {
     "cancel": "Cancel",
     "save": "Save",
-    "continue": "Continue"
+    "continue": "Continue",
+    "uninstall": "Uninstall",
+    "install": "Install",
+    "update": "Update"
   },
   "browse": {
     "title": "Browse",

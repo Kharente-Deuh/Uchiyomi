@@ -15,14 +15,14 @@ const { mobile } = useDisplay()
 </script>
 
 <template>
-  <div :class="!mobile ? 'pa-6' : ''">
+  <div :class="!mobile ? 'pa-6' : ''" class="position-relative">
     <VProgressLinear
       v-if="loading"
       indeterminate
       class="position-absolute bottom-0 left-0 w-100"
     />
     <div
-      class="d-flex flex-column ga-3 position-relative"
+      class="d-flex flex-column ga-3"
       :class="mobile ? 'px-6 py-3' : 'mb-8'"
     >
       <div class="d-flex align-center ga-4">

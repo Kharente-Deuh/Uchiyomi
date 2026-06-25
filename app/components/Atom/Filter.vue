@@ -37,7 +37,7 @@ const borderClass = computed(() => {
 <template>
   <VChip
     :disabled
-    :size="mobile ? 'x-small' : undefined"
+    :size="mobile ? 'small' : undefined"
     variant="tonal"
     :color
     class="border-thin"

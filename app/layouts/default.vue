@@ -78,15 +78,16 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
     isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/settings'),
   },
 ])
+
+const { bottomLayout, leftLayout } = useLayoutPadding()
 </script>
 
 <template>
   <VApp>
     <VMain
       :style="{
-        ...(mobile
-          ? { '--v-layout-bottom': 'var(--bottom-navigation-height)' }
-          : { '--v-layout-left': 'var(--navigation-drawer-width)' }),
+        '--v-layout-bottom': bottomLayout,
+        '--v-layout-left': leftLayout,
       }"
     >
       <OrganismNavigationDrawer

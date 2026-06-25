@@ -77,7 +77,10 @@ ports-and-adapters (hexagonal) slice. Nitro's file-based routes (`server/api/`)
 are the **interface layer** and stay thin: validate input, resolve the session,
 call a use case, map the result/errors. There is no controller class — the
 route-handler file *is* the controller (path = route); business logic never
-lives in `server/api/`.
+lives in `server/api/`. A route returns the **concerned resource** (its DTO via a
+presenter) or **nothing** (`Promise<void>`, an empty 2xx) — never a success-
+acknowledgment envelope such as `{ ok: true }`. Success is the HTTP status (handled
+client-side); failures are raised with `createError`.
 
 Every grouping is a **flat ES module consumed via `import * as`** (no TS
 `namespace` keyword). Per-layer conventions:

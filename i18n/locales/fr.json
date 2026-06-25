@@ -185,7 +185,10 @@
   "actions": {
     "cancel": "Annuler",
     "save": "Sauvegarder",
-    "continue": "Continuer"
+    "continue": "Continuer",
+    "install": "Installer",
+    "update": "Mise à jour",
+    "uninstall": "Désinstaller"
   },
   "browse": {
     "title": "Parcourir",

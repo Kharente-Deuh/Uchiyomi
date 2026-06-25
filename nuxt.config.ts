@@ -170,7 +170,7 @@ export default defineNuxtConfig({
   // Pinia auto-import for the per-feature stores
   // (`features/<Feature>/store/*.store.ts`), exposing `useXStore()` app-wide.
   pinia: {
-    storesDirs: ['features/**/store'],
+    storesDirs: ['features/**/store', 'stores/**'],
   },
 
   pwa,
