@@ -35,14 +35,14 @@ const actionBtn = computed((): ActionBtn | undefined => {
 
   if (props.extension.hasUpdate) {
     return {
-      icon: 'fa6-solid:exclamation',
+      icon: 'fa6-solid:rotate-right',
       color: 'warning',
       tooltip: t('actions.update'),
       action: () => emits('update'),
     }
   }
 
-  if (mobile) {
+  if (mobile.value) {
     return
   }
 
@@ -58,9 +58,8 @@ const actionBtn = computed((): ActionBtn | undefined => {
 <template>
   <AtomLink :to="extension.isInstalled ? `/extensions/${extension.pkgName}` : undefined">
     <div
-      class="d-flex justify-space-between ga-2 pa-2"
+      class="d-flex justify-space-between ga-2 pa-2 bg-surface"
       :class="{
-        'bg-surface': !mobile,
         'border-thin': !mobile,
         'border-b-thin': mobile,
         'border-t-thin': firstItem,
