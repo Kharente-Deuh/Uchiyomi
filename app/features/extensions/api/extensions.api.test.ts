@@ -71,10 +71,11 @@ it('extensionAction posts to /api/extensions/:pkgName', async () => {
   expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p', { method: 'POST', body: { action: 'install' } })
 })
 
-it('extensionAction returns success on install', async () => {
-  apiFetch.mockResolvedValueOnce({})
+it('extensionAction returns the updated extension on success', async () => {
+  const extension = { pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0' }
+  apiFetch.mockResolvedValueOnce(extension)
   const res = await createExtensionsApi().extensionAction('pkg.name', 'install')
-  expect(res).toEqual({ success: true, data: undefined })
+  expect(res).toEqual({ success: true, data: extension })
 })
 
 it('extensionAction maps fetch errors to ApiError', async () => {

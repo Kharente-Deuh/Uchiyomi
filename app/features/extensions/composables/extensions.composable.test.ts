@@ -60,6 +60,7 @@ function useI18nMock(): { t: (key: string) => string } {
 
 mockNuxtImport('useToast', () => useToastMock)
 mockNuxtImport('useI18n', () => useI18nMock)
+mockNuxtImport('useDisplay', () => () => ({ mobile: { value: false } }))
 
 const { useExtensions } = await import('~/features/extensions/composables/extensions.composable')
 const { useExtensionsStore } = await import('~/features/extensions/store/extensions.store')
@@ -71,6 +72,9 @@ describe('useExtensions', () => {
     vi.clearAllMocks()
     queryStub.data.value = undefined
     queryStub.isLoading.value = false
+    // Filter mutations trigger the internal watch → fetchExtensions; give it a
+    // benign default so unrelated tests don't crash on an unmocked response.
+    mockApi.listExtensions.mockResolvedValue({ success: true, data: { items: [], totalCount: 0 } })
   })
 
   // --- reactive filters ---
@@ -132,7 +136,7 @@ describe('useExtensions', () => {
   // --- install ---
 
   it('install calls extensionAction with install', async () => {
-    mockApi.extensionAction.mockResolvedValue({ success: true, data: undefined })
+    mockApi.extensionAction.mockResolvedValue({ success: true, data: { pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0' } })
     const store = useExtensionsStore()
     store.setExtensions([{ pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: false, hasUpdate: false, versionName: '1.0' }])
     const { install } = useExtensions()
@@ -141,7 +145,7 @@ describe('useExtensions', () => {
   })
 
   it('install marks the extension as installed in the store on success', async () => {
-    mockApi.extensionAction.mockResolvedValue({ success: true, data: undefined })
+    mockApi.extensionAction.mockResolvedValue({ success: true, data: { pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0' } })
     const store = useExtensionsStore()
     store.setExtensions([{ pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: false, hasUpdate: false, versionName: '1.0' }])
     const { install } = useExtensions()
@@ -150,7 +154,7 @@ describe('useExtensions', () => {
   })
 
   it('install removes pkgName from installExtensionsLoading after completion', async () => {
-    mockApi.extensionAction.mockResolvedValue({ success: true, data: undefined })
+    mockApi.extensionAction.mockResolvedValue({ success: true, data: { pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0' } })
     const { install, installExtensionsLoading } = useExtensions()
     await install('pkg.name')
     expect(installExtensionsLoading.value).not.toContain('pkg.name')
@@ -175,7 +179,7 @@ describe('useExtensions', () => {
   // --- uninstall ---
 
   it('uninstall calls extensionAction with uninstall', async () => {
-    mockApi.extensionAction.mockResolvedValue({ success: true, data: undefined })
+    mockApi.extensionAction.mockResolvedValue({ success: true, data: { pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: false, hasUpdate: false, versionName: '1.0' } })
     const store = useExtensionsStore()
     store.setExtensions([{ pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0' }])
     const { uninstall } = useExtensions()
@@ -184,7 +188,7 @@ describe('useExtensions', () => {
   })
 
   it('uninstall marks the extension as not installed in the store on success', async () => {
-    mockApi.extensionAction.mockResolvedValue({ success: true, data: undefined })
+    mockApi.extensionAction.mockResolvedValue({ success: true, data: { pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: false, hasUpdate: false, versionName: '1.0' } })
     const store = useExtensionsStore()
     store.setExtensions([{ pkgName: 'pkg.name', name: 'P', lang: 'en', isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0' }])
     const { uninstall } = useExtensions()
