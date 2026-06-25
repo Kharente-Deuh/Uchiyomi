@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../shared/use-case'
-import type * as Catalogue from '../../catalogue.domain'
-import type * as Source from '../../source.domain'
+import type { CatalogueRepository } from '../../catalogue.domain'
+import type { SourceModel } from '../../source.domain'
 
-export class UseCase implements IUseCase<void, Source.Model[]> {
-  constructor(private readonly catalogueRepository: Catalogue.Repository) {}
+export class ListSourcesUseCase implements IUseCase<void, SourceModel[]> {
+  constructor(private readonly catalogueRepository: CatalogueRepository) {}
 
-  execute(): Promise<Source.Model[]> {
+  execute(): Promise<SourceModel[]> {
     return this.catalogueRepository.listSources()
   }
 }

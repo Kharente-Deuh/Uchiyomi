@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Flat ESM module, consumed via `import * as Session`.
-export type ModelProps = Omit<Model, 'shouldRefresh'>
+export type SessionModelProps = Omit<SessionModel, 'shouldRefresh'>
 
-export class Model {
+export class SessionModel {
   declare id: string
   declare userId: string
   declare expiresAt: Date
 
-  constructor(data: ModelProps) {
-    Object.assign<ModelProps, ModelProps>(this, data)
+  constructor(data: SessionModelProps) {
+    Object.assign<SessionModelProps, SessionModelProps>(this, data)
   }
 
   /** True when the session is close enough to expiry that we should slide it forward. */
@@ -17,45 +17,45 @@ export class Model {
   }
 }
 
-export function newExpiry(now: Date, ttlMs: number): Date {
+export function newSessionExpiry(now: Date, ttlMs: number): Date {
   return new Date(now.getTime() + ttlMs)
 }
 
-export interface CreateParams {
+export interface CreateSessionParams {
   userId: string
   expiresAt: Date
   userAgent?: string
   ip?: string
 }
 
-export interface FindValidParams {
+export interface FindValidSessionParams {
   sessionId: string
   now: Date
 }
 
-export interface TouchParams {
+export interface TouchSessionParams {
   sessionId: string
   expiresAt: Date
 }
 
-export interface DeleteParams {
+export interface DeleteSessionParams {
   sessionId: string
 }
 
-export interface DeleteAllForUserParams {
+export interface DeleteAllSessionsForUserParams {
   userId: string
 }
 
-export interface DeleteAllForUserExceptParams {
+export interface DeleteAllSessionsForUserExceptParams {
   userId: string
   exceptSessionId: string
 }
 
-export interface Repository {
-  create: (p: CreateParams) => Promise<Model>
-  findValid: (p: FindValidParams) => Promise<Model | undefined>
-  touch: (p: TouchParams) => Promise<void>
-  delete: (p: DeleteParams) => Promise<void>
-  deleteAllForUser: (p: DeleteAllForUserParams) => Promise<void>
-  deleteAllForUserExcept: (p: DeleteAllForUserExceptParams) => Promise<void>
+export interface SessionsRepository {
+  create: (p: CreateSessionParams) => Promise<SessionModel>
+  findValid: (p: FindValidSessionParams) => Promise<SessionModel | undefined>
+  touch: (p: TouchSessionParams) => Promise<void>
+  delete: (p: DeleteSessionParams) => Promise<void>
+  deleteAllForUser: (p: DeleteAllSessionsForUserParams) => Promise<void>
+  deleteAllForUserExcept: (p: DeleteAllSessionsForUserExceptParams) => Promise<void>
 }

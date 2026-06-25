@@ -11,4 +11,5 @@ export interface UserDto {
   canManageExtensions: boolean
   canDownload: boolean
   allowNsfw: boolean
+  showNsfw: boolean
 }

@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Custom Vuetify icon set backed by Iconify (ADR-0009: no UnoCSS). Font Awesome 6
-// collections are bundled offline via `addCollection` here (same module as the
-// renderer, so they share one Iconify storage instance), and the set renders the
-// SVG synchronously from `getIcon` — which works during SSR, unlike the async
-// `<Icon>` component (it renders an empty placeholder until client mount).
+
 import type { IconAliases, IconProps, IconSet } from 'vuetify'
+import fa6Brands from '@iconify-json/fa6-brands/icons.json'
 import fa6Regular from '@iconify-json/fa6-regular/icons.json'
 import fa6Solid from '@iconify-json/fa6-solid/icons.json'
 import { addCollection, getIcon } from '@iconify/vue'
@@ -12,9 +9,8 @@ import { h } from 'vue'
 
 addCollection(fa6Solid)
 addCollection(fa6Regular)
+addCollection(fa6Brands)
 
-// Vuetify's built-in components reference these aliases (e.g. `$dropdown`).
-// Each maps to a Font Awesome 6 icon (solid unless an outline reads better).
 export const aliases: IconAliases = {
   collapse: 'fa6-solid:chevron-up',
   complete: 'fa6-solid:check',

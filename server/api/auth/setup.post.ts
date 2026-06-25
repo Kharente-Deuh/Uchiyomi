@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { SetupRequestDto } from '#shared/dto/identity/auth.request'
 import { z } from 'zod'
+import { authService } from '~~/server/domains/identity/auth/application/auth.service'
+import { sessionRepository } from '~~/server/domains/identity/sessions/application'
+import { newSessionExpiry } from '~~/server/domains/identity/sessions/session.domain'
 import { Prisma } from '../../../prisma/generated/client'
-import * as Session from '../../domains/identity/sessions/session.domain'
 import { toUserDto } from '../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 import { accountNameSchema } from '../../utils/account-name'
-import { sessionRepository, setupFirstAdmin } from '../../utils/identity'
 
 function isSetupClosed(err: unknown): boolean {
   return (err instanceof Error && err.message.startsWith('setup_closed'))
@@ -27,11 +28,11 @@ export default defineEventHandler(async (event) => {
 
   const body = parsed.data
   try {
-    const admin = await setupFirstAdmin.execute(body)
+    const admin = await authService().setupFirstAdmin(body)
     // Auto-login the new admin.
     const session = await sessionRepository.create({
       userId: admin.id,
-      expiresAt: Session.newExpiry(new Date(), cfg.sessionTtlMs),
+      expiresAt: newSessionExpiry(new Date(), cfg.sessionTtlMs),
     })
     await setUserSession(event, { sessionId: session.id })
 

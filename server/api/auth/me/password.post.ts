@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ChangePasswordRequestDto } from '#shared/dto/identity/me.request'
 import { z } from 'zod'
-import * as Auth from '../../../domains/identity/auth/auth.domain'
-import { changePassword } from '../../../utils/identity'
+import { authService } from '~~/server/domains/identity/auth/application/auth.service'
+import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<void> => {
   const cfg = useRuntimeConfig(event).auth
   const actor = event.context.authUser
   if (!actor) {
@@ -31,17 +31,15 @@ export default defineEventHandler(async (event) => {
 
   const body = parsed.data
   try {
-    await changePassword.execute({
+    await authService().changePassword({
       userId: actor.id,
       currentPassword: body.currentPassword,
       newPassword: body.newPassword,
       logoutOtherDevices: body.logoutOtherDevices ?? false,
       currentSessionId,
     })
-
-    return { ok: true }
   } catch (err) {
-    if (err instanceof Auth.AuthError) {
+    if (err instanceof AuthError) {
       throw createError({ statusCode: 400, statusMessage: 'Invalid password' })
     }
 

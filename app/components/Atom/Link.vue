@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { RouteLocationRaw } from 'vue-router'
 
 export interface LinkProps {
@@ -22,6 +23,7 @@ defineProps<LinkProps>()
     :class="{ 'text-decoration-none': !enableTextDecoration }"
     active-class="nuxt-link-active"
     class="cursor-pointer"
+    style="text-wrap: wrap;"
   >
     <slot />
   </NuxtLink>

@@ -82,17 +82,17 @@ model AppUser {
   canManageExtensions Boolean  @default(false) @map("can_manage_extensions")
   canDownload         Boolean  @default(false) @map("can_download")
   allowNsfw           Boolean  @default(false) @map("allow_nsfw")
+  showNsfw            Boolean  @default(false) @map("show_nsfw")
   createdAt           DateTime @default(now()) @map("created_at")
 
-  identities           AuthIdentity[]
-  sessions             Session[]
-  subscriptions        Subscription[]
-  categories           Category[]
-  readingProgress      ReadingProgress[]
-  readingPreferences   UserReadingPreference[]
-  installedExtensions  Extension[]               @relation("InstalledExtensions")
-  extensionActivations UserExtensionActivation[]
-  downloadJobs         DownloadJob[]             @relation("RequestedDownloads")
+  identities          AuthIdentity[]
+  sessions            Session[]
+  subscriptions       Subscription[]
+  categories          Category[]
+  readingProgress     ReadingProgress[]
+  readingPreferences  UserReadingPreference[]
+  installedExtensions Extension[]             @relation("InstalledExtensions")
+  downloadJobs        DownloadJob[]           @relation("RequestedDownloads")
 
   @@map("app_user")
 }
@@ -212,25 +212,12 @@ model Extension {
   lastErrorAt         DateTime?       @map("last_error_at")
   lastErrorMessage    String?         @map("last_error_message")
 
-  installedBy AppUser?                  @relation("InstalledExtensions", fields: [installedByUserId], references: [id], onDelete: SetNull)
-  activations UserExtensionActivation[]
+  installedBy AppUser?          @relation("InstalledExtensions", fields: [installedByUserId], references: [id], onDelete: SetNull)
   errors      ExtensionErrorLog[]
+  sources     Source[]
 
   @@index([installedByUserId])
   @@map("extension")
-}
-
-model UserExtensionActivation {
-  userId      String   @map("user_id")
-  extensionId String   @map("extension_id")
-  activatedAt DateTime @default(now()) @map("activated_at")
-
-  user      AppUser   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  extension Extension @relation(fields: [extensionId], references: [id], onDelete: Cascade)
-
-  @@id([userId, extensionId])
-  @@index([extensionId])
-  @@map("user_extension_activation")
 }
 
 model ExtensionErrorLog {
@@ -244,6 +231,21 @@ model ExtensionErrorLog {
 
   @@index([extensionId, occurredAt])
   @@map("extension_error_log")
+}
+
+model Source {
+  id             String  @id
+  pkgName        String  @map("pkg_name")
+  name           String
+  lang           String
+  isNsfw         Boolean @default(false) @map("is_nsfw")
+  isConfigurable Boolean @default(false) @map("is_configurable")
+  isEnabled      Boolean @default(true) @map("is_enabled")
+
+  extension Extension @relation(fields: [pkgName], references: [pkgName], onDelete: Cascade)
+
+  @@index([pkgName])
+  @@map("source")
 }
 
 model Series {

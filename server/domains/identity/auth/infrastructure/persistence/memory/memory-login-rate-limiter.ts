@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type * as Auth from '../../../auth.domain'
+import type { AuthRateLimiter, AuthRateLimiterCheckParams, AuthRateLimiterResetParams } from '../../../auth.domain'
 
 interface Bucket {
   count: number
@@ -10,7 +10,7 @@ interface Bucket {
  * In-memory fixed-window limiter (single-instance app). Key is typically
  * `${ip}:${accountName}`. Implements the `Auth.RateLimiter` port.
  */
-export class MemoryLoginRateLimiter implements Auth.RateLimiter {
+export class MemoryLoginRateLimiter implements AuthRateLimiter {
   private readonly maxAttempts: number
   private readonly windowMs: number
   private readonly now: () => number
@@ -23,7 +23,7 @@ export class MemoryLoginRateLimiter implements Auth.RateLimiter {
   }
 
   /** Returns true if the attempt is allowed (and records it), false if rate-limited. */
-  check(p: Auth.RateLimiterCheckParams): boolean {
+  check(p: AuthRateLimiterCheckParams): boolean {
     const t = this.now()
     const bucket = this.buckets.get(p.key)
 
@@ -43,7 +43,7 @@ export class MemoryLoginRateLimiter implements Auth.RateLimiter {
   }
 
   /** Clear a key — call on successful login so a good login doesn't count against the user. */
-  reset(p: Auth.RateLimiterResetParams): void {
+  reset(p: AuthRateLimiterResetParams): void {
     this.buckets.delete(p.key)
   }
 }

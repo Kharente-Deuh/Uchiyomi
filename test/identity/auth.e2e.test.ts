@@ -176,6 +176,25 @@ describeIf('auth spine e2e', async () => {
     })).rejects.toMatchObject({ statusCode: 400 })
   })
 
+  it('self-service: PATCH /me with { showNsfw: true } updates the preference; {} → 400', async () => {
+    await prisma.appUser.deleteMany()
+    const setupRes = await fetch('/api/auth/setup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountName: 'admin', displayName: 'Admin', password: 'longenough1' }),
+    })
+    const cookie = setupRes.headers.getSetCookie?.().join('; ') ?? setupRes.headers.get('set-cookie') ?? ''
+
+    // { showNsfw: true } → 200 and user.showNsfw === true
+    const patched = await $fetch('/api/auth/me', { method: 'PATCH', headers: { cookie }, body: { showNsfw: true } })
+    expect(patched.user.showNsfw).toBe(true)
+
+    // {} → 400 (at least one field required)
+    await expect(
+      $fetch('/api/auth/me', { method: 'PATCH', headers: { cookie }, body: {} }),
+    ).rejects.toMatchObject({ statusCode: 400 })
+  })
+
   it('admin: PATCH /users/[id] by admin works; by non-admin 403; unknown id 404', async () => {
     await prisma.appUser.deleteMany()
     const setupRes = await fetch('/api/auth/setup', {
@@ -210,5 +229,42 @@ describeIf('auth spine e2e', async () => {
     await expect($fetch('/api/admin/users/does-not-exist', { method: 'PATCH', headers: { cookie: adminCookie }, body: { displayName: 'X' } }))
       .rejects
       .toMatchObject({ statusCode: 404 })
+  })
+
+  it('admin: PATCH /users/[id] with { allowNsfw: true } → 200 & user.allowNsfw true; non-admin → 403', async () => {
+    await prisma.appUser.deleteMany()
+    const setupRes = await fetch('/api/auth/setup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountName: 'admin', displayName: 'Admin', password: 'longenough1' }),
+    })
+    const adminCookie = setupRes.headers.getSetCookie?.().join('; ') ?? setupRes.headers.get('set-cookie') ?? ''
+    const created = await $fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { cookie: adminCookie },
+      body: { accountName: 'user', displayName: 'User', password: 'longenough2' },
+    })
+    const userId = created.user.id
+
+    // Admin grants allowNsfw.
+    const patched = await $fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { cookie: adminCookie },
+      body: { allowNsfw: true },
+    })
+    expect(patched.user.allowNsfw).toBe(true)
+
+    // Non-admin is forbidden.
+    const loginRes = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accountName: 'user', password: 'longenough2' }),
+    })
+    const userCookie = loginRes.headers.getSetCookie?.().join('; ') ?? loginRes.headers.get('set-cookie') ?? ''
+    await expect($fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { cookie: userCookie },
+      body: { allowNsfw: false },
+    })).rejects.toMatchObject({ statusCode: 403 })
   })
 })

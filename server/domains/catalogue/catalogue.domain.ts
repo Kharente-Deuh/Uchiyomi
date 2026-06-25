@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Flat ESM module, consumed via `import * as Catalogue`.
-import type * as Manga from './manga.domain'
-import type * as Source from './source.domain'
 
-export interface SearchParams {
+import type { MangaDetailsModel, MangaSummaryModel } from './manga.domain'
+import type { SourceModel } from './source.domain'
+
+export interface SearchMangaParams {
   sourceId: string
   query: string
   page: number
 }
 
-export interface GetMangaDetailsParams {
+export interface GetMangaDetailsByIdParams {
   mangaId: string
 }
 
-export interface SearchResult {
-  mangas: Manga.Summary[]
+export interface SearchMangaResult {
+  mangas: MangaSummaryModel[]
   hasNextPage: boolean
 }
 
 // The PORT — the GraphQL/Suwayomi adapter implements it.
-export interface Repository {
-  listSources: () => Promise<Source.Model[]>
-  searchSource: (p: SearchParams) => Promise<SearchResult>
-  getMangaDetails: (p: GetMangaDetailsParams) => Promise<Manga.Details>
+export interface CatalogueRepository {
+  listSources: () => Promise<SourceModel[]>
+  searchSource: (p: SearchMangaParams) => Promise<SearchMangaResult>
+  getMangaDetails: (p: GetMangaDetailsByIdParams) => Promise<MangaDetailsModel>
 }

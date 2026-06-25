@@ -12,16 +12,16 @@ export class AuthError extends Error {
   }
 }
 
-export interface RateLimiterCheckParams {
+export interface AuthRateLimiterCheckParams {
   key: string
 }
 
-export interface RateLimiterResetParams {
+export interface AuthRateLimiterResetParams {
   key: string
 }
 
 // The PORT — the in-memory adapter implements it.
-export interface RateLimiter {
-  check: (p: RateLimiterCheckParams) => boolean
-  reset: (p: RateLimiterResetParams) => void
+export interface AuthRateLimiter {
+  check: (p: AuthRateLimiterCheckParams) => boolean
+  reset: (p: AuthRateLimiterResetParams) => void
 }

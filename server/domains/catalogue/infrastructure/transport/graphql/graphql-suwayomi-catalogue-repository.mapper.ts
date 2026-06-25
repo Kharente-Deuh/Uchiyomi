@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import * as Chapter from '../../../chapter.domain'
-import * as Manga from '../../../manga.domain'
-import * as Source from '../../../source.domain'
+
+import { ChapterModel } from '../../../chapter.domain'
+import { MangaDetailsModel, MangaSummaryModel } from '../../../manga.domain'
+import { SourceModel } from '../../../source.domain'
 
 // SourceNode mirrors the GraphQL SourceType selection from LIST_SOURCES.
 export interface SourceNode {
@@ -12,8 +13,8 @@ export interface SourceNode {
   isNsfw: boolean
 }
 
-export function sourceToDomain(node: SourceNode): Source.Model {
-  return new Source.Model({
+export function sourceToDomain(node: SourceNode): SourceModel {
+  return new SourceModel({
     id: node.id,
     name: node.name,
     lang: node.lang,
@@ -48,8 +49,8 @@ export interface MangaDetailsNode extends MangaSummaryNode {
   chapters: { nodes: ChapterNode[] }
 }
 
-export function mangaSummaryToDomain(node: MangaSummaryNode): Manga.Summary {
-  return new Manga.Summary({
+export function mangaSummaryToDomain(node: MangaSummaryNode): MangaSummaryModel {
+  return new MangaSummaryModel({
     id: String(node.id),
     title: node.title,
     thumbnailUrl: node.thumbnailUrl ?? undefined,
@@ -57,8 +58,8 @@ export function mangaSummaryToDomain(node: MangaSummaryNode): Manga.Summary {
   })
 }
 
-export function chapterToDomain(node: ChapterNode): Chapter.Model {
-  return new Chapter.Model({
+export function chapterToDomain(node: ChapterNode): ChapterModel {
+  return new ChapterModel({
     id: String(node.id),
     name: node.name,
     chapterNumber: node.chapterNumber,
@@ -67,8 +68,8 @@ export function chapterToDomain(node: ChapterNode): Chapter.Model {
   })
 }
 
-export function mangaDetailsToDomain(node: MangaDetailsNode): Manga.Details {
-  return new Manga.Details({
+export function mangaDetailsToDomain(node: MangaDetailsNode): MangaDetailsModel {
+  return new MangaDetailsModel({
     id: String(node.id),
     title: node.title,
     thumbnailUrl: node.thumbnailUrl ?? undefined,

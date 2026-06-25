@@ -9,6 +9,9 @@ const { mobile } = useDisplay()
 const { logout } = useAuth()
 const { messages } = useToast()
 
+const authStore = useAuthStore()
+const { capabilities } = storeToRefs(authStore)
+
 async function onLogout(): Promise<void> {
   const res = await logout()
   if (res.success) {
@@ -19,6 +22,23 @@ async function onLogout(): Promise<void> {
 const { t } = useI18n()
 const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
   {
+    title: t('browse.title'),
+    items: [
+      {
+        title: t('series.title'),
+        to: '/browse/series',
+        icon: 'fa6-solid:book',
+        isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse/series'),
+      },
+      {
+        title: t('extensions.title'),
+        to: '/browse/extensions',
+        icon: 'fa6-solid:puzzle-piece',
+        isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse/extensions'),
+      },
+    ],
+  },
+  {
     title: t('nav.system.title'),
     items: [
       {
@@ -27,6 +47,16 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
         icon: 'fa6-solid:gear',
         isActiveFn: (route: RouteLocationNormalized) => route.path === '/settings',
       },
+      ...(capabilities.value.canManageExtensions
+        ? [
+            {
+              title: t('extensions.admin.title'),
+              to: '/admin/extensions',
+              icon: 'fa6-solid:screwdriver-wrench',
+              isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/admin/extensions'),
+            },
+          ]
+        : []),
     ],
   },
 ])
@@ -38,20 +68,26 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
     isActiveFn: (route: RouteLocationNormalized) => route.path === '/',
   },
   {
+    to: '/browse',
+    icon: 'fa6-brands:safari',
+    isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse'),
+  },
+  {
     to: '/settings',
     icon: 'fa6-solid:gear',
     isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/settings'),
   },
 ])
+
+const { bottomLayout, leftLayout } = useLayoutPadding()
 </script>
 
 <template>
   <VApp>
     <VMain
       :style="{
-        ...(mobile
-          ? { '--v-layout-bottom': 'var(--bottom-navigation-height)' }
-          : { '--v-layout-left': 'var(--navigation-drawer-width)' }),
+        '--v-layout-bottom': bottomLayout,
+        '--v-layout-left': leftLayout,
       }"
     >
       <OrganismNavigationDrawer
@@ -60,7 +96,7 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
         @logout="onLogout"
       />
 
-      <div class="pa-6 mx-auto" style="max-width: 80rem;">
+      <div class="mx-auto" style="max-width: 80rem;">
         <slot />
       </div>
     </VMain>

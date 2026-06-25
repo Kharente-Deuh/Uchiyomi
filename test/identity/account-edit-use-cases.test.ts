@@ -3,9 +3,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import * as ChangePassword from '../../server/domains/identity/auth/application/usecases/change-password.use-case'
 import * as UpdateDisplayName from '../../server/domains/identity/users/application/usecases/update-display-name.use-case'
+import * as UpdateNsfwPreference from '../../server/domains/identity/users/application/usecases/update-nsfw-preference.use-case'
 import * as User from '../../server/domains/identity/users/user.domain'
 
-function userMock(over: Record<string, unknown> = {}): User.Repository {
+function userMock(over: Record<string, unknown> = {}): User.UsersRepository {
   return {
     countUsers: vi.fn(),
     findByAccountName: vi.fn(),
@@ -13,10 +14,11 @@ function userMock(over: Record<string, unknown> = {}): User.Repository {
     createWithLocalIdentity: vi.fn(),
     setStatus: vi.fn(),
     updateDisplayName: vi.fn(),
+    updateNsfwPreference: vi.fn(),
     updateLocalPasswordHash: vi.fn(),
     findLocalPasswordHash: vi.fn(),
     ...over,
-  } as unknown as User.Repository
+  } as unknown as User.UsersRepository
 }
 
 function sessionMock(over: Record<string, unknown> = {}): any {
@@ -37,7 +39,7 @@ describe('changePassword', () => {
     const users = userMock({ findLocalPasswordHash: vi.fn(async () => 'h:right') })
     const sessions = sessionMock()
     await expect(
-      new ChangePassword.UseCase(users, sessions, hasher()).execute({ ...base, currentPassword: 'wrong', newPassword: 'newpass1234', logoutOtherDevices: false }),
+      new ChangePassword.ChangePasswordUseCase(users, sessions, hasher()).execute({ ...base, currentPassword: 'wrong', newPassword: 'newpass1234', logoutOtherDevices: false }),
     ).rejects.toMatchObject({ code: 'invalid_password' })
     expect(users.updateLocalPasswordHash).not.toHaveBeenCalled()
     expect(sessions.deleteAllForUserExcept).not.toHaveBeenCalled()
@@ -46,7 +48,7 @@ describe('changePassword', () => {
   it('throws invalid_password when there is no local hash', async () => {
     const users = userMock({ findLocalPasswordHash: vi.fn(async () => {}) })
     await expect(
-      new ChangePassword.UseCase(users, sessionMock(), hasher()).execute({ ...base, currentPassword: 'whatever', newPassword: 'newpass1234', logoutOtherDevices: false }),
+      new ChangePassword.ChangePasswordUseCase(users, sessionMock(), hasher()).execute({ ...base, currentPassword: 'whatever', newPassword: 'newpass1234', logoutOtherDevices: false }),
     ).rejects.toMatchObject({ code: 'invalid_password' })
   })
 
@@ -54,7 +56,7 @@ describe('changePassword', () => {
     const users = userMock({ findLocalPasswordHash: vi.fn(async () => 'h:current123') })
     const sessions = sessionMock()
     const h = hasher()
-    await new ChangePassword.UseCase(users, sessions, h).execute({ ...base, currentPassword: 'current123', newPassword: 'newpass1234', logoutOtherDevices: false })
+    await new ChangePassword.ChangePasswordUseCase(users, sessions, h).execute({ ...base, currentPassword: 'current123', newPassword: 'newpass1234', logoutOtherDevices: false })
     expect(h.hash).toHaveBeenCalledWith({ password: 'newpass1234' })
     expect(users.updateLocalPasswordHash).toHaveBeenCalledWith({ userId: 'u1', passwordHash: 'h:newpass1234' })
     expect(sessions.deleteAllForUserExcept).not.toHaveBeenCalled()
@@ -63,14 +65,27 @@ describe('changePassword', () => {
   it('revokes other sessions (keeping the current) when logoutOtherDevices is true', async () => {
     const users = userMock({ findLocalPasswordHash: vi.fn(async () => 'h:current123') })
     const sessions = sessionMock()
-    await new ChangePassword.UseCase(users, sessions, hasher()).execute({ ...base, currentPassword: 'current123', newPassword: 'newpass1234', logoutOtherDevices: true })
+    await new ChangePassword.ChangePasswordUseCase(users, sessions, hasher()).execute({ ...base, currentPassword: 'current123', newPassword: 'newpass1234', logoutOtherDevices: true })
     expect(sessions.deleteAllForUserExcept).toHaveBeenCalledWith({ userId: 'u1', exceptSessionId: 's1' })
+  })
+})
+
+describe('updateNsfwPreference', () => {
+  it('update-nsfw-preference delegates to the repository', async () => {
+    const updated = { id: 'u1', showNsfw: true } as never
+    const repo = { updateNsfwPreference: vi.fn().mockResolvedValue(updated) } as never
+    const useCase = new UpdateNsfwPreference.UpdateUserNsfwPreferenceUseCase(repo)
+
+    const result = await useCase.execute({ id: 'u1', showNsfw: true })
+
+    expect(repo.updateNsfwPreference).toHaveBeenCalledWith({ id: 'u1', showNsfw: true })
+    expect(result).toBe(updated)
   })
 })
 
 describe('updateDisplayName', () => {
   it('delegates to the repository and returns the updated user', async () => {
-    const updated = new User.Model({
+    const updated = new User.UserModel({
       id: 'u1',
       accountName: 'alice',
       displayName: 'New',
@@ -81,7 +96,7 @@ describe('updateDisplayName', () => {
       allowNsfw: false,
     })
     const users = userMock({ updateDisplayName: vi.fn(async () => updated) })
-    const result = await new UpdateDisplayName.UseCase(users).execute({ id: 'u1', displayName: 'New' })
+    const result = await new UpdateDisplayName.UpdateUserNameUseCase(users).execute({ id: 'u1', displayName: 'New' })
     expect(users.updateDisplayName).toHaveBeenCalledWith({ id: 'u1', displayName: 'New' })
     expect(result.displayName).toBe('New')
   })

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PrismaClient } from '../../../../../../../prisma/generated/client'
-import type * as Session from '../../../session.domain'
+import type { CreateSessionParams, DeleteAllSessionsForUserExceptParams, DeleteAllSessionsForUserParams, DeleteSessionParams, FindValidSessionParams, SessionModel, TouchSessionParams } from '../../../session.domain'
 import { randomUUID } from 'node:crypto'
 import { toDomain } from './prisma-session-repository.mapper'
 
-export class PrismaSessionRepository implements Session.Repository {
+export class PrismaSessionRepository implements PrismaSessionRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async create(p: Session.CreateParams): Promise<Session.Model> {
+  async create(p: CreateSessionParams): Promise<SessionModel> {
     const row = await this.prisma.session.create({
       data: {
         id: randomUUID(),
@@ -21,28 +21,36 @@ export class PrismaSessionRepository implements Session.Repository {
     return toDomain(row)
   }
 
-  async findValid(p: Session.FindValidParams): Promise<Session.Model | undefined> {
+  async findValid(p: FindValidSessionParams): Promise<SessionModel | undefined> {
     const row = await this.prisma.session.findUnique({ where: { id: p.sessionId } })
     if (!row || row.expiresAt <= p.now) {
-      return undefined
+      return
     }
 
     return toDomain(row)
   }
 
-  async touch(p: Session.TouchParams): Promise<void> {
-    await this.prisma.session.update({ where: { id: p.sessionId }, data: { expiresAt: p.expiresAt } })
+  async touch(p: TouchSessionParams): Promise<void> {
+    await this.prisma.session.update({
+      where: { id: p.sessionId },
+      data: { expiresAt: p.expiresAt },
+    })
   }
 
-  async delete(p: Session.DeleteParams): Promise<void> {
+  async delete(p: DeleteSessionParams): Promise<void> {
     await this.prisma.session.deleteMany({ where: { id: p.sessionId } })
   }
 
-  async deleteAllForUser(p: Session.DeleteAllForUserParams): Promise<void> {
+  async deleteAllForUser(p: DeleteAllSessionsForUserParams): Promise<void> {
     await this.prisma.session.deleteMany({ where: { userId: p.userId } })
   }
 
-  async deleteAllForUserExcept(p: Session.DeleteAllForUserExceptParams): Promise<void> {
-    await this.prisma.session.deleteMany({ where: { userId: p.userId, NOT: { id: p.exceptSessionId } } })
+  async deleteAllForUserExcept(p: DeleteAllSessionsForUserExceptParams): Promise<void> {
+    await this.prisma.session.deleteMany({
+      where: {
+        userId: p.userId,
+        NOT: { id: p.exceptSessionId },
+      },
+    })
   }
 }

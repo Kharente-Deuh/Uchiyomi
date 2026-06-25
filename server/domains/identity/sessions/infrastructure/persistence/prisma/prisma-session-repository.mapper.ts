@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import * as Session from '../../../session.domain'
+
+import { SessionModel } from '../../../session.domain'
 
 export interface SessionRow {
   id: string
@@ -7,8 +8,8 @@ export interface SessionRow {
   expiresAt: Date
 }
 
-export function toDomain(row: SessionRow): Session.Model {
-  return new Session.Model({
+export function toDomain(row: SessionRow): SessionModel {
+  return new SessionModel({
     id: row.id,
     userId: row.userId,
     expiresAt: row.expiresAt,

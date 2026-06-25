@@ -39,6 +39,7 @@ const user: UserDto = {
   canManageExtensions: true,
   canDownload: true,
   allowNsfw: false,
+  showNsfw: false,
 }
 
 describe('useAuth', () => {

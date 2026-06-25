@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../../shared/use-case'
-import type * as Password from '../../../password/password.domain'
-import type * as Session from '../../../sessions/session.domain'
-import type * as User from '../../../users/user.domain'
-import * as Auth from '../../auth.domain'
+import type { PasswordHasher } from '../../../password/password.domain'
+import type { SessionsRepository } from '../../../sessions/session.domain'
+import type { UsersRepository } from '../../../users/user.domain'
+import { AuthError } from '../../auth.domain'
 
-export interface Opts {
+export interface ChangePasswordUseCaseOpts {
   userId: string
   currentPassword: string
   newPassword: string
@@ -13,19 +13,18 @@ export interface Opts {
   currentSessionId: string
 }
 
-export class UseCase implements IUseCase<Opts, void> {
+export class ChangePasswordUseCase implements IUseCase<ChangePasswordUseCaseOpts, void> {
   constructor(
-    private readonly userRepository: User.Repository,
-    private readonly sessionRepository: Session.Repository,
-    private readonly passwordHasher: Password.Hasher,
+    private readonly userRepository: UsersRepository,
+    private readonly sessionRepository: SessionsRepository,
+    private readonly passwordHasher: PasswordHasher,
   ) {}
 
-  async execute(opts: Opts): Promise<void> {
+  async execute(opts: ChangePasswordUseCaseOpts): Promise<void> {
     const currentHash = await this.userRepository.findLocalPasswordHash({ userId: opts.userId })
-    const ok = currentHash !== undefined
-      && await this.passwordHasher.verify({ hash: currentHash, password: opts.currentPassword })
+    const ok = currentHash !== undefined && await this.passwordHasher.verify({ hash: currentHash, password: opts.currentPassword })
     if (!ok) {
-      throw new Auth.AuthError('invalid_password', 'Current password is incorrect')
+      throw new AuthError('invalid_password', 'Current password is incorrect')
     }
 
     const passwordHash = await this.passwordHasher.hash({ password: opts.newPassword })

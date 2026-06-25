@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase } from '../../../../../shared/use-case'
-import type * as User from '../../user.domain'
+import type { UserModel, UsersRepository } from '../../user.domain'
 
-export interface Opts {
+export interface UpdateUserNameUseCaseOpts {
   id: string
   displayName: string
 }
 
-export class UseCase implements IUseCase<Opts, Omit<User.Model, 'passwordHash'>> {
-  constructor(private readonly userRepository: User.Repository) {}
+export class UpdateUserNameUseCase implements IUseCase<UpdateUserNameUseCaseOpts, Omit<UserModel, 'passwordHash'>> {
+  constructor(private readonly userRepository: UsersRepository) {}
 
-  execute(opts: Opts): Promise<Omit<User.Model, 'passwordHash'>> {
+  execute(opts: UpdateUserNameUseCaseOpts): Promise<Omit<UserModel, 'passwordHash'>> {
     return this.userRepository.updateDisplayName({ id: opts.id, displayName: opts.displayName })
   }
 }

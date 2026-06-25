@@ -88,6 +88,57 @@
       "max": "Required field, maximum {max}"
     }
   },
+  "extensions": {
+    "title": "Extensions",
+    "empty": {
+      "title": "No extensions installed yet"
+    },
+    "health": {
+      "ok": "Healthy",
+      "error": "Error"
+    },
+    "actions": {
+      "install": "Install",
+      "uninstall": "Uninstall"
+    },
+    "toasts": {
+      "installed": "Extension installed",
+      "uninstalled": "Extension uninstalled",
+      "sourceEnabled": "Source enabled",
+      "sourceDisabled": "Source disabled"
+    },
+    "errors": {
+      "loadFailed": "Could not load extensions",
+      "actionFailed": "Action failed"
+    },
+    "admin": {
+      "title": "Manage extensions"
+    },
+    "filters": {
+      "nsfw": "NSFW",
+      "healthy": "Healthy",
+      "installed": "Installed",
+      "hasUpdate": "Up to date"
+    },
+    "filterOptions": {
+      "all": "All",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "uninstall": {
+      "confirmation": "Do you really want to uninstall the following extension ?"
+    }
+  },
+  "library": {
+    "badges": {
+      "sourceOffline": "Source offline"
+    }
+  },
+  "sources": {
+    "settings": {
+      "title": "Source settings"
+    }
+  },
   "settings": {
     "appearance": {
       "title": "Appearance",
@@ -102,6 +153,9 @@
     "adminOnly": "Admin",
     "title": "Settings",
     "subtitle": "Per-user preferences. Server controls appear only for admins.",
+    "nsfw": {
+      "label": "Show adult (NSFW) content"
+    },
     "account": {
       "title": "Account",
       "subtitle": "Your identity on this server.",
@@ -122,11 +176,34 @@
         }
       },
       "accountName": "Account name"
+    },
+    "sensitiveContent": {
+      "title": "Sensitive content",
+      "nsfw": "Show NSFW content"
     }
   },
   "actions": {
     "cancel": "Cancel",
     "save": "Save",
-    "continue": "Continue"
+    "continue": "Continue",
+    "uninstall": "Uninstall",
+    "install": "Install",
+    "update": "Update"
+  },
+  "browse": {
+    "title": "Browse",
+    "subtitle": "Manage extensions and import new series",
+    "extensions": {
+      "subtitle": "Browse and manage your extensions"
+    },
+    "series": {
+      "subtitle": "Find new series"
+    }
+  },
+  "series": {
+    "title": "Series"
+  },
+  "fields": {
+    "search": "Search"
   }
 }

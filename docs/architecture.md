@@ -106,16 +106,16 @@ import * as Session from '../../sessions/session.domain'
 
 export interface Opts { email: string, password: string, userAgent?: string, ip?: string }
 
-export class UseCase implements IUseCase<Opts, Session.Model> {
+export class UseCase implements IUseCase<Opts, SessionModel> {
   constructor(
-    private readonly usersRepository: User.Repository,
-    private readonly sessionsRepository: Session.Repository,
-    private readonly passwordHasher: Password.Hasher,
+    private readonly usersRepository: UsersRepository,
+    private readonly sessionsRepository: SessionsRepository,
+    private readonly passwordHasher: PasswordHasher,
     private readonly ttlMs: number,                       // a config value, injected
     private readonly now: () => Date = () => new Date(),  // injectable clock for tests
   ) {}
 
-  async execute(opts: Opts): Promise<Session.Model> {
+  async execute(opts: Opts): Promise<SessionModel> {
     const user = await this.usersRepository.findByEmail({ email: opts.email })
     const ok = user && user.isActive() && user.passwordHash
       && await this.passwordHasher.verify({ hash: user.passwordHash, password: opts.password })
@@ -137,9 +137,9 @@ The adapters that make ports real, as classes implementing the port. The folder
 path encodes the *concern* then the *technology*:
 
 ```
-users/infrastructure/persistence/prisma/prisma-user.repository.ts          # class PrismaUserRepository implements User.Repository
-users/infrastructure/persistence/prisma/prisma-user-repository.mapper.ts   # toDomain(row): User.Model
-password/infrastructure/security/scrypt/scrypt-password.hasher.ts          # class ScryptPasswordHasher implements Password.Hasher
+users/infrastructure/persistence/prisma/prisma-UsersRepository.ts          # class PrismaUserRepository implements UsersRepository
+users/infrastructure/persistence/prisma/prisma-user-repository.mapper.ts   # toDomain(row): UserModel
+password/infrastructure/security/scrypt/scrypt-PasswordHasher.ts          # class ScryptPasswordHasher implements PasswordHasher
 auth/infrastructure/persistence/memory/memory-login-rate-limiter.ts        # class MemoryLoginRateLimiter implements Auth.RateLimiter
 catalogue/infrastructure/transport/graphql/graphql-suwayomi-catalogue.repository.ts
 ```
@@ -147,8 +147,8 @@ catalogue/infrastructure/transport/graphql/graphql-suwayomi-catalogue.repository
 A **mapper** turns raw rows/responses into domain Models:
 
 ```ts
-export function toDomain(row: UserRow): User.Model {
-  return new User.Model({ id: row.id, email: row.email, /* … */ })
+export function toDomain(row: UserRow): UserModel {
+  return new UserModel({ id: row.id, email: row.email, /* … */ })
 }
 ```
 
@@ -206,7 +206,7 @@ domain `Model` (which may carry `passwordHash`) **never** leaves the server. The
 presenter copies only safe fields:
 
 ```ts
-export function toUserDto(user: Omit<User.Model, 'passwordHash'>): UserDto { /* explicit field copy, no passwordHash */ }
+export function toUserDto(user: Omit<UserModel, 'passwordHash'>): UserDto { /* explicit field copy, no passwordHash */ }
 ```
 
 Request DTOs (`SetupRequestDto`, `LoginRequestDto`, …) also live in `shared/`; the

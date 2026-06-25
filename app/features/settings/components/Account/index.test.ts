@@ -15,6 +15,7 @@ const user: UserDto = {
   canManageExtensions: true,
   canDownload: true,
   allowNsfw: false,
+  showNsfw: false,
 }
 
 const { updateDisplayNameMock } = vi.hoisted(() => ({ updateDisplayNameMock: vi.fn() }))
@@ -31,6 +32,7 @@ function useAuthMock(): ReturnType<typeof useAuth> {
     login: vi.fn(),
     setup: vi.fn(),
     updateDisplayName: updateDisplayNameMock,
+    updateShowNsfw: vi.fn(),
     changePassword: vi.fn(),
     logout: vi.fn(),
   } as unknown as ReturnType<typeof useAuth>

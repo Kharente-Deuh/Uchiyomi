@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { LoginRequestDto } from '#shared/dto/identity/auth.request'
 import { z } from 'zod'
-import * as Auth from '../../domains/identity/auth/auth.domain'
+import { authService, loginRateLimiter } from '~~/server/domains/identity/auth/application/auth.service'
+import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
 import { accountNameSchema } from '../../utils/account-name'
-import { login, loginRateLimiter } from '../../utils/identity'
 
 const Body = z.object({ accountName: accountNameSchema, password: z.string() }) satisfies z.ZodType<LoginRequestDto>
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<void> => {
   const parsed = await readValidatedBody(event, Body.safeParse)
   if (!parsed.success) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const session = await login.execute({
+    const session = await authService().login({
       accountName: body.accountName,
       password: body.password,
       userAgent: getHeader(event, 'user-agent') ?? undefined,
@@ -34,10 +34,8 @@ export default defineEventHandler(async (event) => {
     })
     loginRateLimiter.reset({ key })
     await setUserSession(event, { sessionId: session.id })
-
-    return { ok: true }
   } catch (err) {
-    if (err instanceof Auth.AuthError) {
+    if (err instanceof AuthError) {
       throw createError({ statusCode: 401, statusMessage: 'Invalid credentials' })
     }
 

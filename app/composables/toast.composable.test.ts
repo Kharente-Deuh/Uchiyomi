@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useToast } from '~/composables/useToast'
+import { useToast } from '~/composables/toast.composable'
 
 describe('useToast', () => {
   beforeEach(() => {
