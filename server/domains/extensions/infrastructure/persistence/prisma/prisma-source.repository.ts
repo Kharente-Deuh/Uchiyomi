@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { PrismaClient } from '../../../../../../prisma/generated/client'
 import type { ExtensionSource, ExtensionSourceRepository, FindManySourcesParams, StoredExtensionSource } from '../../../extension.domain'
+import type { RawSource } from './prisma-source-repository.mapper'
 import { sourceToDomain } from './prisma-source-repository.mapper'
 
 export class PrismaSourceRepository implements ExtensionSourceRepository {
@@ -20,7 +21,14 @@ export class PrismaSourceRepository implements ExtensionSourceRepository {
   }
 
   async findMany(params: FindManySourcesParams): Promise<StoredExtensionSource[]> {
-    const sources = await this.prisma.source.findMany({ where: params, orderBy: { id: 'asc' } })
+    const sources = await this.prisma.source.findMany({ where: params, orderBy: { lang: 'asc' } })
+
+    const allIndex = sources.findIndex(s => s.lang === 'all')
+    if (allIndex !== -1) {
+      const allItem = sources[allIndex] as RawSource
+      sources.splice(allIndex, 1)
+      sources.unshift(allItem)
+    }
 
     return sources.map(s => sourceToDomain(s))
   }
