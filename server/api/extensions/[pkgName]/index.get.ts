@@ -13,17 +13,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Missing pkgName' })
   }
 
-  const { getExtensionHealth, listExtensions } = extensionsService()
-  const { items } = await listExtensions({
-    isAdmin: !!actor.canManageExtensions,
-    viewerCanSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
-    page: 1,
-    pageSize: 1,
-    filters: { pkgName },
-  })
-  const extension = items[0]
+  const { getExtensionHealth, getExtensionByPkgName } = extensionsService()
+  const extension = await getExtensionByPkgName({ pkgName })
   if (!extension) {
-    throw createError({ statusCode: 404, statusMessage: 'Extension not available' })
+    throw createError({ statusCode: 404, statusMessage: 'Extension not found' })
+  }
+
+  if (!extension.isInstalled || extension.hasUpdate) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  }
+
+  if (!actor.allowNsfw && extension.isNsfw) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
   const healthResult = await getExtensionHealth({ pkgName })

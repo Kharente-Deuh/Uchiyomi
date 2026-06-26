@@ -5,6 +5,7 @@
 - Revised: 2026-06-21 (server layer + frontend data-access layer — see "Revision" below)
 - Revised: 2026-06-25 (composition root moved into domain; use-case barrel; shared import rule — see "Revision" below)
 - Revised: 2026-06-25 (application surface is a per-domain service factory — see "Revision" below)
+- Revised: 2026-06-26 (query pushdown — filter/sort/paginate at the store, not in memory — see "Revision" below)
 
 ## Context
 
@@ -121,6 +122,12 @@ Every grouping is a **flat ES module consumed via `import * as`** (no TS
   (`… satisfies z.ZodType<…>`).
 - **Policy constants** (session TTL, password length, rate-limit windows…) live
   in `runtimeConfig`, not the domain; domain methods receive them as parameters.
+- **Data selection happens in the store, not in memory.** Filtering, sorting,
+  pagination and counting are expressed as repository/adapter query criteria —
+  Prisma `where`/`orderBy`/`take`/`skip`/`count` or Suwayomi GraphQL arguments
+  (`filter`, `condition`, `order`, `first`, `offset`) — never by fetching the full
+  set and `.filter()`/`.sort()`/`.slice()`-ing it in the use case. See the
+  query-pushdown idiom below.
 
 ```
 server/
@@ -146,6 +153,47 @@ cache), and later `extensions`, `library`, `downloads`, `reading`. Prisma and
 the Suwayomi client are **infrastructure**; domain and application depend on
 ports, never on Prisma/HTTP directly. See [`docs/architecture.md`](../architecture.md)
 for a narrated walk-through with examples.
+
+#### Query pushdown — filter at the source, not in memory
+
+A use case must never pull a full result set across a port and then narrow it with
+`.filter()`/`.sort()`/`.slice()`/`.length`. The store does that work:
+
+- **Prisma** — `where` / `orderBy` / `take` / `skip` / `count`.
+- **Suwayomi GraphQL** — the query arguments (`filter`, `condition`, `order`,
+  `first`, `offset`); e.g. `extensions(filter, order, first, offset)` and
+  `sources(filter, condition, first, offset)` both filter and paginate server-side.
+
+**Policy stays in the use case; execution moves to the adapter.** The use case owns
+*what* to select — it turns visibility/permission inputs (`isAdmin`,
+`viewerCanSeeNsfw`, …) into query criteria — and the repository/adapter *executes*
+that selection. The repository does not own the rule, and the use case does not do
+the narrowing by hand. Concretely, the use case builds a filter object and passes it
+to the port:
+
+```ts
+// use case — policy → criteria
+const filter = isAdmin
+  ? {}
+  : { isEnabled: true, ...(viewerCanSeeNsfw ? {} : { isNsfw: false }) }
+return this.sources.listByPkg(pkgName, filter)
+
+// adapter — executes in the store
+findMany({ where: { pkgName, ...filter }, orderBy: { id: 'asc' } })
+```
+
+**Cross-store gates join through the query, not a post-filter.** When a gate combines
+an overlay flag (e.g. `Source.isEnabled`, Postgres) with a Suwayomi-side property,
+read the qualifying id set from the overlay and pass it into the GraphQL `id` filter
+(`id: { in: [...] }`) rather than fetching everything from Suwayomi and intersecting
+in memory.
+
+**The one allowed in-memory pass** is a pure transform over an already-small,
+*bounded* set (a handful of rows already loaded for another reason). If the pass is a
+security/visibility gate, it must be pushed to the query regardless of set size, so it
+cannot be silently dropped or bypassed by a caller that hits the port differently.
+This is the rule that was missing when extensions/catalogue source visibility was
+first sketched.
 
 ## Alternatives considered
 
@@ -383,3 +431,27 @@ introduced a **service factory** instead, now the standard for every domain:
 This is now the **required** pattern: a new domain exposes its use cases through a
 `<domain>.service.ts` factory; `application/index.ts` exists only when shared infra
 singletons must cross domain boundaries.
+
+## Revision — 2026-06-26 (query pushdown)
+
+Reviewing the extensions/catalogue source-visibility paths surfaced a use case that
+loaded all of an extension's sources and narrowed them with two in-memory
+`.filter()` calls, while the catalogue's `listSources`/`searchSource` applied **no**
+visibility gate at all — the systemic version of the same gap. Both are corrected by
+one idiom, now recorded in the Server section above ("Query pushdown") and mirrored
+in `CLAUDE.md`'s hard conventions:
+
+- Filtering, sorting, pagination and counting are **query criteria** for the
+  repository/adapter (Prisma `where`/`orderBy`/`take`/`skip`/`count`; Suwayomi
+  GraphQL `filter`/`condition`/`order`/`first`/`offset`), never an in-memory pass
+  over a fully-fetched set.
+- **Policy stays in the use case** (it maps `isAdmin`/`viewerCanSeeNsfw`/… to
+  criteria); the adapter **executes** the selection.
+- Cross-store gates (overlay flag + Suwayomi property) join by passing the
+  overlay-derived id set into the GraphQL `id` filter, not by post-filtering.
+- The only allowed in-memory pass is a pure transform over an already-small bounded
+  set — and **never** for a security/visibility gate, which must live in the query so
+  it cannot be bypassed.
+
+No tooling or structural change; this tightens the application/infrastructure
+boundary already defined above.

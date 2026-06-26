@@ -16,6 +16,10 @@ export class SetSourceEnabledUseCase implements IUseCase<SetSourceEnabledUseCase
       throw new Error('Source not found')
     }
 
-    return this.sources.setEnabled(opts.sourceId, opts.isEnabled)
+    if (opts.isEnabled === existing.isEnabled) {
+      return existing
+    }
+
+    return this.sources.update(opts.sourceId, { isEnabled: opts.isEnabled })
   }
 }

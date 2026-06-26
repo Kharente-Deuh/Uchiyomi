@@ -82,6 +82,18 @@ Nuxt 4 (Vue 3) + Nitro (single deployable) · **Vuetify** via `vuetify-nuxt-modu
 - **i18n in templates uses the global `$t`**, never a `t` destructured from
   `useI18n()`. In `<script setup>` (where `$t` is unavailable), use `useI18n().t`.
   Still no hard-coded user-facing strings. (ADR-0011)
+- **Push filtering, sorting, pagination and counting down to the store.** Express
+  them as Prisma `where`/`orderBy`/`take`/`skip`/`count` or as Suwayomi GraphQL
+  query arguments (`filter`, `condition`, `order`, `first`, `offset`) — never fetch
+  the full set and `.filter()`/`.sort()`/`.slice()` it in memory. Keep **policy** in
+  the use case (it decides *what* to filter from `isAdmin`, `viewerCanSeeNsfw`, …)
+  but translate that policy into query criteria the repository/adapter executes; the
+  repo executes, it does not own the rule. Cross-store gates (an overlay flag like
+  `Source.isEnabled` combined with a Suwayomi-side property) join by passing the
+  overlay-derived id set into the GraphQL `id` filter, not by post-filtering. The
+  only acceptable in-memory pass is a pure transform over an already-small, bounded
+  result; if it is a security/visibility gate, push it to the query so it cannot be
+  forgotten or bypassed.
 - Lint and type-check must pass before a change is considered done. Add or update
   tests (Vitest) for behavior changes.
 - Keep docs in sync: update this `CLAUDE.md` and/or add an ADR when a change

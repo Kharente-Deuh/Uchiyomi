@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const sources = await extensionsService().listExtensionSources({
     pkgName,
     isAdmin: !!actor.canManageExtensions,
-    viewerCanSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
+    canSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
   })
 
   return { sources: sources.map(s => toSourceDto(s)) }

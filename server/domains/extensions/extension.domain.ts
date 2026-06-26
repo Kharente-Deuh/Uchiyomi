@@ -141,11 +141,19 @@ export interface RecordExtensionFailureParams {
   context?: string
 }
 
+export interface FindManySourcesParams {
+  pkgName: string
+  isEnabled?: boolean
+  isConfigurable?: boolean
+  isNsfw?: boolean
+  lang?: string
+}
+
 export interface ExtensionSourceRepository {
   syncForExtension: (pkgName: string, sources: ExtensionSource[]) => Promise<void>
-  listByPkg: (pkgName: string) => Promise<StoredExtensionSource[]>
+  findMany: (params: FindManySourcesParams) => Promise<StoredExtensionSource[]>
   findById: (id: string) => Promise<StoredExtensionSource | undefined>
-  setEnabled: (id: string, isEnabled: boolean) => Promise<StoredExtensionSource>
+  update: (id: string, data: Partial<Omit<StoredExtensionSource, 'id'>>) => Promise<StoredExtensionSource>
 }
 
 // Overlay (health + install trace) in PostgreSQL.

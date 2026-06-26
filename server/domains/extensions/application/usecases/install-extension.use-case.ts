@@ -30,6 +30,7 @@ export class InstallExtensionUseCase implements IUseCase<InstallExtensionUseCase
       isNsfw: meta.isNsfw,
       installedByUserId: opts.actorId,
     })
+
     try {
       await this.suwayomi.install(opts.pkgName)
       await this.overlay.recordSuccess(opts.pkgName)
