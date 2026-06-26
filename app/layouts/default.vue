@@ -9,9 +9,6 @@ const { mobile } = useDisplay()
 const { logout } = useAuth()
 const { messages } = useToast()
 
-const authStore = useAuthStore()
-const { capabilities } = storeToRefs(authStore)
-
 async function onLogout(): Promise<void> {
   const res = await logout()
   if (res.success) {
@@ -47,16 +44,6 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
         icon: 'fa6-solid:gear',
         isActiveFn: (route: RouteLocationNormalized) => route.path === '/settings',
       },
-      ...(capabilities.value.canManageExtensions
-        ? [
-            {
-              title: t('extensions.admin.title'),
-              to: '/admin/extensions',
-              icon: 'fa6-solid:screwdriver-wrench',
-              isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/admin/extensions'),
-            },
-          ]
-        : []),
     ],
   },
 ])
@@ -69,7 +56,7 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
   },
   {
     to: '/browse',
-    icon: 'fa6-brands:safari',
+    icon: 'fa6-regular:compass',
     isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse'),
   },
   {

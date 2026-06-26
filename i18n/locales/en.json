@@ -127,7 +127,8 @@
     },
     "uninstall": {
       "confirmation": "Do you really want to uninstall the following extension ?"
-    }
+    },
+    "multiLanguages": "Multi languages"
   },
   "library": {
     "badges": {
@@ -137,7 +138,17 @@
   "sources": {
     "settings": {
       "title": "Source settings"
-    }
+    },
+    "title": "Sources",
+    "errors": {
+      "disableFailed": "Failed to disable source",
+      "enableFailed": "Fail to enable source"
+    },
+    "all": "All sources",
+    "enabled": "{count} of {total} enabled",
+    "deselectAll": "Deselect all",
+    "diableAll": "Disable all",
+    "count": "No sources | 1 source | {count} sources"
   },
   "settings": {
     "appearance": {
@@ -188,7 +199,8 @@
     "continue": "Continue",
     "uninstall": "Uninstall",
     "install": "Install",
-    "update": "Update"
+    "update": "Update",
+    "settings": "Settings"
   },
   "browse": {
     "title": "Browse",
@@ -205,5 +217,14 @@
   },
   "fields": {
     "search": "Search"
+  },
+  "extension": {
+    "uninstall": {
+      "confirmation": "Do you truly want to uninstall this extension ?"
+    },
+    "errors": {
+      "loadFailed": "Could not load extension",
+      "uninstallFailed": "Could not uninstall extension"
+    }
   }
 }

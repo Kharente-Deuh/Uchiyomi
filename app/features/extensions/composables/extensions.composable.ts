@@ -92,6 +92,10 @@ export function useExtensions(): ExtensionsComposable {
     store.update(res.data)
   }
 
+  onBeforeUnmount(() => {
+    store.clear()
+  })
+
   const installExtensionsLoading = ref<Set<string>>(new Set())
   async function install(pkgName: string): Promise<void> {
     installExtensionsLoading.value.add(pkgName)

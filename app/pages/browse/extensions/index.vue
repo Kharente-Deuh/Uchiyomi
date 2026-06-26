@@ -72,7 +72,7 @@ onMounted(() => {
 
     <div
       class="extensions-header-grid w-100 py-3 bg-background"
-      :class="{ 'px-4': mobile }"
+      :class="{ 'px-4': mobile, 'border-b-thin': mobile, 'mb-3': !mobile }"
     >
       <AtomInputSearch
         v-model="searchFilter"
@@ -106,7 +106,6 @@ onMounted(() => {
       <ExtensionsCard
         v-for="(item, i) in extensions"
         :key="i"
-        :first-item="i === 0"
         :extension="item"
         :loading="installExtensionsLoading.has(item.pkgName) || updateExtensionsLoading.has(item.pkgName) || (uninstallLoading && toUninstall?.pkgName === item.pkgName)"
         @install="install(item.pkgName)"

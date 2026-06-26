@@ -1,4 +1,4 @@
-import type { ExtensionDto } from '~~/shared/dto/extensions'
+import type { ExtensionDto } from '#shared/dto/extensions'
 
 export const useExtensionsStore = defineStore('extensions', () => {
   const extensions = ref<ExtensionDto[]>([])
@@ -16,9 +16,14 @@ export const useExtensionsStore = defineStore('extensions', () => {
     extensions.value = value
   }
 
+  function clear(): void {
+    extensions.value = []
+  }
+
   return {
     extensions,
     update,
     setExtensions,
+    clear,
   }
 })

@@ -18,12 +18,19 @@ const { mobile } = useDisplay()
     :title="title"
     :admin-only="adminOnly"
   >
+    <template #append-title>
+      <slot name="append-title" />
+    </template>
     <slot />
   </SettingsCardMobile>
   <SettingsCardDesktop
     v-else
     v-bind="props"
   >
+    <template #append-title>
+      <slot name="append-title" />
+    </template>
+
     <slot />
   </SettingsCardDesktop>
 </template>

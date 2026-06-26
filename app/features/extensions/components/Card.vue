@@ -1,11 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { ExtensionDto } from '~~/shared/dto/extensions'
+import type { ExtensionDto } from '#shared/dto/extensions'
 
 const props = defineProps<{
   extension: ExtensionDto
   loading?: boolean
-  firstItem?: boolean
 }>()
 
 const emits = defineEmits<{
@@ -47,39 +46,43 @@ const actionBtn = computed((): ActionBtn | undefined => {
   }
 
   return {
-    icon: 'fa6-solid:trash',
+    icon: 'fa6-regular:trash-can',
     color: 'error',
     tooltip: t('actions.uninstall'),
     action: () => emits('uninstall'),
   }
 })
+
+const canSeeExtension = computed(() => props.extension.isInstalled && !props.extension.hasUpdate)
 </script>
 
 <template>
-  <AtomLink :to="extension.isInstalled ? `/extensions/${extension.pkgName}` : undefined">
+  <AtomLink :to="canSeeExtension ? `/browse/extensions/${extension.pkgName}` : undefined">
     <div
       class="d-flex justify-space-between ga-2 pa-2 bg-surface"
       :class="{
+        'elevation-down': !mobile,
         'border-thin': !mobile,
         'border-b-thin': mobile,
-        'border-t-thin': firstItem,
+        'cursor-pointer': canSeeExtension,
       }"
       :style="{ borderRadius: !mobile ? '12px' : undefined }"
     >
-      <div class="d-flex align-center ga-2 ">
-        <ExtensionsAvatar :url="extension.iconUrl ?? ''" />
-        <div class="d-flex flex-column ga-1">
+      <div class="d-flex align-center ga-3 text-truncate">
+        <ExtensionsAvatar :url="extension.iconUrl ?? ''" size="small" />
+        <div class="d-flex flex-column ga-1 text-truncate">
           <span class="text-body-large font-weight-bold text-truncate">{{ extension.name }}</span>
-          <div class="d-flex align-center ga-2">
-            <span class="text-label-small text-medium-emphasis text-truncate">{{ extension.lang }}</span>
-            <VChip
-              :text="extension.versionName"
-              size="x-small"
-              density="comfortable"
-              class="text-label-small px-1"
-              :color="extension.hasUpdate ? 'warning' : 'secondary'"
+          <div class="d-flex align-center ga-3">
+            <AtomChipLang
+              :lang="extension.lang"
+              size="small"
             />
-            <AtomChipNsfw v-if="extension.isNsfw" />
+            <AtomChipVersion
+              :version="extension.versionName"
+              :has-update="extension.hasUpdate"
+              size="small"
+            />
+            <AtomChipNsfw v-if="extension.isNsfw" size="small" />
           </div>
         </div>
       </div>
@@ -88,6 +91,7 @@ const actionBtn = computed((): ActionBtn | undefined => {
         <VBtn
           v-if="actionBtn"
           v-tooltip="actionBtn.tooltip"
+          :class="`border-thin-${actionBtn.color}`"
           size="small"
           :loading
           :icon="actionBtn.icon"

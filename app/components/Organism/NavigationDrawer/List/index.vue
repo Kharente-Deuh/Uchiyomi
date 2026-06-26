@@ -6,15 +6,20 @@ export interface NavigationDrawerListProps {
   items: NavigationDrawerListItemProps[]
 }
 
-defineProps<NavigationDrawerListProps>()
+defineProps<{ compact?: boolean } & NavigationDrawerListProps>()
 </script>
 
 <template>
-  <div class="d-flex flex-column ga-2">
-    <span class="text-label-small text-medium-emphasis text-uppercase px-4 text-truncate w-100" style="letter-spacing: 0.08em!important;">{{ title }}</span>
+  <div class="d-flex flex-column ga-2 transition-smooth">
+    <span
+      v-show="!compact"
+      class="text-label-small text-medium-emphasis text-uppercase px-4 text-truncate w-100"
+      style="letter-spacing: 0.08em!important;"
+    >{{ title }}</span>
     <OrganismNavigationDrawerListItem
       v-for="(item, i) in items"
       :key="i"
+      :compact
       v-bind="item"
     />
   </div>

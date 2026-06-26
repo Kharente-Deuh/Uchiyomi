@@ -20,9 +20,15 @@ export function useLayoutPadding(): LayoutPaddingsComposable {
   })
 
   const leftLayout = computed(() => {
-    if (!mobile.value) {
-      return 'var(--navigation-drawer-width)'
+    if (mobile.value) {
+      return
     }
+
+    if (layoutStore.navigationDrawerCompact) {
+      return 'var(--navigation-drawer-compact-width)'
+    }
+
+    return 'var(--navigation-drawer-width)'
   })
 
   return {

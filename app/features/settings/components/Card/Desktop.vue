@@ -17,6 +17,7 @@ defineProps<{
     <div class="d-flex flex-column ga-2">
       <div class="d-flex text-truncate justify-space-between ga-2 align-center">
         <span class="font-title font-weight-bold text-title-large text-truncate">{{ title }}</span>
+        <slot name="append-title" />
         <VChip
           v-if="adminOnly"
           :text="$t('settings.adminOnly')"

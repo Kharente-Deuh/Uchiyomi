@@ -1,8 +1,7 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { NavigationDrawerListProps } from './List/index.vue'
-import LogoHorizontalDark from '~/assets/images/logo-horizontal-dark.webp'
-import LogoHorizontalLight from '~/assets/images/logo-horizontal.webp'
+import { useLayoutStore } from '~/store/layout.store'
 
 defineProps<{
   items: NavigationDrawerListProps[]
@@ -10,22 +9,31 @@ defineProps<{
 
 defineEmits<{ logout: [] }>()
 
-const theme = useTheme()
-const isDark = computed(() => theme.global.current.value.dark)
+const layoutStore = useLayoutStore()
+const { mdAndDown: compact } = useDisplay()
+
+watch(compact, (value) => {
+  layoutStore.setNavigationDrawerCompact(value)
+}, { immediate: true })
 </script>
 
 <template>
-  <nav class="left-0 position-fixed h-screen pa-4" style="width: var(--navigation-drawer-width); z-index: 1004;">
-    <div class="d-flex flex-column h-100 justify-space-between border-thin bg-surface rounded-lg elevation-down pa-4">
-      <div class="d-flex flex-column ga-6">
+  <nav
+    class="left-0 position-fixed h-screen py-4 pl-4 transition-smooth"
+    style="z-index: 1004"
+    :style="{ width: compact ? 'var(--navigation-drawer-compact-width)' : 'var(--navigation-drawer-width)' }"
+  >
+    <div class="d-flex flex-column h-100 justify-space-between border-thin bg-surface rounded-lg elevation-down" :class="{ 'pa-4': !compact, 'pa-3': compact }">
+      <div class="d-flex flex-column" :class="{ 'ga-6': !compact, 'ga-2': compact }">
         <AtomLink to="/">
-          <VImg :src="isDark ? LogoHorizontalDark : LogoHorizontalLight" class="w-100" />
+          <AtomProjectLogo :compact :class="{ 'mb-6': compact }" />
         </AtomLink>
 
         <OrganismNavigationDrawerList
           v-for="(item, i) in items"
           :key="i"
-          :class="{ 'mt-2': i === 0 }"
+          :compact
+          :class="{ 'mt-2': i === 0 && !compact }"
           v-bind="item"
         />
       </div>
@@ -34,8 +42,10 @@ const isDark = computed(() => theme.global.current.value.dark)
         variant="tonal"
         class="border-thin"
         color="secondary"
-        prepend-icon="fa6-solid:right-from-bracket"
-        :text="$t('auth.signOut')"
+        :size="compact ? 'small' : undefined"
+        :prepend-icon="compact ? undefined : 'fa6-solid:right-from-bracket'"
+        :icon="compact ? 'fa6-solid:right-from-bracket' : undefined"
+        :text="compact ? undefined : $t('auth.signOut')"
         data-test="user-menu-logout"
         @click="$emit('logout')"
       />

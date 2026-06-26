@@ -127,7 +127,8 @@
     },
     "uninstall": {
       "confirmation": "Voulez-vous vraiment désinstaller l’extension suivante ?"
-    }
+    },
+    "multiLanguages": "Multi langues"
   },
   "library": {
     "badges": {
@@ -137,7 +138,17 @@
   "sources": {
     "settings": {
       "title": "Réglages de la source"
-    }
+    },
+    "title": "Sources",
+    "errors": {
+      "disableFailed": "Échec de la désactivation de la source",
+      "enableFailed": "Impossible d'activer la source"
+    },
+    "all": "Toutes",
+    "enabled": "{count} sur {total} activées",
+    "deselectAll": "Tout désélectionner",
+    "diableAll": "Désactiver tout",
+    "count": "Aucune source | 1 source | {count} sources"
   },
   "settings": {
     "appearance": {
@@ -188,7 +199,8 @@
     "continue": "Continuer",
     "install": "Installer",
     "update": "Mise à jour",
-    "uninstall": "Désinstaller"
+    "uninstall": "Désinstaller",
+    "settings": "Paramètres"
   },
   "browse": {
     "title": "Parcourir",
@@ -205,5 +217,14 @@
   },
   "fields": {
     "search": "Recherche"
+  },
+  "extension": {
+    "uninstall": {
+      "confirmation": "Voulez-vous vraiment désinstaller cette extension ?"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger l'extension",
+      "uninstallFailed": "Impossible de désinstaller l'extension"
+    }
   }
 }

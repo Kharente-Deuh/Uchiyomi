@@ -5,38 +5,68 @@ import type { RouteLocationRaw } from 'vue-router'
 const props = defineProps<{
   title: string
   subtitle?: string
+  showBackRoute?: boolean
   backRoute?: RouteLocationRaw
   loading?: boolean
+  prependImage?: string
+  globalLoader?: boolean
 }>()
 
 useHead({ title: props.title })
 
 const { mobile } = useDisplay()
+const slots = useSlots()
+const debounceLoading = useDebounce(computed(() => props.loading), 500)
 </script>
 
 <template>
-  <div :class="!mobile ? 'pa-6' : ''" class="position-relative">
+  <div
+    v-if="globalLoader ? !debounceLoading : true"
+    :class="!mobile ? 'pl-8 py-4 pr-4' : ''"
+    class="position-relative"
+  >
     <VProgressLinear
       v-if="loading"
       indeterminate
       class="position-absolute bottom-0 left-0 w-100"
     />
+
+    <slot name="header" />
     <div
-      class="d-flex flex-column ga-3"
+      v-if="!slots.header"
+      class="d-flex ga-3 align-center justify-space-between"
       :class="mobile ? 'px-6 py-3' : 'mb-8'"
     >
-      <div class="d-flex align-center ga-4">
+      <div class="d-flex align-center ga-6 text-truncate">
         <AtomLink
-          v-if="backRoute && mobile"
+          v-if="backRoute && (showBackRoute || mobile)"
           :to="backRoute"
         >
           <VIcon icon="fa6-solid:chevron-left" />
         </AtomLink>
-        <span class="text-display-small font-title text-truncate">{{ title }}</span>
+
+        <slot name="prepend-title" />
+
+        <div class="d-flex flex-column ga-3 text-truncate">
+          <span class="text-display-small font-title text-truncate">{{ title }}</span>
+          <span v-if="subtitle && !mobile && !slots.subtitle" class="text-title-small text-medium-emphasis">{{ subtitle }}</span>
+          <slot name="subtitle" />
+        </div>
       </div>
-      <span v-if="subtitle && !mobile" class="text-title-small text-medium-emphasis">{{ subtitle }}</span>
+
+      <slot name="append-title" />
     </div>
 
     <slot />
+  </div>
+  <div v-else class="d-flex flex-column justify-center w-100 h-screen">
+    <div class="d-flex justify-center w-100">
+      <VProgressCircular
+        indeterminate
+        color="primary"
+        size="48"
+        class="mb-4"
+      />
+    </div>
   </div>
 </template>
