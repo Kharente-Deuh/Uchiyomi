@@ -56,7 +56,15 @@ const customCfg: TypedFlatConfigItem = {
 }
 
 const opts: OptionsConfig & Omit<TypedFlatConfigItem, 'files' | 'ignores'> = {
-  ignores: ['prisma/generated', 'docs', '.nuxt', '.output', 'dist', '**/*.md'],
+  ignores: [
+    'prisma/generated',
+    'docs',
+    '.nuxt',
+    '.output',
+    'dist',
+    '**/*.md',
+    '**/.graphql',
+  ],
   vue: true,
   typescript: true,
   formatters: true,

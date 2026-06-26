@@ -1,4 +1,6 @@
-"""Requires user authentication"""
+"""
+Requires user authentication
+"""
 directive @requireAuth on OBJECT | FIELD_DEFINITION
 
 type AboutServerPayload {
@@ -333,7 +335,9 @@ type CreateCategoryPayload {
   clientMutationId: String
 }
 
-"""A location in a connection that can be used for resuming pagination."""
+"""
+A location in a connection that can be used for resuming pagination.
+"""
 scalar Cursor
 
 enum DatabaseType {
@@ -622,14 +626,20 @@ enum DownloaderState {
   STOPPED
 }
 
-"""An ISO-8601 encoded duration string"""
+"""
+An ISO-8601 encoded duration string
+"""
 scalar Duration
 
 interface Edge {
-  """A cursor for use in pagination."""
+  """
+  A cursor for use in pagination.
+  """
   cursor: Cursor!
 
-  """The [T] at the end of the edge."""
+  """
+  The [T] at the end of the edge.
+  """
   node: Node!
 }
 
@@ -811,7 +821,15 @@ type FetchTrackPayload {
   trackRecord: TrackRecordType!
 }
 
-union Filter = CheckBoxFilter | GroupFilter | HeaderFilter | SelectFilter | SeparatorFilter | SortFilter | TextFilter | TriStateFilter
+union Filter =
+  | CheckBoxFilter
+  | GroupFilter
+  | HeaderFilter
+  | SelectFilter
+  | SeparatorFilter
+  | SortFilter
+  | TextFilter
+  | TriStateFilter
 
 input FilterChangeInput {
   checkBoxState: Boolean
@@ -1019,7 +1037,9 @@ input LongFilterInput {
   notIn: [LongString!]
 }
 
-"""A 64-bit signed integer as a String"""
+"""
+A 64-bit signed integer as a String
+"""
 scalar LongString
 
 input MangaConditionInput {
@@ -1311,7 +1331,23 @@ type Mutation {
   refreshToken(input: RefreshTokenInput!): RefreshTokenPayload!
 }
 
-union Node = CategoryMetaType | CategoryType | ChapterMetaType | ChapterType | DownloadType | DownloadUpdate | ExtensionType | GlobalMetaType | MangaMetaType | MangaType | PartialSettingsType | SettingsType | SourceMetaType | SourceType | TrackRecordType | TrackerType
+union Node =
+  | CategoryMetaType
+  | CategoryType
+  | ChapterMetaType
+  | ChapterType
+  | DownloadType
+  | DownloadUpdate
+  | ExtensionType
+  | GlobalMetaType
+  | MangaMetaType
+  | MangaType
+  | PartialSettingsType
+  | SettingsType
+  | SourceMetaType
+  | SourceType
+  | TrackRecordType
+  | TrackerType
 
 interface NodeList {
   """
@@ -1319,27 +1355,41 @@ interface NodeList {
   """
   edges: [Edge!]!
 
-  """A list of [T] objects."""
+  """
+  A list of [T] objects.
+  """
   nodes: [Node!]!
 
-  """Information to aid in pagination."""
+  """
+  Information to aid in pagination.
+  """
   pageInfo: PageInfo!
 
-  """The count of all nodes you could get from the connection."""
+  """
+  The count of all nodes you could get from the connection.
+  """
   totalCount: Int!
 }
 
 type PageInfo {
-  """When paginating forwards, the cursor to continue."""
+  """
+  When paginating forwards, the cursor to continue.
+  """
   endCursor: Cursor
 
-  """When paginating forwards, are there more items?"""
+  """
+  When paginating forwards, are there more items?
+  """
   hasNextPage: Boolean!
 
-  """When paginating backwards, are there more items?"""
+  """
+  When paginating backwards, are there more items?
+  """
   hasPreviousPage: Boolean!
 
-  """When paginating backwards, the cursor to continue."""
+  """
+  When paginating backwards, the cursor to continue.
+  """
   startCursor: Cursor
 }
 
@@ -1364,7 +1414,8 @@ type PartialSettingsType implements Settings {
   autoBackupIncludeManga: Boolean
   autoBackupIncludeServerSettings: Boolean
   autoBackupIncludeTracking: Boolean
-  autoDownloadAheadLimit: Int @deprecated(reason: "Replaced with autoDownloadNewChaptersLimit, replace with autoDownloadNewChaptersLimit")
+  autoDownloadAheadLimit: Int
+    @deprecated(reason: "Replaced with autoDownloadNewChaptersLimit, replace with autoDownloadNewChaptersLimit")
   autoDownloadIgnoreReUploads: Boolean
   autoDownloadNewChapters: Boolean
   autoDownloadNewChaptersLimit: Int
@@ -1403,14 +1454,29 @@ type PartialSettingsType implements Settings {
   jwtRefreshExpiry: Duration
   jwtTokenExpiry: Duration
   koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod
-  koreaderSyncDeviceId: String @deprecated(reason: "Moved to preference store. Is supposed to be random and gets auto generated, replace with MOVE TO PREFERENCES")
+  koreaderSyncDeviceId: String
+    @deprecated(
+      reason: "Moved to preference store. Is supposed to be random and gets auto generated, replace with MOVE TO PREFERENCES"
+    )
   koreaderSyncPercentageTolerance: Float
-  koreaderSyncServerUrl: String @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
-  koreaderSyncStrategy: KoreaderSyncLegacyStrategy @deprecated(reason: "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward, replace with koreaderSyncStrategyForward, koreaderSyncStrategyBackward")
+  koreaderSyncServerUrl: String
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
+  koreaderSyncStrategy: KoreaderSyncLegacyStrategy
+    @deprecated(
+      reason: "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward, replace with koreaderSyncStrategyForward, koreaderSyncStrategyBackward"
+    )
   koreaderSyncStrategyBackward: KoreaderSyncConflictStrategy
   koreaderSyncStrategyForward: KoreaderSyncConflictStrategy
-  koreaderSyncUserkey: String @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
-  koreaderSyncUsername: String @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
+  koreaderSyncUserkey: String
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
+  koreaderSyncUsername: String
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
   localSourcePath: String
   maxLogFileSize: String
   maxLogFiles: Int
@@ -1519,7 +1585,12 @@ input PartialSettingsTypeInput {
   webUIUpdateCheckInterval: Float
 }
 
-union Preference = CheckBoxPreference | EditTextPreference | ListPreference | MultiSelectListPreference | SwitchPreference
+union Preference =
+  | CheckBoxPreference
+  | EditTextPreference
+  | ListPreference
+  | MultiSelectListPreference
+  | SwitchPreference
 
 input PullKoSyncProgressInput {
   chapterId: Int!
@@ -1546,13 +1617,46 @@ type PushKoSyncProgressPayload {
 type Query {
   restoreStatus(id: String!): BackupRestoreStatus
   validateBackup(input: ValidateBackupInput!): ValidateBackupResult!
-  categories(condition: CategoryConditionInput, filter: CategoryFilterInput, orderBy: CategoryOrderBy, orderByType: SortOrder, order: [CategoryOrderInput!], before: Cursor, after: Cursor, first: Int, last: Int, offset: Int): CategoryNodeList!
+  categories(
+    condition: CategoryConditionInput
+    filter: CategoryFilterInput
+    orderBy: CategoryOrderBy
+    orderByType: SortOrder
+    order: [CategoryOrderInput!]
+    before: Cursor
+    after: Cursor
+    first: Int
+    last: Int
+    offset: Int
+  ): CategoryNodeList!
   category(id: Int!): CategoryType!
   chapter(id: Int!): ChapterType!
-  chapters(condition: ChapterConditionInput, filter: ChapterFilterInput, orderBy: ChapterOrderBy, orderByType: SortOrder, order: [ChapterOrderInput!], before: Cursor, after: Cursor, first: Int, last: Int, offset: Int): ChapterNodeList!
+  chapters(
+    condition: ChapterConditionInput
+    filter: ChapterFilterInput
+    orderBy: ChapterOrderBy
+    orderByType: SortOrder
+    order: [ChapterOrderInput!]
+    before: Cursor
+    after: Cursor
+    first: Int
+    last: Int
+    offset: Int
+  ): ChapterNodeList!
   downloadStatus: DownloadStatus!
   extension(pkgName: String!): ExtensionType!
-  extensions(condition: ExtensionConditionInput, filter: ExtensionFilterInput, orderBy: ExtensionOrderBy, orderByType: SortOrder, order: [ExtensionOrderInput!], before: Cursor, after: Cursor, first: Int, last: Int, offset: Int): ExtensionNodeList!
+  extensions(
+    condition: ExtensionConditionInput
+    filter: ExtensionFilterInput
+    orderBy: ExtensionOrderBy
+    orderByType: SortOrder
+    order: [ExtensionOrderInput!]
+    before: Cursor
+    after: Cursor
+    first: Int
+    last: Int
+    offset: Int
+  ): ExtensionNodeList!
   aboutServer: AboutServerPayload!
   aboutWebUI: AboutWebUI!
   checkForServerUpdates: [CheckForServerUpdatesPayload!]!
@@ -1560,17 +1664,71 @@ type Query {
   getWebUIUpdateStatus: WebUIUpdateStatus!
   koSyncStatus: KoSyncStatusPayload!
   manga(id: Int!): MangaType!
-  mangas(condition: MangaConditionInput, filter: MangaFilterInput, orderBy: MangaOrderBy, orderByType: SortOrder, order: [MangaOrderInput!], before: Cursor, after: Cursor, first: Int, last: Int, offset: Int): MangaNodeList!
+  mangas(
+    condition: MangaConditionInput
+    filter: MangaFilterInput
+    orderBy: MangaOrderBy
+    orderByType: SortOrder
+    order: [MangaOrderInput!]
+    before: Cursor
+    after: Cursor
+    first: Int
+    last: Int
+    offset: Int
+  ): MangaNodeList!
   meta(key: String!): GlobalMetaType!
-  metas(condition: MetaConditionInput, filter: MetaFilterInput, orderBy: MetaOrderBy, orderByType: SortOrder, order: [MetaOrderInput!], before: Cursor, after: Cursor, first: Int, last: Int, offset: Int): GlobalMetaNodeList!
+  metas(
+    condition: MetaConditionInput
+    filter: MetaFilterInput
+    orderBy: MetaOrderBy
+    orderByType: SortOrder
+    order: [MetaOrderInput!]
+    before: Cursor
+    after: Cursor
+    first: Int
+    last: Int
+    offset: Int
+  ): GlobalMetaNodeList!
   settings: SettingsType!
   source(id: LongString!): SourceType!
-  sources(condition: SourceConditionInput, filter: SourceFilterInput, orderBy: SourceOrderBy, orderByType: SortOrder, order: [SourceOrderInput!], before: Cursor, after: Cursor, first: Int, last: Int, offset: Int): SourceNodeList!
+  sources(
+    condition: SourceConditionInput
+    filter: SourceFilterInput
+    orderBy: SourceOrderBy
+    orderByType: SortOrder
+    order: [SourceOrderInput!]
+    before: Cursor
+    after: Cursor
+    first: Int
+    last: Int
+    offset: Int
+  ): SourceNodeList!
   searchTracker(input: SearchTrackerInput!): SearchTrackerPayload!
   trackRecord(id: Int!): TrackRecordType!
-  trackRecords(condition: TrackRecordConditionInput, filter: TrackRecordFilterInput, orderBy: TrackRecordOrderBy, orderByType: SortOrder, order: [TrackRecordOrderInput!], before: Cursor, after: Cursor, first: Int, last: Int, offset: Int): TrackRecordNodeList!
+  trackRecords(
+    condition: TrackRecordConditionInput
+    filter: TrackRecordFilterInput
+    orderBy: TrackRecordOrderBy
+    orderByType: SortOrder
+    order: [TrackRecordOrderInput!]
+    before: Cursor
+    after: Cursor
+    first: Int
+    last: Int
+    offset: Int
+  ): TrackRecordNodeList!
   tracker(id: Int!): TrackerType!
-  trackers(condition: TrackerConditionInput, orderBy: TrackerOrderBy, orderByType: SortOrder, order: [TrackerOrderInput!], before: Cursor, after: Cursor, first: Int, last: Int, offset: Int): TrackerNodeList!
+  trackers(
+    condition: TrackerConditionInput
+    orderBy: TrackerOrderBy
+    orderByType: SortOrder
+    order: [TrackerOrderInput!]
+    before: Cursor
+    after: Cursor
+    first: Int
+    last: Int
+    offset: Int
+  ): TrackerNodeList!
   lastUpdateTimestamp: LastUpdateTimestampPayload!
   libraryUpdateStatus: LibraryUpdateStatus!
   updateStatus: UpdateStatus! @deprecated(reason: "Replaced with libraryUpdateStatus, replace with libraryUpdateStatus")
@@ -1782,7 +1940,8 @@ interface Settings {
   autoBackupIncludeManga: Boolean
   autoBackupIncludeServerSettings: Boolean
   autoBackupIncludeTracking: Boolean
-  autoDownloadAheadLimit: Int @deprecated(reason: "Replaced with autoDownloadNewChaptersLimit, replace with autoDownloadNewChaptersLimit")
+  autoDownloadAheadLimit: Int
+    @deprecated(reason: "Replaced with autoDownloadNewChaptersLimit, replace with autoDownloadNewChaptersLimit")
   autoDownloadIgnoreReUploads: Boolean
   autoDownloadNewChapters: Boolean
   autoDownloadNewChaptersLimit: Int
@@ -1821,14 +1980,29 @@ interface Settings {
   jwtRefreshExpiry: Duration
   jwtTokenExpiry: Duration
   koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod
-  koreaderSyncDeviceId: String @deprecated(reason: "Moved to preference store. Is supposed to be random and gets auto generated, replace with MOVE TO PREFERENCES")
+  koreaderSyncDeviceId: String
+    @deprecated(
+      reason: "Moved to preference store. Is supposed to be random and gets auto generated, replace with MOVE TO PREFERENCES"
+    )
   koreaderSyncPercentageTolerance: Float
-  koreaderSyncServerUrl: String @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
-  koreaderSyncStrategy: KoreaderSyncLegacyStrategy @deprecated(reason: "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward, replace with koreaderSyncStrategyForward, koreaderSyncStrategyBackward")
+  koreaderSyncServerUrl: String
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
+  koreaderSyncStrategy: KoreaderSyncLegacyStrategy
+    @deprecated(
+      reason: "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward, replace with koreaderSyncStrategyForward, koreaderSyncStrategyBackward"
+    )
   koreaderSyncStrategyBackward: KoreaderSyncConflictStrategy
   koreaderSyncStrategyForward: KoreaderSyncConflictStrategy
-  koreaderSyncUserkey: String @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
-  koreaderSyncUsername: String @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
+  koreaderSyncUserkey: String
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
+  koreaderSyncUsername: String
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
   localSourcePath: String
   maxLogFileSize: String
   maxLogFiles: Int
@@ -1912,7 +2086,8 @@ type SettingsType implements Settings {
   autoBackupIncludeManga: Boolean!
   autoBackupIncludeServerSettings: Boolean!
   autoBackupIncludeTracking: Boolean!
-  autoDownloadAheadLimit: Int! @deprecated(reason: "Replaced with autoDownloadNewChaptersLimit, replace with autoDownloadNewChaptersLimit")
+  autoDownloadAheadLimit: Int!
+    @deprecated(reason: "Replaced with autoDownloadNewChaptersLimit, replace with autoDownloadNewChaptersLimit")
   autoDownloadIgnoreReUploads: Boolean!
   autoDownloadNewChapters: Boolean!
   autoDownloadNewChaptersLimit: Int!
@@ -1951,14 +2126,29 @@ type SettingsType implements Settings {
   jwtRefreshExpiry: Duration!
   jwtTokenExpiry: Duration!
   koreaderSyncChecksumMethod: KoreaderSyncChecksumMethod!
-  koreaderSyncDeviceId: String! @deprecated(reason: "Moved to preference store. Is supposed to be random and gets auto generated, replace with MOVE TO PREFERENCES")
+  koreaderSyncDeviceId: String!
+    @deprecated(
+      reason: "Moved to preference store. Is supposed to be random and gets auto generated, replace with MOVE TO PREFERENCES"
+    )
   koreaderSyncPercentageTolerance: Float!
-  koreaderSyncServerUrl: String! @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
-  koreaderSyncStrategy: KoreaderSyncLegacyStrategy! @deprecated(reason: "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward, replace with koreaderSyncStrategyForward, koreaderSyncStrategyBackward")
+  koreaderSyncServerUrl: String!
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
+  koreaderSyncStrategy: KoreaderSyncLegacyStrategy!
+    @deprecated(
+      reason: "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward, replace with koreaderSyncStrategyForward, koreaderSyncStrategyBackward"
+    )
   koreaderSyncStrategyBackward: KoreaderSyncConflictStrategy!
   koreaderSyncStrategyForward: KoreaderSyncConflictStrategy!
-  koreaderSyncUserkey: String! @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
-  koreaderSyncUsername: String! @deprecated(reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES")
+  koreaderSyncUserkey: String!
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
+  koreaderSyncUsername: String!
+    @deprecated(
+      reason: "Moved to preference store. User is supposed to use a login/logout mutation, replace with MOVE TO PREFERENCES"
+    )
   localSourcePath: String!
   maxLogFileSize: String!
   maxLogFiles: Int!
@@ -2188,7 +2378,8 @@ input StringFilterInput {
 }
 
 type Subscription {
-  downloadChanged: DownloadStatus! @deprecated(reason: "Replaced with downloadStatusChanged, replace with downloadStatusChanged(input)")
+  downloadChanged: DownloadStatus!
+    @deprecated(reason: "Replaced with downloadStatusChanged, replace with downloadStatusChanged(input)")
   downloadStatusChanged(input: DownloadChangedInput!): DownloadUpdates!
   webUIUpdateStatusChange: WebUIUpdateStatus!
   libraryUpdateStatusChanged(input: LibraryUpdateStatusChangedInput!): UpdaterUpdates!
@@ -2694,7 +2885,9 @@ type UpdaterUpdates {
   omittedUpdates: Boolean!
 }
 
-"""A file part in a multipart request"""
+"""
+A file part in a multipart request
+"""
 scalar Upload
 
 input ValidateBackupInput {
