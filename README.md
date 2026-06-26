@@ -2,7 +2,7 @@
   <img src="app/assets/images/logo-horizontal-subtitle.webp" style="width: 60%">
 </p>
 <p align="center">
-  <span>Self-hosted manga & webtoon server with a modern, installable PWA.</span>
+  <span>Opiniated and self-hosted manga & webtoon server with a modern, installable PWA. Based on <a href="https://github.com/Suwayomi/Suwayomi-Server">Suwayomi</a></span>
 </p>
 
 
@@ -21,6 +21,9 @@ per-user reading history**.
 > **Status:** early development. This is the application scaffold — see
 > [`CLAUDE.md`](./CLAUDE.md) and the ADRs in [`docs/adr/`](./docs/adr/) for the
 > vision and architecture.
+
+See [**Choices vs Suwayomi**](./docs/suwayomi-choices.md) for where Uchiyomi
+wraps, overrides, or diverges from Suwayomi.
 
 ## Tech stack
 
