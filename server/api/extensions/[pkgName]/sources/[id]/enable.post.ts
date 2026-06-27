@@ -2,44 +2,34 @@
 import type { UpdateSourceRequestDto } from '#shared/dto/extensions/extensions.request'
 import { z } from 'zod'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
+import { requireAuthUser, requireExtension } from '~~/server/domains/extensions/infrastructure/transport/http/guards/extension.guard'
+import { parseBody } from '~~/server/utils/request.util'
 import { toSourceDto } from '../../../../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
-const Body = z.object({ isEnabled: z.boolean() }) satisfies z.ZodType<UpdateSourceRequestDto>
+const BodySchema = z.object({ isEnabled: z.boolean() }) satisfies z.ZodType<UpdateSourceRequestDto>
 
 export default defineEventHandler(async (event) => {
-  const actor = event.context.authUser
-  if (!actor || !actor.canManageExtensions) {
-    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
-  }
-
+  const authUser = requireAuthUser(event, { mustBeAbleToManage: true })
+  const body = await parseBody(event, BodySchema)
   const id = getRouterParam(event, 'id')
   if (!id) {
     throw createError({ statusCode: 400, statusMessage: 'Missing id' })
   }
 
-  const parsed = await readValidatedBody(event, Body.safeParse)
-  if (!parsed.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
-  }
-
-  const pkgName = getRouterParam(event, 'pkgName')
-  if (!pkgName) {
-    throw createError({ statusCode: 400, statusMessage: 'Missing pkgName' })
-  }
-
-  const { setSourceEnabled, getExtensionByPkgName } = extensionsService()
-
-  const extension = await getExtensionByPkgName({ pkgName })
-  if (!extension) {
-    throw createError({ statusCode: 404, statusMessage: 'Extension not found' })
-  }
-
-  if (!extension.isInstalled || extension.hasUpdate) {
-    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  const extension = await requireExtension(event, authUser, { installationStatus: 'installed' })
+  const { setSourceEnabled, getVisibleSource } = extensionsService()
+  const src = await getVisibleSource({
+    pkgName: extension.pkgName,
+    sourceId: id,
+    isAdmin: !!authUser.canManageExtensions,
+    canSeeNsfw: !!authUser.allowNsfw && !!authUser.showNsfw,
+  })
+  if (!src) {
+    throw createError({ statusCode: 404, statusMessage: 'Source not found' })
   }
 
   try {
-    const source = await setSourceEnabled({ sourceId: id, isEnabled: parsed.data.isEnabled })
+    const source = await setSourceEnabled({ sourceId: id, isEnabled: body.isEnabled })
 
     return { source: toSourceDto(source) }
   } catch (err) {

@@ -36,12 +36,7 @@ export class SearchSourceWithChaptersUseCase implements IUseCase<SearchSourceWit
   ) {}
 
   async execute(opts: SearchSourceWithChaptersUseCaseParams): Promise<SearchSourceWithChaptersResult> {
-    const { mangas, hasNextPage } = await this.catalogueRepository.searchSource({
-      sourceId: opts.sourceId,
-      query: opts.query,
-      page: opts.page,
-      type: opts.type,
-    })
+    const { mangas, hasNextPage } = await this.catalogueRepository.searchSource(opts)
 
     const items = await mapWithConcurrency<typeof mangas[number], SearchedSourceMangaItem>(
       mangas,

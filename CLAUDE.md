@@ -171,6 +171,17 @@ per-layer idioms are in ADR-0013; the key wiring pattern is summarised below.
   handled on the client; failures are raised with `createError`.
 - **Presenters** are pure functions named `toXDto(...)` under
   `infrastructure/transport/http/`, typed against domain models.
+- **HTTP guards** live under `infrastructure/transport/http/guards/` in the domain
+  they authorize. Keep cheap authorization (authn `401` + capability `403`, no I/O)
+  in one function and resource load+gate (`404`/`403`, hits Suwayomi/DB) in another,
+  so a handler can validate input between them. **Mandatory order:** `401` → `403`
+  (authz) → `400` (input validation, via the pure `parseBody`/`parseQuery` helpers in
+  `server/utils/`) → `404`/`403` (resource existence/visibility) — an unauthorized
+  caller must never reach or learn about input validation or resource existence.
+  Don't add a Suwayomi resource load on overlay-only routes where the overlay query
+  already implies it. The authenticated user is `authUser` everywhere, never
+  `actor`/`user`. Canonical: the extensions `requireAuthUser`/`requireExtension`/
+  `extensionGuard`. (ADR-0013)
 - **`shared/` import rule in node-tested code:** use a **relative path** (not `~~` or
   `#shared`) when importing from `server/shared/` in files tested by the Vitest `node`
   project — the `node` project has no path aliases. See the comment in

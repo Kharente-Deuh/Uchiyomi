@@ -3,17 +3,13 @@ import type { LoginRequestDto } from '#shared/dto/identity/auth.request'
 import { z } from 'zod'
 import { authService, loginRateLimiter } from '~~/server/domains/identity/auth/application/auth.service'
 import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
+import { parseBody } from '~~/server/utils/request.util'
 import { accountNameSchema } from '../../utils/account-name'
 
 const Body = z.object({ accountName: accountNameSchema, password: z.string() }) satisfies z.ZodType<LoginRequestDto>
 
 export default defineEventHandler(async (event): Promise<void> => {
-  const parsed = await readValidatedBody(event, Body.safeParse)
-  if (!parsed.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
-  }
-
-  const body = parsed.data
+  const body = await parseBody(event, Body)
   // xForwardedFor: true is safe only because this app is deployed behind a
   // trusted reverse proxy that authoritatively sets X-Forwarded-For (ADR-0005,
   // single-instance self-hosted assumption). The rate-limit key includes the

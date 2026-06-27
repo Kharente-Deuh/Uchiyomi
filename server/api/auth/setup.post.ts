@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { authService } from '~~/server/domains/identity/auth/application/auth.service'
 import { sessionRepository } from '~~/server/domains/identity/sessions/application'
 import { newSessionExpiry } from '~~/server/domains/identity/sessions/session.domain'
+import { parseBody } from '~~/server/utils/request.util'
 import { Prisma } from '../../../prisma/generated/client'
 import { toUserDto } from '../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 import { accountNameSchema } from '../../utils/account-name'
@@ -15,21 +16,15 @@ function isSetupClosed(err: unknown): boolean {
 
 export default defineEventHandler(async (event) => {
   const cfg = useRuntimeConfig(event).auth
-  const Body = z.object({
+  const BodySchema = z.object({
     accountName: accountNameSchema,
     displayName: z.string().min(1),
     password: z.string().min(cfg.minPasswordLength),
   }) satisfies z.ZodType<SetupRequestDto>
 
-  const parsed = await readValidatedBody(event, Body.safeParse)
-  if (!parsed.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
-  }
-
-  const body = parsed.data
+  const body = await parseBody(event, BodySchema)
   try {
     const admin = await authService().setupFirstAdmin(body)
-    // Auto-login the new admin.
     const session = await sessionRepository.create({
       userId: admin.id,
       expiresAt: newSessionExpiry(new Date(), cfg.sessionTtlMs),

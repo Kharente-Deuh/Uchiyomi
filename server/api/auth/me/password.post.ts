@@ -3,6 +3,7 @@ import type { ChangePasswordRequestDto } from '#shared/dto/identity/me.request'
 import { z } from 'zod'
 import { authService } from '~~/server/domains/identity/auth/application/auth.service'
 import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
+import { parseBody } from '~~/server/utils/request.util'
 
 export default defineEventHandler(async (event): Promise<void> => {
   const cfg = useRuntimeConfig(event).auth
@@ -11,25 +12,20 @@ export default defineEventHandler(async (event): Promise<void> => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthenticated' })
   }
 
-  const Body = z.object({
+  const BodySchema = z.object({
     currentPassword: z.string().min(1),
     newPassword: z.string().min(cfg.minPasswordLength),
     logoutOtherDevices: z.boolean().optional(),
   })
     .refine(d => d.newPassword !== d.currentPassword, { message: 'newPasswordSameAsCurrent', path: ['newPassword'] }) satisfies z.ZodType<ChangePasswordRequestDto>
 
-  const parsed = await readValidatedBody(event, Body.safeParse)
-  if (!parsed.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
-  }
-
+  const body = await parseBody(event, BodySchema)
   const session = await getUserSession(event)
   const currentSessionId = (session as { sessionId?: string }).sessionId
   if (!currentSessionId) {
     throw createError({ statusCode: 401, statusMessage: 'Unauthenticated' })
   }
 
-  const body = parsed.data
   try {
     await authService().changePassword({
       userId: actor.id,

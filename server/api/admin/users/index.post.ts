@@ -2,13 +2,14 @@
 import type { CreateUserRequestDto } from '#shared/dto/identity/admin.request'
 import { z } from 'zod'
 import { usersService } from '~~/server/domains/identity/users/application/users.service'
+import { parseBody } from '~~/server/utils/request.util'
 import { Prisma } from '../../../../prisma/generated/client'
 import { toUserDto } from '../../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 import { accountNameSchema } from '../../../utils/account-name'
 
 export default defineEventHandler(async (event) => {
   const cfg = useRuntimeConfig(event).auth
-  const Body = z.object({
+  const BodySchema = z.object({
     accountName: accountNameSchema,
     displayName: z.string().min(1),
     password: z.string().min(cfg.minPasswordLength),
@@ -22,13 +23,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
 
-  const parsed = await readValidatedBody(event, Body.safeParse)
-  if (!parsed.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
-  }
-
+  const body = await parseBody(event, BodySchema)
   try {
-    const user = await usersService().createUser(parsed.data)
+    const user = await usersService().createUser(body)
 
     return { user: toUserDto(user) }
   } catch (err) {

@@ -145,11 +145,13 @@ describeIf('extensions routes e2e', async () => {
     expect(res.items.every(e => e.isInstalled === false)).toBe(true)
   })
 
-  itWithSuwayomi('GET /api/extensions/nonexistent/sources → 200 empty array (requires SUWAYOMI_URL)', async () => {
+  // Overlay-only route (no Suwayomi load): an unknown pkgName yields an empty
+  // source list, not a 404 — so this runs without a live engine.
+  it('gET /api/extensions/nonexistent/sources → 200 empty array', async () => {
     const res = await $fetch<{ sources: unknown[] }>('/api/extensions/com.nonexistent.pkg/sources', {
       headers: { cookie: adminCookie },
     })
-    expect(Array.isArray(res.sources)).toBe(true)
+    expect(res.sources).toEqual([])
   })
 
   // Install happy-path — mutates Suwayomi state, gated on SUWAYOMI_URL.
@@ -165,6 +167,30 @@ describeIf('extensions routes e2e', async () => {
     // Auth gate passed (would be 403 for non-canManageExtensions user).
     // Route may 4xx/5xx from Suwayomi returning an error for an unknown pkgName — that is expected.
     expect(res.status).not.toBe(403)
+  })
+
+  // Icon visibility — managers may preview the icon of a not-yet-installed
+  // extension (adminBypassesInstallCheck), regular users may not. Discovers a
+  // real not-installed, non-NSFW extension from the catalogue so it stays robust
+  // across environments; skips its assertions if the engine has none.
+  itWithSuwayomi('GET /api/extensions/:pkgName/icon → manager bypasses the install gate that blocks a regular user', async () => {
+    const list = await $fetch<{ items: { pkgName: string, isInstalled: boolean, isNsfw: boolean }[] }>(
+      '/api/extensions?isInstalled=false&pageSize=50',
+      { headers: { cookie: adminCookie } },
+    )
+    const candidate = list.items.find(e => !e.isInstalled && !e.isNsfw)
+    if (!candidate) {
+      return // No not-installed extension available in this engine — nothing to assert.
+    }
+
+    // Regular user: not installed → 403.
+    const asRegular = await fetch(`/api/extensions/${candidate.pkgName}/icon`, { headers: { cookie: nonAdminCookie } })
+    expect(asRegular.status).toBe(403)
+
+    // Manager: install gate bypassed → reaches the Suwayomi proxy (200, or 502 if
+    // the upstream icon fetch fails), never 403.
+    const asManager = await fetch(`/api/extensions/${candidate.pkgName}/icon`, { headers: { cookie: extManagerCookie } })
+    expect(asManager.status).not.toBe(403)
   })
 
   // ----------------------------------------------------------------

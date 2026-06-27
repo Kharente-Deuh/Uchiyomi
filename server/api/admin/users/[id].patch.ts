@@ -2,47 +2,49 @@
 import type { UpdateUserRequestDto } from '#shared/dto/identity/admin.request'
 import { z } from 'zod'
 import { usersService } from '~~/server/domains/identity/users/application/users.service'
+import { parseBody } from '~~/server/utils/request.util'
 import { Prisma } from '../../../../prisma/generated/client'
 import { toUserDto } from '../../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 import { displayNameSchema } from '../../../utils/display-name'
 
-const Body = z
-  .object({
-    displayName: displayNameSchema.optional(),
-    canManageExtensions: z.boolean().optional(),
-    canDownload: z.boolean().optional(),
-    allowNsfw: z.boolean().optional(),
-  })
-  .refine(b => b.displayName !== undefined
-    || b.canManageExtensions !== undefined
-    || b.canDownload !== undefined
-    || b.allowNsfw !== undefined, { message: 'At least one field is required' }) satisfies z.ZodType<UpdateUserRequestDto>
+const BodySchema = z.object({
+  displayName: displayNameSchema.optional(),
+  canManageExtensions: z.boolean().optional(),
+  canDownload: z.boolean().optional(),
+  allowNsfw: z.boolean().optional(),
+}).refine(b => b.displayName !== undefined
+  || b.canManageExtensions !== undefined
+  || b.canDownload !== undefined
+  || b.allowNsfw !== undefined, { message: 'At least one field is required' }) satisfies z.ZodType<UpdateUserRequestDto>
 
 export default defineEventHandler(async (event) => {
-  const actor = event.context.authUser
-  if (!actor || !actor.canManageUsers()) {
-    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  const { authUser } = event.context
+  if (!authUser) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthenticated' })
   }
 
-  const id = getRouterParam(event, 'id')
-  if (!id) {
+  const userId = getRouterParam(event, 'id')
+  if (!userId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing id' })
   }
 
-  const parsed = await readValidatedBody(event, Body.safeParse)
-  if (!parsed.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid body' })
+  // Admin-only: this route grants capabilities (canManageExtensions, canDownload,
+  // allowNsfw) that a user must never set on themselves — allowNsfw in particular
+  // is admin-granted (ADR-0012). Self-service edits go through /api/auth/me.
+  if (!authUser.canManageUsers()) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
   }
+
+  const { displayName, ...caps } = await parseBody(event, BodySchema)
 
   try {
     let user
-    const { displayName, ...caps } = parsed.data
     if (displayName !== undefined) {
-      user = await usersService().updateUserName({ id, displayName })
+      user = await usersService().updateUserName({ id: userId, displayName })
     }
 
     if (caps.canManageExtensions !== undefined || caps.canDownload !== undefined || caps.allowNsfw !== undefined) {
-      user = await usersService().updateUserCapabilities({ id, ...caps })
+      user = await usersService().updateUserCapabilities({ id: userId, ...caps })
     }
 
     return { user: toUserDto(user!) }

@@ -1,32 +1,44 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { SourceSearchResultDto } from '#shared/dto/catalogue/source-search.dto'
+import { z } from 'zod'
 import { catalogueService } from '~~/server/domains/catalogue/application/catalogue.service'
 import { toSourceSearchDto } from '~~/server/domains/catalogue/infrastructure/transport/http/catalogue-http.presenter'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
+import { requireAuthUser } from '~~/server/domains/extensions/infrastructure/transport/http/guards/extension.guard'
+import { parseQuery } from '~~/server/utils/request.util'
+
+interface QueryParams {
+  type: 'search' | 'popular' | 'latest'
+  q: string
+  page: number
+}
+
+// Page size is not a parameter: Suwayomi's fetchSourceManga only takes a page
+// number — the source (the scraped site) dictates how many items a page holds
+// via its own pagination. There is nothing to thread through here.
+const QuerySchema = z.object({
+  type: z.enum(['search', 'popular', 'latest']).optional().default('search'),
+  q: z.string().trim().min(1).optional().default(''),
+  page: z.coerce.number().int().min(1).optional().default(1),
+}).superRefine((data, ctx) => {
+  if (data.type === 'search' && !data.q) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'q is required when type is search',
+    })
+  }
+}) satisfies z.ZodType<QueryParams>
 
 export default defineEventHandler(async (event): Promise<SourceSearchResultDto> => {
-  const actor = event.context.authUser
-  if (!actor) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthenticated' })
-  }
-
+  // Overlay-only route: a visible source in the overlay already implies its
+  // extension is installed, so no Suwayomi extension load is needed here — just
+  // authenticate, then validate input cheaply before touching the store.
+  const authUser = requireAuthUser(event)
+  const { q: query, ...queryParams } = await parseQuery(event, QuerySchema)
   const pkgName = getRouterParam(event, 'pkgName')
   const sourceId = getRouterParam(event, 'id')
   if (!pkgName || !sourceId) {
     throw createError({ statusCode: 400, statusMessage: 'Missing route params' })
-  }
-
-  // Validate query params before the DB/Suwayomi call so bad input is rejected cheaply.
-  const queryParams = getQuery(event)
-  const typeParam = queryParams.type === undefined ? 'search' : queryParams.type
-  if (typeParam !== 'search' && typeParam !== 'popular' && typeParam !== 'latest') {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid type' })
-  }
-
-  const q = typeof queryParams.q === 'string' ? queryParams.q : ''
-  const page = queryParams.page === undefined ? 1 : Number(queryParams.page)
-  if (!Number.isInteger(page) || page < 1) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid page' })
   }
 
   // Authorize the source for this viewer. undefined → 404
@@ -34,18 +46,18 @@ export default defineEventHandler(async (event): Promise<SourceSearchResultDto> 
   const source = await extensionsService().getVisibleSource({
     pkgName,
     sourceId,
-    isAdmin: !!actor.canManageExtensions,
-    canSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
+    isAdmin: !!authUser.canManageExtensions,
+    canSeeNsfw: !!authUser.allowNsfw && !!authUser.showNsfw,
   })
   if (!source) {
     throw createError({ statusCode: 404, statusMessage: 'Source not found' })
   }
 
-  if (typeParam === 'latest' && !source.supportsLatest) {
+  if (queryParams.type === 'latest' && !source.supportsLatest) {
     throw createError({ statusCode: 400, statusMessage: 'Source does not support latest' })
   }
 
-  const result = await catalogueService().searchSourceWithChapters({ sourceId, query: q, page, type: typeParam })
+  const result = await catalogueService().searchSourceWithChapters({ sourceId, query, ...queryParams })
 
   return toSourceSearchDto(result)
 })

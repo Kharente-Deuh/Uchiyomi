@@ -455,3 +455,48 @@ in `CLAUDE.md`'s hard conventions:
 
 No tooling or structural change; this tightens the application/infrastructure
 boundary already defined above.
+
+## Revision — 2026-06-28 (HTTP guards + request-validation helpers)
+
+Route handlers had each re-implemented the same opening boilerplate: read
+`event.context.authUser`, 401 if absent, 403 on a capability, read/validate route
+params, load the resource, gate it (installed / NSFW / …). The repetition was both
+noise and a hazard — a forgotten check is a silent authz hole. Two complementary
+seams now own that boilerplate.
+
+- **Request-validation helpers are pure `server/utils/` helpers, not guards.**
+  `parseBody(event, schema)` / `parseQuery(event, schema)` (in
+  `server/utils/request.util.ts`) wrap the validate-or-`400` dance. They validate
+  input; they do **not** authorize. Keep them out of any `guards/` folder.
+
+- **Guards live under `infrastructure/transport/http/guards/`** in the domain they
+  authorize, alongside presenters — they are HTTP-transport concerns, not domain or
+  application code. The canonical set is the extensions guard:
+  `requireAuthUser(event, { mustBeAbleToManage })`, `requireExtension(event,
+  authUser, opts)`, and the convenience `extensionGuard` that composes both.
+
+- **Split cheap authorization from expensive resource loading.** Authentication
+  (`401`) and capability authorization (`403`) are pure, no-I/O checks; loading a
+  resource (e.g. an extension from Suwayomi) and gating it (`404`/`403`) hits the
+  network or DB. They are **separate functions** so a route can interleave input
+  validation between them.
+
+- **Mandatory ordering in a handler:** `401` (authn) → `403` (authz) → `400` (input
+  validation) → `404`/`403` (resource existence/visibility). A caller who is not
+  authorized must never reach, nor learn about, input validation or resource
+  existence. Concretely: `requireAuthUser(…)` → `parseBody/parseQuery(…)` →
+  `requireExtension(…)`. Routes with no body/query may use the composed
+  `extensionGuard`.
+
+- **Don't add a resource load the overlay already implies.** Overlay-only routes
+  (a visible `source` row already proves its extension is installed) must not pay a
+  redundant Suwayomi round-trip just to re-check installed state — gate on the
+  overlay query instead. Reserve `requireExtension` for routes that genuinely need
+  Suwayomi data or an explicit install/not-installed precondition.
+
+- **Naming.** The authenticated user is `authUser` everywhere (context field, guard
+  return, local binding) — not `actor`/`user`.
+
+No new tooling; `h3` is added to `knip.json` `ignoreDependencies` (a Nitro-provided
+transitive dependency, like the others already listed) because guards import
+`H3Event` from it.
