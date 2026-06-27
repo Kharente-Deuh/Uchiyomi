@@ -57,7 +57,7 @@ export function useExtensions(): ExtensionsComposable {
 
   const isUpToDateFilter = computed({
     get: () => store.isUpToDateFilter,
-    set: (value: boolean) => store.setUpToDateFilter(value),
+    set: (value: boolean) => store.setIsUpToDateFilter(value),
   })
 
   const searchFilter = ref<string>()

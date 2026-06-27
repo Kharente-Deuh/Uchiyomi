@@ -4,7 +4,6 @@ export const useExtensionsStore = defineStore('extensions', () => {
   const extensions = ref<ExtensionDto[]>([])
   const page = ref(1)
   const nsfwFilter = ref<boolean>()
-  const upToDateFilter = ref<boolean>()
   const isInstalledFilter = ref<boolean>()
   const isUpToDateFilter = ref<boolean | undefined>()
   const hasFiltersBeenSet = ref(false)
@@ -31,11 +30,6 @@ export const useExtensionsStore = defineStore('extensions', () => {
     hasFiltersBeenSet.value = true
   }
 
-  function setUpToDateFilter(value: boolean | undefined): void {
-    upToDateFilter.value = value
-    hasFiltersBeenSet.value = true
-  }
-
   function setIsInstalledFilter(value: boolean | undefined): void {
     isInstalledFilter.value = value
     hasFiltersBeenSet.value = true
@@ -58,12 +52,10 @@ export const useExtensionsStore = defineStore('extensions', () => {
 
     page,
     nsfwFilter,
-    upToDateFilter,
     isInstalledFilter,
     isUpToDateFilter,
     setPage,
     setNsfwFilter,
-    setUpToDateFilter,
     setIsInstalledFilter,
     setIsUpToDateFilter,
     hasFiltersBeenSet,

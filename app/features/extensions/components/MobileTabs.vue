@@ -13,7 +13,7 @@ const modelValue = defineModel<ExtensionMobileModel>({ required: true })
     />
 
     <VBtn
-      text="Series"
+      :text="$t('series.title')"
       :color="modelValue === 'series' ? 'primary' : 'secondary'"
       :variant="modelValue === 'series' ? 'flat' : 'text'"
       @click="modelValue = 'series'"

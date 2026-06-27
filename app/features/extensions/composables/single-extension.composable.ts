@@ -54,9 +54,6 @@ export function useSingleExtension(pkgName: string): SingleExtensionComposable {
     } else {
       toast.error(t('sources.errors.loadFailed'))
       console.error(res.error)
-      fetchSourcesLoading.value = true
-
-      return
     }
 
     fetchSourcesLoading.value = false
@@ -109,10 +106,6 @@ export function useSingleExtension(pkgName: string): SingleExtensionComposable {
   }
 
   onMounted(async () => {
-    if (!store.extension) {
-      fetchExtension()
-    }
-
     await Promise.all([
       ...(store.extension ? [] : [fetchExtension()]),
       ...(store.sources.length === 0 ? [fetchSources()] : []),

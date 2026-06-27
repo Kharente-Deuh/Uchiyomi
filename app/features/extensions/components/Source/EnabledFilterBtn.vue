@@ -33,7 +33,7 @@ const color = computed(() => {
     rounded="pill"
     size="small"
     :color
-    text="Activées"
+    :text="$t('sources.btn.enabled')"
     :class="`border-thin-${color}`"
     @click.stop="toggle"
   />

@@ -39,9 +39,5 @@ const code = ref(props.lang === 'all' ? '*' : props.lang.split('-')[0] ?? '')
     color: rgb(var(--v-theme-primary)) !important;
     background-color: rgb(var(--v-theme-primary), 0.15) !important;
   }
-
-  &--lang-all {
-    padding-top: 10px;
-  }
 }
 </style>

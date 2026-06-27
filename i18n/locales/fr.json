@@ -151,7 +151,10 @@
     "enabled": "{count} sur {total} activées",
     "deselectAll": "Tout désélectionner",
     "diableAll": "Désactiver tout",
-    "count": "Aucune source | 1 source | {count} sources"
+    "count": "Aucune source | 1 source | {count} sources",
+    "btn": {
+      "enabled": "Activées"
+    }
   },
   "settings": {
     "appearance": {
