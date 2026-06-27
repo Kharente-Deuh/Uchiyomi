@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { ExtensionSettingsDto, ExtensionSettingsSourceDto } from '#shared/dto/extensions/extension-settings.dto'
 import type { ExtensionDto, ExtensionHealthDto, ExtensionListResponseDto } from '#shared/dto/extensions/extension.dto'
 import type { PreferenceDto } from '#shared/dto/extensions/preference.dto'
 import type { SourceDto } from '#shared/dto/extensions/source.dto'
-import type { ExtensionErrorLogEntry, ExtensionHealthRow, ExtensionSourcePreferenceModel, ListedExtension, StoredExtensionSource } from '../../../extension.domain'
+import type { ExtensionErrorLogEntry, ExtensionHealthRow, ExtensionSettings, ExtensionSourcePreferenceModel, ListedExtension, StoredExtensionSource } from '../../../extension.domain'
 
 export function toExtensionDto(e: ListedExtension): ExtensionDto {
   return {
@@ -47,7 +48,20 @@ export function toSourceDto(s: StoredExtensionSource): SourceDto {
 }
 
 export function toPreferenceDto(p: ExtensionSourcePreferenceModel): PreferenceDto {
-  return { ...p }
+  // The domain and DTO branches are structurally identical; spreading the
+  // narrowed branch satisfies the matching DTO branch of the union.
+  switch (p.type) {
+    case 'switch':
+      return { ...p }
+    case 'checkbox':
+      return { ...p }
+    case 'editText':
+      return { ...p }
+    case 'list':
+      return { ...p }
+    case 'multiSelect':
+      return { ...p }
+  }
 }
 
 export function toHealthDto(h: ExtensionHealthRow, log: ExtensionErrorLogEntry[]): ExtensionHealthDto {
@@ -62,5 +76,39 @@ export function toHealthDto(h: ExtensionHealthRow, log: ExtensionErrorLogEntry[]
       message: e.message,
       context: e.context ?? undefined,
     })),
+  }
+}
+
+export function toExtensionSettingsDto(s: ExtensionSettings): ExtensionSettingsDto {
+  const commonPreferences: PreferenceDto[] = []
+  for (const preference of s.common) {
+    if (preference.visible) {
+      commonPreferences.push(toPreferenceDto(preference))
+    }
+  }
+
+  const mappedSources: ExtensionSettingsSourceDto[] = []
+  for (const source of s.sources) {
+    const sourcePreferences: PreferenceDto[] = []
+    for (const preference of source.preferences) {
+      if (preference.visible) {
+        sourcePreferences.push(toPreferenceDto(preference))
+      }
+    }
+
+    if (sourcePreferences.length > 0) {
+      mappedSources.push({
+        id: source.id,
+        name: source.name,
+        lang: source.lang,
+        preferences: sourcePreferences,
+      })
+    }
+  }
+
+  return {
+    pkgName: s.pkgName,
+    common: commonPreferences,
+    sources: mappedSources,
   }
 }

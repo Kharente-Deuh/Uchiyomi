@@ -1,9 +1,9 @@
-import type { ExtensionModel, ExtensionSourcePreferenceModel, ListedExtension, StoredExtensionSource, UpdatePreferenceParams } from '../extension.domain'
-import type { GetExtensionByPkgNameUseCaseOpts, GetExtensionHealthUseCaseOpts, GetExtensionHealthUseCaseResult, InstallExtensionUseCaseOpts, ListExtensionSourcesUseCaseOpts, ListExtensionsUseCaseOpts, ListExtensionsUseCaseResult, ListSourcePreferencesUseCaseOpts, SetSourceEnabledUseCaseOpts, UninstallExtensionUseCaseOpts, UpdateExtensionUseCaseOpts } from './usecases'
+import type { ExtensionModel, ExtensionSettings, ListedExtension, StoredExtensionSource } from '../extension.domain'
+import type { GetExtensionByPkgNameUseCaseOpts, GetExtensionHealthUseCaseOpts, GetExtensionHealthUseCaseResult, GetExtensionSettingsUseCaseOpts, InstallExtensionUseCaseOpts, ListExtensionSourcesUseCaseOpts, ListExtensionsUseCaseOpts, ListExtensionsUseCaseResult, SetSourceEnabledUseCaseOpts, UninstallExtensionUseCaseOpts, UpdateExtensionSettingsUseCaseOpts, UpdateExtensionUseCaseOpts } from './usecases'
 import { PrismaExtensionRepository } from '../infrastructure/persistence/prisma/prisma-extension.repository'
 import { PrismaSourceRepository } from '../infrastructure/persistence/prisma/prisma-source.repository'
 import { GraphqlSuwayomiExtensionsAdapter } from '../infrastructure/transport/graphql/graphql-suwayomi-extensions.adapter'
-import { GetExtensionByPkgNameUseCase, GetExtensionHealthUseCase, InstallExtensionUseCase, ListExtensionSourcesUseCase, ListExtensionsUseCase, ListSourcePreferencesUseCase, SetSourceEnabledUseCase, UninstallExtensionUseCase, UpdateExtensionUseCase, UpdateSourcePreferenceUseCase } from './usecases'
+import { GetExtensionByPkgNameUseCase, GetExtensionHealthUseCase, GetExtensionSettingsUseCase, InstallExtensionUseCase, ListExtensionSourcesUseCase, ListExtensionsUseCase, SetSourceEnabledUseCase, UninstallExtensionUseCase, UpdateExtensionSettingsUseCase, UpdateExtensionUseCase } from './usecases'
 
 export interface ExtensionsService {
   getExtensionByPkgName: (opts: GetExtensionByPkgNameUseCaseOpts) => Promise<ExtensionModel | undefined>
@@ -11,11 +11,11 @@ export interface ExtensionsService {
   installExtension: (opts: InstallExtensionUseCaseOpts) => Promise<ListedExtension>
   uninstallExtension: (opts: UninstallExtensionUseCaseOpts) => Promise<ListedExtension>
   updateExtension: (opts: UpdateExtensionUseCaseOpts) => Promise<ListedExtension>
-  listSourcePreferences: (opts: ListSourcePreferencesUseCaseOpts) => Promise<ExtensionSourcePreferenceModel[]>
-  updateSourcePreference: (opts: UpdatePreferenceParams) => Promise<ExtensionSourcePreferenceModel[]>
   getExtensionHealth: (opts: GetExtensionHealthUseCaseOpts) => Promise<GetExtensionHealthUseCaseResult | undefined>
   listExtensionSources: (opts: ListExtensionSourcesUseCaseOpts) => Promise<StoredExtensionSource[]>
   setSourceEnabled: (opts: SetSourceEnabledUseCaseOpts) => Promise<StoredExtensionSource>
+  getExtensionSettings: (opts: GetExtensionSettingsUseCaseOpts) => Promise<ExtensionSettings>
+  updateExtensionSettings: (opts: UpdateExtensionSettingsUseCaseOpts) => Promise<ExtensionSettings>
 }
 
 const { suwayomiUrl } = useRuntimeConfig()
@@ -44,14 +44,6 @@ function updateExtension(opts: UpdateExtensionUseCaseOpts): Promise<ListedExtens
   return new UpdateExtensionUseCase(suwayomiExtensionsPort, overlay, sourceOverlay).execute(opts)
 }
 
-function listSourcePreferences(opts: ListSourcePreferencesUseCaseOpts): Promise<ExtensionSourcePreferenceModel[]> {
-  return new ListSourcePreferencesUseCase(suwayomiExtensionsPort).execute(opts)
-}
-
-function updateSourcePreference(opts: UpdatePreferenceParams): Promise<ExtensionSourcePreferenceModel[]> {
-  return new UpdateSourcePreferenceUseCase(suwayomiExtensionsPort).execute(opts)
-}
-
 function getExtensionHealth(opts: GetExtensionHealthUseCaseOpts): Promise<GetExtensionHealthUseCaseResult | undefined> {
   return new GetExtensionHealthUseCase(overlay).execute(opts)
 }
@@ -64,6 +56,14 @@ function setSourceEnabled(opts: SetSourceEnabledUseCaseOpts): Promise<StoredExte
   return new SetSourceEnabledUseCase(sourceOverlay).execute(opts)
 }
 
+function getExtensionSettings(opts: GetExtensionSettingsUseCaseOpts): Promise<ExtensionSettings> {
+  return new GetExtensionSettingsUseCase(sourceOverlay, suwayomiExtensionsPort).execute(opts)
+}
+
+function updateExtensionSettings(opts: UpdateExtensionSettingsUseCaseOpts): Promise<ExtensionSettings> {
+  return new UpdateExtensionSettingsUseCase(sourceOverlay, suwayomiExtensionsPort).execute(opts)
+}
+
 export function extensionsService(): ExtensionsService {
   return {
     getExtensionByPkgName,
@@ -71,10 +71,10 @@ export function extensionsService(): ExtensionsService {
     installExtension,
     uninstallExtension,
     updateExtension,
-    listSourcePreferences,
-    updateSourcePreference,
     getExtensionHealth,
     listExtensionSources,
     setSourceEnabled,
+    getExtensionSettings,
+    updateExtensionSettings,
   }
 }

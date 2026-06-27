@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
-import { toSourceDto } from '../../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
+import { toSourceDto } from '~~/server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 export default defineEventHandler(async (event) => {
   const actor = event.context.authUser

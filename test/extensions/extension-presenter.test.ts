@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest'
-import { toExtensionDto, toExtensionListResponseDto, toHealthDto, toPreferenceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
+import { toExtensionDto, toExtensionListResponseDto, toExtensionSettingsDto, toHealthDto, toPreferenceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 describe('extension presenter', () => {
   it('serialises health with ISO dates and log', () => {
@@ -13,8 +13,8 @@ describe('extension presenter', () => {
   })
 
   it('passes preference fields through', () => {
-    const dto = toPreferenceDto({ position: 0, type: 'switch', visible: true, booleanValue: true })
-    expect(dto).toMatchObject({ position: 0, type: 'switch', booleanValue: true })
+    const dto = toPreferenceDto({ position: 0, type: 'switch', visible: true, booleanValue: true, booleanDefault: false })
+    expect(dto).toMatchObject({ position: 0, type: 'switch', booleanValue: true, booleanDefault: false })
   })
 })
 
@@ -58,5 +58,34 @@ describe('toExtensionListResponseDto', () => {
     })
     expect(dto).toMatchObject({ page: 2, pageSize: 20, totalCount: 57 })
     expect(dto.items.map(i => [i.pkgName, i.isHealthy])).toEqual([['p', true]])
+  })
+})
+
+describe('toExtensionSettingsDto', () => {
+  it('serialises common + per-source preferences', () => {
+    const dto = toExtensionSettingsDto({
+      pkgName: 'p',
+      common: [{ position: 0, type: 'switch', key: 'k', visible: true, booleanValue: true, booleanDefault: false }],
+      sources: [{ id: 'a', name: 'A', lang: 'fr', preferences: [{ position: 1, type: 'editText', key: 'token', visible: true, textValue: 'x' }] }],
+    })
+    expect(dto.pkgName).toBe('p')
+    expect(dto.common.map(p => p.key)).toEqual(['k'])
+    expect(dto.sources).toEqual([{ id: 'a', name: 'A', lang: 'fr', preferences: [{ position: 1, type: 'editText', key: 'token', visible: true, textValue: 'x' }] }])
+  })
+
+  it('drops non-visible preferences and sources left with none', () => {
+    const dto = toExtensionSettingsDto({
+      pkgName: 'p',
+      common: [
+        { position: 0, type: 'switch', key: 'shown', visible: true, booleanValue: true, booleanDefault: false },
+        { position: 1, type: 'switch', key: 'hidden', visible: false, booleanValue: true, booleanDefault: false },
+      ],
+      sources: [
+        { id: 'a', name: 'A', lang: 'fr', preferences: [{ position: 0, type: 'editText', key: 'token', visible: true, textValue: 'x' }] },
+        { id: 'b', name: 'B', lang: 'en', preferences: [{ position: 0, type: 'editText', key: 'secret', visible: false, textValue: 'y' }] },
+      ],
+    })
+    expect(dto.common.map(p => p.key)).toEqual(['shown'])
+    expect(dto.sources.map(s => s.id)).toEqual(['a'])
   })
 })

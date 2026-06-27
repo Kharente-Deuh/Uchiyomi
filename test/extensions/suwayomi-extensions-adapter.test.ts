@@ -98,3 +98,50 @@ describe('graphqlSuwayomiExtensionsAdapter.getExtension', () => {
     expect(result).toBeUndefined()
   })
 })
+
+describe('updateSourcePreferences (batch)', () => {
+  it('reads the source once, then posts one change per item with the type from the change', async () => {
+    const prefs = {
+      source: { preferences: [
+        { __typename: 'SwitchPreference', key: 's', title: null, summary: null, visible: true, currentValueBool: false, defaultBool: false },
+        { __typename: 'ListPreference', key: 'l', title: null, summary: null, visible: true, currentValueStr: 'a', defaultStr: 'a', entries: ['A'], entryValues: ['a'] },
+      ] },
+    }
+    const updated = { updateSourcePreference: { preferences: prefs.source.preferences } }
+    const execute = vi.fn()
+      .mockResolvedValueOnce(prefs) // GET_SOURCE_PREFERENCES
+      .mockResolvedValue(updated) // each UPDATE_SOURCE_PREFERENCE
+    const adapter = new GraphqlSuwayomiExtensionsAdapter({ execute } as never)
+
+    await adapter.updateSourcePreferences('src1', [
+      { position: 0, type: 'switch', booleanValue: true },
+      { position: 1, type: 'list', textValue: 'b' },
+    ])
+
+    // 1 read + 2 writes
+    expect(execute).toHaveBeenCalledTimes(3)
+    expect(execute.mock.calls[1][1]).toMatchObject({ source: 'src1', change: { position: 0, switchState: true } })
+    expect(execute.mock.calls[2][1]).toMatchObject({ source: 'src1', change: { position: 1, listState: 'b' } })
+  })
+
+  it('throws when a change targets a position with no preference', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({ source: { preferences: [] } })
+    const adapter = new GraphqlSuwayomiExtensionsAdapter({ execute } as never)
+    await expect(adapter.updateSourcePreferences('src1', [{ position: 0, type: 'switch', booleanValue: true }])).rejects.toThrow('No preference at position 0')
+  })
+
+  it('throws when the change type does not match the live preference type at that position (type-drift guard)', async () => {
+    const prefs = {
+      source: { preferences: [
+        { __typename: 'SwitchPreference', key: 's', title: null, summary: null, visible: true, currentValueBool: false, defaultBool: false },
+      ] },
+    }
+    const execute = vi.fn().mockResolvedValueOnce(prefs)
+    const adapter = new GraphqlSuwayomiExtensionsAdapter({ execute } as never)
+
+    // Sending 'checkbox' for a position that holds a 'switch' → type-drift error.
+    await expect(adapter.updateSourcePreferences('src1', [{ position: 0, type: 'checkbox', booleanValue: true }]))
+      .rejects
+      .toThrow('Preference type drift at position 0')
+  })
+})

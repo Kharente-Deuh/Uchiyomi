@@ -3,13 +3,6 @@ export interface ExtensionActionRequestDto {
   action: 'install' | 'uninstall' | 'update'
 }
 
-export interface UpdateSourcePreferenceRequestDto {
-  position: number
-  booleanValue?: boolean
-  textValue?: string
-  multiValue?: string[]
-}
-
 export interface UpdateSourceRequestDto {
   isEnabled: boolean
 }

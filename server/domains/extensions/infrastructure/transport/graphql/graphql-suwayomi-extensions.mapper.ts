@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { GetSourcePreferencesQuery } from '../../../../../utils/suwayomi/generated/graphql'
-import type { ExtensionSource, ExtensionSourcePreferenceModel, ExtensionSourcePreferenceType, UpdatePreferenceParams } from '../../../extension.domain'
+import type { ExtensionSource, ExtensionSourcePreferenceModel, SourcePreferenceChange } from '../../../extension.domain'
 import { ExtensionModel } from '../../../extension.domain'
 
 // ── Extension / Source nodes ──────────────────────────────────────────────────
@@ -124,17 +124,17 @@ export interface ChangeInput {
   multiSelectState?: string[]
 }
 
-export function toChangeInput(type: ExtensionSourcePreferenceType, p: UpdatePreferenceParams): ChangeInput {
-  switch (type) {
+export function toChangeInput(change: SourcePreferenceChange): ChangeInput {
+  switch (change.type) {
     case 'switch':
-      return { position: p.position, switchState: p.booleanValue }
+      return { position: change.position, switchState: change.booleanValue }
     case 'checkbox':
-      return { position: p.position, checkBoxState: p.booleanValue }
+      return { position: change.position, checkBoxState: change.booleanValue }
     case 'editText':
-      return { position: p.position, editTextState: p.textValue }
+      return { position: change.position, editTextState: change.textValue }
     case 'list':
-      return { position: p.position, listState: p.textValue }
+      return { position: change.position, listState: change.textValue }
     case 'multiSelect':
-      return { position: p.position, multiSelectState: p.multiValue }
+      return { position: change.position, multiSelectState: change.multiValue }
   }
 }

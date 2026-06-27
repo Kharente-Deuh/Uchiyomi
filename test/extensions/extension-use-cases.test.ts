@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it, vi } from 'vitest'
+import * as GetExtensionSettings from '../../server/domains/extensions/application/usecases/get-extension-settings.use-case'
 import * as InstallExtension from '../../server/domains/extensions/application/usecases/install-extension.use-case'
 import * as ListExtensionSources from '../../server/domains/extensions/application/usecases/list-extension-sources.use-case'
 import * as ListExtensions from '../../server/domains/extensions/application/usecases/list-extensions.use-case'
 import * as SetSourceEnabled from '../../server/domains/extensions/application/usecases/set-source-enabled.use-case'
 import * as UninstallExtension from '../../server/domains/extensions/application/usecases/uninstall-extension.use-case'
+import * as UpdateExtensionSettings from '../../server/domains/extensions/application/usecases/update-extension-settings.use-case'
 import * as UpdateExtension from '../../server/domains/extensions/application/usecases/update-extension.use-case'
 
 function avail(pkgName: string, isNsfw: boolean): { pkgName: string, name: string, lang: string, isNsfw: boolean, isInstalled: boolean, hasUpdate: boolean, versionName: string } {
@@ -199,7 +201,7 @@ describe('setSourceEnabled.UseCase', () => {
   it('sets isEnabled when the source exists', async () => {
     const sources = {
       findById: async () => ({ id: '1', pkgName: 'p', name: 'A', lang: 'en', isNsfw: false, isConfigurable: true, isEnabled: true }),
-      setEnabled: async (id: string, isEnabled: boolean) => ({ id, pkgName: 'p', name: 'A', lang: 'en', isNsfw: false, isConfigurable: true, isEnabled }),
+      update: async (id: string, data: { isEnabled: boolean }) => ({ id, pkgName: 'p', name: 'A', lang: 'en', isNsfw: false, isConfigurable: true, ...data }),
     } as any
     const uc = new SetSourceEnabled.SetSourceEnabledUseCase(sources)
     const res = await uc.execute({ sourceId: '1', isEnabled: false })
@@ -207,7 +209,7 @@ describe('setSourceEnabled.UseCase', () => {
   })
 
   it('throws NotFound when the source is unknown', async () => {
-    const sources = { findById: async () => {} } as any
+    const sources = { findById: async (): Promise<undefined> => {} } as any
     const uc = new SetSourceEnabled.SetSourceEnabledUseCase(sources)
     await expect(uc.execute({ sourceId: 'x', isEnabled: false })).rejects.toThrow('Source not found')
   })
@@ -219,17 +221,130 @@ describe('listExtensionSources.UseCase', () => {
     { id: '2', pkgName: 'p', name: 'B', lang: 'en', isNsfw: false, isConfigurable: true, isEnabled: false },
     { id: '3', pkgName: 'p', name: 'C', lang: 'en', isNsfw: true, isConfigurable: true, isEnabled: true },
   ]
-  const sources = { listByPkg: async () => stored } as any
 
-  it('admin sees all sources', async () => {
-    const uc = new ListExtensionSources.ListExtensionSourcesUseCase(sources)
-    const res = await uc.execute({ pkgName: 'p', isAdmin: true, viewerCanSeeNsfw: false })
+  // The use case pushes filtering into findMany; the fake honours the params it receives.
+  function makeFakeSources(): any {
+    return {
+      findMany: async (params: { pkgName: string, isEnabled?: boolean, isNsfw?: boolean }) => {
+        return stored.filter((s) => {
+          if (params.pkgName !== undefined && s.pkgName !== params.pkgName) {
+            return false
+          }
+
+          if (params.isEnabled !== undefined && s.isEnabled !== params.isEnabled) {
+            return false
+          }
+
+          if (params.isNsfw !== undefined && s.isNsfw !== params.isNsfw) {
+            return false
+          }
+
+          return true
+        })
+      },
+    }
+  }
+
+  it('admin sees all sources (including disabled and NSFW when canSeeNsfw)', async () => {
+    const uc = new ListExtensionSources.ListExtensionSourcesUseCase(makeFakeSources())
+    const res = await uc.execute({ pkgName: 'p', isAdmin: true, canSeeNsfw: true })
     expect(res.map(s => s.id)).toEqual(['1', '2', '3'])
   })
 
   it('non-admin sees only enabled, NSFW-gated sources', async () => {
-    const uc = new ListExtensionSources.ListExtensionSourcesUseCase(sources)
-    const res = await uc.execute({ pkgName: 'p', isAdmin: false, viewerCanSeeNsfw: false })
+    const uc = new ListExtensionSources.ListExtensionSourcesUseCase(makeFakeSources())
+    const res = await uc.execute({ pkgName: 'p', isAdmin: false, canSeeNsfw: false })
     expect(res.map(s => s.id)).toEqual(['1']) // 2 disabled, 3 nsfw-gated
+  })
+})
+
+describe('getExtensionSettings.UseCase', () => {
+  it('lists configurable sources, reads each source prefs, and merges', async () => {
+    const sources = { findMany: vi.fn().mockResolvedValue([
+      { id: 'a', pkgName: 'p', name: 'A', lang: 'fr', isNsfw: false, isConfigurable: true, isEnabled: true },
+      { id: 'b', pkgName: 'p', name: 'B', lang: 'en', isNsfw: false, isConfigurable: true, isEnabled: true },
+    ]) } as any
+    const suwayomi = { listSourcePreferences: vi.fn(async (id: string) => [
+      { position: 0, type: 'list', key: 'lang', visible: true, textValue: id === 'a' ? 'fr' : 'en' },
+    ]) } as any
+
+    const res = await new GetExtensionSettings.GetExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p' })
+
+    expect(sources.findMany).toHaveBeenCalledWith({ pkgName: 'p', isConfigurable: true })
+    expect(res.common.map(p => p.key)).toEqual(['lang'])
+    expect(res.sources.map(s => s.id)).toEqual(['a', 'b'])
+  })
+
+  it('returns empty settings without reading prefs when there are no configurable sources', async () => {
+    const sources = { findMany: vi.fn().mockResolvedValue([]) } as any
+    const suwayomi = { listSourcePreferences: vi.fn() } as any
+    const res = await new GetExtensionSettings.GetExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p' })
+    expect(res).toEqual({ pkgName: 'p', common: [], sources: [] })
+    expect(suwayomi.listSourcePreferences).not.toHaveBeenCalled()
+  })
+})
+
+function makeDepsForUpdateExtensionSettings(prefsByCall: Record<string, any[]>): { sources: any, suwayomi: any } {
+  const sources = {
+    findMany: vi.fn().mockResolvedValue([
+      { id: 'a', pkgName: 'p', name: 'A', lang: 'fr', isNsfw: false, isConfigurable: true, isEnabled: true },
+      { id: 'b', pkgName: 'p', name: 'B', lang: 'en', isNsfw: false, isConfigurable: true, isEnabled: true },
+    ]),
+  } as any
+  const suwayomi = {
+    listSourcePreferences: vi.fn(async (id: string) => prefsByCall[id]),
+    updateSourcePreferences: vi.fn().mockResolvedValue([]),
+  } as any
+
+  return { sources, suwayomi }
+}
+
+describe('updateExtensionSettings.UseCase', () => {
+  it('applies common changes to every source, resolving the position per source', async () => {
+    const { sources, suwayomi } = makeDepsForUpdateExtensionSettings({
+      a: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'fr' }],
+      b: [{ position: 7, type: 'list', key: 'lang', visible: true, textValue: 'en' }],
+    })
+    const settings = { pkgName: 'p', common: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'de' }], sources: [] }
+
+    await new UpdateExtensionSettings.UpdateExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p', settings })
+
+    expect(suwayomi.updateSourcePreferences).toHaveBeenCalledWith('a', [{ position: 0, type: 'list', textValue: 'de' }])
+    expect(suwayomi.updateSourcePreferences).toHaveBeenCalledWith('b', [{ position: 7, type: 'list', textValue: 'de' }])
+  })
+
+  it('does not call update for a source with no computed changes', async () => {
+    const { sources, suwayomi } = makeDepsForUpdateExtensionSettings({
+      a: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'fr' }],
+      b: [{ position: 0, type: 'switch', key: 'other', visible: true, booleanValue: true }],
+    })
+    const settings = { pkgName: 'p', common: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'de' }], sources: [] }
+
+    await new UpdateExtensionSettings.UpdateExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p', settings })
+
+    expect(suwayomi.updateSourcePreferences).toHaveBeenCalledWith('a', [{ position: 0, type: 'list', textValue: 'de' }])
+    expect(suwayomi.updateSourcePreferences).not.toHaveBeenCalledWith('b', expect.anything())
+  })
+
+  it('logs and continues when one source write throws, then returns re-merged truth', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { sources, suwayomi } = makeDepsForUpdateExtensionSettings({
+      a: [{ position: 0, type: 'switch', key: 'k', visible: true, booleanValue: false }],
+      b: [{ position: 0, type: 'switch', key: 'k', visible: true, booleanValue: false }],
+    })
+    suwayomi.updateSourcePreferences = vi.fn(async (id: string) => {
+      if (id === 'a') {
+        throw new Error('boom')
+      }
+
+      return []
+    })
+    const settings = { pkgName: 'p', common: [{ position: 0, type: 'switch', key: 'k', visible: true, booleanValue: true }], sources: [] }
+
+    const res = await new UpdateExtensionSettings.UpdateExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p', settings })
+
+    expect(warn).toHaveBeenCalled()
+    expect(res.pkgName).toBe('p') // returned re-merged state, no throw
+    warn.mockRestore()
   })
 })
