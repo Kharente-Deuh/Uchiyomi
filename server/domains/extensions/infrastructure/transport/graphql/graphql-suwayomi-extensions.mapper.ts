@@ -35,6 +35,7 @@ export interface SourceNode {
   lang: string
   isNsfw: boolean
   isConfigurable: boolean
+  supportsLatest: boolean
 }
 
 export function sourceToDomain(node: SourceNode): ExtensionSource {
@@ -44,6 +45,7 @@ export function sourceToDomain(node: SourceNode): ExtensionSource {
     lang: node.lang,
     isNsfw: node.isNsfw,
     isConfigurable: node.isConfigurable,
+    supportsLatest: node.supportsLatest,
   }
 }
 

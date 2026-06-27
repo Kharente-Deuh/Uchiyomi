@@ -64,6 +64,7 @@ export interface ExtensionSource {
   lang: string
   isNsfw: boolean
   isConfigurable: boolean
+  supportsLatest: boolean
 }
 
 export type ExtensionSourcePreferenceType = 'switch' | 'checkbox' | 'editText' | 'list' | 'multiSelect'

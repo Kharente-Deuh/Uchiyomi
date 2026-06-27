@@ -74,6 +74,7 @@ export const GET_EXTENSION_SOURCES = graphql(`
           lang
           isNsfw
           isConfigurable
+          supportsLatest
         }
       }
     }

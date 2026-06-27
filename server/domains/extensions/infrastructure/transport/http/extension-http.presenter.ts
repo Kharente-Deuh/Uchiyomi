@@ -30,6 +30,7 @@ export function toSourceDto(s: StoredExtensionSource): SourceDto {
     isNsfw: s.isNsfw,
     isConfigurable: s.isConfigurable,
     isEnabled: s.isEnabled,
+    supportsLatest: s.supportsLatest,
   }
 }
 

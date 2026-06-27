@@ -241,6 +241,7 @@ model Source {
   isNsfw         Boolean @default(false) @map("is_nsfw")
   isConfigurable Boolean @default(false) @map("is_configurable")
   isEnabled      Boolean @default(true) @map("is_enabled")
+  supportsLatest Boolean @default(false) @map("supports_latest")
 
   extension Extension @relation(fields: [pkgName], references: [pkgName], onDelete: Cascade)
 

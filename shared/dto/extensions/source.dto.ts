@@ -6,4 +6,5 @@ export interface SourceDto {
   isNsfw: boolean
   isConfigurable: boolean
   isEnabled: boolean
+  supportsLatest: boolean
 }

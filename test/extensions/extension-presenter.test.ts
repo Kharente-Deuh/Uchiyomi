@@ -1,7 +1,7 @@
-import type { ExtensionDto } from '../../shared/dto/extensions/extension.dto'
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { ExtensionDto } from '../../shared/dto/extensions/extension.dto'
 import { describe, expect, it } from 'vitest'
-import { toExtensionDto, toExtensionSettingsDto, toHealthDto, toPreferenceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
+import { toExtensionDto, toExtensionSettingsDto, toHealthDto, toPreferenceDto, toSourceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
 import { toPageDto } from '../../server/shared'
 
 describe('extension presenter', () => {
@@ -59,6 +59,28 @@ describe('toPageDto', () => {
     expect(dto).toMatchObject({ total: 57 })
 
     expect(dto.items.map((i: ExtensionDto) => [i.pkgName, i.isHealthy])).toEqual([['p', true]])
+  })
+})
+
+describe('toSourceDto', () => {
+  const baseSource = {
+    id: 'src1',
+    pkgName: 'pkg.ext',
+    name: 'My Source',
+    lang: 'en',
+    isNsfw: false,
+    isConfigurable: true,
+    isEnabled: true,
+  }
+
+  it('includes supportsLatest: true', () => {
+    const dto = toSourceDto({ ...baseSource, supportsLatest: true })
+    expect(dto).toMatchObject({ id: 'src1', name: 'My Source', isEnabled: true, supportsLatest: true })
+  })
+
+  it('includes supportsLatest: false', () => {
+    const dto = toSourceDto({ ...baseSource, supportsLatest: false })
+    expect(dto.supportsLatest).toBe(false)
   })
 })
 

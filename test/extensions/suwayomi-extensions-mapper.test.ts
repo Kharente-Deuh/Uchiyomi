@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest'
-import { preferenceToDomain, toChangeInput } from '../../server/domains/extensions/infrastructure/transport/graphql/graphql-suwayomi-extensions.mapper'
+import { preferenceToDomain, sourceToDomain, toChangeInput } from '../../server/domains/extensions/infrastructure/transport/graphql/graphql-suwayomi-extensions.mapper'
+
+describe('sourceToDomain', () => {
+  it('maps supportsLatest: true', () => {
+    const domain = sourceToDomain({ id: 's1', name: 'Source 1', lang: 'en', isNsfw: false, isConfigurable: false, supportsLatest: true })
+    expect(domain).toMatchObject({ id: 's1', name: 'Source 1', lang: 'en', isNsfw: false, isConfigurable: false, supportsLatest: true })
+  })
+
+  it('maps supportsLatest: false', () => {
+    const domain = sourceToDomain({ id: 's2', name: 'Source 2', lang: 'fr', isNsfw: true, isConfigurable: true, supportsLatest: false })
+    expect(domain).toMatchObject({ id: 's2', supportsLatest: false })
+  })
+})
 
 describe('preferenceToDomain', () => {
   it('maps a SwitchPreference', () => {
