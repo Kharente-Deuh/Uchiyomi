@@ -29,6 +29,7 @@ const doUpdateNsfw = useDebounceFn(async (value: boolean | null): Promise<void> 
       <VSwitch
         v-model="showNsfw"
         theme="light"
+        inset
         density="compact"
         hide-details
         color="primary"
