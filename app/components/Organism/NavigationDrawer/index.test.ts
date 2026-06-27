@@ -10,7 +10,7 @@ const items: NavigationDrawerListProps[] = [
   {
     title: 'SYSTEM',
     items: [
-      { icon: 'fa6-solid:gear', title: 'Settings', to: '/settings', isActiveFn: () => false },
+      { icon: 'fa6-solid:gear', title: 'Settings', to: '/settings', isActiveFn: () => false, baseRoute: '/somewhere-else' },
     ],
   },
 ]

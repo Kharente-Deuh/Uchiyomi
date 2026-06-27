@@ -9,8 +9,8 @@ import List from './index.vue'
 const props: NavigationDrawerListProps = {
   title: 'SYSTEM',
   items: [
-    { icon: 'fa6-solid:gear', title: 'Settings', to: '/settings', isActiveFn: () => false },
-    { icon: 'fa6-solid:house', title: 'Home', to: '/', isActiveFn: () => false },
+    { icon: 'fa6-solid:gear', title: 'Settings', to: '/settings', isActiveFn: () => false, baseRoute: '/somewhere-else' },
+    { icon: 'fa6-solid:house', title: 'Home', to: '/', isActiveFn: () => false, baseRoute: '/somewhere-else' },
   ],
 }
 

@@ -8,8 +8,8 @@ import BottomNavigation from './index.vue'
 import Item from './Item.vue'
 
 const items: BottomNavigationItemProps[] = [
-  { icon: 'fa6-solid:house', to: '/', isActiveFn: () => false },
-  { icon: 'fa6-solid:gear', to: '/settings', isActiveFn: () => false },
+  { icon: 'fa6-solid:house', to: '/', isActiveFn: () => false, baseRoute: '/somewhere-else' },
+  { icon: 'fa6-solid:gear', to: '/settings', isActiveFn: () => false, baseRoute: '/somewhere-else' },
 ]
 
 function wrap(): { render: () => ReturnType<typeof h> } {
