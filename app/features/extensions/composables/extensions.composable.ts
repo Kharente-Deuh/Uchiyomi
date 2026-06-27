@@ -41,11 +41,27 @@ export function useExtensions(): ExtensionsComposable {
   const store = useExtensionsStore()
   const { mobile } = useDisplay()
 
-  const nsfwFilter = ref<boolean>()
-  const isInstalledFilter = ref<boolean>()
-  const isUpToDateFilter = ref<boolean>()
+  const page = computed({
+    get: () => store.page,
+    set: (value: number) => store.setPage(value),
+  })
+
+  const isInstalledFilter = computed({
+    get: () => store.isInstalledFilter,
+    set: (value: boolean) => store.setIsInstalledFilter(value),
+  })
+
+  const nsfwFilter = computed({
+    get: () => store.nsfwFilter,
+    set: (value: boolean) => store.setNsfwFilter(value),
+  })
+
+  const isUpToDateFilter = computed({
+    get: () => store.isUpToDateFilter,
+    set: (value: boolean) => store.setUpToDateFilter(value),
+  })
+
   const searchFilter = ref<string>()
-  const page = ref<number>(1)
   const maxPage = ref<number>(0)
   const isLoading = ref<boolean>(false)
 
@@ -91,6 +107,12 @@ export function useExtensions(): ExtensionsComposable {
 
     store.update(res.data)
   }
+
+  onMounted(() => {
+    if (!store.hasFiltersBeenSet) {
+      isInstalledFilter.value = true
+    }
+  })
 
   onBeforeUnmount(() => {
     store.clear()

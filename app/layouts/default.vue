@@ -26,12 +26,14 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
         to: '/browse/series',
         icon: 'fa6-solid:book',
         isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse/series'),
+        baseRoute: '/browse/series',
       },
       {
         title: t('extensions.title'),
         to: '/browse/extensions',
         icon: 'fa6-solid:puzzle-piece',
         isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse/extensions'),
+        baseRoute: '/browse/extensions',
       },
     ],
   },
@@ -43,6 +45,7 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
         to: '/settings',
         icon: 'fa6-solid:gear',
         isActiveFn: (route: RouteLocationNormalized) => route.path === '/settings',
+        baseRoute: '/settings',
       },
     ],
   },
@@ -53,16 +56,19 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
     to: '/',
     icon: 'fa6-solid:house',
     isActiveFn: (route: RouteLocationNormalized) => route.path === '/',
+    baseRoute: '/',
   },
   {
     to: '/browse',
     icon: 'fa6-regular:compass',
     isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse'),
+    baseRoute: '/browse',
   },
   {
     to: '/settings',
     icon: 'fa6-solid:gear',
     isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/settings'),
+    baseRoute: '/settings',
   },
 ])
 

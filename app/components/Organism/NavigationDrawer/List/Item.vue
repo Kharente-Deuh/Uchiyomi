@@ -7,6 +7,7 @@ export interface NavigationDrawerListItemProps {
   title: string
   to: RouteLocationRaw
   isActiveFn: (route: RouteLocationNormalized) => boolean
+  baseRoute: RouteLocationRaw
 }
 
 const props = defineProps<NavigationDrawerListItemProps>()
@@ -14,10 +15,11 @@ const props = defineProps<NavigationDrawerListItemProps>()
 const router = useRouter()
 
 const active = computed(() => props.isActiveFn(router.currentRoute.value))
+const isBaseRoute = computed(() => router.currentRoute.value.path === props.baseRoute)
 </script>
 
 <template>
-  <AtomLink :to="active ? undefined : to">
+  <AtomLink :to="isBaseRoute ? undefined : to">
     <div
       class="d-flex align-center w-100 navigation-drawer-list-item transition-smooth"
       :class="{
