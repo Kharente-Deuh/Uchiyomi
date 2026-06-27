@@ -7,22 +7,27 @@ defineProps<{
   sourceToggleLoading: Set<string>
   enabledSourcesCount: number
   totalSourcesCount: number
+  hasSettings: boolean
+  pkgName: string
 }>()
 
-defineEmits<{
-  toggle: [sourceId: string]
-}>()
+defineEmits<{ toggle: [sourceId: string] }>()
 
 const showOnlyEnabledSources = defineModel<boolean | undefined>('showOnlyEnabledSources', { required: true })
 </script>
 
 <template>
   <div class="d-flex flex-column ga-6">
-    <div class="d-flex align-center ga-8 justify-space-between cursor-pointer w-100">
-      <div class="d-flex ga-3 align-center transition-smooth">
-        <span class="text-title-large font-weight-bold font-title">{{ $t('sources.title') }}</span>
-        <span class="text-label-medium text-medium-emphasis pt-1" style="text-wrap: nowrap;">{{ $t('sources.enabled', { count: enabledSourcesCount, total: totalSourcesCount }) }}</span>
-        <ExtensionsSourceEnabledFilterBtn v-if="sources.length > 1 && canManageExtensions" v-model="showOnlyEnabledSources" />
+    <div class="d-flex align-center ga-8 justify-space-between w-100">
+      <div class="d-flex ga-3 align-center transition-smooth justify-space-between w-100">
+        <div class="d-flex ga-3 align-center">
+          <span class="text-title-large font-weight-bold font-title">{{ $t('sources.title') }}</span>
+          <span class="text-label-medium text-medium-emphasis pt-1" style="text-wrap: nowrap;">{{ $t('sources.enabled', { count: enabledSourcesCount, total: totalSourcesCount }) }}</span>
+        </div>
+        <div v-if="canManageExtensions" class="d-flex ga-3 align-center">
+          <ExtensionsSourceEnabledFilterBtn v-if="sources.length > 1" v-model="showOnlyEnabledSources" />
+          <ExtensionsSettingsBtn :has-settings :pkg-name />
+        </div>
       </div>
     </div>
 

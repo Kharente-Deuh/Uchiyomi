@@ -1,9 +1,11 @@
 import type { ExtensionDto, ExtensionHealthDto, SourceDto } from '#shared/dto/extensions'
+import type { ExtensionSettingsDto } from '#shared/dto/extensions/extension-settings.dto'
 
 export const useSingleExtensionStore = defineStore('singleExtension', () => {
   const extension = ref<ExtensionDto>()
   const health = ref<ExtensionHealthDto>()
   const sources = ref<SourceDto[]>([])
+  const settings = ref<ExtensionSettingsDto>()
 
   function setExtension(value: ExtensionDto): void {
     extension.value = value
@@ -26,10 +28,19 @@ export const useSingleExtensionStore = defineStore('singleExtension', () => {
     sources.value[index] = value
   }
 
+  function setSettings(value: ExtensionSettingsDto): void {
+    settings.value = value
+  }
+
+  function updateSettings(value: ExtensionSettingsDto): void {
+    settings.value = value
+  }
+
   function clear(): void {
     extension.value = undefined
     health.value = undefined
     sources.value = []
+    settings.value = undefined
   }
 
   return {
@@ -40,6 +51,9 @@ export const useSingleExtensionStore = defineStore('singleExtension', () => {
     setSources,
     updateSource,
     sources,
+    settings,
+    setSettings,
+    updateSettings,
     clear,
   }
 })

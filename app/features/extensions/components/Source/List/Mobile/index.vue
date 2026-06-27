@@ -7,11 +7,11 @@ const props = defineProps<{
   sourceToggleLoading: Set<string>
   enabledSourcesCount: number
   totalSourcesCount: number
+  hasSettings: boolean
+  pkgName: string
 }>()
 
-defineEmits<{
-  toggle: [sourceId: string]
-}>()
+defineEmits<{ toggle: [sourceId: string] }>()
 
 const showOnlyEnabledSources = defineModel<boolean | undefined>('showOnlyEnabledSources', { required: true })
 
@@ -24,12 +24,18 @@ watch(() => props.sources, () => {
 
 <template>
   <SettingsCard sticky-title :title="$t('sources.enabled', { count: enabledSourcesCount, total: totalSourcesCount })">
-    <template #append-title>
-      <ExtensionsSourceEnabledFilterBtn
-        v-if="sources.length > 1 && canManageExtensions"
-        v-model="showOnlyEnabledSources"
-        class="mb-2"
-      />
+    <template v-if="canManageExtensions" #append-title>
+      <div class="d-flex ga-3 align-center mb-2">
+        <ExtensionsSourceEnabledFilterBtn
+          v-if="sources.length > 1 && canManageExtensions"
+          v-model="showOnlyEnabledSources"
+        />
+
+        <ExtensionsSettingsBtn
+          :has-settings
+          :pkg-name
+        />
+      </div>
     </template>
 
     <ExtensionsSourceListMobileItem

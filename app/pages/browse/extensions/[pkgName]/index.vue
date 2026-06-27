@@ -1,8 +1,15 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'single-extension-middleware' })
 
-const route = useRoute()
-const { extension, uninstallExtension, sources, toggleSourceEnabled, sourceToggleLoading } = useSingleExtension(route.params.pkgName)
+const { pkgName } = useRoute().params
+const {
+  extension,
+  uninstallExtension,
+  sources,
+  toggleSourceEnabled,
+  sourceToggleLoading,
+  hasSettings,
+} = useSingleExtension(pkgName)
 const authStore = useAuthStore()
 const canManageExtensions = computed(() => authStore.capabilities.canManageExtensions)
 
@@ -113,11 +120,12 @@ const selectedTab = ref<'sources' | 'series'>('sources')
       :style="{ zIndex: 1000 }"
       class="mb-4"
     />
-
     <ExtensionsSourceList
       v-show="!mobile || selectedTab === 'sources'"
       :can-manage-extensions
       :sources
+      :has-settings
+      :pkg-name
       :source-toggle-loading
       @toggle="toggleSourceEnabled"
     />

@@ -17,7 +17,7 @@ const active = computed(() => props.isActiveFn(router.currentRoute.value))
 </script>
 
 <template>
-  <AtomLink :to>
+  <AtomLink :to="active ? undefined : to">
     <div
       class="d-flex align-center w-100 navigation-drawer-list-item transition-smooth"
       :class="{

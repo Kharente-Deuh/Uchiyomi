@@ -1,5 +1,5 @@
 <script setup lang="ts">
-export type ExtensionMobileModel = 'sources' | 'series'
+type ExtensionMobileModel = 'sources' | 'series'
 const modelValue = defineModel<ExtensionMobileModel>({ required: true })
 </script>
 

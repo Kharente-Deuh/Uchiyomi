@@ -137,12 +137,20 @@
   },
   "sources": {
     "settings": {
-      "title": "Réglages de la source"
+      "title": "Réglages de la source",
+      "errors": {
+        "loadFailed": "Impossible de charger les paramètres des sources"
+      },
+      "noSettings": "Aucun paramètre",
+      "common": {
+        "title": "Paramètres communs"
+      }
     },
     "title": "Sources",
     "errors": {
       "disableFailed": "Échec de la désactivation de la source",
-      "enableFailed": "Impossible d'activer la source"
+      "enableFailed": "Impossible d'activer la source",
+      "loadFailed": "Impossible de charger les sources"
     },
     "all": "Toutes",
     "enabled": "{count} sur {total} activées",

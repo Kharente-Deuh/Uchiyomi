@@ -39,16 +39,6 @@ const displayableLang = ref<string>(props.source.lang === 'all'
       <span class="font-weight-bold text-capitalize text-truncate" :class="{ 'text-primary': source.isEnabled }">{{ displayableLang }}</span>
     </div>
     <div v-if="canManage" class="d-flex align-center ga-3">
-      <VBtn
-        v-tooltip="$t('actions.settings')"
-        class="border-thin-secondary"
-        color="secondary"
-        :disabled="loading"
-        icon="fa6-solid:gear"
-        size="x-small"
-        @click.stop="emits('settings')"
-      />
-
       <VSwitch
         v-model="isEnabled"
         class="d-inline-block"

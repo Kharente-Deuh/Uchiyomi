@@ -5,11 +5,11 @@ const props = defineProps<{
   canManageExtensions: boolean
   sources: SourceDto[]
   sourceToggleLoading: Set<string>
+  hasSettings: boolean
+  pkgName: string
 }>()
 
-defineEmits<{
-  toggle: [sourceId: string]
-}>()
+defineEmits<{ toggle: [sourceId: string] }>()
 
 const { mobile } = useDisplay()
 const showOnlyEnabledSources = ref<boolean>()
@@ -26,22 +26,18 @@ watch(() => props.sources, () => {
 <template>
   <ExtensionsSourceListMobile
     v-if="mobile"
+    v-bind="props"
     v-model:show-only-enabled-sources="showOnlyEnabledSources"
-    :sources
-    :source-toggle-loading="sourceToggleLoading"
     :enabled-sources-count="enabledSourcesCount"
     :total-sources-count="sources.length"
-    :can-manage-extensions="canManageExtensions"
     @toggle="$emit('toggle', $event)"
   />
   <ExtensionsSourceListDesktop
     v-else
+    v-bind="props"
     v-model:show-only-enabled-sources="showOnlyEnabledSources"
-    :sources
-    :source-toggle-loading="sourceToggleLoading"
     :enabled-sources-count="enabledSourcesCount"
     :total-sources-count="sources.length"
-    :can-manage-extensions="canManageExtensions"
     @toggle="$emit('toggle', $event)"
   />
 </template>

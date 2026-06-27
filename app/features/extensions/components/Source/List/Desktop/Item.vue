@@ -39,22 +39,11 @@ const displayableLang = ref<string>(props.source.lang === 'all'
   >
     <ExtensionsSourceChipLang :lang="source.lang" :enabled="source.isEnabled" />
     <span class="font-weight-bold text-capitalize text-nowrap" :class="{ 'text-primary': source.isEnabled }">{{ displayableLang }}</span>
-    <VBtn
-      v-if="canManage"
-      v-tooltip="$t('actions.settings')"
-      class="border-thin-secondary"
-      color="secondary"
-      :disabled="loading"
-      icon="fa6-solid:gear"
-      size="x-small"
-      @click.stop="emits('settings')"
-    />
-
     <VSwitch
       v-if="canManage"
       v-model="isEnabled"
-      class="d-inline-block"
       inset
+      class="d-inline-block"
       theme="light"
       density="comfortable"
       size="x-small"

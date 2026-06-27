@@ -77,7 +77,6 @@ onMounted(() => {
       <AtomInputSearch
         v-model="searchFilter"
         :max-width="mobile ? undefined : '25rem'"
-        :disabled="fetchLoading"
       />
       <div class="d-flex ga-4 flex-wrap" :class="{ 'justify-space-between': mobile }">
         <AtomFilter

@@ -137,12 +137,20 @@
   },
   "sources": {
     "settings": {
-      "title": "Source settings"
+      "title": "Source settings",
+      "errors": {
+        "loadFailed": "Cannot load sources settings"
+      },
+      "noSettings": "No settings",
+      "common": {
+        "title": "Common settings"
+      }
     },
     "title": "Sources",
     "errors": {
       "disableFailed": "Failed to disable source",
-      "enableFailed": "Fail to enable source"
+      "enableFailed": "Fail to enable source",
+      "loadFailed": "Cannot load sources"
     },
     "all": "All sources",
     "enabled": "{count} of {total} enabled",

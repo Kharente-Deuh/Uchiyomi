@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { ExtensionDto, ExtensionHealthDto, ExtensionListQueryDto, ExtensionListResponseDto, PreferenceDto, SourceDto, UpdateSourcePreferenceRequestDto } from '#shared/dto/extensions'
+import type { ExtensionDto, ExtensionHealthDto, ExtensionListQueryDto, ExtensionListResponseDto, SourceDto } from '#shared/dto/extensions'
+import type { ExtensionSettingsDto } from '#shared/dto/extensions/extension-settings.dto'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, apiFetch } from '~/utils/api'
 
@@ -8,9 +9,9 @@ export interface ExtensionsApi {
   getExtension: (pkgName: string) => Promise<ApiResponse<{ extension: ExtensionDto, health: ExtensionHealthDto | null }>>
   extensionAction: (pkgName: string, action: 'install' | 'uninstall' | 'update') => Promise<ApiResponse<ExtensionDto>>
   listSources: (pkgName: string) => Promise<ApiResponse<SourceDto[]>>
-  setSourceEnabled: (sourceId: string, isEnabled: boolean) => Promise<ApiResponse<SourceDto>>
-  getPreferences: (sourceId: string) => Promise<ApiResponse<PreferenceDto[]>>
-  updatePreference: (sourceId: string, body: UpdateSourcePreferenceRequestDto) => Promise<ApiResponse<PreferenceDto[]>>
+  setSourceEnabled: (pkgName: string, sourceId: string, isEnabled: boolean) => Promise<ApiResponse<SourceDto>>
+  getSettings: (pkgName: string) => Promise<ApiResponse<ExtensionSettingsDto>>
+  updateSettings: (pkgName: string, body: Omit<ExtensionSettingsDto, 'pkgName'>) => Promise<ApiResponse<ExtensionSettingsDto>>
 }
 
 async function listExtensions({ search, isInstalled, hasUpdate, nsfw, page, pageSize }: ExtensionListQueryDto): Promise<ApiResponse<ExtensionListResponseDto>> {
@@ -62,9 +63,9 @@ async function listSources(pkgName: string): Promise<ApiResponse<SourceDto[]>> {
   }
 }
 
-async function setSourceEnabled(sourceId: string, isEnabled: boolean): Promise<ApiResponse<SourceDto>> {
+async function setSourceEnabled(pkgName: string, sourceId: string, isEnabled: boolean): Promise<ApiResponse<SourceDto>> {
   try {
-    const res = await apiFetch(`/api/sources/${sourceId}`, { method: 'PATCH', body: { isEnabled } })
+    const res = await apiFetch(`/api/extensions/${pkgName}/sources/${sourceId}/enable`, { method: 'POST', body: { isEnabled } })
 
     return { success: true, data: res.source }
   } catch (error) {
@@ -72,21 +73,21 @@ async function setSourceEnabled(sourceId: string, isEnabled: boolean): Promise<A
   }
 }
 
-async function getPreferences(sourceId: string): Promise<ApiResponse<PreferenceDto[]>> {
+async function getSettings(pkgName: string): Promise<ApiResponse<ExtensionSettingsDto>> {
   try {
-    const res = await apiFetch(`/api/sources/${sourceId}/preferences`)
+    const res = await apiFetch(`/api/extensions/${pkgName}/sources/settings`)
 
-    return { success: true, data: res.preferences }
+    return { success: true, data: res }
   } catch (error) {
     return { success: false, error: ApiError.fromFetchError(error) }
   }
 }
 
-async function updatePreference(sourceId: string, body: UpdateSourcePreferenceRequestDto): Promise<ApiResponse<PreferenceDto[]>> {
+async function updateSettings(pkgName: string, body: Omit<ExtensionSettingsDto, 'pkgName'>): Promise<ApiResponse<ExtensionSettingsDto>> {
   try {
-    const res = await apiFetch(`/api/sources/${sourceId}/preferences`, { method: 'PUT', body })
+    const res = await apiFetch(`/api/extensions/${pkgName}/sources/settings`, { method: 'PUT', body })
 
-    return { success: true, data: res.preferences }
+    return { success: true, data: res }
   } catch (error) {
     return { success: false, error: ApiError.fromFetchError(error) }
   }
@@ -99,7 +100,7 @@ export function createExtensionsApi(): ExtensionsApi {
     extensionAction,
     listSources,
     setSourceEnabled,
-    getPreferences,
-    updatePreference,
+    getSettings,
+    updateSettings,
   }
 }
