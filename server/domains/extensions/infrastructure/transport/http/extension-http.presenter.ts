@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ExtensionSettingsDto, ExtensionSettingsSourceDto } from '#shared/dto/extensions/extension-settings.dto'
-import type { ExtensionDto, ExtensionHealthDto, ExtensionListResponseDto } from '#shared/dto/extensions/extension.dto'
+import type { ExtensionDto, ExtensionHealthDto } from '#shared/dto/extensions/extension.dto'
 import type { PreferenceDto } from '#shared/dto/extensions/preference.dto'
 import type { SourceDto } from '#shared/dto/extensions/source.dto'
 import type { ExtensionErrorLogEntry, ExtensionHealthRow, ExtensionSettings, ExtensionSourcePreferenceModel, ListedExtension, StoredExtensionSource } from '../../../extension.domain'
@@ -19,20 +19,6 @@ export function toExtensionDto(e: ListedExtension): ExtensionDto {
     hasUpdate: e.hasUpdate,
     versionName: e.versionName,
     isHealthy: e.isHealthy,
-  }
-}
-
-export function toExtensionListResponseDto(result: {
-  items: ListedExtension[]
-  page: number
-  pageSize: number
-  totalCount: number
-}): ExtensionListResponseDto {
-  return {
-    items: result.items.map(e => toExtensionDto(e)),
-    page: result.page,
-    pageSize: result.pageSize,
-    totalCount: result.totalCount,
   }
 }
 

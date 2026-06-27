@@ -1,6 +1,8 @@
+import type { ExtensionDto } from '../../shared/dto/extensions/extension.dto'
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest'
-import { toExtensionDto, toExtensionListResponseDto, toExtensionSettingsDto, toHealthDto, toPreferenceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
+import { toExtensionDto, toExtensionSettingsDto, toHealthDto, toPreferenceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
+import { toPageDto } from '../../server/shared'
 
 describe('extension presenter', () => {
   it('serialises health with ISO dates and log', () => {
@@ -48,16 +50,15 @@ describe('toExtensionDto', () => {
   })
 })
 
-describe('toExtensionListResponseDto', () => {
+describe('toPageDto', () => {
   it('maps a domain page result into the paginated DTO', () => {
-    const dto = toExtensionListResponseDto({
+    const dto = toPageDto({
       items: [{ pkgName: 'p', name: 'N', lang: 'en', iconUrl: undefined, isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0', isHealthy: true }],
-      page: 2,
-      pageSize: 20,
-      totalCount: 57,
-    })
-    expect(dto).toMatchObject({ page: 2, pageSize: 20, totalCount: 57 })
-    expect(dto.items.map(i => [i.pkgName, i.isHealthy])).toEqual([['p', true]])
+      total: 57,
+    }, toExtensionDto)
+    expect(dto).toMatchObject({ total: 57 })
+
+    expect(dto.items.map((i: ExtensionDto) => [i.pkgName, i.isHealthy])).toEqual([['p', true]])
   })
 })
 

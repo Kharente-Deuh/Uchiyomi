@@ -99,7 +99,7 @@ One use case per file, a class implementing the shared `IUseCase` port, with its
 dependencies injected through the constructor. Example: `auth/.../login.use-case.ts`.
 
 ```ts
-import type { IUseCase } from '../../../../shared/use-case'
+import type { IUseCase } from '~~/server/shared'
 import * as User from '../../users/user.domain'
 import * as Session from '../../sessions/session.domain'
 // …

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { Page } from '~~/server/shared'
 import type { SuwayomiClient } from '../../../../../utils/suwayomi/client'
 import type { ExtensionFilterInput } from '../../../../../utils/suwayomi/generated/graphql'
-import type { ExtensionModel, ExtensionSource, ExtensionSourcePreferenceModel, ListExtensionsFilters, ListExtensionsQuery, Page, SourcePreferenceChange, SuwayomiExtensionsPort } from '../../../extension.domain'
+import type { ExtensionModel, ExtensionSource, ExtensionSourcePreferenceModel, ListExtensionsFilters, ListExtensionsQuery, SourcePreferenceChange, SuwayomiExtensionsPort } from '../../../extension.domain'
 import { extensionToDomain, preferenceToDomain, sourceToDomain, toChangeInput } from './graphql-suwayomi-extensions.mapper'
 import { FETCH_EXTENSIONS, GET_EXTENSION_SOURCES, GET_SOURCE_PREFERENCES, LIST_EXTENSIONS, LIST_EXTENSIONS_PAGE, UPDATE_EXTENSION, UPDATE_SOURCE_PREFERENCE } from './graphql-suwayomi-extensions.operations'
 
@@ -19,7 +20,7 @@ export class GraphqlSuwayomiExtensionsAdapter implements SuwayomiExtensionsPort 
 
     return {
       items: data.extensions.nodes.map(n => extensionToDomain(n)),
-      totalCount: data.extensions.totalCount,
+      total: data.extensions.totalCount,
     }
   }
 

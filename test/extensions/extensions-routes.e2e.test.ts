@@ -133,12 +133,11 @@ describeIf('extensions routes e2e', async () => {
   const itWithSuwayomi = suwayomiBase ? it : it.skip
 
   itWithSuwayomi('GET /api/extensions → 200 with paginated shape (requires SUWAYOMI_URL)', async () => {
-    const res = await $fetch<{ items: unknown[], page: number, pageSize: number, totalCount: number }>('/api/extensions', {
+    const res = await $fetch<{ items: unknown[], total: number }>('/api/extensions', {
       headers: { cookie: adminCookie },
     })
     expect(Array.isArray(res.items)).toBe(true)
-    expect(typeof res.totalCount).toBe('number')
-    expect(res.page).toBe(1)
+    expect(typeof res.total).toBe('number')
   })
 
   itWithSuwayomi('GET /api/extensions?isInstalled=false → admin-only filtered items (requires SUWAYOMI_URL)', async () => {

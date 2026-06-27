@@ -45,7 +45,7 @@ describe('graphqlSuwayomiExtensionsAdapter.listExtensions', () => {
       first: 20,
       offset: 20,
     })
-    expect(res.totalCount).toBe(42)
+    expect(res.total).toBe(42)
     expect(res.items.map(i => i.pkgName)).toEqual(['a'])
   })
 

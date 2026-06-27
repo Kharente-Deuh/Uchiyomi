@@ -24,7 +24,7 @@ describe('listExtensions.UseCase', () => {
   ]
 
   function makeUseCase(): { uc: ListExtensions.ListExtensionsUseCase, listExtensions: ReturnType<typeof vi.fn> } {
-    const listExtensions = vi.fn().mockResolvedValue({ items: page, totalCount: 2 })
+    const listExtensions = vi.fn().mockResolvedValue({ items: page, total: 2 })
     const suwayomi = { listExtensions } as never
     const overlay = { listHealthByPkgNames: async (_pkgNames: string[]) => health } as never
 
@@ -46,7 +46,7 @@ describe('listExtensions.UseCase', () => {
       pageSize: 20,
       filters: { search: 'a', pkgName: undefined, isInstalled: undefined, hasUpdate: true, isNsfw: undefined },
     })
-    expect(res).toMatchObject({ page: 1, pageSize: 20, totalCount: 2 })
+    expect(res).toMatchObject({ total: 2 })
     expect(res.items.map(e => [e.pkgName, e.isHealthy])).toEqual([['a', true], ['b', false]])
   })
 

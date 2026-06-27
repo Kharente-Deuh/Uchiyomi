@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { IUseCase } from '../../../../shared/use-case'
+import type { IUseCase, Page } from '~~/server/shared'
 import type { ExtensionsOverlayRepository, ListedExtension, ListExtensionsFilters, SuwayomiExtensionsPort } from '../../extension.domain'
 import { toListedExtension } from '../../extension.domain'
 
@@ -19,20 +19,13 @@ export interface ListExtensionsUseCaseOpts {
   filters?: ListExtensionsUseCaseFilters
 }
 
-export interface ListExtensionsUseCaseResult {
-  items: ListedExtension[]
-  page: number
-  pageSize: number
-  totalCount: number
-}
-
-export class ListExtensionsUseCase implements IUseCase<ListExtensionsUseCaseOpts, ListExtensionsUseCaseResult> {
+export class ListExtensionsUseCase implements IUseCase<ListExtensionsUseCaseOpts, Page<ListedExtension>> {
   constructor(
     private readonly suwayomi: SuwayomiExtensionsPort,
     private readonly overlay: ExtensionsOverlayRepository,
   ) {}
 
-  async execute({ isAdmin, viewerCanSeeNsfw, page, pageSize, filters }: ListExtensionsUseCaseOpts): Promise<ListExtensionsUseCaseResult> {
+  async execute({ isAdmin, viewerCanSeeNsfw, page, pageSize, filters }: ListExtensionsUseCaseOpts): Promise<Page<ListedExtension>> {
     // Visibility/NSFW are server-enforced and override client-supplied values:
     // non-admins only see installed extensions; viewers without NSFW permission
     // never see NSFW regardless of the client `nsfw` flag.
@@ -49,6 +42,6 @@ export class ListExtensionsUseCase implements IUseCase<ListExtensionsUseCaseOpts
     const healthByPkg = new Map(healthRows.map(h => [h.pkgName, h]))
     const items = pageResult.items.map(e => toListedExtension(e, healthByPkg.get(e.pkgName)))
 
-    return { items, page, pageSize, totalCount: pageResult.totalCount }
+    return { items, total: pageResult.total }
   }
 }

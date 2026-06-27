@@ -12,7 +12,7 @@ afterEach(() => apiFetch.mockReset())
 // --- listExtensions ---
 
 it('listExtensions hits /api/extensions with a params object', async () => {
-  const payload = { items: [{ pkgName: 'p', name: 'P' }], totalCount: 1 }
+  const payload = { items: [{ pkgName: 'p', name: 'P' }], total: 1 }
   apiFetch.mockResolvedValueOnce(payload)
   const res = await createExtensionsApi().listExtensions({ page: 1, pageSize: 20 })
   expect(res).toEqual({ success: true, data: payload })
@@ -20,13 +20,13 @@ it('listExtensions hits /api/extensions with a params object', async () => {
 })
 
 it('listExtensions passes filter params via query option', async () => {
-  apiFetch.mockResolvedValueOnce({ items: [], totalCount: 0 })
+  apiFetch.mockResolvedValueOnce({ items: [], total: 0 })
   await createExtensionsApi().listExtensions({ isInstalled: true, hasUpdate: false })
   expect(apiFetch).toHaveBeenCalledWith('/api/extensions', { query: { isInstalled: true, hasUpdate: false } })
 })
 
 it('listExtensions passes undefined filter values through (caller filters them)', async () => {
-  apiFetch.mockResolvedValueOnce({ items: [], totalCount: 0 })
+  apiFetch.mockResolvedValueOnce({ items: [], total: 0 })
   await createExtensionsApi().listExtensions({ isInstalled: true, nsfw: undefined })
   expect(apiFetch).toHaveBeenCalledWith('/api/extensions', { query: { isInstalled: true, nsfw: undefined } })
 })

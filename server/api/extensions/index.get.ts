@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { z } from 'zod'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
-import { toExtensionListResponseDto } from '../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
+import { toPageDto } from '~~/server/shared'
+import { toExtensionDto } from '../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 // `?flag=true|false` arrives as a string; coerce to an optional boolean.
 const BoolParam = z.enum(['true', 'false']).transform(v => v === 'true').optional()
@@ -36,5 +37,5 @@ export default defineEventHandler(async (event) => {
     filters: { search, isInstalled, hasUpdate, nsfw },
   })
 
-  return toExtensionListResponseDto(result)
+  return toPageDto(result, toExtensionDto)
 })

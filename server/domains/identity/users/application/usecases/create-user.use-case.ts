@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { IUseCase } from '../../../../../shared/use-case'
+import type { IUseCase } from '../../../../../shared'
 import type { PasswordHasher } from '../../../password/password.domain'
 import type { CreateUserWithLocalIdentityParams, UserModel, UsersRepository } from '../../user.domain'
 import { normalizeAccountName } from '../../../../../../shared/dto/identity/account-name'

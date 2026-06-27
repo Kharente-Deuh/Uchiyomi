@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Flat ESM module, consumed via `import * as Extension`.
 
+import type { Page } from '~~/server/shared'
+
 export type ExtensionHealth = 'OK' | 'ERROR'
 
 export class ExtensionModel {
@@ -39,11 +41,6 @@ export interface ListExtensionsQuery {
   filters?: ListExtensionsFilters
   page: number
   pageSize: number
-}
-
-export interface Page<T> {
-  items: T[]
-  totalCount: number
 }
 
 export interface ListedExtension extends ExtensionModel {

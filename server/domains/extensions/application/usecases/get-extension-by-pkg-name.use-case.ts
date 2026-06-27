@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { IUseCase } from '../../../../shared/use-case'
+import type { IUseCase } from '~~/server/shared'
 import type { ExtensionModel, SuwayomiExtensionsPort } from '../../extension.domain'
 
 export interface GetExtensionByPkgNameUseCaseOpts { pkgName: string }

@@ -65,7 +65,7 @@ export function useExtensions(): ExtensionsComposable {
     isLoading.value = false
 
     if (res.success) {
-      maxPage.value = Math.ceil(res.data.totalCount / PAGE_SIZE)
+      maxPage.value = Math.ceil(res.data.total / PAGE_SIZE)
       store.setExtensions(mobile.value && !resetData ? [...store.extensions, ...res.data.items] : res.data.items)
     } else {
       toast.error(t('extensions.errors.loadFailed'))

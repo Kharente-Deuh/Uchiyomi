@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { IUseCase } from '../../../../shared/use-case'
+import type { IUseCase } from '~~/server/shared'
 import type { ExtensionErrorLogEntry, ExtensionHealthRow, ExtensionsOverlayRepository } from '../../extension.domain'
 
 export interface GetExtensionHealthUseCaseOpts { pkgName: string }

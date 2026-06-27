@@ -78,7 +78,7 @@ describe('useExtensions', () => {
     queryStub.isLoading.value = false
     // Filter mutations trigger the internal watch → fetchExtensions; give it a
     // benign default so unrelated tests don't crash on an unmocked response.
-    mockApi.listExtensions.mockResolvedValue({ success: true, data: { items: [], totalCount: 0 } })
+    mockApi.listExtensions.mockResolvedValue({ success: true, data: { items: [], total: 0 } })
   })
 
   // --- reactive filters ---

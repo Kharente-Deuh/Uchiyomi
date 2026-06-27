@@ -1,5 +1,6 @@
+import type { Page } from '~~/server/shared'
 import type { ExtensionModel, ExtensionSettings, ListedExtension, StoredExtensionSource } from '../extension.domain'
-import type { GetExtensionByPkgNameUseCaseOpts, GetExtensionHealthUseCaseOpts, GetExtensionHealthUseCaseResult, GetExtensionSettingsUseCaseOpts, InstallExtensionUseCaseOpts, ListExtensionSourcesUseCaseOpts, ListExtensionsUseCaseOpts, ListExtensionsUseCaseResult, SetSourceEnabledUseCaseOpts, UninstallExtensionUseCaseOpts, UpdateExtensionSettingsUseCaseOpts, UpdateExtensionUseCaseOpts } from './usecases'
+import type { GetExtensionByPkgNameUseCaseOpts, GetExtensionHealthUseCaseOpts, GetExtensionHealthUseCaseResult, GetExtensionSettingsUseCaseOpts, InstallExtensionUseCaseOpts, ListExtensionSourcesUseCaseOpts, ListExtensionsUseCaseOpts, SetSourceEnabledUseCaseOpts, UninstallExtensionUseCaseOpts, UpdateExtensionSettingsUseCaseOpts, UpdateExtensionUseCaseOpts } from './usecases'
 import { PrismaExtensionRepository } from '../infrastructure/persistence/prisma/prisma-extension.repository'
 import { PrismaSourceRepository } from '../infrastructure/persistence/prisma/prisma-source.repository'
 import { GraphqlSuwayomiExtensionsAdapter } from '../infrastructure/transport/graphql/graphql-suwayomi-extensions.adapter'
@@ -7,7 +8,7 @@ import { GetExtensionByPkgNameUseCase, GetExtensionHealthUseCase, GetExtensionSe
 
 export interface ExtensionsService {
   getExtensionByPkgName: (opts: GetExtensionByPkgNameUseCaseOpts) => Promise<ExtensionModel | undefined>
-  listExtensions: (opts: ListExtensionsUseCaseOpts) => Promise<ListExtensionsUseCaseResult>
+  listExtensions: (opts: ListExtensionsUseCaseOpts) => Promise<Page<ListedExtension>>
   installExtension: (opts: InstallExtensionUseCaseOpts) => Promise<ListedExtension>
   uninstallExtension: (opts: UninstallExtensionUseCaseOpts) => Promise<ListedExtension>
   updateExtension: (opts: UpdateExtensionUseCaseOpts) => Promise<ListedExtension>
@@ -28,7 +29,7 @@ function getExtensionByPkgName(opts: GetExtensionByPkgNameUseCaseOpts): Promise<
   return new GetExtensionByPkgNameUseCase(suwayomiExtensionsPort).execute(opts)
 }
 
-function listExtensions(opts: ListExtensionsUseCaseOpts): Promise<ListExtensionsUseCaseResult> {
+function listExtensions(opts: ListExtensionsUseCaseOpts): Promise<Page<ListedExtension>> {
   return new ListExtensionsUseCase(suwayomiExtensionsPort, overlay).execute(opts)
 }
 

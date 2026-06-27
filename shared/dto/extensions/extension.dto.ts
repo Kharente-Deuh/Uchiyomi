@@ -19,10 +19,3 @@ export interface ExtensionHealthDto {
   lastErrorMessage?: string
   log: { occurredAt: string, message: string, context?: string }[]
 }
-
-export interface ExtensionListResponseDto {
-  items: ExtensionDto[]
-  page: number
-  pageSize: number
-  totalCount: number
-}
