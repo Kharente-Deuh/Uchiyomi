@@ -17,15 +17,12 @@ export const LIST_SOURCES = graphql(`
   }
 `)
 
-// fetchSourceManga is a mutation but an idempotent fetch — re-fetching a search
-// page re-upserts the same rows in Suwayomi with no client-visible side effects,
-// so the client's transport/timeout retry policy is safe here.
-// NOTE: Suwayomi exposes source search as a mutation (fetchSourceManga), not a query.
-// The type field must be SEARCH to perform a keyword search.
-// sourceId is LongString! in the SDL (a 64-bit int encoded as string).
+// fetchSourceManga browses a source by type: SEARCH (uses query), POPULAR, or LATEST.
+// query is optional — only SEARCH uses it; popular/latest pass null.
+// sourceId is LongString! (a 64-bit int encoded as string).
 export const SEARCH_SOURCE = graphql(`
-  mutation SearchSource($sourceId: LongString!, $query: String!, $page: Int!) {
-    fetchSourceManga(input: { source: $sourceId, query: $query, page: $page, type: SEARCH }) {
+  mutation SearchSource($sourceId: LongString!, $type: FetchSourceMangaType!, $query: String, $page: Int!) {
+    fetchSourceManga(input: { source: $sourceId, type: $type, query: $query, page: $page }) {
       mangas {
         id
         title
@@ -57,6 +54,21 @@ export const GET_MANGA_DETAILS = graphql(`
           uploadDate
           isDownloaded
         }
+      }
+    }
+  }
+`)
+
+// Eager chapter enrichment for a search result. fetchChapters is a mutation that
+// makes Suwayomi fetch the manga's chapter list from the remote source (it hits the
+// site), then returns the full list. We derive count + last chapter from it.
+// mangaId is Int! in the SDL — convert from the domain string id before calling.
+export const FETCH_CHAPTERS = graphql(`
+  mutation FetchSourceMangaChapters($mangaId: Int!) {
+    fetchChapters(input: { mangaId: $mangaId }) {
+      chapters {
+        name
+        uploadDate
       }
     }
   }

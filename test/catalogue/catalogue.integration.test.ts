@@ -36,7 +36,7 @@ describeSearch('catalogue search (live source)', () => {
     createSuwayomiClient({ endpoint: `${base}/api/graphql` }),
   )
   it('returns a well-formed search page', async () => {
-    const result = await new SearchSource.SearchSourceUseCase(repo).execute({ sourceId: testSourceId!, query: 'a', page: 1 })
+    const result = await new SearchSource.SearchSourceUseCase(repo).execute({ sourceId: testSourceId!, query: 'a', page: 1, type: 'search' })
     expect(Array.isArray(result.mangas)).toBe(true)
     expect(typeof result.hasNextPage).toBe('boolean')
   })
