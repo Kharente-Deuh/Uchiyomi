@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export const useLayoutStore = defineStore('layout', () => {
   const paginationEnabled = ref(false)
   const navigationDrawerCompact = ref(false)

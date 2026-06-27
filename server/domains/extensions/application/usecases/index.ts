@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 export * from './get-extension-by-pkg-name.use-case'
 export * from './get-extension-settings.use-case'
 export * from './get-visible-source.use-case'

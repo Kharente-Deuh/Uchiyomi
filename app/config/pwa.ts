@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ModuleOptions } from '@vite-pwa/nuxt'
 import process from 'node:process'
 import { appDescription, appName } from '../constants/index'

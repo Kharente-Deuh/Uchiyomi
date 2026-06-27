@@ -1,5 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { RouteLocationNormalized } from 'vue-router'
 import type { BottomNavigationItemProps } from '~/components/Organism/BottomNavigation/Item.vue'
 import type { NavigationDrawerListProps } from '~/components/Organism/NavigationDrawer/List/index.vue'

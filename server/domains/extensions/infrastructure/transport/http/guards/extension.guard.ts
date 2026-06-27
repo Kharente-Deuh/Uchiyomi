@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { H3Event } from 'h3'
 import type { ExtensionModel } from '~~/server/domains/extensions/extension.domain'
 import type { UserModel } from '~~/server/domains/identity/users/user.domain'

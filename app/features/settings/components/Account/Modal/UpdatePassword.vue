@@ -1,5 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-or-later
 import { object, string, ref as yupRef } from 'yup'
 import { useForm } from '~/utils/forms/use-form'
 

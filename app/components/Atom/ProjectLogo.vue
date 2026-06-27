@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import LogoHorizontalDark from '~/assets/images/logo-horizontal-dark.webp'
 import LogoHorizontalLight from '~/assets/images/logo-horizontal.webp'

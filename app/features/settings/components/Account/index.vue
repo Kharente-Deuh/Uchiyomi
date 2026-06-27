@@ -1,5 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useDebounceFn } from '@vueuse/core'
 import { displayNameRule } from '~/features/auth/utils/display-name'
 
