@@ -210,7 +210,6 @@ export interface ExtensionSettingsSource {
 }
 
 export interface ExtensionSettings {
-  pkgName: string
   common: ExtensionSourcePreferenceModel[]
   sources: ExtensionSettingsSource[]
 }
@@ -228,9 +227,9 @@ export interface MergeableExtensionSettingsSource {
 // Keyless prefs are never common. The common entry's value + key are taken from the
 // reference (first) source, with key replaced by the stem; divergent per-source
 // values converge on the next PUT.
-export function mergeExtensionSettings(pkgName: string, sources: MergeableExtensionSettingsSource[]): ExtensionSettings {
+export function mergeExtensionSettings(sources: MergeableExtensionSettingsSource[]): ExtensionSettings {
   if (sources.length === 0) {
-    return { pkgName, common: [], sources: [] }
+    return { common: [], sources: [] }
   }
 
   // Build per-source stem maps.
@@ -288,7 +287,6 @@ export function mergeExtensionSettings(pkgName: string, sources: MergeableExtens
   }
 
   return {
-    pkgName,
     common: [...refStemMap.entries()]
       .filter(([stem]) => commonStems.has(stem))
       .map(([stem, p]) => ({ ...p, key: stem })),

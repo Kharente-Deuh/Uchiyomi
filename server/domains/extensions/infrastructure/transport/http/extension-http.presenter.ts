@@ -78,7 +78,6 @@ export function toExtensionSettingsDto(s: ExtensionSettings): ExtensionSettingsD
   }
 
   return {
-    pkgName: s.pkgName,
     common: commonPreferences,
     sources: mappedSources,
   }

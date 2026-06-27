@@ -7,7 +7,7 @@ const { mobile } = useDisplay()
 
 const { extension, settings, updateSettings } = useSingleExtension(pkgName)
 
-const settingsCpy = ref<ExtensionSettingsDto>(settings.value ?? { pkgName: '', common: [], sources: [] })
+const settingsCpy = ref<ExtensionSettingsDto>(settings.value ?? { common: [], sources: [] })
 watch(settings, (value) => {
   if (value) {
     settingsCpy.value = value

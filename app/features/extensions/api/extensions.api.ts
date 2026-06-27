@@ -12,7 +12,7 @@ export interface ExtensionsApi {
   listSources: (pkgName: string) => Promise<ApiResponse<SourceDto[]>>
   setSourceEnabled: (pkgName: string, sourceId: string, isEnabled: boolean) => Promise<ApiResponse<SourceDto>>
   getSettings: (pkgName: string) => Promise<ApiResponse<ExtensionSettingsDto>>
-  updateSettings: (pkgName: string, body: Omit<ExtensionSettingsDto, 'pkgName'>) => Promise<ApiResponse<ExtensionSettingsDto>>
+  updateSettings: (pkgName: string, body: ExtensionSettingsDto) => Promise<ApiResponse<ExtensionSettingsDto>>
 }
 
 async function listExtensions({ search, isInstalled, hasUpdate, nsfw, page, pageSize }: ExtensionListQueryDto): Promise<ApiResponse<PageDto<ExtensionDto>>> {
@@ -84,7 +84,7 @@ async function getSettings(pkgName: string): Promise<ApiResponse<ExtensionSettin
   }
 }
 
-async function updateSettings(pkgName: string, body: Omit<ExtensionSettingsDto, 'pkgName'>): Promise<ApiResponse<ExtensionSettingsDto>> {
+async function updateSettings(pkgName: string, body: ExtensionSettingsDto): Promise<ApiResponse<ExtensionSettingsDto>> {
   try {
     const res = await apiFetch(`/api/extensions/${pkgName}/sources/settings`, { method: 'PUT', body })
 

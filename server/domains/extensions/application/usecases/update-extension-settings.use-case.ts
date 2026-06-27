@@ -39,6 +39,6 @@ export class UpdateExtensionSettingsUseCase implements IUseCase<UpdateExtensionS
       preferences: await this.suwayomi.listSourcePreferences(source.id),
     })))
 
-    return mergeExtensionSettings(pkgName, withPrefs)
+    return mergeExtensionSettings(withPrefs)
   }
 }

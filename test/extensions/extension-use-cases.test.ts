@@ -264,7 +264,7 @@ describe('getExtensionSettings.UseCase', () => {
     const sources = { findMany: vi.fn().mockResolvedValue([]) } as any
     const suwayomi = { listSourcePreferences: vi.fn() } as any
     const res = await new GetExtensionSettings.GetExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p' })
-    expect(res).toEqual({ pkgName: 'p', common: [], sources: [] })
+    expect(res).toEqual({ common: [], sources: [] })
     expect(suwayomi.listSourcePreferences).not.toHaveBeenCalled()
   })
 })
@@ -290,7 +290,7 @@ describe('updateExtensionSettings.UseCase', () => {
       a: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'fr' }],
       b: [{ position: 7, type: 'list', key: 'lang', visible: true, textValue: 'en' }],
     })
-    const settings = { pkgName: 'p', common: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'de' }], sources: [] }
+    const settings = { common: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'de' }], sources: [] }
 
     await new UpdateExtensionSettings.UpdateExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p', settings })
 
@@ -303,7 +303,7 @@ describe('updateExtensionSettings.UseCase', () => {
       a: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'fr' }],
       b: [{ position: 0, type: 'switch', key: 'other', visible: true, booleanValue: true }],
     })
-    const settings = { pkgName: 'p', common: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'de' }], sources: [] }
+    const settings = { common: [{ position: 0, type: 'list', key: 'lang', visible: true, textValue: 'de' }], sources: [] }
 
     await new UpdateExtensionSettings.UpdateExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p', settings })
 
@@ -324,12 +324,12 @@ describe('updateExtensionSettings.UseCase', () => {
 
       return []
     })
-    const settings = { pkgName: 'p', common: [{ position: 0, type: 'switch', key: 'k', visible: true, booleanValue: true }], sources: [] }
+    const settings = { common: [{ position: 0, type: 'switch', key: 'k', visible: true, booleanValue: true }], sources: [] }
 
     const res = await new UpdateExtensionSettings.UpdateExtensionSettingsUseCase(sources, suwayomi).execute({ pkgName: 'p', settings })
 
     expect(warn).toHaveBeenCalled()
-    expect(res.pkgName).toBe('p') // returned re-merged state, no throw
+    expect(res.common.map(p => p.key)).toEqual(['k']) // returned re-merged state, no throw
     warn.mockRestore()
   })
 })

@@ -42,7 +42,6 @@ export default defineEventHandler(async (event): Promise<ExtensionSettingsDto> =
   const settings = await extensionsService().updateExtensionSettings({
     pkgName: extension.pkgName,
     settings: {
-      pkgName: extension.pkgName,
       common: body.common,
       sources: body.sources.map(s => ({
         id: s.id,

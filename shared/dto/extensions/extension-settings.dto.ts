@@ -9,7 +9,6 @@ export interface ExtensionSettingsSourceDto {
 }
 
 export interface ExtensionSettingsDto {
-  pkgName: string
   common: PreferenceDto[]
   sources: ExtensionSettingsSourceDto[]
 }

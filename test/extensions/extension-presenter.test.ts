@@ -70,18 +70,15 @@ describe('toSourceDto', () => {
 describe('toExtensionSettingsDto', () => {
   it('serialises common + per-source preferences', () => {
     const dto = toExtensionSettingsDto({
-      pkgName: 'p',
       common: [{ position: 0, type: 'switch', key: 'k', visible: true, booleanValue: true, booleanDefault: false }],
       sources: [{ id: 'a', name: 'A', lang: 'fr', preferences: [{ position: 1, type: 'editText', key: 'token', visible: true, textValue: 'x' }] }],
     })
-    expect(dto.pkgName).toBe('p')
     expect(dto.common.map(p => p.key)).toEqual(['k'])
     expect(dto.sources).toEqual([{ id: 'a', name: 'A', lang: 'fr', preferences: [{ position: 1, type: 'editText', key: 'token', visible: true, textValue: 'x' }] }])
   })
 
   it('drops non-visible preferences and sources left with none', () => {
     const dto = toExtensionSettingsDto({
-      pkgName: 'p',
       common: [
         { position: 0, type: 'switch', key: 'shown', visible: true, booleanValue: true, booleanDefault: false },
         { position: 1, type: 'switch', key: 'hidden', visible: false, booleanValue: true, booleanDefault: false },

@@ -25,13 +25,13 @@ function pref(over: Partial<Extension.ExtensionSourcePreferenceModel> & { positi
 
 describe('mergeExtensionSettings', () => {
   it('returns empty common + sources when there are no sources', () => {
-    expect(mergeExtensionSettings('pkg', [])).toEqual({ pkgName: 'pkg', common: [], sources: [] })
+    expect(mergeExtensionSettings([])).toEqual({ common: [], sources: [] })
   })
 
   it('treats a key present on all sources with the same type as common (reference value wins)', () => {
     const a = { id: 'a', name: 'A', lang: 'fr', preferences: [pref({ position: 0, type: 'list', key: 'lang', textValue: 'fr' })] }
     const b = { id: 'b', name: 'B', lang: 'en', preferences: [pref({ position: 0, type: 'list', key: 'lang', textValue: 'en' })] }
-    const res = mergeExtensionSettings('pkg', [a, b])
+    const res = mergeExtensionSettings([a, b])
     expect(res.common.map(p => [p.key, p.textValue])).toEqual([['lang', 'fr']]) // reference = first source
     expect(res.sources.every(s => s.preferences.length === 0)).toBe(true)
   })
@@ -39,7 +39,7 @@ describe('mergeExtensionSettings', () => {
   it('keeps a key missing from one source as that source-specific (not common)', () => {
     const a = { id: 'a', name: 'A', lang: 'fr', preferences: [pref({ position: 0, type: 'switch', key: 'showThumb', booleanValue: true })] }
     const b = { id: 'b', name: 'B', lang: 'en', preferences: [] }
-    const res = mergeExtensionSettings('pkg', [a, b])
+    const res = mergeExtensionSettings([a, b])
     expect(res.common).toEqual([])
     expect(res.sources.find(s => s.id === 'a')?.preferences.map(p => p.key)).toEqual(['showThumb'])
   })
@@ -47,7 +47,7 @@ describe('mergeExtensionSettings', () => {
   it('does not merge a shared key whose type differs across sources', () => {
     const a = { id: 'a', name: 'A', lang: 'fr', preferences: [pref({ position: 0, type: 'switch', key: 'k', booleanValue: true })] }
     const b = { id: 'b', name: 'B', lang: 'en', preferences: [pref({ position: 0, type: 'checkbox', key: 'k', booleanValue: false })] }
-    const res = mergeExtensionSettings('pkg', [a, b])
+    const res = mergeExtensionSettings([a, b])
     expect(res.common).toEqual([])
     expect(res.sources.flatMap(s => s.preferences.map(p => p.key))).toEqual(['k', 'k'])
   })
@@ -55,7 +55,7 @@ describe('mergeExtensionSettings', () => {
   it('never makes a keyless preference common', () => {
     const a = { id: 'a', name: 'A', lang: 'fr', preferences: [pref({ position: 0, type: 'switch', booleanValue: true })] }
     const b = { id: 'b', name: 'B', lang: 'en', preferences: [pref({ position: 0, type: 'switch', booleanValue: true })] }
-    const res = mergeExtensionSettings('pkg', [a, b])
+    const res = mergeExtensionSettings([a, b])
     expect(res.common).toEqual([])
     expect(res.sources.map(s => s.preferences.length)).toEqual([1, 1])
   })
@@ -65,7 +65,7 @@ describe('mergeExtensionSettings', () => {
       pref({ position: 0, type: 'switch', key: 'k', booleanValue: true }),
       pref({ position: 1, type: 'switch', booleanValue: false }),
     ] }
-    const res = mergeExtensionSettings('pkg', [a])
+    const res = mergeExtensionSettings([a])
     expect(res.common.map(p => p.key)).toEqual(['k'])
     expect(res.sources[0].preferences.map(p => p.position)).toEqual([1])
   })
@@ -168,7 +168,7 @@ describe('mergeExtensionSettings — normalized-key (Task 9)', () => {
       pref({ position: 0, type: 'switch', key: 'q_en', booleanValue: false }),
       pref({ position: 1, type: 'switch', key: 'r_en', booleanValue: false }),
     ] }
-    const res = mergeExtensionSettings('pkg', [a, b, c])
+    const res = mergeExtensionSettings([a, b, c])
     expect(res.common).toHaveLength(2)
     expect(res.common.map(p => p.key)).toEqual(['q', 'r'])
     expect(res.sources.every(s => s.preferences.length === 0)).toBe(true)
@@ -185,7 +185,7 @@ describe('mergeExtensionSettings — normalized-key (Task 9)', () => {
       pref({ position: 0, type: 'switch', key: 'q_zh-hk', booleanValue: false }),
       pref({ position: 1, type: 'switch', key: 'r_zh-hk', booleanValue: true }),
     ] }
-    const res = mergeExtensionSettings('pkg', [a, b])
+    const res = mergeExtensionSettings([a, b])
     expect(res.common).toHaveLength(2)
     expect(res.common.map(p => p.key)).toEqual(['q', 'r'])
     expect(res.sources.every(s => s.preferences.length === 0)).toBe(true)
@@ -203,7 +203,7 @@ describe('mergeExtensionSettings — normalized-key (Task 9)', () => {
       pref({ position: 0, type: 'list', key: 'q_ar', textValue: 'x', entryValues: ['x', 'z'] }),
       pref({ position: 1, type: 'switch', key: 'r_ar', booleanValue: false }),
     ] }
-    const res = mergeExtensionSettings('pkg', [a, b])
+    const res = mergeExtensionSettings([a, b])
     // 'q' is NOT common (different entryValues); 'r' IS common (switch, no entryValues check)
     expect(res.common.map(p => p.key)).toEqual(['r'])
     expect(res.sources[0]!.preferences.map(p => p.key)).toEqual(['q_af'])
@@ -273,7 +273,7 @@ describe('mergeExtensionSettings — normalized-key (Task 9)', () => {
       pref({ position: 0, type: 'switch', key: 'q_ar', booleanValue: false }),
       pref({ position: 1, type: 'switch', key: 'r_ar', booleanValue: true }),
     ] }
-    const res = mergeExtensionSettings('pkg', [a, b])
+    const res = mergeExtensionSettings([a, b])
     // Both q and r are common (same type, present in all sources)
     expect(res.common.map(p => p.key)).toEqual(['q', 'r'])
     expect(res.sources.every(s => s.preferences.length === 0)).toBe(true)
@@ -283,7 +283,7 @@ describe('mergeExtensionSettings — normalized-key (Task 9)', () => {
   it('no-suffix regression: identical keys with no token still merge as common (exact match preserved)', () => {
     const a = { id: 'a', name: 'A', lang: 'fr', preferences: [pref({ position: 0, type: 'list', key: 'lang', textValue: 'fr' })] }
     const b = { id: 'b', name: 'B', lang: 'en', preferences: [pref({ position: 0, type: 'list', key: 'lang', textValue: 'en' })] }
-    const res = mergeExtensionSettings('pkg', [a, b])
+    const res = mergeExtensionSettings([a, b])
     expect(res.common.map(p => [p.key, p.textValue])).toEqual([['lang', 'fr']])
     expect(res.sources.every(s => s.preferences.length === 0)).toBe(true)
   })
@@ -295,7 +295,7 @@ describe('mergeExtensionSettings — normalized-key (Task 9)', () => {
       pref({ position: 0, type: 'switch', key: 'q_af', booleanValue: true }),
       pref({ position: 1, type: 'switch', booleanValue: false }), // keyless stays per-source
     ] }
-    const res = mergeExtensionSettings('pkg', [a])
+    const res = mergeExtensionSettings([a])
     expect(res.common).toHaveLength(1)
     // With a single key, deriveSuffix returns '' → stem = raw key 'q_af'
     expect(res.common[0]!.key).toBe('q_af')
