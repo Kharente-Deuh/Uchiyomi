@@ -5,7 +5,6 @@ import { createExtensionsApi } from '../api/extensions.api'
 
 export interface ExtensionsFilters {
   nsfw?: boolean
-  isHealthy?: boolean
   isInstalled?: boolean
   hasUpdate?: boolean
   search?: string

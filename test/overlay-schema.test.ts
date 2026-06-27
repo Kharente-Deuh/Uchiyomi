@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // @vitest-environment node
-import { DownloadPriority, DownloadStatus, ExtensionHealth, LibraryStatus, ReadingDirection, ReadingMode, SeriesStatus, SeriesType } from '../prisma/generated/enums'
+import { DownloadPriority, DownloadStatus, LibraryStatus, ReadingDirection, ReadingMode, SeriesStatus, SeriesType } from '../prisma/generated/enums'
 
 // The `prisma-client` generator exposes enums as runtime objects but no runtime
 // dmmf. Enum values/order are asserted here; model/field validity is covered by
@@ -18,9 +18,8 @@ describe('overlay enums', () => {
     expect(Object.values(ReadingDirection)).toEqual(['LTR', 'RTL'])
   })
 
-  it('declares the download and extension-health enums', () => {
+  it('declares the download enums', () => {
     expect(Object.values(DownloadStatus)).toEqual(['PENDING', 'RUNNING', 'DONE', 'FAILED'])
     expect(Object.values(DownloadPriority)).toEqual(['NEW_CHAPTER', 'BACKFILL'])
-    expect(Object.values(ExtensionHealth)).toEqual(['OK', 'ERROR'])
   })
 })

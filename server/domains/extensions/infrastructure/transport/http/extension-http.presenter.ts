@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ExtensionSettingsDto, ExtensionSettingsSourceDto } from '#shared/dto/extensions/extension-settings.dto'
-import type { ExtensionDto, ExtensionHealthDto } from '#shared/dto/extensions/extension.dto'
+import type { ExtensionDto } from '#shared/dto/extensions/extension.dto'
 import type { PreferenceDto } from '#shared/dto/extensions/preference.dto'
 import type { SourceDto } from '#shared/dto/extensions/source.dto'
-import type { ExtensionErrorLogEntry, ExtensionHealthRow, ExtensionSettings, ExtensionSourcePreferenceModel, ListedExtension, StoredExtensionSource } from '../../../extension.domain'
+import type { ExtensionModel, ExtensionSettings, ExtensionSourcePreferenceModel, StoredExtensionSource } from '../../../extension.domain'
 
-export function toExtensionDto(e: ListedExtension): ExtensionDto {
+export function toExtensionDto(e: ExtensionModel): ExtensionDto {
   return {
     pkgName: e.pkgName,
     name: e.name,
@@ -18,7 +18,6 @@ export function toExtensionDto(e: ListedExtension): ExtensionDto {
     isInstalled: e.isInstalled,
     hasUpdate: e.hasUpdate,
     versionName: e.versionName,
-    isHealthy: e.isHealthy,
   }
 }
 
@@ -48,21 +47,6 @@ export function toPreferenceDto(p: ExtensionSourcePreferenceModel): PreferenceDt
       return { ...p }
     case 'multiSelect':
       return { ...p }
-  }
-}
-
-export function toHealthDto(h: ExtensionHealthRow, log: ExtensionErrorLogEntry[]): ExtensionHealthDto {
-  return {
-    pkgName: h.pkgName,
-    health: h.health,
-    consecutiveFailures: h.consecutiveFailures,
-    lastErrorAt: h.lastErrorAt?.toISOString(),
-    lastErrorMessage: h.lastErrorMessage,
-    log: log.map(e => ({
-      occurredAt: e.occurredAt.toISOString(),
-      message: e.message,
-      context: e.context ?? undefined,
-    })),
   }
 }
 

@@ -93,10 +93,6 @@
     "empty": {
       "title": "No extensions installed yet"
     },
-    "health": {
-      "ok": "Healthy",
-      "error": "Error"
-    },
     "actions": {
       "install": "Install",
       "uninstall": "Uninstall"
@@ -116,7 +112,6 @@
     },
     "filters": {
       "nsfw": "NSFW",
-      "healthy": "Healthy",
       "installed": "Installed",
       "hasUpdate": "Up to date"
     },

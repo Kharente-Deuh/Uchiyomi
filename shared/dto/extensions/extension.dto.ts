@@ -8,14 +8,4 @@ export interface ExtensionDto {
   isInstalled: boolean
   hasUpdate: boolean
   versionName: string
-  isHealthy?: boolean
-}
-
-export interface ExtensionHealthDto {
-  pkgName: string
-  health: 'OK' | 'ERROR'
-  consecutiveFailures: number
-  lastErrorAt?: string
-  lastErrorMessage?: string
-  log: { occurredAt: string, message: string, context?: string }[]
 }

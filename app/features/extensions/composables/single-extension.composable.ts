@@ -1,4 +1,4 @@
-import type { ExtensionDto, ExtensionHealthDto, SourceDto } from '#shared/dto/extensions'
+import type { ExtensionDto, SourceDto } from '#shared/dto/extensions'
 import type { ExtensionSettingsDto } from '#shared/dto/extensions/extension-settings.dto'
 import { createExtensionsApi } from '../api/extensions.api'
 import { useSingleExtensionStore } from '../store/single-extension.store'
@@ -6,7 +6,6 @@ import { useSingleExtensionStore } from '../store/single-extension.store'
 interface SingleExtensionComposable {
   extension: ComputedRef<ExtensionDto | undefined>
 
-  health: ComputedRef<ExtensionHealthDto | undefined>
   sources: ComputedRef<SourceDto[]>
   fetchSourcesLoading: Ref<boolean>
   toggleSourceEnabled: (sourceId: string) => Promise<void>
@@ -44,9 +43,6 @@ export function useSingleExtension(pkgName: string): SingleExtensionComposable {
     }
 
     store.setExtension(res.data.extension)
-    if (res.data.health) {
-      store.setHealth(res.data.health)
-    }
   }
 
   const fetchSourcesLoading = ref(false)
@@ -149,7 +145,6 @@ export function useSingleExtension(pkgName: string): SingleExtensionComposable {
 
   return {
     extension,
-    health: computed(() => store.health),
     sources,
     settings,
     fetchSourcesLoading,

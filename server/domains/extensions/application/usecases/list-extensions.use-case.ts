@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { IUseCase, Page } from '~~/server/shared'
-import type { ExtensionsOverlayRepository, ListedExtension, ListExtensionsFilters, SuwayomiExtensionsPort } from '../../extension.domain'
-import { toListedExtension } from '../../extension.domain'
+import type { ExtensionModel, ListExtensionsFilters, SuwayomiExtensionsPort } from '../../extension.domain'
 
 export interface ListExtensionsUseCaseFilters {
   pkgName?: string
@@ -19,13 +18,12 @@ export interface ListExtensionsUseCaseOpts {
   filters?: ListExtensionsUseCaseFilters
 }
 
-export class ListExtensionsUseCase implements IUseCase<ListExtensionsUseCaseOpts, Page<ListedExtension>> {
+export class ListExtensionsUseCase implements IUseCase<ListExtensionsUseCaseOpts, Page<ExtensionModel>> {
   constructor(
     private readonly suwayomi: SuwayomiExtensionsPort,
-    private readonly overlay: ExtensionsOverlayRepository,
   ) {}
 
-  async execute({ isAdmin, viewerCanSeeNsfw, page, pageSize, filters }: ListExtensionsUseCaseOpts): Promise<Page<ListedExtension>> {
+  async execute({ isAdmin, viewerCanSeeNsfw, page, pageSize, filters }: ListExtensionsUseCaseOpts): Promise<Page<ExtensionModel>> {
     // Visibility/NSFW are server-enforced and override client-supplied values:
     // non-admins only see installed extensions; viewers without NSFW permission
     // never see NSFW regardless of the client `nsfw` flag.
@@ -37,11 +35,6 @@ export class ListExtensionsUseCase implements IUseCase<ListExtensionsUseCaseOpts
       isNsfw: viewerCanSeeNsfw ? filters?.nsfw : false,
     }
 
-    const pageResult = await this.suwayomi.listExtensions({ page, pageSize, filters: effectiveFilters })
-    const healthRows = await this.overlay.listHealthByPkgNames(pageResult.items.map(e => e.pkgName))
-    const healthByPkg = new Map(healthRows.map(h => [h.pkgName, h]))
-    const items = pageResult.items.map(e => toListedExtension(e, healthByPkg.get(e.pkgName)))
-
-    return { items, total: pageResult.total }
+    return this.suwayomi.listExtensions({ page, pageSize, filters: effectiveFilters })
   }
 }

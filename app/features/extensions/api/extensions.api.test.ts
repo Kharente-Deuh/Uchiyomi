@@ -47,7 +47,7 @@ it('listExtensions maps fetch errors to ApiError', async () => {
 // --- getExtension ---
 
 it('getExtension hits /api/extensions/:pkgName', async () => {
-  const payload = { extension: { pkgName: 'p' }, health: null }
+  const payload = { extension: { pkgName: 'p' } }
   apiFetch.mockResolvedValueOnce(payload)
   const res = await createExtensionsApi().getExtension('p')
   expect(res).toEqual({ success: true, data: payload })

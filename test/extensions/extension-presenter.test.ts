@@ -1,19 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ExtensionDto } from '../../shared/dto/extensions/extension.dto'
 import { describe, expect, it } from 'vitest'
-import { toExtensionDto, toExtensionSettingsDto, toHealthDto, toPreferenceDto, toSourceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
+import { toExtensionDto, toExtensionSettingsDto, toPreferenceDto, toSourceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
 import { toPageDto } from '../../server/shared'
 
 describe('extension presenter', () => {
-  it('serialises health with ISO dates and log', () => {
-    const dto = toHealthDto(
-      { pkgName: 'p1', health: 'ERROR', consecutiveFailures: 2, lastErrorAt: new Date('2026-06-22T00:00:00Z'), lastErrorMessage: 'x' },
-      [{ occurredAt: new Date('2026-06-22T00:00:00Z'), message: 'x', context: 'install' }],
-    )
-    expect(dto.lastErrorAt).toBe('2026-06-22T00:00:00.000Z')
-    expect(dto.log[0]).toEqual({ occurredAt: '2026-06-22T00:00:00.000Z', message: 'x', context: 'install' })
-  })
-
   it('passes preference fields through', () => {
     const dto = toPreferenceDto({ position: 0, type: 'switch', visible: true, booleanValue: true, booleanDefault: false })
     expect(dto).toMatchObject({ position: 0, type: 'switch', booleanValue: true, booleanDefault: false })
@@ -32,14 +23,6 @@ describe('toExtensionDto', () => {
     versionName: '1.0',
   }
 
-  it('maps isHealthy=true for a healthy installed extension', () => {
-    expect(toExtensionDto({ ...base, isHealthy: true })).toMatchObject({ pkgName: 'p', isHealthy: true })
-  })
-
-  it('omits isHealthy (undefined) for a non-installed extension', () => {
-    expect(toExtensionDto({ ...base, isInstalled: false, isHealthy: undefined }).isHealthy).toBeUndefined()
-  })
-
   it('rewrites iconUrl to the BFF proxy route (never the raw Suwayomi path)', () => {
     const dto = toExtensionDto({ ...base, iconUrl: '/api/v1/extension/icon/tachiyomi-x-v1.0.apk' })
     expect(dto.iconUrl).toBe('/api/extensions/p/icon')
@@ -53,12 +36,12 @@ describe('toExtensionDto', () => {
 describe('toPageDto', () => {
   it('maps a domain page result into the paginated DTO', () => {
     const dto = toPageDto({
-      items: [{ pkgName: 'p', name: 'N', lang: 'en', iconUrl: undefined, isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0', isHealthy: true }],
+      items: [{ pkgName: 'p', name: 'N', lang: 'en', iconUrl: undefined, isNsfw: false, isInstalled: true, hasUpdate: false, versionName: '1.0' }],
       total: 57,
     }, toExtensionDto)
     expect(dto).toMatchObject({ total: 57 })
 
-    expect(dto.items.map((i: ExtensionDto) => [i.pkgName, i.isHealthy])).toEqual([['p', true]])
+    expect(dto.items.map((i: ExtensionDto) => i.pkgName)).toEqual(['p'])
   })
 })
 

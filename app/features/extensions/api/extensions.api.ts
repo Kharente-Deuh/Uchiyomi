@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { ExtensionDto, ExtensionHealthDto, ExtensionListQueryDto, SourceDto } from '#shared/dto/extensions'
+import type { ExtensionDto, ExtensionListQueryDto, SourceDto } from '#shared/dto/extensions'
 import type { ExtensionSettingsDto } from '#shared/dto/extensions/extension-settings.dto'
 import type { PageDto } from '#shared/dto/page.dto'
 import type { ApiResponse } from '~/utils/api'
@@ -7,7 +7,7 @@ import { ApiError, apiFetch } from '~/utils/api'
 
 export interface ExtensionsApi {
   listExtensions: (params: ExtensionListQueryDto) => Promise<ApiResponse<PageDto<ExtensionDto>>>
-  getExtension: (pkgName: string) => Promise<ApiResponse<{ extension: ExtensionDto, health: ExtensionHealthDto | null }>>
+  getExtension: (pkgName: string) => Promise<ApiResponse<{ extension: ExtensionDto }>>
   extensionAction: (pkgName: string, action: 'install' | 'uninstall' | 'update') => Promise<ApiResponse<ExtensionDto>>
   listSources: (pkgName: string) => Promise<ApiResponse<SourceDto[]>>
   setSourceEnabled: (pkgName: string, sourceId: string, isEnabled: boolean) => Promise<ApiResponse<SourceDto>>
@@ -34,7 +34,7 @@ async function listExtensions({ search, isInstalled, hasUpdate, nsfw, page, page
   }
 }
 
-async function getExtension(pkgName: string): Promise<ApiResponse<{ extension: ExtensionDto, health: ExtensionHealthDto | null }>> {
+async function getExtension(pkgName: string): Promise<ApiResponse<{ extension: ExtensionDto }>> {
   try {
     const res = await apiFetch(`/api/extensions/${pkgName}`)
 

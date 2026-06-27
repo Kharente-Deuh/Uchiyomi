@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { ListedExtension } from '~~/server/domains/extensions/extension.domain'
+import type { ExtensionModel } from '~~/server/domains/extensions/extension.domain'
 import type { ExtensionDto } from '~~/shared/dto/extensions/extension.dto'
 import type { ExtensionActionRequestDto } from '#shared/dto/extensions/extensions.request'
 import { z } from 'zod'
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event): Promise<ExtensionDto> => {
   })
 
   const { installExtension, uninstallExtension, updateExtension } = extensionsService()
-  let updatedExtension: ListedExtension | undefined
+  let updatedExtension: ExtensionModel | undefined
 
   switch (body.action) {
     case 'install':

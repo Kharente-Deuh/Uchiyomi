@@ -93,10 +93,6 @@
     "empty": {
       "title": "Aucune extension installée pour le moment"
     },
-    "health": {
-      "ok": "Fonctionnelle",
-      "error": "Erreur"
-    },
     "actions": {
       "install": "Installer",
       "uninstall": "Désinstaller"
@@ -116,7 +112,6 @@
     },
     "filters": {
       "nsfw": "NSFW",
-      "healthy": "Fonctionnelle",
       "installed": "Installée",
       "hasUpdate": "À jour"
     },

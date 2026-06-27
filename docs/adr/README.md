@@ -25,3 +25,4 @@ old one rather than editing it.
 | [0015](./0015-suwayomi-graphql-codegen-pipeline.md) | Typed Suwayomi access via graphql-codegen and a committed SDL snapshot | Accepted |
 | [0016](./0016-client-rendered-spa-shell.md) | Client-rendered SPA shell (`ssr: false`) | Accepted |
 | [0017](./0017-extension-source-api-enablement-and-dormancy.md) | Extension/source API surface, source enablement, and dormancy | Accepted |
+| [0018](./0018-drop-extension-health-tracking.md) | Drop extension-health tracking | Accepted |

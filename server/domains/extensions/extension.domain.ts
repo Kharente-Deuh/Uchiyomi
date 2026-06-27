@@ -3,8 +3,6 @@
 
 import type { Page } from '~~/server/shared'
 
-export type ExtensionHealth = 'OK' | 'ERROR'
-
 export class ExtensionModel {
   declare pkgName: string
   declare name: string
@@ -20,15 +18,6 @@ export class ExtensionModel {
   }
 }
 
-export interface ExtensionHealthRow {
-  pkgName: string
-  health: ExtensionHealth
-  consecutiveFailures: number
-  lastErrorAt?: Date
-  lastErrorMessage?: string
-  installedByUserId?: string
-}
-
 export interface ListExtensionsFilters {
   pkgName?: string
   search?: string
@@ -41,21 +30,6 @@ export interface ListExtensionsQuery {
   filters?: ListExtensionsFilters
   page: number
   pageSize: number
-}
-
-export interface ListedExtension extends ExtensionModel {
-  isHealthy?: boolean
-}
-
-// Annotate a Suwayomi extension with overlay-derived health. Health only applies
-// to installed extensions (undefined otherwise); a missing health row is treated
-// as healthy. Shared by the list / install / uninstall / update use cases so the
-// isHealthy rule lives in one place.
-export function toListedExtension(ext: ExtensionModel, health?: ExtensionHealthRow): ListedExtension {
-  return {
-    ...ext,
-    isHealthy: ext.isInstalled ? (health ? health.health === 'OK' : true) : undefined,
-  }
 }
 
 export interface ExtensionSource {
@@ -93,12 +67,6 @@ export type ExtensionSourcePreferenceModel
     | ListPreference
     | MultiSelectPreference
 
-export interface ExtensionErrorLogEntry {
-  occurredAt: Date
-  message: string
-  context?: string
-}
-
 export interface StoredExtensionSource extends ExtensionSource {
   pkgName: string
   isEnabled: boolean
@@ -128,12 +96,6 @@ export interface UpsertInstalledExtensionParams {
   installedByUserId: string
 }
 
-export interface RecordExtensionFailureParams {
-  pkgName: string
-  message: string
-  context?: string
-}
-
 export interface FindManySourcesParams {
   pkgName: string
   isEnabled?: boolean
@@ -149,15 +111,10 @@ export interface ExtensionSourceRepository {
   update: (id: string, data: Partial<Omit<StoredExtensionSource, 'id'>>) => Promise<StoredExtensionSource>
 }
 
-// Overlay (health + install trace) in PostgreSQL.
+// Overlay (install trace) in PostgreSQL.
 export interface ExtensionsOverlayRepository {
   upsertInstalled: (p: UpsertInstalledExtensionParams) => Promise<void>
   deleteByPkgName: (pkgName: string) => Promise<void>
-  listHealthByPkgNames: (pkgNames: string[]) => Promise<ExtensionHealthRow[]>
-  findHealth: (pkgName: string) => Promise<ExtensionHealthRow | undefined>
-  recordFailure: (p: RecordExtensionFailureParams) => Promise<void>
-  recordSuccess: (pkgName: string) => Promise<void>
-  listErrorLog: (pkgName: string) => Promise<ExtensionErrorLogEntry[]>
 }
 
 // ── Settings aggregate helpers ────────────────────────────────────────────────

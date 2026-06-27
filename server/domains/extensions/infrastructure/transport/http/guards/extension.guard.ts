@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import type { ListedExtension } from '~~/server/domains/extensions/extension.domain'
+import type { ExtensionModel } from '~~/server/domains/extensions/extension.domain'
 import type { UserModel } from '~~/server/domains/identity/users/user.domain'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 
@@ -42,7 +42,7 @@ export function requireAuthUser(event: H3Event, opts?: RequireAuthUserOpts): Use
 // so only call it once cheap authz (requireAuthUser) and input validation have
 // passed. Use it directly for routes with a body/query; the composed
 // extensionGuard below is the shorthand for routes with neither.
-export async function requireExtension(event: H3Event, authUser: UserModel, opts?: RequireExtensionOpts): Promise<ListedExtension> {
+export async function requireExtension(event: H3Event, authUser: UserModel, opts?: RequireExtensionOpts): Promise<ExtensionModel> {
   const pkgName = getRouterParam(event, 'pkgName')
   if (!pkgName) {
     throw createError({ statusCode: 400, statusMessage: 'Missing pkgName' })
@@ -78,7 +78,7 @@ export async function requireExtension(event: H3Event, authUser: UserModel, opts
 
 // Shorthand for routes with no request body/query to validate: authorize the
 // actor, then load and gate the extension in one call.
-export async function extensionGuard(event: H3Event, opts?: ExtensionGuardOpts): Promise<{ authUser: UserModel, extension: ListedExtension }> {
+export async function extensionGuard(event: H3Event, opts?: ExtensionGuardOpts): Promise<{ authUser: UserModel, extension: ExtensionModel }> {
   const authUser = requireAuthUser(event, opts)
   const extension = await requireExtension(event, authUser, opts)
 
