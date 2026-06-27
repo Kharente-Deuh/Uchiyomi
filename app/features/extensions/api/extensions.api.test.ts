@@ -107,62 +107,71 @@ it('listSources maps fetch errors to ApiError', async () => {
 
 // --- setSourceEnabled ---
 
-it('setSourceEnabled patches /api/sources/:id', async () => {
+it('setSourceEnabled posts to /api/extensions/:pkgName/sources/:id/enable', async () => {
   apiFetch.mockResolvedValueOnce({ source: { id: 's', isEnabled: false } })
-  await createExtensionsApi().setSourceEnabled('s', false)
-  expect(apiFetch).toHaveBeenCalledWith('/api/sources/s', { method: 'PATCH', body: { isEnabled: false } })
+  await createExtensionsApi().setSourceEnabled('p', 's', false)
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/s/enable', { method: 'POST', body: { isEnabled: false } })
 })
 
 it('setSourceEnabled returns the updated source', async () => {
   const source = { id: 's', isEnabled: true }
   apiFetch.mockResolvedValueOnce({ source })
-  const res = await createExtensionsApi().setSourceEnabled('s', true)
+  const res = await createExtensionsApi().setSourceEnabled('p', 's', true)
   expect(res).toEqual({ success: true, data: source })
 })
 
 it('setSourceEnabled maps fetch errors to ApiError', async () => {
   apiFetch.mockRejectedValueOnce(new Error('nope'))
-  const res = await createExtensionsApi().setSourceEnabled('s', true)
+  const res = await createExtensionsApi().setSourceEnabled('p', 's', true)
   expect(res.success).toBe(false)
   if (!res.success) {
     expect(res.error).toBeInstanceOf(ApiError)
   }
 })
 
-// --- getPreferences ---
+// --- getSettings ---
 
-it('getPreferences hits /api/sources/:id/preferences', async () => {
-  apiFetch.mockResolvedValueOnce({ preferences: [] })
-  await createExtensionsApi().getPreferences('s')
-  expect(apiFetch).toHaveBeenCalledWith('/api/sources/s/preferences')
+it('getSettings hits /api/extensions/:pkgName/sources/settings', async () => {
+  apiFetch.mockResolvedValueOnce({ pkgName: 'p', common: [], sources: [] })
+  await createExtensionsApi().getSettings('p')
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/settings')
 })
 
-it('getPreferences returns data', async () => {
-  apiFetch.mockResolvedValueOnce({ preferences: [{ key: 'k' }] })
-  const res = await createExtensionsApi().getPreferences('s')
-  expect(res).toEqual({ success: true, data: [{ key: 'k' }] })
+it('getSettings returns the settings payload', async () => {
+  const settings = { pkgName: 'p', common: [{ key: 'k' }], sources: [] }
+  apiFetch.mockResolvedValueOnce(settings)
+  const res = await createExtensionsApi().getSettings('p')
+  expect(res).toEqual({ success: true, data: settings })
 })
 
-it('getPreferences maps fetch errors to ApiError', async () => {
+it('getSettings maps fetch errors to ApiError', async () => {
   apiFetch.mockRejectedValueOnce(new Error('nope'))
-  const res = await createExtensionsApi().getPreferences('s')
+  const res = await createExtensionsApi().getSettings('p')
   expect(res.success).toBe(false)
   if (!res.success) {
     expect(res.error).toBeInstanceOf(ApiError)
   }
 })
 
-// --- updatePreference ---
+// --- updateSettings ---
 
-it('updatePreference puts to /api/sources/:id/preferences', async () => {
-  apiFetch.mockResolvedValueOnce({ preferences: [] })
-  await createExtensionsApi().updatePreference('s', { position: 0, booleanValue: true })
-  expect(apiFetch).toHaveBeenCalledWith('/api/sources/s/preferences', { method: 'PUT', body: { position: 0, booleanValue: true } })
+it('updateSettings puts to /api/extensions/:pkgName/sources/settings', async () => {
+  const body = { common: [], sources: [] }
+  apiFetch.mockResolvedValueOnce({ pkgName: 'p', common: [], sources: [] })
+  await createExtensionsApi().updateSettings('p', body)
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/settings', { method: 'PUT', body })
 })
 
-it('updatePreference maps fetch errors to ApiError', async () => {
+it('updateSettings returns the updated settings', async () => {
+  const settings = { pkgName: 'p', common: [], sources: [] }
+  apiFetch.mockResolvedValueOnce(settings)
+  const res = await createExtensionsApi().updateSettings('p', { common: [], sources: [] })
+  expect(res).toEqual({ success: true, data: settings })
+})
+
+it('updateSettings maps fetch errors to ApiError', async () => {
   apiFetch.mockRejectedValueOnce(new Error('nope'))
-  const res = await createExtensionsApi().updatePreference('s', { position: 0 })
+  const res = await createExtensionsApi().updateSettings('p', { common: [], sources: [] })
   expect(res.success).toBe(false)
   if (!res.success) {
     expect(res.error).toBeInstanceOf(ApiError)
