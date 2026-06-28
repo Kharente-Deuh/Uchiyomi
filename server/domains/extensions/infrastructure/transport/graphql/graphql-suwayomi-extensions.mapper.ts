@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { GetSourcePreferencesQuery } from '../../../../../utils/suwayomi/generated/graphql'
 import type { ExtensionSource, ExtensionSourcePreferenceModel, SourcePreferenceChange } from '../../../extension.domain'
 import { ExtensionModel } from '../../../extension.domain'

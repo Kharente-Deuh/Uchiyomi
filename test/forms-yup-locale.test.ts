@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @vitest-environment node
 // Pure-logic test for the yup-locale wiring. Runs in the node project (not the
 // nuxt one) so a single `yup` instance is shared between this file's schemas and

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Vitest setup for the `nuxt` project (app/**).
 //
 // vuetify-nuxt-module and @nuxtjs/i18n register as async Nuxt plugins whose

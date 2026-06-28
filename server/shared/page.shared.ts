@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // `shared/` is imported with a relative path here so the Vitest `node`
 // project (which has no path aliases) can resolve it. See CLAUDE.md.
 import type { PageDto } from '../../shared/dto/page.dto'

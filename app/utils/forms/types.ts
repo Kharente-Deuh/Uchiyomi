@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ComputedRef, Ref } from 'vue'
 import type { InferType, ObjectSchema } from 'yup'
 

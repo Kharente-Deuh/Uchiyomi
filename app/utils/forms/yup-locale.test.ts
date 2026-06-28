@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import * as yup from 'yup'
 import { setupYupLocale } from './yup-locale'

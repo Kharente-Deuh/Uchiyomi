@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { PrismaClient } from '../../../../../../prisma/generated/client'
 import type { ExtensionSource, ExtensionSourceRepository, FindManySourcesParams, StoredExtensionSource } from '../../../extension.domain'
 import type { RawSource } from './prisma-source-repository.mapper'

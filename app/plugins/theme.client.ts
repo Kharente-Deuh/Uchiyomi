@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { useTheme } from 'vuetify'
 import { resolveInitialTheme } from '~/utils/theme'
 

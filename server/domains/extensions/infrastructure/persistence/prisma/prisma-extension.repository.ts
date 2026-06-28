@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { PrismaClient } from '../../../../../../prisma/generated/client'
 import type { ExtensionsOverlayRepository, UpsertInstalledExtensionParams } from '../../../extension.domain'
 

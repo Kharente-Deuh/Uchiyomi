@@ -4,9 +4,13 @@
 # Ensure every source file passed as an argument carries the AGPL SPDX header.
 # Idempotent: files that already declare the identifier are left untouched.
 # Comment style matches repo convention:
-#   .ts/.tsx/.js/.mjs/.cts/.mts  -> // ... (first line)
+#   .ts/.tsx/.js/.mjs/.cts/.mts  -> // ... followed by a blank line (first lines)
 #   .scss/.css                   -> /* ... */ (first line)
 #   .vue                         -> <!-- ... --> (first line, above <script>)
+#
+# JS/TS files get a blank line between the header and the code so the import
+# sorter (perfectionist) treats the header as a detached top-of-file comment
+# and never hoists an import above it.
 set -euo pipefail
 
 SLASH='// SPDX-License-Identifier: AGPL-3.0-or-later'
@@ -18,12 +22,18 @@ for f in "$@"; do
   grep -q 'SPDX-License-Identifier' "$f" && continue
   tmp="$(mktemp)"
   case "$f" in
-    *.scss|*.css) header="$BLOCK" ;;
-    *.vue)        header="$HTML" ;;
-    *.ts|*.tsx|*.js|*.mjs|*.cts|*.mts) header="$SLASH" ;;
-    *) rm -f "$tmp"; continue ;;
+    *.scss|*.css)
+      { printf '%s\n' "$BLOCK"; cat "$f"; } > "$tmp" ;;
+    *.vue)
+      { printf '%s\n' "$HTML"; cat "$f"; } > "$tmp" ;;
+    *.ts|*.tsx|*.js|*.mjs|*.cts|*.mts)
+      # header, one blank line, then the file with any leading blanks dropped
+      awk -v hdr="$SLASH" 'BEGIN { print hdr; print "" }
+        !started && $0 ~ /^[[:space:]]*$/ { next }
+        { started = 1; print }' "$f" > "$tmp" ;;
+    *)
+      rm -f "$tmp"; continue ;;
   esac
-  { printf '%s\n' "$header"; cat "$f"; } > "$tmp"
   mv "$tmp" "$f"
   echo "license-header: added to $f"
 done

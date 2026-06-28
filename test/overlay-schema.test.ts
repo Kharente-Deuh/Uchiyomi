@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { describe, expect, it } from 'vitest'
 // @vitest-environment node
 import { DownloadPriority, DownloadStatus, LibraryStatus, ReadingDirection, ReadingMode, SeriesStatus, SeriesType } from '../prisma/generated/enums'
 

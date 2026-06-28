@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { IUseCase } from '~~/server/shared'
 import type { SettingsPort } from '../../suwayomi-settings.domain'
 import { DESIRED_SETTINGS, reconcile } from '../../suwayomi-settings.domain'

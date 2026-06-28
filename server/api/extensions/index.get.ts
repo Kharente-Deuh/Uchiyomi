@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { z } from 'zod'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { requireAuthUser } from '~~/server/domains/extensions/infrastructure/transport/http/guards/extension.guard'

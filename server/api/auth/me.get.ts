@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { toUserDto } from '../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 
 export default defineEventHandler((event) => {

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { Buffer } from 'node:buffer'
 
 // Proxies a manga cover from the internal Suwayomi server (ADR-0001: Suwayomi is

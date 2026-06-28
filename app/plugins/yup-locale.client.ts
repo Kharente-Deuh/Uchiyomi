@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Wires yup's global validation messages to the app's i18n (`validation.*` keys)
 // and re-applies them whenever the active locale changes. Client-only: `setLocale`
 // mutates yup's global state, which must not leak across SSR requests, and form

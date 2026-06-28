@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SuwayomiClient } from '../../../../../utils/suwayomi/client'
 import type { ManagedSettings, SettingsPatch, SettingsPort } from '../../../suwayomi-settings.domain'
 import { GET_SETTINGS, SET_SETTINGS } from './graphql-suwayomi-settings.operations'

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ExtensionDto } from '#shared/dto/extensions'
 
 export const useExtensionsStore = defineStore('extensions', () => {

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { chapterToDomain, mangaDetailsToDomain, mangaSummaryToDomain, sourceToDomain } from '../../server/domains/catalogue/infrastructure/transport/graphql/graphql-suwayomi-catalogue-repository.mapper'

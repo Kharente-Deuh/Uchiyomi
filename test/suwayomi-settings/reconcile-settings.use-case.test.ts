@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ManagedSettings, SettingsPort } from '../../server/domains/suwayomi-settings/suwayomi-settings.domain'
 import { describe, expect, it, vi } from 'vitest'
 import * as ReconcileSettings from '../../server/domains/suwayomi-settings/application/usecases/reconcile-settings.use-case'

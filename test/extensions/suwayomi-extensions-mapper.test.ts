@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, expect, it } from 'vitest'
 import { preferenceToDomain, sourceToDomain, toChangeInput } from '../../server/domains/extensions/infrastructure/transport/graphql/graphql-suwayomi-extensions.mapper'
 

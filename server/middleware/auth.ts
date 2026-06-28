@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { sessionsService } from '../domains/identity/sessions/application/sessions.service'
 
 // Loads the DB-backed session/user per request and attaches it to the context.

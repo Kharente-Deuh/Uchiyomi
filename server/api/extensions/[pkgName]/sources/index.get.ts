@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { toSourceDto } from '~~/server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
 import { requireAuthUser } from '~~/server/domains/extensions/infrastructure/transport/http/guards/extension.guard'

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { PrismaUserRepository } from '../infrastructure/persistence/prisma/prisma-user.repository'
 
 // Shared infrastructure singleton: the user repository is consumed by several

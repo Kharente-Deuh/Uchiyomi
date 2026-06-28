@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Flat ESM module, consumed via `import * as Source`.
 export class SourceModel {
   declare id: string

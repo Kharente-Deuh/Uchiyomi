@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { Ref } from 'vue'
 import { watch } from 'vue'
 import { setLocale } from 'yup'

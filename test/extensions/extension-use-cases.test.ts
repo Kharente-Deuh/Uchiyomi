@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, expect, it, vi } from 'vitest'
 import * as GetExtensionSettings from '../../server/domains/extensions/application/usecases/get-extension-settings.use-case'
 import * as InstallExtension from '../../server/domains/extensions/application/usecases/install-extension.use-case'

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SetupStatusDto } from '#shared/dto/identity/auth.request'
 import { userRepository } from '~~/server/domains/identity/users/application'
 

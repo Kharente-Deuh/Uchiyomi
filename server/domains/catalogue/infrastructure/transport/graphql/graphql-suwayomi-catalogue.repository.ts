@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SuwayomiClient } from '../../../../../utils/suwayomi/client'
 import type { CatalogueRepository, GetMangaDetailsByIdParams, SearchMangaParams, SearchMangaResult, SourceMangaChapterSummary } from '../../../catalogue.domain'
 import type { MangaDetailsModel } from '../../../manga.domain'

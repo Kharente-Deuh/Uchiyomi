@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SetupRequestDto } from '#shared/dto/identity/auth.request'
 import { z } from 'zod'
 import { authService } from '~~/server/domains/identity/auth/application/auth.service'

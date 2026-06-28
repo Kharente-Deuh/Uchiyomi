@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { RouteLocationRaw } from 'vue-router'
 import { createExtensionsApi } from '~/features/extensions/api/extensions.api'
 import { useSingleExtensionStore } from '~/features/extensions/store/single-extension.store'

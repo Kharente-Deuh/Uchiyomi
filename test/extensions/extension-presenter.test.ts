@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ExtensionDto } from '../../shared/dto/extensions/extension.dto'
 import { describe, expect, it } from 'vitest'
 import { toExtensionDto, toExtensionSettingsDto, toPreferenceDto, toSourceDto } from '../../server/domains/extensions/infrastructure/transport/http/extension-http.presenter'

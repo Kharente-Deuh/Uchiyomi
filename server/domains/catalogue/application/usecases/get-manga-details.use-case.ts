@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { IUseCase } from '~~/server/shared'
 import type { CatalogueRepository } from '../../catalogue.domain'
 import type { MangaDetailsModel } from '../../manga.domain'

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ReconcileSettingsUseCaseResult } from './usecases'
 import { GraphqlSuwayomiSettingsAdapter } from '../infrastructure/transport/graphql/graphql-suwayomi-settings.adapter'
 import { ReconcileSettingsUseCase } from './usecases'

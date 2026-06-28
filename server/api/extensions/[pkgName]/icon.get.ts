@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { Buffer } from 'node:buffer'
 import { extensionGuard } from '~~/server/domains/extensions/infrastructure/transport/http/guards/extension.guard'
 

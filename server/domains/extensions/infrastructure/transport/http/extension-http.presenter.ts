@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ExtensionSettingsDto, ExtensionSettingsSourceDto } from '#shared/dto/extensions/extension-settings.dto'
 import type { ExtensionDto } from '#shared/dto/extensions/extension.dto'
 import type { PreferenceDto } from '#shared/dto/extensions/preference.dto'

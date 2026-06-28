@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ManagedSettings } from '../../server/domains/suwayomi-settings/suwayomi-settings.domain'
 import { describe, expect, it } from 'vitest'
 import { DESIRED_SETTINGS, reconcile } from '../../server/domains/suwayomi-settings/suwayomi-settings.domain'

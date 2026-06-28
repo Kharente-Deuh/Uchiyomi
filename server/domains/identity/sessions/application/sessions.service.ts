@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { UserModel } from '../../users/user.domain'
 import type { GetCurrentUserUseCaseOpts } from './usecases'
 import { sessionRepository } from '.'

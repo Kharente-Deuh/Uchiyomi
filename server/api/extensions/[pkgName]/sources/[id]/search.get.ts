@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SourceSearchResultDto } from '#shared/dto/catalogue/source-search.dto'
 import { z } from 'zod'
 import { catalogueService } from '~~/server/domains/catalogue/application/catalogue.service'

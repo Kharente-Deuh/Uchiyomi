@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { FetchError } from 'ofetch'
 
 interface H3ErrorData {

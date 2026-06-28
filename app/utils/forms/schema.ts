@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SchemaDescription, SchemaObjectDescription } from 'yup'
 import type { AnyObjectSchema } from './types'
 import { reach, ValidationError } from 'yup'

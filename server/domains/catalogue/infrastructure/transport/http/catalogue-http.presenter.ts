@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SourceSearchResultDto } from '#shared/dto/catalogue/source-search.dto'
 import type { SearchSourceWithChaptersResult } from '../../../catalogue.domain'
 

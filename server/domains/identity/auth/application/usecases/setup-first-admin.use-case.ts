@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { IUseCase } from '../../../../../shared'
 import type { PasswordHasher } from '../../../password/password.domain'
 import type { UserModel, UsersRepository } from '../../../users/user.domain'

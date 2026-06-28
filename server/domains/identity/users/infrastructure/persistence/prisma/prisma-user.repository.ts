@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { PrismaClient } from '../../../../../../../prisma/generated/client'
 import type { CreateUserWithLocalIdentityOpts, CreateUserWithLocalIdentityParams, FindUserByAccountNameParams, FindUserByIdParams, FindUserLocalPasswordHashParams, SetUserStatusParams, UpdateUserCapabilitiesParams, UpdateUserDisplayNameParams, UpdateUserLocalPasswordHashParams, UpdateUserNsfwPreferenceParams, UserModel, UsersRepository } from '../../../user.domain'
 import { toDomain } from './prisma-user-repository.mapper'

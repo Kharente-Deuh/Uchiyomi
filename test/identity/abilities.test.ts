@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import * as User from '../../server/domains/identity/users/user.domain'

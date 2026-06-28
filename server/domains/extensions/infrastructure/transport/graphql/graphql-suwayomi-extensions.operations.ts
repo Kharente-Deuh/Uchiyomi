@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { graphql } from '../../../../../utils/suwayomi/generated'
 
 // Repo catalogue. ExtensionType: pkgName/name/lang/iconUrl/isNsfw/isInstalled/hasUpdate/versionName.

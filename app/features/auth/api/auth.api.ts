@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ChangePasswordRequestDto, LoginRequestDto, SetupRequestDto, SetupStatusDto, UpdateMeRequestDto, UserDto } from '#shared/dto/identity'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, apiFetch } from '~/utils/api'

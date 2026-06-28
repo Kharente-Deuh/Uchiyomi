@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ExtensionModel } from '~~/server/domains/extensions/extension.domain'
 import type { ExtensionDto } from '~~/shared/dto/extensions/extension.dto'
 import type { ExtensionActionRequestDto } from '#shared/dto/extensions/extensions.request'

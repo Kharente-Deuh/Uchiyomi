@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { IUseCase, Page } from '~~/server/shared'
 import type { ExtensionModel, ListExtensionsFilters, SuwayomiExtensionsPort } from '../../extension.domain'
 

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { StringSchema } from 'yup'
 import { string } from 'yup'
 import { ACCOUNT_NAME_MAX, ACCOUNT_NAME_MIN, ACCOUNT_NAME_PATTERN } from '#shared/dto/identity/account-name'

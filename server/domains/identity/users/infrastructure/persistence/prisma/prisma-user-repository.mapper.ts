@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { Role, UserStatus } from '~~/prisma/generated/enums'
 import { UserModel } from '../../../user.domain'
 

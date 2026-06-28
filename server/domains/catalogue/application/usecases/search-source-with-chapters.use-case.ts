@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { IUseCase } from '../../../../shared/use-case'
 import type { CatalogueRepository, SearchedSourceMangaItem, SearchSourceWithChaptersResult, SourceBrowseType } from '../../catalogue.domain'
 

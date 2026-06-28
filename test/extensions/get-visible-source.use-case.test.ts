@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, expect, it, vi } from 'vitest'
 import { GetVisibleSourceUseCase } from '../../server/domains/extensions/application/usecases/get-visible-source.use-case'
 

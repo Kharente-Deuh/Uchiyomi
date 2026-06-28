@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // File-local until the search UI (M4.1c) imports them; only SourceSearchResultDto
 // is consumed today (route + presenter), so the sub-types stay unexported to keep
 // `knip` clean. Re-export when the front consumes them.

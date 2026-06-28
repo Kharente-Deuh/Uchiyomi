@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { writeFileSync } from 'node:fs'
 import process from 'node:process'
 import { buildClientSchema, getIntrospectionQuery, printSchema } from 'graphql'

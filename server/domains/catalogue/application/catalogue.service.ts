@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SearchMangaResult, SearchSourceWithChaptersResult } from '../catalogue.domain'
 import type { MangaDetailsModel } from '../manga.domain'
 import type { SourceModel } from '../source.domain'

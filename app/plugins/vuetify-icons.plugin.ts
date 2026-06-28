@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // With `icons.defaultSet: 'custom'`, vuetify-nuxt-module steps back and lets us
 // configure icons through its `vuetify:configuration` runtime hook. The Iconify
 // set and its bundled Font Awesome 6 collections live in ../iconsets/iconify.
