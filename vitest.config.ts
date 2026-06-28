@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { defineVitestProject } from '@nuxt/test-utils/config'
 import { defineConfig } from 'vitest/config'
+
+// Repo root, used to give the plain `node` project the `~~` alias so server
+// units that import siblings via `~~/...` (e.g. HTTP guards) can be unit-tested
+// without booting Nuxt. Nitro auto-imports (createError, getRouterParam, …) are
+// still absent and must be stubbed per-test.
+const rootDir = fileURLToPath(new URL('.', import.meta.url)).replace(/\/$/, '')
 
 // Load `.env` so DB integration tests can read TEST_DATABASE_URL (same approach
 // as prisma.config.ts; Prisma 7 / Vitest do not auto-load it). Workers inherit
@@ -37,6 +44,9 @@ export default defineConfig(async () => ({
     },
     projects: [
       {
+        resolve: {
+          alias: { '~~': rootDir },
+        },
         test: {
           name: 'node',
           environment: 'node',
