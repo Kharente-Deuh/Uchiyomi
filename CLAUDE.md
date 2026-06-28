@@ -180,8 +180,8 @@ per-layer idioms are in ADR-0013; the key wiring pattern is summarised below.
   caller must never reach or learn about input validation or resource existence.
   Don't add a Suwayomi resource load on overlay-only routes where the overlay query
   already implies it. The authenticated user is `authUser` everywhere, never
-  `actor`/`user`. Canonical: the extensions `requireAuthUser`/`requireExtension`/
-  `extensionGuard`. (ADR-0013)
+  `actor`/`user`. Canonical: the shared `authGuard` (in `identity/auth`) composed
+  with the extensions `requireExtension`/`extensionGuard`. (ADR-0013)
 - **`shared/` import rule in node-tested code:** use a **relative path** (not `~~` or
   `#shared`) when importing from `server/shared/` in files tested by the Vitest `node`
   project — the `node` project has no path aliases. See the comment in

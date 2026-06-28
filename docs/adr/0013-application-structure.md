@@ -471,9 +471,10 @@ seams now own that boilerplate.
 
 - **Guards live under `infrastructure/transport/http/guards/`** in the domain they
   authorize, alongside presenters — they are HTTP-transport concerns, not domain or
-  application code. The canonical set is the extensions guard:
-  `requireAuthUser(event, { mustBeAbleToManage })`, `requireExtension(event,
-  authUser, opts)`, and the convenience `extensionGuard` that composes both.
+  application code. The canonical set is the shared
+  `authGuard(event, { mustBeAbleToManage })` (in `identity/auth`) plus the extensions
+  `requireExtension(event, authUser, opts)` and the convenience `extensionGuard` that
+  composes both.
 
 - **Split cheap authorization from expensive resource loading.** Authentication
   (`401`) and capability authorization (`403`) are pure, no-I/O checks; loading a
@@ -484,7 +485,7 @@ seams now own that boilerplate.
 - **Mandatory ordering in a handler:** `401` (authn) → `403` (authz) → `400` (input
   validation) → `404`/`403` (resource existence/visibility). A caller who is not
   authorized must never reach, nor learn about, input validation or resource
-  existence. Concretely: `requireAuthUser(…)` → `parseBody/parseQuery(…)` →
+  existence. Concretely: `authGuard(…)` → `parseBody/parseQuery(…)` →
   `requireExtension(…)`. Routes with no body/query may use the composed
   `extensionGuard`.
 
