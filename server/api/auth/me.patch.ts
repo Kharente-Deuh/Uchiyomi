@@ -15,7 +15,7 @@ const Body = z
   }) satisfies z.ZodType<UpdateMeRequestDto>
 
 export default defineEventHandler(async (event) => {
-  let user = authGuard(event)
+  let authUser = authGuard(event)
   const { displayName, showNsfw } = await parseBody(event, Body)
 
   // actor is UserModel (see server/types/auth.d.ts); it is assignable to
@@ -23,12 +23,12 @@ export default defineEventHandler(async (event) => {
   // always satisfied. The .refine above guarantees at least one branch runs and
   // reassigns `user` with a fresh DB-backed result.
   if (displayName !== undefined) {
-    user = await usersService().updateUserName({ id: user.id, displayName })
+    authUser = await usersService().updateUserName({ id: authUser.id, displayName })
   }
 
   if (showNsfw !== undefined) {
-    user = await usersService().updateNsfwPreference({ id: user.id, showNsfw })
+    authUser = await usersService().updateNsfwPreference({ id: authUser.id, showNsfw })
   }
 
-  return { user: toUserDto(user) }
+  return { user: toUserDto(authUser) }
 })

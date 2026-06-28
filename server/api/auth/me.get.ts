@@ -4,7 +4,7 @@ import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/g
 import { toUserDto } from '../../domains/identity/users/infrastructure/transport/http/user-http.presenter'
 
 export default defineEventHandler((event) => {
-  const user = authGuard(event)
+  const authUser = authGuard(event)
 
-  return { user: toUserDto(user) }
+  return { user: toUserDto(authUser) }
 })
