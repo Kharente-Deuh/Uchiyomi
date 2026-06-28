@@ -8,6 +8,7 @@ export interface SourceSearchItemDto {
   title: string
   thumbnailUrl: string | null // BFF proxy path, or null when the series has no cover
   inLibrary: boolean
+  sourceUrl: string | null // the original source's manga page URL, null when the source doesn't resolve it
 }
 
 export type SourceSearchQueryType = 'search' | 'popular' | 'latest'

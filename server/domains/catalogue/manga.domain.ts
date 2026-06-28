@@ -9,6 +9,7 @@ export class MangaSummaryModel {
   declare title: string
   declare thumbnailUrl?: string
   declare inLibrary: boolean
+  declare realUrl?: string
 
   constructor(data: MangaSummaryModel) {
     Object.assign<MangaSummaryModel, MangaSummaryModel>(this, data)

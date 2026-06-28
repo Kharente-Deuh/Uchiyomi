@@ -13,6 +13,7 @@ export function toSourceSearchDto(result: SearchMangaResult): SourceSearchResult
       title: item.title,
       thumbnailUrl: item.thumbnailUrl ? `/api/manga/${item.id}/thumbnail` : null,
       inLibrary: item.inLibrary,
+      sourceUrl: item.realUrl ?? null,
     })),
   }
 }

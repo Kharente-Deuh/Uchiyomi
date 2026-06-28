@@ -30,6 +30,7 @@ export interface MangaSummaryNode {
   title: string
   thumbnailUrl: string | null
   inLibrary: boolean
+  realUrl: string | null
 }
 
 // NOTE: ChapterType.id is Int!, chapterNumber is Float! (both map to number).
@@ -42,7 +43,9 @@ export interface ChapterNode {
   isDownloaded: boolean
 }
 
-export interface MangaDetailsNode extends MangaSummaryNode {
+// GET_MANGA_DETAILS does not select realUrl, so it is omitted here; mangaDetailsToDomain
+// leaves the domain model's realUrl undefined.
+export interface MangaDetailsNode extends Omit<MangaSummaryNode, 'realUrl'> {
   author: string | null
   description: string | null
   status: string
@@ -55,6 +58,7 @@ export function mangaSummaryToDomain(node: MangaSummaryNode): MangaSummaryModel 
     title: node.title,
     thumbnailUrl: node.thumbnailUrl ?? undefined,
     inLibrary: node.inLibrary,
+    realUrl: node.realUrl ?? undefined,
   })
 }
 

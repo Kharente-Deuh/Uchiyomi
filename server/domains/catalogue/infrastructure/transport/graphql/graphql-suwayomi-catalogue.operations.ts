@@ -29,6 +29,8 @@ export const SEARCH_SOURCE = graphql(`
         title
         thumbnailUrl
         inLibrary
+        # MangaType.realUrl is String (nullable) — the resolved manga page URL on the source site.
+        realUrl
       }
       hasNextPage
     }
