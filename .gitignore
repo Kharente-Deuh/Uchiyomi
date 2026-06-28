@@ -41,3 +41,5 @@ docs/superpowers
 docs/design
 .nuxtrc
 .superpowers
+.claude
+.conductor
