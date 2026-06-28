@@ -20,11 +20,21 @@ describe('sourceToDomain', () => {
 describe('mangaSummaryToDomain', () => {
   it('maps a summary node and normalises a missing thumbnail to undefined', () => {
     // NOTE: SDL MangaType.id is Int! — infrastructure node uses number; domain id is string.
-    const result = mangaSummaryToDomain({ id: 1, title: 'T', thumbnailUrl: null, inLibrary: false })
+    const result = mangaSummaryToDomain({ id: 1, title: 'T', thumbnailUrl: null, inLibrary: false, realUrl: null })
     expect(result.id).toBe('1')
     expect(result.title).toBe('T')
     expect(result.thumbnailUrl).toBeUndefined()
     expect(result.inLibrary).toBe(false)
+  })
+
+  it('maps the realUrl when present', () => {
+    const result = mangaSummaryToDomain({ id: 1, title: 'T', thumbnailUrl: null, inLibrary: false, realUrl: 'https://source/manga/1' })
+    expect(result.realUrl).toBe('https://source/manga/1')
+  })
+
+  it('normalises a missing realUrl to undefined', () => {
+    const result = mangaSummaryToDomain({ id: 1, title: 'T', thumbnailUrl: null, inLibrary: false, realUrl: null })
+    expect(result.realUrl).toBeUndefined()
   })
 })
 
