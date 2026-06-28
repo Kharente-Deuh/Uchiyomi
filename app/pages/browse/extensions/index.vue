@@ -128,6 +128,7 @@ onMounted(() => {
     <MoleculePaginationFooter
       v-if="!mobile"
       v-model="page"
+      fixed
       :pages-total="maxPage"
       :disabled="fetchLoading || !maxPage"
     />

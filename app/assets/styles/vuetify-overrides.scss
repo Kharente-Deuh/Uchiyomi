@@ -107,3 +107,8 @@
   --v-input-control-height: 30px;
   --v-input-padding-top: 4px;
 }
+
+
+.v-skeleton-loader__bone, .v-skeleton-loader__text {
+  margin: 0 !important;
+}

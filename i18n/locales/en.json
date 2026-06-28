@@ -231,7 +231,15 @@
     }
   },
   "series": {
-    "title": "Series"
+    "title": "Series",
+    "summary": {
+      "chapterCount": "No chapters | 1 Chapter | {count} Chapters",
+      "errors": {
+        "loadFailed": "Failed to load data"
+      },
+      "lastChapter": "Last chapter",
+      "alreadyInLibrary": "Already in library"
+    }
   },
   "fields": {
     "search": "Search"

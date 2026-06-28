@@ -18,7 +18,7 @@ interface UseSearchSeriesSourcesComposable {
   searchType: Ref<SourceSearchQueryType>
   searchFilter: Ref<string | undefined>
   page: Ref<number>
-  sourcesItems: ComputedRef<{ value: string, title: string }[]>
+  sourcesItems: ComputedRef<{ value: string, title: string, supportsLatest: boolean }[]>
   selectedSourceId: Ref<string | undefined>
   chapterStatusOf: (id: string) => ChapterSummaryStatus | undefined
   chapterSummaryOf: (id: string) => MangaChapterSummaryDto | undefined
@@ -38,7 +38,7 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
       return []
     }
 
-    const ret: { value: string, title: string }[] = []
+    const ret: { value: string, title: string, supportsLatest: boolean }[] = []
 
     for (const source of store.sources) {
       if (!source.isEnabled) {
@@ -48,6 +48,7 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
       ret.push({
         value: source.id,
         title: source.lang === 'all' ? t('sources.all') : endomyLanguage(source.lang),
+        supportsLatest: source.supportsLatest,
       })
     }
 
@@ -66,7 +67,14 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
     }
   }, { once: true })
 
+  watch(selectedSourceId, (newValue) => {
+    if (!newValue) {
+      selectedSourceId.value = sourcesItems.value[0]?.value as string
+    }
+  })
+
   const queryKey = computed(() => [
+    searchType.value,
     ...(extension.value ? [extension.value.pkgName] : []),
     ...(selectedSourceId.value ? [selectedSourceId.value] : []),
     ...(debouncedSearch.value ? [debouncedSearch.value] : []),
@@ -103,12 +111,7 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
 
   watch([searchType, selectedSourceId], () => {
     page.value = 1
-  })
-
-  watch(searchType, (_newValue, oldValue) => {
-    if (oldValue === 'search') {
-      searchFilter.value = undefined
-    }
+    searchFilter.value = undefined
   })
 
   const series = computed(() => data.value?.items ?? [])

@@ -57,9 +57,9 @@ const canSeeExtension = computed(() => props.extension.isInstalled && !props.ext
 </script>
 
 <template>
-  <AtomLink :to="canSeeExtension ? `/browse/extensions/${extension.pkgName}` : undefined">
+  <AtomLink :to="canSeeExtension ? `/browse/extensions/${extension.pkgName}` : undefined" class="text-truncate">
     <div
-      class="d-flex justify-space-between ga-2 pa-2 bg-surface"
+      class="d-flex justify-space-between ga-2 pa-2 bg-surface text-truncate"
       :class="{
         'elevation-down': !mobile,
         'border-thin': !mobile,
