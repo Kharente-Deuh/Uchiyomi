@@ -164,6 +164,16 @@
       "search": {
         "errors": {
           "loadFailed": "Failed to load series"
+        },
+        "empty": "No series found"
+      },
+      "filters": {
+        "btn": "Filters",
+        "title": "Filters",
+        "apply": "Apply",
+        "reset": "Reset",
+        "errors": {
+          "loadFailed": "Failed to load filters"
         }
       }
     }

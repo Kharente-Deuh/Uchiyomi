@@ -11,6 +11,7 @@ const { mockApi } = vi.hoisted(() => ({
   mockApi: {
     searchSeriesBySource: vi.fn(),
     getMangaChapterSummary: vi.fn(),
+    getSourceFilters: vi.fn(),
   },
 }))
 
@@ -119,6 +120,7 @@ describe('useSearchSeriesSourcesComposable', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    mockApi.getSourceFilters.mockResolvedValue({ success: true, data: [] })
     queryHolder.data.value = undefined
     queryHolder.isLoading.value = false
     mobileRef.value = false
@@ -246,6 +248,31 @@ describe('useSearchSeriesSourcesComposable', () => {
     queryHolder.data.value = { hasNextPage: true, items: [makeItem('b')] }
     await nextTick()
     expect(series.value.map(s => s.id)).toEqual(['b'])
+  })
+
+  // --- filters integration ---
+
+  it('applyFilters forces the search type and resets page to 1', async () => {
+    const store = useSingleExtensionStore()
+    store.setExtension(ext)
+    store.setSources([makeSource({ id: 's1' })])
+    const { applyFilters, searchType, page } = useSearchSeriesSourcesComposable()
+
+    page.value = 4
+    searchType.value = 'popular'
+    applyFilters()
+    await nextTick()
+
+    expect(searchType.value).toBe('search')
+    expect(page.value).toBe(1)
+  })
+
+  it('exposes a filters active count starting at zero', () => {
+    const store = useSingleExtensionStore()
+    store.setExtension(ext)
+    store.setSources([makeSource({ id: 's1' })])
+    const { filtersActiveCount } = useSearchSeriesSourcesComposable()
+    expect(filtersActiveCount.value).toBe(0)
   })
 
   // --- summaries.sync (#4) ---

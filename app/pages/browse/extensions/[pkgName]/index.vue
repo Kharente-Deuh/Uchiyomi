@@ -128,7 +128,7 @@ const { height: tabsHeight } = useElementSize(tabsRef, undefined, { box: 'border
         <ExtensionsMobileTabs v-model="selectedTab" />
       </div>
       <ExtensionsSourceList
-        v-show="!mobile || selectedTab === 'sources'"
+        v-if="!mobile || selectedTab === 'sources'"
         :can-manage-extensions
         :sources
         :has-settings

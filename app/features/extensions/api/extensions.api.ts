@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { MangaChapterSummaryDto } from '#shared/dto/catalogue/manga-chapter-summary.dto'
+import type { SourceFilterDto } from '#shared/dto/catalogue/source-filters.dto'
 import type { SourceSearchQueryDto, SourceSearchResultDto } from '#shared/dto/catalogue/source-search.dto'
 import type { ExtensionDto, ExtensionListQueryDto, SourceDto } from '#shared/dto/extensions'
 import type { ExtensionSettingsDto } from '#shared/dto/extensions/extension-settings.dto'
@@ -17,6 +18,7 @@ export interface ExtensionsApi {
   getSettings: (pkgName: string) => Promise<ApiResponse<ExtensionSettingsDto>>
   updateSettings: (pkgName: string, body: ExtensionSettingsDto) => Promise<ApiResponse<ExtensionSettingsDto>>
   searchSeriesBySource: (pkgName: string, sourceId: string, query: SourceSearchQueryDto) => Promise<ApiResponse<SourceSearchResultDto>>
+  getSourceFilters: (pkgName: string, sourceId: string) => Promise<ApiResponse<SourceFilterDto[]>>
   getMangaChapterSummary: (pkgName: string, sourceId: string, mangaId: string, opts?: { signal?: AbortSignal }) => Promise<ApiResponse<MangaChapterSummaryDto>>
 }
 
@@ -101,7 +103,20 @@ async function updateSettings(pkgName: string, body: ExtensionSettingsDto): Prom
 
 async function searchSeriesBySource(pkgName: string, sourceId: string, query: SourceSearchQueryDto): Promise<ApiResponse<SourceSearchResultDto>> {
   try {
-    const res = await apiFetch(`/api/extensions/${pkgName}/sources/${sourceId}/mangas`, { query })
+    const { filters, ...rest } = query
+    const res = await apiFetch(`/api/extensions/${pkgName}/sources/${sourceId}/mangas`, {
+      query: { ...rest, ...(filters?.length ? { filters: JSON.stringify(filters) } : {}) },
+    })
+
+    return { success: true, data: res }
+  } catch (error) {
+    return { success: false, error: ApiError.fromFetchError(error) }
+  }
+}
+
+async function getSourceFilters(pkgName: string, sourceId: string): Promise<ApiResponse<SourceFilterDto[]>> {
+  try {
+    const res = await apiFetch(`/api/extensions/${pkgName}/sources/${sourceId}/filters`)
 
     return { success: true, data: res }
   } catch (error) {
@@ -129,6 +144,7 @@ export function createExtensionsApi(): ExtensionsApi {
     getSettings,
     updateSettings,
     searchSeriesBySource,
+    getSourceFilters,
     getMangaChapterSummary,
   }
 }

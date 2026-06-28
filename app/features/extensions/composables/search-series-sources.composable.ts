@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { MangaChapterSummaryDto } from '#shared/dto/catalogue/manga-chapter-summary.dto'
+import type { SourceFilterDto } from '#shared/dto/catalogue/source-filters.dto'
 import type { SourceSearchItemDto, SourceSearchQueryType, SourceSearchResultDto } from '#shared/dto/catalogue/source-search.dto'
 import type { ChapterSummaryStatus } from '../store/chapter-summaries.store'
+import type { FilterDraftValue } from './source-filters.composable'
 import { endomyLanguage } from '~/utils/languages.util'
 import { createExtensionsApi } from '../api/extensions.api'
+import { useSourceFilters } from './source-filters.composable'
 
 const DEFAULT_SEARCH_RESULT: SourceSearchResultDto = {
   hasNextPage: false,
@@ -22,6 +25,12 @@ interface UseSearchSeriesSourcesComposable {
   selectedSourceId: Ref<string | undefined>
   chapterStatusOf: (id: string) => ChapterSummaryStatus | undefined
   chapterSummaryOf: (id: string) => MangaChapterSummaryDto | undefined
+  definitions: Ref<SourceFilterDto[]>
+  filtersDraft: Ref<Record<string, FilterDraftValue>>
+  filtersActiveCount: ComputedRef<number>
+  filtersLoading: Ref<boolean>
+  applyFilters: () => void
+  resetFilters: () => void
 }
 
 export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesComposable {
@@ -62,6 +71,12 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
   const selectedSourceId = ref<string | undefined>(sourcesItems.value[0]?.value)
   const searchType = ref<SourceSearchQueryType>('popular')
 
+  const sourceFilters = useSourceFilters({
+    pkgName: computed(() => extension.value?.pkgName),
+    sourceId: selectedSourceId,
+    enabled: computed(() => searchType.value === 'search'),
+  })
+
   watch(sourcesItems, (newValue, oldValue) => {
     if (oldValue.length === 0 && newValue.length > 0) {
       selectedSourceId.value = newValue[0]?.value as string
@@ -79,6 +94,7 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
     ...(extension.value ? [extension.value.pkgName] : []),
     ...(selectedSourceId.value ? [selectedSourceId.value] : []),
     ...(debouncedSearch.value ? [debouncedSearch.value] : []),
+    ...(searchType.value === 'search' ? [JSON.stringify(sourceFilters.appliedChanges.value)] : []),
     page.value,
   ])
 
@@ -89,7 +105,7 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
         return DEFAULT_SEARCH_RESULT
       }
 
-      if (searchType.value === 'search' && !debouncedSearch.value) {
+      if (searchType.value === 'search' && !debouncedSearch.value && sourceFilters.appliedChanges.value.length === 0) {
         return DEFAULT_SEARCH_RESULT
       }
 
@@ -97,6 +113,7 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
         q: debouncedSearch.value,
         type: searchType.value,
         page: page.value,
+        filters: searchType.value === 'search' ? sourceFilters.appliedChanges.value : undefined,
       })
 
       if (!res.success) {
@@ -143,6 +160,16 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
     summaries.sync(items.map(item => item.id), { pkgName: extension.value.pkgName, sourceId: selectedSourceId.value })
   })
 
+  function applyFilters(): void {
+    searchType.value = 'search'
+    page.value = 1
+    sourceFilters.apply()
+  }
+
+  function resetFilters(): void {
+    sourceFilters.reset()
+  }
+
   return {
     series,
     hasNextPage: computed(() => data.value?.hasNextPage ?? false),
@@ -154,5 +181,11 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
     selectedSourceId,
     chapterStatusOf: (id: string) => summaries.statusOf(id),
     chapterSummaryOf: (id: string) => summaries.summaryOf(id),
+    definitions: sourceFilters.definitions,
+    filtersDraft: sourceFilters.draft,
+    filtersActiveCount: sourceFilters.activeCount,
+    filtersLoading: sourceFilters.filtersLoading,
+    applyFilters,
+    resetFilters,
   }
 }

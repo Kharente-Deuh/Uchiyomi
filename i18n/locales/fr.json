@@ -164,6 +164,16 @@
       "search": {
         "errors": {
           "loadFailed": "Échec du chargement des séries"
+        },
+        "empty": "Aucune série trouvée"
+      },
+      "filters": {
+        "btn": "Filtres",
+        "title": "Filtres",
+        "apply": "Appliquer",
+        "reset": "Réinitialiser",
+        "errors": {
+          "loadFailed": "Échec du chargement des filtres"
         }
       }
     }

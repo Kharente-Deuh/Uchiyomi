@@ -5,7 +5,10 @@ import type { SourceSearchQueryType } from '~~/shared/dto/catalogue/source-searc
 defineProps<{
   searchTypeItems: { title: string, value: SourceSearchQueryType }[]
   sourcesItems: { value: string, title: string, supportsLatest: boolean }[]
+  filtersActiveCount: number
+  fetchFiltersLoading: boolean
 }>()
+const emit = defineEmits<{ openFilters: [] }>()
 
 const searchType = defineModel<SourceSearchQueryType>('searchType', { required: true })
 const searchFilter = defineModel<string | undefined>('searchFilter', { required: true })
@@ -31,6 +34,28 @@ const selectedSourceId = defineModel<string | undefined>('selectedSourceId', { r
           :model-value="selectedSourceId ?? ''"
           @update:model-value="selectedSourceId = $event"
         />
+        <VBadge
+          v-if="searchType === 'search'"
+          :model-value="filtersActiveCount > 0"
+          :content="filtersActiveCount"
+          color="primary"
+        >
+          <VChip
+            color="secondary"
+            class="border-thin-secondary cursor-pointer"
+            rounded="pill"
+            @click="emit('openFilters')"
+          >
+            <VProgressCircular
+              v-if="fetchFiltersLoading"
+              color="secondary"
+              indeterminate
+              width="2"
+              size="16"
+            />
+            <VIcon v-else icon="fa6-solid:filter" />
+          </VChip>
+        </VBadge>
       </div>
     </div>
   </div>

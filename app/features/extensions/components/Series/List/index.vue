@@ -13,7 +13,15 @@ const {
   hasNextPage,
   searchFilter,
   searchLoading,
+  definitions,
+  filtersDraft,
+  filtersActiveCount,
+  filtersLoading,
+  applyFilters,
+  resetFilters,
 } = useSearchSeriesSourcesComposable()
+
+const showFilters = ref(false)
 
 const searchTypeItems = computed((): { title: string, value: SourceSearchQueryType }[] => {
   const currentSource = sourcesItems.value.find(source => source.value === selectedSourceId.value)
@@ -48,7 +56,10 @@ useIntersectionObserver(loadMoreSentinel, ([entry]) => {
       v-model:search-type="searchType"
       v-model:selected-source-id="selectedSourceId"
       :search-type-items="searchTypeItems"
+      :fetch-filters-loading="filtersLoading"
       :sources-items="sourcesItems"
+      :filters-active-count="filtersActiveCount"
+      @open-filters="showFilters = true"
     />
     <ExtensionsSeriesListDesktopHeader
       v-else
@@ -57,6 +68,9 @@ useIntersectionObserver(loadMoreSentinel, ([entry]) => {
       v-model:selected-source-id="selectedSourceId"
       :search-type-items="searchTypeItems"
       :sources-items="sourcesItems"
+      :fetch-filters-loading="filtersLoading"
+      :filters-active-count="filtersActiveCount"
+      @open-filters="showFilters = true"
     />
     <VProgressLinear
       v-if="searchLoading"
@@ -64,7 +78,11 @@ useIntersectionObserver(loadMoreSentinel, ([entry]) => {
       class="w-100 rounded-lg"
     />
 
-    <div class="series-list-grid" :class="{ 'px-4': mobile }">
+    <div
+      v-if="series.length > 0"
+      class="series-list-grid"
+      :class="{ 'px-4': mobile }"
+    >
       <ExtensionsSeriesListItem
         v-for="manga in series"
         :key="manga.id"
@@ -73,8 +91,9 @@ useIntersectionObserver(loadMoreSentinel, ([entry]) => {
         :summary="chapterSummaryOf(manga.id)"
       />
     </div>
+    <span v-else class="text-body-medium text-medium-emphasis w-100 text-center">{{ $t('sources.series.search.empty') }}</span>
     <MoleculePaginationFooter
-      v-if="!mobile"
+      v-if="!mobile && (hasNextPage || page > 1)"
       v-model="page"
       :has-next-page
     />
@@ -90,6 +109,15 @@ useIntersectionObserver(loadMoreSentinel, ([entry]) => {
         indeterminate
       />
     </div>
+
+    <ExtensionsSeriesFiltersModal
+      v-model="showFilters"
+      v-model:draft="filtersDraft"
+      :definitions="definitions"
+      :loading="filtersLoading"
+      @apply="applyFilters"
+      @reset="resetFilters"
+    />
   </div>
 </template>
 
