@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
-import { requireAuthUser } from '~~/server/domains/extensions/infrastructure/transport/http/guards/extension.guard'
+import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
 import { toPageDto } from '~~/server/shared'
 import { parseQuery } from '~~/server/utils/request.util'
 import { toExtensionDto } from '../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
@@ -20,7 +20,7 @@ const Query = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const authUser = requireAuthUser(event)
+  const authUser = authGuard(event)
   const { page, pageSize, ...filters } = await parseQuery(event, Query)
 
   const result = await extensionsService().listExtensions({

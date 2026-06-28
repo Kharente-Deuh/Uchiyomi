@@ -2,6 +2,7 @@
 
 import type { CreateUserRequestDto } from '#shared/dto/identity/admin.request'
 import { z } from 'zod'
+import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
 import { usersService } from '~~/server/domains/identity/users/application/users.service'
 import { parseBody } from '~~/server/utils/request.util'
 import { Prisma } from '../../../../prisma/generated/client'
@@ -19,11 +20,7 @@ export default defineEventHandler(async (event) => {
     allowNsfw: z.boolean().optional(),
   }) satisfies z.ZodType<CreateUserRequestDto>
 
-  const actor = event.context.authUser
-  if (!actor || !actor.canManageUsers()) {
-    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
-  }
-
+  authGuard(event, { mustBeAbleToManage: true })
   const body = await parseBody(event, BodySchema)
   try {
     const user = await usersService().createUser(body)

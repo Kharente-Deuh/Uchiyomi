@@ -4,14 +4,12 @@ import type { ChangePasswordRequestDto } from '#shared/dto/identity/me.request'
 import { z } from 'zod'
 import { authService } from '~~/server/domains/identity/auth/application/auth.service'
 import { AuthError } from '~~/server/domains/identity/auth/auth.domain'
+import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
 import { parseBody } from '~~/server/utils/request.util'
 
 export default defineEventHandler(async (event): Promise<void> => {
+  const { id: userId } = authGuard(event)
   const cfg = useRuntimeConfig(event).auth
-  const actor = event.context.authUser
-  if (!actor) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthenticated' })
-  }
 
   const BodySchema = z.object({
     currentPassword: z.string().min(1),
@@ -29,7 +27,7 @@ export default defineEventHandler(async (event): Promise<void> => {
 
   try {
     await authService().changePassword({
-      userId: actor.id,
+      userId,
       currentPassword: body.currentPassword,
       newPassword: body.newPassword,
       logoutOtherDevices: body.logoutOtherDevices ?? false,

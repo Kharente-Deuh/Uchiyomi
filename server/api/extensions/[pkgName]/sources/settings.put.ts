@@ -4,7 +4,8 @@ import type { ExtensionSettingsDto } from '#shared/dto/extensions/extension-sett
 import { z } from 'zod'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
 import { toExtensionSettingsDto } from '~~/server/domains/extensions/infrastructure/transport/http/extension-http.presenter'
-import { requireAuthUser, requireExtension } from '~~/server/domains/extensions/infrastructure/transport/http/guards/extension.guard'
+import { requireExtension } from '~~/server/domains/extensions/infrastructure/transport/http/guards/extension.guard'
+import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
 import { parseBody } from '~~/server/utils/request.util'
 
 // Discriminated on `type` so zod narrows the value field per branch. The body is the
@@ -35,7 +36,7 @@ const BodySchema = z.object({
 })
 
 export default defineEventHandler(async (event): Promise<ExtensionSettingsDto> => {
-  const authUser = requireAuthUser(event, { mustBeAbleToManage: true })
+  const authUser = authGuard(event, { mustBeAbleToManage: true })
   const body = await parseBody(event, BodySchema)
   const extension = await requireExtension(event, authUser, { installationStatus: 'installed' })
 

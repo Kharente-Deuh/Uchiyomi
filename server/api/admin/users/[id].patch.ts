@@ -2,6 +2,7 @@
 
 import type { UpdateUserRequestDto } from '#shared/dto/identity/admin.request'
 import { z } from 'zod'
+import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
 import { usersService } from '~~/server/domains/identity/users/application/users.service'
 import { parseBody } from '~~/server/utils/request.util'
 import { Prisma } from '../../../../prisma/generated/client'
@@ -19,21 +20,13 @@ const BodySchema = z.object({
   || b.allowNsfw !== undefined, { message: 'At least one field is required' }) satisfies z.ZodType<UpdateUserRequestDto>
 
 export default defineEventHandler(async (event) => {
-  const { authUser } = event.context
-  if (!authUser) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthenticated' })
-  }
-
-  const userId = getRouterParam(event, 'id')
-  if (!userId) {
-    throw createError({ statusCode: 400, statusMessage: 'Missing id' })
-  }
-
   // Admin-only: this route grants capabilities (canManageExtensions, canDownload,
   // allowNsfw) that a user must never set on themselves — allowNsfw in particular
   // is admin-granted (ADR-0012). Self-service edits go through /api/auth/me.
-  if (!authUser.canManageUsers()) {
-    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  authGuard(event, { mustBeAbleToManage: true })
+  const userId = getRouterParam(event, 'id')
+  if (!userId) {
+    throw createError({ statusCode: 400, statusMessage: 'Missing id' })
   }
 
   const { displayName, ...caps } = await parseBody(event, BodySchema)

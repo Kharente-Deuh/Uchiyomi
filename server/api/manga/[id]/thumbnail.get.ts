@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { Buffer } from 'node:buffer'
+import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
 
 // Proxies a manga cover from the internal Suwayomi server (ADR-0001: Suwayomi is
 // never exposed to clients). Suwayomi serves cover bytes at
@@ -9,11 +10,7 @@ import { Buffer } from 'node:buffer'
 // immutable. No per-series NSFW gate — NSFW is a source-level concern and is enforced
 // at search time.
 export default defineEventHandler(async (event) => {
-  const actor = event.context.authUser
-  if (!actor) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthenticated' })
-  }
-
+  authGuard(event)
   const id = getRouterParam(event, 'id')
   if (!id || !/^\d+$/.test(id)) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid manga id' })

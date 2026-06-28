@@ -80,7 +80,7 @@ describe('install-extension', () => {
     const sources = { syncForExtension: vi.fn().mockResolvedValue() } as never
     const useCase = new InstallExtension.InstallExtensionUseCase(suwayomi, overlay, sources)
 
-    const res = await useCase.execute({ pkgName: 'p1', actorId: 'admin1' })
+    const res = await useCase.execute({ pkgName: 'p1', userId: 'admin1' })
 
     expect(suwayomi.install).toHaveBeenCalledWith('p1')
     expect(overlay.upsertInstalled).toHaveBeenCalledWith(expect.objectContaining({ pkgName: 'p1', isNsfw: true, installedByUserId: 'admin1' }))
@@ -93,7 +93,7 @@ describe('install-extension', () => {
     const sources = { syncForExtension: vi.fn().mockResolvedValue() } as never
     const useCase = new InstallExtension.InstallExtensionUseCase(suwayomi, overlay, sources)
 
-    await expect(useCase.execute({ pkgName: 'p1', actorId: 'admin1' })).rejects.toThrow('boom')
+    await expect(useCase.execute({ pkgName: 'p1', userId: 'admin1' })).rejects.toThrow('boom')
     expect(overlay.upsertInstalled).toHaveBeenCalledWith(expect.objectContaining({ pkgName: 'p1' }))
   })
 
@@ -110,7 +110,7 @@ describe('install-extension', () => {
     } } as any
 
     const uc = new InstallExtension.InstallExtensionUseCase(suwayomi, overlay, sources)
-    await uc.execute({ pkgName: 'p', actorId: 'u1' })
+    await uc.execute({ pkgName: 'p', userId: 'u1' })
     expect(calls).toEqual([{ pkgName: 'p', ids: ['s1'] }])
   })
 })

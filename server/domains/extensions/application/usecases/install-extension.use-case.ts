@@ -5,7 +5,7 @@ import type { ExtensionModel, ExtensionSourceRepository, ExtensionsOverlayReposi
 
 export interface InstallExtensionUseCaseOpts {
   pkgName: string
-  actorId: string
+  userId: string
 }
 
 export class InstallExtensionUseCase implements IUseCase<InstallExtensionUseCaseOpts, ExtensionModel> {
@@ -28,7 +28,7 @@ export class InstallExtensionUseCase implements IUseCase<InstallExtensionUseCase
       lang: meta.lang,
       iconUrl: meta.iconUrl,
       isNsfw: meta.isNsfw,
-      installedByUserId: opts.actorId,
+      installedByUserId: opts.userId,
     })
 
     await this.suwayomi.install(opts.pkgName)
