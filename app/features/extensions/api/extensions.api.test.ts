@@ -178,3 +178,20 @@ it('updateSettings maps fetch errors to ApiError', async () => {
     expect(res.error).toBeInstanceOf(ApiError)
   }
 })
+
+// --- getMangaChapterSummary ---
+
+it('getMangaChapterSummary hits the mangas chapter-summary route', async () => {
+  const payload = { chapterCount: 3, lastChapter: null }
+  apiFetch.mockResolvedValueOnce(payload)
+  const res = await createExtensionsApi().getMangaChapterSummary('p', '9', '42')
+  expect(res).toEqual({ success: true, data: payload })
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/9/mangas/42/chapter-summary', { signal: undefined })
+})
+
+it('getMangaChapterSummary forwards an abort signal', async () => {
+  apiFetch.mockResolvedValueOnce({ chapterCount: 0, lastChapter: null })
+  const controller = new AbortController()
+  await createExtensionsApi().getMangaChapterSummary('p', '9', '42', { signal: controller.signal })
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/9/mangas/42/chapter-summary', { signal: controller.signal })
+})

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { MangaChapterSummaryDto } from '#shared/dto/catalogue/manga-chapter-summary.dto'
+import type { SourceSearchQueryDto, SourceSearchResultDto } from '#shared/dto/catalogue/source-search.dto'
 import type { ExtensionDto, ExtensionListQueryDto, SourceDto } from '#shared/dto/extensions'
 import type { ExtensionSettingsDto } from '#shared/dto/extensions/extension-settings.dto'
 import type { PageDto } from '#shared/dto/page.dto'
@@ -14,6 +16,8 @@ export interface ExtensionsApi {
   setSourceEnabled: (pkgName: string, sourceId: string, isEnabled: boolean) => Promise<ApiResponse<SourceDto>>
   getSettings: (pkgName: string) => Promise<ApiResponse<ExtensionSettingsDto>>
   updateSettings: (pkgName: string, body: ExtensionSettingsDto) => Promise<ApiResponse<ExtensionSettingsDto>>
+  searchSeriesBySource: (pkgName: string, sourceId: string, query: SourceSearchQueryDto) => Promise<ApiResponse<SourceSearchResultDto>>
+  getMangaChapterSummary: (pkgName: string, sourceId: string, mangaId: string, opts?: { signal?: AbortSignal }) => Promise<ApiResponse<MangaChapterSummaryDto>>
 }
 
 async function listExtensions({ search, isInstalled, hasUpdate, nsfw, page, pageSize }: ExtensionListQueryDto): Promise<ApiResponse<PageDto<ExtensionDto>>> {
@@ -95,6 +99,26 @@ async function updateSettings(pkgName: string, body: ExtensionSettingsDto): Prom
   }
 }
 
+async function searchSeriesBySource(pkgName: string, sourceId: string, query: SourceSearchQueryDto): Promise<ApiResponse<SourceSearchResultDto>> {
+  try {
+    const res = await apiFetch(`/api/extensions/${pkgName}/sources/${sourceId}/mangas`, { query })
+
+    return { success: true, data: res }
+  } catch (error) {
+    return { success: false, error: ApiError.fromFetchError(error) }
+  }
+}
+
+async function getMangaChapterSummary(pkgName: string, sourceId: string, mangaId: string, opts?: { signal?: AbortSignal }): Promise<ApiResponse<MangaChapterSummaryDto>> {
+  try {
+    const res = await apiFetch(`/api/extensions/${pkgName}/sources/${sourceId}/mangas/${mangaId}/chapter-summary`, { signal: opts?.signal })
+
+    return { success: true, data: res }
+  } catch (error) {
+    return { success: false, error: ApiError.fromFetchError(error) }
+  }
+}
+
 export function createExtensionsApi(): ExtensionsApi {
   return {
     listExtensions,
@@ -104,5 +128,7 @@ export function createExtensionsApi(): ExtensionsApi {
     setSourceEnabled,
     getSettings,
     updateSettings,
+    searchSeriesBySource,
+    getMangaChapterSummary,
   }
 }

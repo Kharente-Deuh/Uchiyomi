@@ -154,6 +154,18 @@
     "count": "No sources | 1 source | {count} sources",
     "btn": {
       "enabled": "Enabled"
+    },
+    "series": {
+      "searchType": {
+        "popular": "Popular",
+        "latest": "Latest",
+        "search": "Search"
+      },
+      "search": {
+        "errors": {
+          "loadFailed": "Failed to load series"
+        }
+      }
     }
   },
   "settings": {

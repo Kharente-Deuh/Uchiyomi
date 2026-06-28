@@ -130,5 +130,7 @@ const selectedTab = ref<'sources' | 'series'>('sources')
       :source-toggle-loading
       @toggle="toggleSourceEnabled"
     />
+
+    <ExtensionsSeriesList v-show="!mobile || selectedTab === 'series'" />
   </OrganismPageLayout>
 </template>
