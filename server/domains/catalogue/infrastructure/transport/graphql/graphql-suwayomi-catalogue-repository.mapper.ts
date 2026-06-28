@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { FilterChangeInput } from '../../../../../utils/suwayomi/generated/graphql'
+import type { SourceFilter, SourceFilterChange } from '../../../catalogue.domain'
 import { ChapterModel } from '../../../chapter.domain'
 import { MangaChapterSummaryModel, MangaDetailsModel, MangaSummaryModel } from '../../../manga.domain'
 import { SourceModel } from '../../../source.domain'
@@ -109,4 +111,59 @@ export function chapterSummaryFromFetched(chapters: FetchedChapterNode[]): Manga
     chapterCount: chapters.length,
     lastChapter: latest ? { name: latest.name, uploadedAt: latest.uploadDate } : null,
   })
+}
+
+// Structural mirror of the GET_SOURCE_FILTERS selection (decoupled from codegen
+// names, matching the existing *Node convention in this file). __typename
+// discriminates the Suwayomi `Filter` union; `default` is aliased per member.
+export type FilterLeafNode
+  = | { __typename: 'CheckBoxFilter', name: string, checkBoxDefault: boolean }
+    | { __typename: 'TriStateFilter', name: string, triDefault: 'IGNORE' | 'INCLUDE' | 'EXCLUDE' }
+    | { __typename: 'SelectFilter', name: string, selectDefault: number, values: string[] }
+    | { __typename: 'TextFilter', name: string, textDefault: string }
+    | { __typename: 'SortFilter', name: string, sortDefault: { ascending: boolean, index: number } | null, values: string[] }
+    | { __typename: 'HeaderFilter', name: string }
+    | { __typename: 'SeparatorFilter', name: string }
+
+export type FilterNode
+  = | FilterLeafNode
+    | { __typename: 'GroupFilter', name: string, filters: FilterLeafNode[] }
+
+function leafFilterToDomain(node: FilterLeafNode, position: number): SourceFilter {
+  switch (node.__typename) {
+    case 'CheckBoxFilter': return { type: 'checkbox', position, name: node.name, default: node.checkBoxDefault }
+    case 'TriStateFilter': return { type: 'tristate', position, name: node.name, default: node.triDefault }
+    case 'SelectFilter': return { type: 'select', position, name: node.name, default: node.selectDefault, values: node.values }
+    case 'TextFilter': return { type: 'text', position, name: node.name, default: node.textDefault }
+    case 'SortFilter': return { type: 'sort', position, name: node.name, default: node.sortDefault, values: node.values }
+    case 'HeaderFilter': return { type: 'header', position, name: node.name }
+    case 'SeparatorFilter': return { type: 'separator', position, name: node.name }
+  }
+}
+
+export function sourceFiltersToDomain(nodes: FilterNode[]): SourceFilter[] {
+  return nodes.map((node, position) => {
+    if (node.__typename === 'GroupFilter') {
+      return {
+        type: 'group',
+        position,
+        name: node.name,
+        filters: node.filters.map((child, childIndex) => leafFilterToDomain(child, childIndex)),
+      }
+    }
+
+    return leafFilterToDomain(node, position)
+  })
+}
+
+export function filterChangeToInput(change: SourceFilterChange): FilterChangeInput {
+  return {
+    position: change.position,
+    ...(change.checkBoxState !== undefined && { checkBoxState: change.checkBoxState }),
+    ...(change.triState !== undefined && { triState: change.triState }),
+    ...(change.selectState !== undefined && { selectState: change.selectState }),
+    ...(change.textState !== undefined && { textState: change.textState }),
+    ...(change.sortState !== undefined && { sortState: change.sortState }),
+    ...(change.groupChange !== undefined && { groupChange: filterChangeToInput(change.groupChange) }),
+  }
 }

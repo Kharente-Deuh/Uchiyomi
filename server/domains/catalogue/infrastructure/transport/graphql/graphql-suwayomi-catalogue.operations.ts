@@ -22,8 +22,8 @@ export const LIST_SOURCES = graphql(`
 // query is optional — only SEARCH uses it; popular/latest pass null.
 // sourceId is LongString! (a 64-bit int encoded as string).
 export const SEARCH_SOURCE = graphql(`
-  mutation SearchSource($sourceId: LongString!, $type: FetchSourceMangaType!, $query: String, $page: Int!) {
-    fetchSourceManga(input: { source: $sourceId, type: $type, query: $query, page: $page }) {
+  mutation SearchSource($sourceId: LongString!, $type: FetchSourceMangaType!, $query: String, $page: Int!, $filters: [FilterChangeInput!]) {
+    fetchSourceManga(input: { source: $sourceId, type: $type, query: $query, page: $page, filters: $filters }) {
       mangas {
         id
         title
@@ -33,6 +33,39 @@ export const SEARCH_SOURCE = graphql(`
         realUrl
       }
       hasNextPage
+    }
+  }
+`)
+
+// A source's dynamic filters (SourceType.filters: [Filter!]!). The union members
+// each alias `default` to a distinct key to avoid a field-type conflict, and
+// __typename drives discrimination in the mapper. Groups nest one level (leaves only).
+export const GET_SOURCE_FILTERS = graphql(`
+  query GetSourceFilters($sourceId: LongString!) {
+    source(id: $sourceId) {
+      filters {
+        __typename
+        ... on CheckBoxFilter { name checkBoxDefault: default }
+        ... on TriStateFilter { name triDefault: default }
+        ... on SelectFilter { name selectDefault: default values }
+        ... on TextFilter { name textDefault: default }
+        ... on SortFilter { name sortDefault: default { ascending index } values }
+        ... on HeaderFilter { name }
+        ... on SeparatorFilter { name }
+        ... on GroupFilter {
+          name
+          filters {
+            __typename
+            ... on CheckBoxFilter { name checkBoxDefault: default }
+            ... on TriStateFilter { name triDefault: default }
+            ... on SelectFilter { name selectDefault: default values }
+            ... on TextFilter { name textDefault: default }
+            ... on SortFilter { name sortDefault: default { ascending index } values }
+            ... on HeaderFilter { name }
+            ... on SeparatorFilter { name }
+          }
+        }
+      }
     }
   }
 `)

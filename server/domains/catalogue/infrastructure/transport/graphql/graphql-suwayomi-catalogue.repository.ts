@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { SuwayomiClient } from '../../../../../utils/suwayomi/client'
-import type { CatalogueRepository, GetMangaDetailsByIdParams, SearchMangaParams, SearchMangaResult } from '../../../catalogue.domain'
+import type { CatalogueRepository, GetMangaDetailsByIdParams, SearchMangaParams, SearchMangaResult, SourceFilter } from '../../../catalogue.domain'
 import type { MangaChapterSummaryModel, MangaDetailsModel } from '../../../manga.domain'
 import type { SourceModel } from '../../../source.domain'
-import { chapterSummaryFromFetched, mangaDetailsToDomain, mangaSummaryToDomain, sourceToDomain } from './graphql-suwayomi-catalogue-repository.mapper'
-import { FETCH_CHAPTERS, GET_MANGA_DETAILS, LIST_SOURCES, MANGA_EXISTS, SEARCH_SOURCE } from './graphql-suwayomi-catalogue.operations'
+import type { FilterNode } from './graphql-suwayomi-catalogue-repository.mapper'
+import { chapterSummaryFromFetched, filterChangeToInput, mangaDetailsToDomain, mangaSummaryToDomain, sourceFiltersToDomain, sourceToDomain } from './graphql-suwayomi-catalogue-repository.mapper'
+import { FETCH_CHAPTERS, GET_MANGA_DETAILS, GET_SOURCE_FILTERS, LIST_SOURCES, MANGA_EXISTS, SEARCH_SOURCE } from './graphql-suwayomi-catalogue.operations'
 
 // Domain browse type → Suwayomi FetchSourceMangaType enum value.
 const SUWAYOMI_BROWSE_TYPE = { search: 'SEARCH', popular: 'POPULAR', latest: 'LATEST' } as const
@@ -26,6 +27,8 @@ export class GraphqlSuwayomiCatalogueRepository implements CatalogueRepository {
       // Only SEARCH uses the query; popular/latest browse the source and ignore it.
       query: p.type === 'search' ? p.query : undefined,
       page: p.page,
+      // Filters apply to SEARCH only; popular/latest are non-filterable browse modes.
+      filters: p.type === 'search' && p.filters?.length ? p.filters.map(change => filterChangeToInput(change)) : undefined,
     })
     // fetchSourceManga is nullable in the SDL (returns null when the source is unavailable).
     if (!data.fetchSourceManga) {
@@ -36,6 +39,15 @@ export class GraphqlSuwayomiCatalogueRepository implements CatalogueRepository {
       mangas: data.fetchSourceManga.mangas.map(m => mangaSummaryToDomain(m)),
       hasNextPage: data.fetchSourceManga.hasNextPage,
     }
+  }
+
+  async getSourceFilters(sourceId: string): Promise<SourceFilter[]> {
+    const data = await this.client.execute(GET_SOURCE_FILTERS, { sourceId })
+
+    // The codegen union for GroupFilter.filters is wider than FilterLeafNode[] because
+    // the SDL theoretically allows nesting, but the query only selects leaf fields.
+    // Cast to the structural mapper type that matches our actual query selection.
+    return sourceFiltersToDomain(data.source.filters as FilterNode[])
   }
 
   async getMangaDetails(p: GetMangaDetailsByIdParams): Promise<MangaDetailsModel> {
