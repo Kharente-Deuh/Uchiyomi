@@ -24,32 +24,34 @@ watch(() => props.sources, () => {
 </script>
 
 <template>
-  <SettingsCard sticky-title :title="$t('sources.enabled', { count: enabledSourcesCount, total: totalSourcesCount })">
-    <template v-if="canManageExtensions" #append-title>
-      <div class="d-flex ga-3 align-center mb-2">
-        <ExtensionsSourceEnabledFilterBtn
-          v-if="sources.length > 1 && canManageExtensions"
-          v-model="showOnlyEnabledSources"
-        />
+  <div class="source-list-mobile-header bg-background border-b-thin d-flex align-center justify-space-between ga-4 px-6 py-1">
+    <span class=" text-medium-emphasis text-body-small text-uppercase py-1" style="letter-spacing: 0.08em;">
+      {{ $t('sources.enabled', { count: enabledSourcesCount, total: totalSourcesCount }) }}
+    </span>
 
-        <ExtensionsSettingsBtn
-          :has-settings
-          :pkg-name
-        />
-      </div>
-    </template>
+    <div v-if="canManageExtensions" class="d-flex ga-3 align-center mb-2">
+      <ExtensionsSourceEnabledFilterBtn
+        v-if="sources.length > 1 && canManageExtensions"
+        v-model="showOnlyEnabledSources"
+      />
 
-    <ExtensionsSourceListMobileItem
-      v-for="(source, index) in sources"
-      v-show="showOnlyEnabledSources === undefined || showOnlyEnabledSources === source.isEnabled"
-      :key="index"
-      class="border-b-thin"
-      :can-manage="canManageExtensions"
-      :source
-      :loading="sourceToggleLoading.has(source.id)"
-      @toggle="$emit('toggle', source.id)"
-    />
-  </SettingsCard>
+      <ExtensionsSettingsBtn
+        :has-settings
+        :pkg-name
+      />
+    </div>
+  </div>
+
+  <ExtensionsSourceListMobileItem
+    v-for="(source, index) in sources"
+    v-show="showOnlyEnabledSources === undefined || showOnlyEnabledSources === source.isEnabled"
+    :key="index"
+    class="border-b-thin"
+    :can-manage="canManageExtensions"
+    :source
+    :loading="sourceToggleLoading.has(source.id)"
+    @toggle="$emit('toggle', source.id)"
+  />
 </template>
 
 <style lang="scss">
@@ -62,5 +64,11 @@ watch(() => props.sources, () => {
       color: rgb(var(--v-theme-primary));
     }
   }
+}
+
+.source-list-mobile-header {
+  position: sticky;
+  top: calc(var(--page-header-height, 0px) + var(--tabs-height, 0px));
+  z-index: 5;
 }
 </style>

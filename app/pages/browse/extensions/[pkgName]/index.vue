@@ -32,6 +32,9 @@ async function doUninstallExtension(): Promise<void> {
 const { mobile } = useDisplay()
 
 const selectedTab = ref<'sources' | 'series'>('sources')
+
+const tabsRef = useTemplateRef<HTMLElement>('tabsRef')
+const { height: tabsHeight } = useElementSize(tabsRef, undefined, { box: 'border-box' })
 </script>
 
 <template>
@@ -41,6 +44,7 @@ const selectedTab = ref<'sources' | 'series'>('sources')
     :prepend-image="extension?.iconUrl"
     back-route="/browse/extensions"
     show-back-route
+    sticky-header
   >
     <template v-if="extension && !mobile" #header>
       <div class="d-flex ga-4 align-center w-100 mb-8">
@@ -115,22 +119,33 @@ const selectedTab = ref<'sources' | 'series'>('sources')
       />
     </template>
 
-    <ExtensionsMobileTabs
-      v-if="mobile"
-      v-model="selectedTab"
-      :style="{ zIndex: 1000 }"
-      class="mb-4"
-    />
-    <ExtensionsSourceList
-      v-show="!mobile || selectedTab === 'sources'"
-      :can-manage-extensions
-      :sources
-      :has-settings
-      :pkg-name
-      :source-toggle-loading
-      @toggle="toggleSourceEnabled"
-    />
+    <div :style="mobile ? { '--tabs-height': `${tabsHeight}px` } : undefined">
+      <div
+        v-if="mobile"
+        ref="tabsRef"
+        class="extensions-sticky-tabs bg-background pt-1 pb-2"
+      >
+        <ExtensionsMobileTabs v-model="selectedTab" />
+      </div>
+      <ExtensionsSourceList
+        v-show="!mobile || selectedTab === 'sources'"
+        :can-manage-extensions
+        :sources
+        :has-settings
+        :pkg-name
+        :source-toggle-loading
+        @toggle="toggleSourceEnabled"
+      />
 
-    <ExtensionsSeriesList v-show="!mobile || selectedTab === 'series'" />
+      <ExtensionsSeriesList v-show="!mobile || selectedTab === 'series'" />
+    </div>
   </OrganismPageLayout>
 </template>
+
+<style lang="scss" scoped>
+.extensions-sticky-tabs {
+  position: sticky;
+  top: var(--page-header-height, 0px);
+  z-index: 15;
+}
+</style>

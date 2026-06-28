@@ -1,5 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import type { SourceSearchQueryType } from '#shared/dto/catalogue/source-search.dto'
+
 const {
   searchType,
   selectedSourceId,
@@ -13,50 +15,56 @@ const {
   searchLoading,
 } = useSearchSeriesSourcesComposable()
 
-const searchTypeItems = computed(() => {
+const searchTypeItems = computed((): { title: string, value: SourceSearchQueryType }[] => {
   const currentSource = sourcesItems.value.find(source => source.value === selectedSourceId.value)
-
-  return [
+  const items: { title: string, value: SourceSearchQueryType }[] = [
     { title: $t('sources.series.searchType.popular'), value: 'popular' },
-    ...(currentSource?.supportsLatest ? [{ title: $t('sources.series.searchType.latest'), value: 'latest' }] : []),
-    { title: $t('sources.series.searchType.search'), value: 'search' },
   ]
+
+  if (currentSource?.supportsLatest) {
+    items.push({ title: $t('sources.series.searchType.latest'), value: 'latest' })
+  }
+
+  items.push({ title: $t('sources.series.searchType.search'), value: 'search' })
+
+  return items
 })
 
 const { mobile } = useDisplay()
+
+const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel')
+useIntersectionObserver(loadMoreSentinel, ([entry]) => {
+  if (entry?.isIntersecting && mobile.value && !searchLoading.value && hasNextPage.value) {
+    page.value += 1
+  }
+})
 </script>
 
 <template>
-  <div class="d-flex flex-column ga-6 mt-2">
-    <div class="d-flex align-center ga-8 justify-space-between w-100">
-      <div class="d-flex ga-5 align-center transition-smooth justify-space-between w-100">
-        <div class="d-flex ga-3 align-center">
-          <span class="text-title-large font-weight-bold font-title">{{ $t('series.title') }}</span>
-        </div>
-        <AtomInputSearch
-          v-if="searchType === 'search'"
-          v-model="searchFilter"
-          style="max-width: 30rem;"
-        />
-        <div v-if="sourcesItems.length > 0" class="d-flex ga-3 align-center">
-          <MoleculeBtnList v-model="searchType" :items="searchTypeItems" />
-          <MoleculeBtnList
-            v-show="sourcesItems.length > 1"
-            :items="sourcesItems"
-            :model-value="selectedSourceId ?? ''"
-            @update:model-value="selectedSourceId = $event"
-          />
-        </div>
-      </div>
-    </div>
-
+  <div class="d-flex flex-column ga-6 mt-2 position-relative">
+    <ExtensionsSeriesListMobileHeader
+      v-if="mobile"
+      v-model:search-filter="searchFilter"
+      v-model:search-type="searchType"
+      v-model:selected-source-id="selectedSourceId"
+      :search-type-items="searchTypeItems"
+      :sources-items="sourcesItems"
+    />
+    <ExtensionsSeriesListDesktopHeader
+      v-else
+      v-model:search-filter="searchFilter"
+      v-model:search-type="searchType"
+      v-model:selected-source-id="selectedSourceId"
+      :search-type-items="searchTypeItems"
+      :sources-items="sourcesItems"
+    />
     <VProgressLinear
       v-if="searchLoading"
       indeterminate
       class="w-100 rounded-lg"
     />
 
-    <div class="series-list-grid">
+    <div class="series-list-grid" :class="{ 'px-4': mobile }">
       <ExtensionsSeriesListItem
         v-for="manga in series"
         :key="manga.id"
@@ -70,6 +78,18 @@ const { mobile } = useDisplay()
       v-model="page"
       :has-next-page
     />
+
+    <div
+      v-if="mobile"
+      ref="loadMoreSentinel"
+      class="d-flex justify-center py-4"
+    >
+      <VProgressCircular
+        v-if="searchLoading && page > 1"
+        color="secondary"
+        indeterminate
+      />
+    </div>
   </div>
 </template>
 

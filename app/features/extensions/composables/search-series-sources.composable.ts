@@ -31,6 +31,7 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
   const { t } = useI18n()
 
   const summaries = useChapterSummariesStore()
+  const { mobile } = useDisplay()
 
   const extension = computed(() => store.extension)
   const sourcesItems = computed(() => {
@@ -114,7 +115,25 @@ export function useSearchSeriesSourcesComposable(): UseSearchSeriesSourcesCompos
     searchFilter.value = undefined
   })
 
-  const series = computed(() => data.value?.items ?? [])
+  watch(debouncedSearch, () => {
+    page.value = 1
+  })
+
+  // On mobile we append each new page to the already-loaded results (infinite
+  // scroll); on desktop the pagination footer drives `page`, so each page
+  // replaces the previous one. Page 1 always resets the accumulator (filter,
+  // source or search-type change resets `page` to 1 first).
+  const accumulatedSeries = ref<SourceSearchItemDto[]>([])
+
+  watch(data, (value) => {
+    const items = value?.items ?? []
+
+    accumulatedSeries.value = mobile.value && page.value > 1
+      ? [...accumulatedSeries.value, ...items]
+      : items
+  }, { immediate: true })
+
+  const series = computed(() => accumulatedSeries.value)
 
   watch(series, (items) => {
     if (!extension.value || !selectedSourceId.value) {

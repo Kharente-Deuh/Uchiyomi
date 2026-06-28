@@ -10,6 +10,12 @@ const props = defineProps<{
   loading?: boolean
   prependImage?: string
   globalLoader?: boolean
+  /**
+   * Pin the (mobile) default header to the top of the scroll. Publishes the
+   * measured header height as the `--page-header-height` CSS var so descendants
+   * can stack their own sticky layers underneath it.
+   */
+  stickyHeader?: boolean
 }>()
 
 useHead({ title: props.title })
@@ -17,12 +23,19 @@ useHead({ title: props.title })
 const { mobile } = useDisplay()
 const slots = useSlots()
 const debounceLoading = useDebounce(computed(() => props.loading), 500)
+
+const headerRef = useTemplateRef<HTMLElement>('headerRef')
+// border-box so the published offset includes the header's padding — otherwise
+// the layers stacked underneath pin too high and overlap it.
+const { height: headerHeight } = useElementSize(headerRef, undefined, { box: 'border-box' })
+const isStickyHeader = computed(() => props.stickyHeader && mobile.value)
 </script>
 
 <template>
   <div
     v-if="globalLoader ? !debounceLoading : true"
     :class="!mobile ? 'pl-8 py-4 pr-4' : ''"
+    :style="isStickyHeader ? { '--page-header-height': `${headerHeight}px` } : undefined"
     class="position-relative"
   >
     <VProgressLinear
@@ -34,8 +47,9 @@ const debounceLoading = useDebounce(computed(() => props.loading), 500)
     <slot name="header" />
     <div
       v-if="!slots.header"
+      ref="headerRef"
       class="d-flex ga-3 align-center justify-space-between"
-      :class="mobile ? 'px-6 py-3' : 'mb-8'"
+      :class="[mobile ? 'px-6 py-3' : 'mb-8', { 'page-layout__sticky-header bg-background': isStickyHeader }]"
     >
       <div class="d-flex align-center ga-6 text-truncate">
         <AtomLink
@@ -70,3 +84,11 @@ const debounceLoading = useDebounce(computed(() => props.loading), 500)
     </div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.page-layout__sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+</style>
