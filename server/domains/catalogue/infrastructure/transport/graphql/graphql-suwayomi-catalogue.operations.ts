@@ -60,6 +60,18 @@ export const GET_MANGA_DETAILS = graphql(`
   }
 `)
 
+// Cheap existence probe before the expensive fetchChapters scrape. The filtered
+// `mangas` list resolves from Suwayomi's DB and returns cleanly (totalCount 0, no
+// GraphQL error) for an unknown id — unlike `manga(id)` / `fetchChapters`, which
+// raise on a missing manga and could not be told apart from a source being down.
+export const MANGA_EXISTS = graphql(`
+  query MangaExists($id: Int!) {
+    mangas(filter: { id: { equalTo: $id } }) {
+      totalCount
+    }
+  }
+`)
+
 // Eager chapter enrichment for a search result. fetchChapters is a mutation that
 // makes Suwayomi fetch the manga's chapter list from the remote source (it hits the
 // site), then returns the full list. We derive count + last chapter from it.

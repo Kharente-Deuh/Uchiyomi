@@ -4,7 +4,7 @@ import type { SourceSearchResultDto } from '#shared/dto/catalogue/source-search.
 import { z } from 'zod'
 import { catalogueService } from '~~/server/domains/catalogue/application/catalogue.service'
 import { toSourceSearchDto } from '~~/server/domains/catalogue/infrastructure/transport/http/catalogue-http.presenter'
-import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
+import { sourceGuard } from '~~/server/domains/extensions/infrastructure/transport/http/guards/source.guard'
 import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
 import { parseQuery } from '~~/server/utils/request.util'
 
@@ -36,29 +36,13 @@ export default defineEventHandler(async (event): Promise<SourceSearchResultDto> 
   // authenticate, then validate input cheaply before touching the store.
   const authUser = authGuard(event)
   const { q: query, ...queryParams } = await parseQuery(event, QuerySchema)
-  const pkgName = getRouterParam(event, 'pkgName')
-  const sourceId = getRouterParam(event, 'id')
-  if (!pkgName || !sourceId) {
-    throw createError({ statusCode: 400, statusMessage: 'Missing route params' })
-  }
-
-  // Authorize the source for this viewer. undefined → 404
-  // (hides existence for unknown / wrong-pkg / disabled / NSFW-blocked alike).
-  const source = await extensionsService().getVisibleSource({
-    pkgName,
-    sourceId,
-    isAdmin: !!authUser.canManageExtensions,
-    canSeeNsfw: !!authUser.allowNsfw && !!authUser.showNsfw,
-  })
-  if (!source) {
-    throw createError({ statusCode: 404, statusMessage: 'Source not found' })
-  }
+  const source = await sourceGuard(event, authUser)
 
   if (queryParams.type === 'latest' && !source.supportsLatest) {
     throw createError({ statusCode: 400, statusMessage: 'Source does not support latest' })
   }
 
-  const result = await catalogueService().searchSourceWithChapters({ sourceId, query, ...queryParams })
+  const result = await catalogueService().searchSource({ sourceId: source.id, query, ...queryParams })
 
   return toSourceSearchDto(result)
 })

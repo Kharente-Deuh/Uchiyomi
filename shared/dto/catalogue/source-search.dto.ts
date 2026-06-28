@@ -3,18 +3,19 @@
 // File-local until the search UI (M4.1c) imports them; only SourceSearchResultDto
 // is consumed today (route + presenter), so the sub-types stay unexported to keep
 // `knip` clean. Re-export when the front consumes them.
-interface SourceSearchLastChapterDto {
-  name: string
-  uploadedAt: string // ISO 8601
-}
-
-interface SourceSearchItemDto {
+export interface SourceSearchItemDto {
   id: string // Suwayomi manga id — used to add the series to the library
   title: string
   thumbnailUrl: string | null // BFF proxy path, or null when the series has no cover
   inLibrary: boolean
-  chapterCount: number | null // source total; null when enrichment failed
-  lastChapter: SourceSearchLastChapterDto | null
+}
+
+export type SourceSearchQueryType = 'search' | 'popular' | 'latest'
+
+export interface SourceSearchQueryDto {
+  type: SourceSearchQueryType
+  q?: string
+  page: number
 }
 
 export interface SourceSearchResultDto {

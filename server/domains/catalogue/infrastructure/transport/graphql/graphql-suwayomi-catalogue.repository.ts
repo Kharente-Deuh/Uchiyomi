@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { SuwayomiClient } from '../../../../../utils/suwayomi/client'
-import type { CatalogueRepository, GetMangaDetailsByIdParams, SearchMangaParams, SearchMangaResult, SourceMangaChapterSummary } from '../../../catalogue.domain'
-import type { MangaDetailsModel } from '../../../manga.domain'
+import type { CatalogueRepository, GetMangaDetailsByIdParams, SearchMangaParams, SearchMangaResult } from '../../../catalogue.domain'
+import type { MangaChapterSummaryModel, MangaDetailsModel } from '../../../manga.domain'
 import type { SourceModel } from '../../../source.domain'
 import { chapterSummaryFromFetched, mangaDetailsToDomain, mangaSummaryToDomain, sourceToDomain } from './graphql-suwayomi-catalogue-repository.mapper'
-import { FETCH_CHAPTERS, GET_MANGA_DETAILS, LIST_SOURCES, SEARCH_SOURCE } from './graphql-suwayomi-catalogue.operations'
+import { FETCH_CHAPTERS, GET_MANGA_DETAILS, LIST_SOURCES, MANGA_EXISTS, SEARCH_SOURCE } from './graphql-suwayomi-catalogue.operations'
 
 // Domain browse type → Suwayomi FetchSourceMangaType enum value.
 const SUWAYOMI_BROWSE_TYPE = { search: 'SEARCH', popular: 'POPULAR', latest: 'LATEST' } as const
@@ -45,12 +45,27 @@ export class GraphqlSuwayomiCatalogueRepository implements CatalogueRepository {
     return mangaDetailsToDomain(data.manga)
   }
 
-  async getSourceMangaChapterSummary(mangaId: string): Promise<SourceMangaChapterSummary> {
+  async getMangaChapterSummary(mangaId: string): Promise<MangaChapterSummaryModel | undefined> {
+    // An unknown id makes Suwayomi raise on the scrape and would surface as a 5xx,
+    // indistinguishable from a source being down — so probe existence first
+    // (cheap DB read) and let the caller answer 404 on undefined.
+    if (!(await this.mangaExists(mangaId))) {
+      return
+    }
+
     // manga(id) is Int! — convert the domain string id to a number.
     const data = await this.client.execute(FETCH_CHAPTERS, { mangaId: Number(mangaId) })
-    // fetchChapters is nullable in the SDL (null when the source is unavailable).
-    const chapters = data.fetchChapters?.chapters ?? []
 
-    return chapterSummaryFromFetched(chapters)
+    // The manga exists, so a thrown/empty fetch here means the source is
+    // unavailable: a genuine error bubbles up (→ 5xx), null degrades to 0 chapters.
+    return chapterSummaryFromFetched(data.fetchChapters?.chapters ?? [])
+  }
+
+  // Adapter-internal probe (not on the port): only getMangaChapterSummary needs it.
+  private async mangaExists(mangaId: string): Promise<boolean> {
+    // mangas(filter) is Int! on id — convert the domain string id to a number.
+    const data = await this.client.execute(MANGA_EXISTS, { id: Number(mangaId) })
+
+    return data.mangas.totalCount > 0
   }
 }

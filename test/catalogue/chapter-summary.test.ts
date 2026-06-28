@@ -13,7 +13,7 @@ describe('chapterSummaryFromFetched', () => {
     ])
 
     expect(summary.chapterCount).toBe(3)
-    expect(summary.lastChapter).toEqual({ name: 'Chapter 3', uploadDate: '3000' })
+    expect(summary.lastChapter).toEqual({ name: 'Chapter 3', uploadedAt: '3000' })
   })
 
   it('returns count 0 and null lastChapter when there are no chapters', () => {

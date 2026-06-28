@@ -2,20 +2,14 @@
 
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { toSourceSearchDto } from '../../server/domains/catalogue/infrastructure/transport/http/catalogue-http.presenter'
+import { toMangaChapterSummaryDto, toSourceSearchDto } from '../../server/domains/catalogue/infrastructure/transport/http/catalogue-http.presenter'
+import { MangaChapterSummaryModel } from '../../server/domains/catalogue/manga.domain'
 
 describe('toSourceSearchDto', () => {
-  it('maps a cover to the proxy path and converts epoch ms to ISO', () => {
+  it('maps a cover to the BFF proxy path', () => {
     const dto = toSourceSearchDto({
       hasNextPage: true,
-      items: [{
-        id: '42',
-        title: 'A',
-        thumbnailUrl: 'https://source/cover.jpg',
-        inLibrary: false,
-        chapterCount: 12,
-        lastChapter: { name: 'Chapter 12', uploadDate: '1717200000000' },
-      }],
+      mangas: [{ id: '42', title: 'A', thumbnailUrl: 'https://source/cover.jpg', inLibrary: false }],
     })
 
     expect(dto.hasNextPage).toBe(true)
@@ -24,19 +18,35 @@ describe('toSourceSearchDto', () => {
       title: 'A',
       thumbnailUrl: '/api/manga/42/thumbnail',
       inLibrary: false,
+    })
+  })
+
+  it('emits null thumbnailUrl when there is no cover', () => {
+    const dto = toSourceSearchDto({
+      hasNextPage: false,
+      mangas: [{ id: '7', title: 'B', thumbnailUrl: undefined, inLibrary: true }],
+    })
+
+    expect(dto.items[0]!.thumbnailUrl).toBeNull()
+  })
+})
+
+describe('toMangaChapterSummaryDto', () => {
+  it('converts the last chapter epoch ms to ISO 8601', () => {
+    const dto = toMangaChapterSummaryDto(new MangaChapterSummaryModel({
+      chapterCount: 12,
+      lastChapter: { name: 'Chapter 12', uploadedAt: '1717200000000' },
+    }))
+
+    expect(dto).toEqual({
       chapterCount: 12,
       lastChapter: { name: 'Chapter 12', uploadedAt: '2024-06-01T00:00:00.000Z' },
     })
   })
 
-  it('emits null thumbnailUrl when there is no cover, and null lastChapter', () => {
-    const dto = toSourceSearchDto({
-      hasNextPage: false,
-      items: [{ id: '7', title: 'B', thumbnailUrl: undefined, inLibrary: true, chapterCount: null, lastChapter: null }],
-    })
+  it('passes through a null last chapter', () => {
+    const dto = toMangaChapterSummaryDto(new MangaChapterSummaryModel({ chapterCount: 0, lastChapter: null }))
 
-    expect(dto.items[0]!.thumbnailUrl).toBeNull()
-    expect(dto.items[0]!.lastChapter).toBeNull()
-    expect(dto.items[0]!.chapterCount).toBeNull()
+    expect(dto).toEqual({ chapterCount: 0, lastChapter: null })
   })
 })

@@ -37,22 +37,22 @@ describeIf('source search routes e2e', async () => {
   })
 
   it('gET search → 401 when unauthenticated', async () => {
-    const res = await fetch('/api/extensions/pkg/sources/123/search?q=a')
+    const res = await fetch('/api/extensions/pkg/sources/123/mangas?q=a')
     expect(res.status).toBe(401)
   })
 
   it('gET search → 404 for an unknown source', async () => {
-    const res = await fetch('/api/extensions/pkg/sources/does-not-exist/search?q=a', { headers: { cookie: adminCookie } })
+    const res = await fetch('/api/extensions/pkg/sources/does-not-exist/mangas?q=a', { headers: { cookie: adminCookie } })
     expect(res.status).toBe(404)
   })
 
   it('gET search → 400 for an invalid page', async () => {
-    const res = await fetch('/api/extensions/pkg/sources/123/search?page=abc', { headers: { cookie: adminCookie } })
+    const res = await fetch('/api/extensions/pkg/sources/123/mangas?page=abc', { headers: { cookie: adminCookie } })
     expect(res.status).toBe(400)
   })
 
   it('gET search → 400 for an invalid type', async () => {
-    const res = await fetch('/api/extensions/pkg/sources/123/search?type=bogus', { headers: { cookie: adminCookie } })
+    const res = await fetch('/api/extensions/pkg/sources/123/mangas?type=bogus', { headers: { cookie: adminCookie } })
     expect(res.status).toBe(400)
   })
 
@@ -62,7 +62,7 @@ describeIf('source search routes e2e', async () => {
     await prisma.extension.create({ data: { pkgName: 'pkg.latest', name: 'L', lang: 'en', isNsfw: false } })
     await prisma.source.create({ data: { id: '9001', pkgName: 'pkg.latest', name: 'S', lang: 'en', isNsfw: false, isConfigurable: false, isEnabled: true, supportsLatest: false } })
     try {
-      const res = await fetch('/api/extensions/pkg.latest/sources/9001/search?type=latest', { headers: { cookie: adminCookie } })
+      const res = await fetch('/api/extensions/pkg.latest/sources/9001/mangas?type=latest', { headers: { cookie: adminCookie } })
       expect(res.status).toBe(400)
     } finally {
       await prisma.source.deleteMany({ where: { pkgName: 'pkg.latest' } })

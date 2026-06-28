@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { SourceMangaChapterSummary } from '../../../catalogue.domain'
 import { ChapterModel } from '../../../chapter.domain'
-import { MangaDetailsModel, MangaSummaryModel } from '../../../manga.domain'
+import { MangaChapterSummaryModel, MangaDetailsModel, MangaSummaryModel } from '../../../manga.domain'
 import { SourceModel } from '../../../source.domain'
 
 // SourceNode mirrors the GraphQL SourceType selection from LIST_SOURCES.
@@ -90,7 +89,7 @@ export interface FetchedChapterNode {
 
 // Derive a chapter summary from a source's freshly-fetched chapter list.
 // uploadDate is LongString! epoch ms; "last" is the max by upload date.
-export function chapterSummaryFromFetched(chapters: FetchedChapterNode[]): SourceMangaChapterSummary {
+export function chapterSummaryFromFetched(chapters: FetchedChapterNode[]): MangaChapterSummaryModel {
   if (chapters.length === 0) {
     return { chapterCount: 0, lastChapter: null }
   }
@@ -102,8 +101,8 @@ export function chapterSummaryFromFetched(chapters: FetchedChapterNode[]): Sourc
     }
   }
 
-  return {
+  return new MangaChapterSummaryModel({
     chapterCount: chapters.length,
-    lastChapter: { name: latest.name, uploadDate: latest.uploadDate },
-  }
+    lastChapter: latest ? { name: latest.name, uploadedAt: latest.uploadDate } : null,
+  })
 }

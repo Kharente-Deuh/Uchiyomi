@@ -26,3 +26,12 @@ export class MangaDetailsModel extends MangaSummaryModel {
     Object.assign<MangaDetailsModel, MangaDetailsModel>(this, data)
   }
 }
+
+export class MangaChapterSummaryModel {
+  declare chapterCount: number
+  declare lastChapter: { name: string, uploadedAt: string } | null
+
+  constructor(data: MangaChapterSummaryModel) {
+    Object.assign<MangaChapterSummaryModel, MangaChapterSummaryModel>(this, data)
+  }
+}
