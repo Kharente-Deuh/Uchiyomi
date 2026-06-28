@@ -54,11 +54,19 @@ export class GraphqlSuwayomiCatalogueRepository implements CatalogueRepository {
     }
 
     // manga(id) is Int! — convert the domain string id to a number.
-    const data = await this.client.execute(FETCH_CHAPTERS, { mangaId: Number(mangaId) })
+    try {
+      const data = await this.client.execute(FETCH_CHAPTERS, { mangaId: Number(mangaId) })
 
-    // The manga exists, so a thrown/empty fetch here means the source is
-    // unavailable: a genuine error bubbles up (→ 5xx), null degrades to 0 chapters.
-    return chapterSummaryFromFetched(data.fetchChapters?.chapters ?? [])
+      // The manga exists, so a thrown/empty fetch here means the source is
+      // unavailable: a genuine error bubbles up (→ 5xx), null degrades to 0 chapters.
+      return chapterSummaryFromFetched(data.fetchChapters?.chapters ?? [])
+    } catch (error) {
+      if ((error as Error).message.startsWith('No chapters found')) {
+        return
+      }
+
+      throw error
+    }
   }
 
   // Adapter-internal probe (not on the port): only getMangaChapterSummary needs it.
