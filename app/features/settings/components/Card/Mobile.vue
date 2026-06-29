@@ -1,5 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-or-later
 defineProps<{
   title: string
   adminOnly?: boolean
@@ -13,10 +13,11 @@ defineProps<{
     :disabled="loading"
     class="d-flex flex-column bg-background elevation-0 pa-0"
   >
-    <div class="d-flex align-center justify-space-between ga-4 px-6 py-1 ">
+    <div class="d-flex align-center justify-space-between ga-4 px-6 py-1 settings-card-mobile-header">
       <span class=" text-medium-emphasis text-body-small text-uppercase py-1" style="letter-spacing: 0.08em;">
         {{ title }}
       </span>
+      <slot name="append-title" />
       <VChip
         v-if="adminOnly"
         :text="$t('settings.adminOnly')"

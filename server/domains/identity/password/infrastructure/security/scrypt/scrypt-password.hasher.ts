@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // hashPassword / verifyPassword are nuxt-auth-utils server utils (scrypt) declared
 // as ambient globals in .nuxt/types/nitro-imports.d.ts (via nitro.d.ts). No explicit
 // import is needed or possible — vue-tsc project-references mode resolves them as globals.

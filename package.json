@@ -57,7 +57,6 @@
     "@graphql-codegen/cli": "catalog:dev",
     "@graphql-codegen/client-preset": "catalog:dev",
     "@graphql-typed-document-node/core": "catalog:dev",
-    "@iconify-json/fa6-brands": "catalog:dev",
     "@iconify-json/fa6-regular": "catalog:dev",
     "@iconify-json/fa6-solid": "catalog:dev",
     "@nuxt/eslint": "catalog:build",

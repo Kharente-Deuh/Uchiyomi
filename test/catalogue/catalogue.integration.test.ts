@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @vitest-environment node
 import process from 'node:process'
 import { describe, expect, it } from 'vitest'
@@ -36,7 +37,7 @@ describeSearch('catalogue search (live source)', () => {
     createSuwayomiClient({ endpoint: `${base}/api/graphql` }),
   )
   it('returns a well-formed search page', async () => {
-    const result = await new SearchSource.SearchSourceUseCase(repo).execute({ sourceId: testSourceId!, query: 'a', page: 1 })
+    const result = await new SearchSource.SearchSourceUseCase(repo).execute({ sourceId: testSourceId!, query: 'a', page: 1, type: 'search' })
     expect(Array.isArray(result.mangas)).toBe(true)
     expect(typeof result.hasNextPage).toBe('boolean')
   })

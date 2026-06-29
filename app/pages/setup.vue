@@ -1,5 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { SetupRequestDto } from '#shared/dto/identity'
 import { object, string, ref as yupRef } from 'yup'
 import { accountNameRule } from '~/features/auth/utils/account-name'

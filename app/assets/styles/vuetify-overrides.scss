@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 .list-override {
   .v-list-item {
     .v-list-item__overlay {
@@ -105,4 +106,9 @@
 .v-input--density-compact {
   --v-input-control-height: 30px;
   --v-input-padding-top: 4px;
+}
+
+.v-skeleton-loader__bone,
+.v-skeleton-loader__text {
+  margin: 0 !important;
 }

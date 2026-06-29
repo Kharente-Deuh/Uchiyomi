@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { afterEach, expect, it, vi } from 'vitest'
 
 const apiFetch = vi.fn()
@@ -12,7 +13,7 @@ afterEach(() => apiFetch.mockReset())
 // --- listExtensions ---
 
 it('listExtensions hits /api/extensions with a params object', async () => {
-  const payload = { items: [{ pkgName: 'p', name: 'P' }], totalCount: 1 }
+  const payload = { items: [{ pkgName: 'p', name: 'P' }], total: 1 }
   apiFetch.mockResolvedValueOnce(payload)
   const res = await createExtensionsApi().listExtensions({ page: 1, pageSize: 20 })
   expect(res).toEqual({ success: true, data: payload })
@@ -20,13 +21,13 @@ it('listExtensions hits /api/extensions with a params object', async () => {
 })
 
 it('listExtensions passes filter params via query option', async () => {
-  apiFetch.mockResolvedValueOnce({ items: [], totalCount: 0 })
+  apiFetch.mockResolvedValueOnce({ items: [], total: 0 })
   await createExtensionsApi().listExtensions({ isInstalled: true, hasUpdate: false })
   expect(apiFetch).toHaveBeenCalledWith('/api/extensions', { query: { isInstalled: true, hasUpdate: false } })
 })
 
 it('listExtensions passes undefined filter values through (caller filters them)', async () => {
-  apiFetch.mockResolvedValueOnce({ items: [], totalCount: 0 })
+  apiFetch.mockResolvedValueOnce({ items: [], total: 0 })
   await createExtensionsApi().listExtensions({ isInstalled: true, nsfw: undefined })
   expect(apiFetch).toHaveBeenCalledWith('/api/extensions', { query: { isInstalled: true, nsfw: undefined } })
 })
@@ -47,7 +48,7 @@ it('listExtensions maps fetch errors to ApiError', async () => {
 // --- getExtension ---
 
 it('getExtension hits /api/extensions/:pkgName', async () => {
-  const payload = { extension: { pkgName: 'p' }, health: null }
+  const payload = { extension: { pkgName: 'p' } }
   apiFetch.mockResolvedValueOnce(payload)
   const res = await createExtensionsApi().getExtension('p')
   expect(res).toEqual({ success: true, data: payload })
@@ -107,64 +108,90 @@ it('listSources maps fetch errors to ApiError', async () => {
 
 // --- setSourceEnabled ---
 
-it('setSourceEnabled patches /api/sources/:id', async () => {
+it('setSourceEnabled posts to /api/extensions/:pkgName/sources/:id/enable', async () => {
   apiFetch.mockResolvedValueOnce({ source: { id: 's', isEnabled: false } })
-  await createExtensionsApi().setSourceEnabled('s', false)
-  expect(apiFetch).toHaveBeenCalledWith('/api/sources/s', { method: 'PATCH', body: { isEnabled: false } })
+  await createExtensionsApi().setSourceEnabled('p', 's', false)
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/s/enable', { method: 'POST', body: { isEnabled: false } })
 })
 
 it('setSourceEnabled returns the updated source', async () => {
   const source = { id: 's', isEnabled: true }
   apiFetch.mockResolvedValueOnce({ source })
-  const res = await createExtensionsApi().setSourceEnabled('s', true)
+  const res = await createExtensionsApi().setSourceEnabled('p', 's', true)
   expect(res).toEqual({ success: true, data: source })
 })
 
 it('setSourceEnabled maps fetch errors to ApiError', async () => {
   apiFetch.mockRejectedValueOnce(new Error('nope'))
-  const res = await createExtensionsApi().setSourceEnabled('s', true)
+  const res = await createExtensionsApi().setSourceEnabled('p', 's', true)
   expect(res.success).toBe(false)
   if (!res.success) {
     expect(res.error).toBeInstanceOf(ApiError)
   }
 })
 
-// --- getPreferences ---
+// --- getSettings ---
 
-it('getPreferences hits /api/sources/:id/preferences', async () => {
-  apiFetch.mockResolvedValueOnce({ preferences: [] })
-  await createExtensionsApi().getPreferences('s')
-  expect(apiFetch).toHaveBeenCalledWith('/api/sources/s/preferences')
+it('getSettings hits /api/extensions/:pkgName/sources/settings', async () => {
+  apiFetch.mockResolvedValueOnce({ pkgName: 'p', common: [], sources: [] })
+  await createExtensionsApi().getSettings('p')
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/settings')
 })
 
-it('getPreferences returns data', async () => {
-  apiFetch.mockResolvedValueOnce({ preferences: [{ key: 'k' }] })
-  const res = await createExtensionsApi().getPreferences('s')
-  expect(res).toEqual({ success: true, data: [{ key: 'k' }] })
+it('getSettings returns the settings payload', async () => {
+  const settings = { pkgName: 'p', common: [{ key: 'k' }], sources: [] }
+  apiFetch.mockResolvedValueOnce(settings)
+  const res = await createExtensionsApi().getSettings('p')
+  expect(res).toEqual({ success: true, data: settings })
 })
 
-it('getPreferences maps fetch errors to ApiError', async () => {
+it('getSettings maps fetch errors to ApiError', async () => {
   apiFetch.mockRejectedValueOnce(new Error('nope'))
-  const res = await createExtensionsApi().getPreferences('s')
+  const res = await createExtensionsApi().getSettings('p')
   expect(res.success).toBe(false)
   if (!res.success) {
     expect(res.error).toBeInstanceOf(ApiError)
   }
 })
 
-// --- updatePreference ---
+// --- updateSettings ---
 
-it('updatePreference puts to /api/sources/:id/preferences', async () => {
-  apiFetch.mockResolvedValueOnce({ preferences: [] })
-  await createExtensionsApi().updatePreference('s', { position: 0, booleanValue: true })
-  expect(apiFetch).toHaveBeenCalledWith('/api/sources/s/preferences', { method: 'PUT', body: { position: 0, booleanValue: true } })
+it('updateSettings puts to /api/extensions/:pkgName/sources/settings', async () => {
+  const body = { common: [], sources: [] }
+  apiFetch.mockResolvedValueOnce({ pkgName: 'p', common: [], sources: [] })
+  await createExtensionsApi().updateSettings('p', body)
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/settings', { method: 'PUT', body })
 })
 
-it('updatePreference maps fetch errors to ApiError', async () => {
+it('updateSettings returns the updated settings', async () => {
+  const settings = { pkgName: 'p', common: [], sources: [] }
+  apiFetch.mockResolvedValueOnce(settings)
+  const res = await createExtensionsApi().updateSettings('p', { common: [], sources: [] })
+  expect(res).toEqual({ success: true, data: settings })
+})
+
+it('updateSettings maps fetch errors to ApiError', async () => {
   apiFetch.mockRejectedValueOnce(new Error('nope'))
-  const res = await createExtensionsApi().updatePreference('s', { position: 0 })
+  const res = await createExtensionsApi().updateSettings('p', { common: [], sources: [] })
   expect(res.success).toBe(false)
   if (!res.success) {
     expect(res.error).toBeInstanceOf(ApiError)
   }
+})
+
+// --- getMangaChapterSummary ---
+
+it('getMangaChapterSummary hits the mangas chapter-summary route', async () => {
+  const payload = { chapterCount: 3, lastChapter: null }
+  apiFetch.mockResolvedValueOnce(payload)
+  const res = await createExtensionsApi().getMangaChapterSummary('p', '9', '42')
+  expect(res).toEqual({ success: true, data: payload })
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/9/mangas/42/chapter-summary', { signal: undefined })
+})
+
+it('getMangaChapterSummary forwards an abort signal', async () => {
+  apiFetch.mockResolvedValueOnce({ chapterCount: 0, lastChapter: null })
+  const controller = new AbortController()
+  await createExtensionsApi().getMangaChapterSummary('p', '9', '42', { signal: controller.signal })
+  expect(apiFetch).toHaveBeenCalledWith('/api/extensions/p/sources/9/mangas/42/chapter-summary', { signal: controller.signal })
 })

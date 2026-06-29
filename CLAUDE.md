@@ -82,6 +82,18 @@ Nuxt 4 (Vue 3) + Nitro (single deployable) · **Vuetify** via `vuetify-nuxt-modu
 - **i18n in templates uses the global `$t`**, never a `t` destructured from
   `useI18n()`. In `<script setup>` (where `$t` is unavailable), use `useI18n().t`.
   Still no hard-coded user-facing strings. (ADR-0011)
+- **Push filtering, sorting, pagination and counting down to the store.** Express
+  them as Prisma `where`/`orderBy`/`take`/`skip`/`count` or as Suwayomi GraphQL
+  query arguments (`filter`, `condition`, `order`, `first`, `offset`) — never fetch
+  the full set and `.filter()`/`.sort()`/`.slice()` it in memory. Keep **policy** in
+  the use case (it decides *what* to filter from `isAdmin`, `viewerCanSeeNsfw`, …)
+  but translate that policy into query criteria the repository/adapter executes; the
+  repo executes, it does not own the rule. Cross-store gates (an overlay flag like
+  `Source.isEnabled` combined with a Suwayomi-side property) join by passing the
+  overlay-derived id set into the GraphQL `id` filter, not by post-filtering. The
+  only acceptable in-memory pass is a pure transform over an already-small, bounded
+  result; if it is a security/visibility gate, push it to the query so it cannot be
+  forgotten or bypassed.
 - Lint and type-check must pass before a change is considered done. Add or update
   tests (Vitest) for behavior changes.
 - Keep docs in sync: update this `CLAUDE.md` and/or add an ADR when a change
@@ -159,6 +171,17 @@ per-layer idioms are in ADR-0013; the key wiring pattern is summarised below.
   handled on the client; failures are raised with `createError`.
 - **Presenters** are pure functions named `toXDto(...)` under
   `infrastructure/transport/http/`, typed against domain models.
+- **HTTP guards** live under `infrastructure/transport/http/guards/` in the domain
+  they authorize. Keep cheap authorization (authn `401` + capability `403`, no I/O)
+  in one function and resource load+gate (`404`/`403`, hits Suwayomi/DB) in another,
+  so a handler can validate input between them. **Mandatory order:** `401` → `403`
+  (authz) → `400` (input validation, via the pure `parseBody`/`parseQuery` helpers in
+  `server/utils/`) → `404`/`403` (resource existence/visibility) — an unauthorized
+  caller must never reach or learn about input validation or resource existence.
+  Don't add a Suwayomi resource load on overlay-only routes where the overlay query
+  already implies it. The authenticated user is `authUser` everywhere, never
+  `actor`/`user`. Canonical: the shared `authGuard` (in `identity/auth`) composed
+  with the extensions `requireExtension`/`extensionGuard`. (ADR-0013)
 - **`shared/` import rule in node-tested code:** use a **relative path** (not `~~` or
   `#shared`) when importing from `server/shared/` in files tested by the Vitest `node`
   project — the `node` project has no path aliases. See the comment in

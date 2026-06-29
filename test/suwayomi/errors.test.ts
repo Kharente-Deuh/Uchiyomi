@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @vitest-environment node
 import { ClientError } from 'graphql-request'
 import { describe, expect, it } from 'vitest'

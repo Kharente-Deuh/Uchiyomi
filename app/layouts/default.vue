@@ -1,5 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { RouteLocationNormalized } from 'vue-router'
 import type { BottomNavigationItemProps } from '~/components/Organism/BottomNavigation/Item.vue'
 import type { NavigationDrawerListProps } from '~/components/Organism/NavigationDrawer/List/index.vue'
@@ -8,9 +8,6 @@ import { useDisplay } from 'vuetify'
 const { mobile } = useDisplay()
 const { logout } = useAuth()
 const { messages } = useToast()
-
-const authStore = useAuthStore()
-const { capabilities } = storeToRefs(authStore)
 
 async function onLogout(): Promise<void> {
   const res = await logout()
@@ -29,12 +26,14 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
         to: '/browse/series',
         icon: 'fa6-solid:book',
         isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse/series'),
+        baseRoute: '/browse/series',
       },
       {
         title: t('extensions.title'),
         to: '/browse/extensions',
         icon: 'fa6-solid:puzzle-piece',
         isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse/extensions'),
+        baseRoute: '/browse/extensions',
       },
     ],
   },
@@ -46,17 +45,8 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
         to: '/settings',
         icon: 'fa6-solid:gear',
         isActiveFn: (route: RouteLocationNormalized) => route.path === '/settings',
+        baseRoute: '/settings',
       },
-      ...(capabilities.value.canManageExtensions
-        ? [
-            {
-              title: t('extensions.admin.title'),
-              to: '/admin/extensions',
-              icon: 'fa6-solid:screwdriver-wrench',
-              isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/admin/extensions'),
-            },
-          ]
-        : []),
     ],
   },
 ])
@@ -66,16 +56,19 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
     to: '/',
     icon: 'fa6-solid:house',
     isActiveFn: (route: RouteLocationNormalized) => route.path === '/',
+    baseRoute: '/',
   },
   {
     to: '/browse',
-    icon: 'fa6-brands:safari',
+    icon: 'fa6-regular:compass',
     isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse'),
+    baseRoute: '/browse',
   },
   {
     to: '/settings',
     icon: 'fa6-solid:gear',
     isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/settings'),
+    baseRoute: '/settings',
   },
 ])
 

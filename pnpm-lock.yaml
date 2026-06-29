@@ -71,9 +71,6 @@ catalogs:
     '@graphql-typed-document-node/core':
       specifier: ^3.2.0
       version: 3.2.0
-    '@iconify-json/fa6-brands':
-      specifier: ^1.2.4
-      version: 1.2.6
     '@iconify-json/fa6-regular':
       specifier: ^1.2.4
       version: 1.2.4
@@ -232,9 +229,6 @@ importers:
       '@graphql-typed-document-node/core':
         specifier: catalog:dev
         version: 3.2.0(graphql@16.14.2)
-      '@iconify-json/fa6-brands':
-        specifier: catalog:dev
-        version: 1.2.6
       '@iconify-json/fa6-regular':
         specifier: catalog:dev
         version: 1.2.4
@@ -1988,9 +1982,6 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
-
-  '@iconify-json/fa6-brands@1.2.6':
-    resolution: {integrity: sha512-twL3X4KWcxAhbc1vz/mIDsVr+CAItk1/EIfxKUVQtpv6O4eydk5KNYqTZWdvJNHGInUgd6vKg21aWfVgb5DXEg==}
 
   '@iconify-json/fa6-regular@1.2.4':
     resolution: {integrity: sha512-fnUS/MLj3ZAp29oRsC8/aY8Wau7NIg7VesTz3jCcE6VJBzcz95Yxp/Dl5yHvkP+aQxrNw5Lj3nrOXB4nQh+oNA==}
@@ -11311,10 +11302,6 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
-
-  '@iconify-json/fa6-brands@1.2.6':
-    dependencies:
-      '@iconify/types': 2.0.0
 
   '@iconify-json/fa6-regular@1.2.4':
     dependencies:

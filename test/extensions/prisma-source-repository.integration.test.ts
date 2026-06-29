@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import process from 'node:process'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
@@ -27,15 +28,15 @@ describeIf('PrismaSourceRepository', () => {
     await prisma.$disconnect()
   })
 
-  it('syncForExtension upserts and listByPkg returns rows (default enabled)', async () => {
+  it('syncForExtension upserts and findMany returns rows (default enabled)', async () => {
     await repo.syncForExtension('pkg', [src('1'), src('2')])
-    const rows = await repo.listByPkg('pkg')
+    const rows = await repo.findMany({ pkgName: 'pkg' })
     expect(rows.map(r => [r.id, r.isEnabled])).toEqual([['1', true], ['2', true]])
   })
 
-  it('setEnabled toggles and is preserved across re-sync', async () => {
+  it('update toggles isEnabled and is preserved across re-sync', async () => {
     await repo.syncForExtension('pkg', [src('1')])
-    await repo.setEnabled('1', false)
+    await repo.update('1', { isEnabled: false })
     await repo.syncForExtension('pkg', [src('1')]) // metadata refresh must not reset isEnabled
     const found = await repo.findById('1')
     expect(found?.isEnabled).toBe(false)
@@ -44,6 +45,6 @@ describeIf('PrismaSourceRepository', () => {
   it('cascades on extension delete', async () => {
     await repo.syncForExtension('pkg', [src('1')])
     await prisma.extension.deleteMany({ where: { pkgName: 'pkg' } })
-    expect(await repo.listByPkg('pkg')).toEqual([])
+    expect(await repo.findMany({ pkgName: 'pkg' })).toEqual([])
   })
 })

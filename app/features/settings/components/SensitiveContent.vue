@@ -1,5 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-or-later
 import { useDebounceFn } from '@vueuse/core'
 
 const { user, updateShowNsfw, loading: authLoading } = useAuth()
@@ -29,6 +29,7 @@ const doUpdateNsfw = useDebounceFn(async (value: boolean | null): Promise<void> 
       <VSwitch
         v-model="showNsfw"
         theme="light"
+        inset
         density="compact"
         hide-details
         color="primary"

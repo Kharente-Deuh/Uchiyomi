@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { PrismaClient } from '../../../../../../../prisma/generated/client'
 import type { CreateSessionParams, DeleteAllSessionsForUserExceptParams, DeleteAllSessionsForUserParams, DeleteSessionParams, FindValidSessionParams, SessionModel, TouchSessionParams } from '../../../session.domain'
 import { randomUUID } from 'node:crypto'

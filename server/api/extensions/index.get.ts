@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { z } from 'zod'
 import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
-import { toExtensionListResponseDto } from '../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
+import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
+import { toPageDto } from '~~/server/shared'
+import { parseQuery } from '~~/server/utils/request.util'
+import { toExtensionDto } from '../../domains/extensions/infrastructure/transport/http/extension-http.presenter'
 
 // `?flag=true|false` arrives as a string; coerce to an optional boolean.
 const BoolParam = z.enum(['true', 'false']).transform(v => v === 'true').optional()
@@ -16,25 +20,16 @@ const Query = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const actor = event.context.authUser
-  if (!actor) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthenticated' })
-  }
-
-  const parsed = await getValidatedQuery(event, Query.safeParse)
-  if (!parsed.success) {
-    throw createError({ statusCode: 400, statusMessage: 'Invalid query' })
-  }
-
-  const { page, pageSize, search, isInstalled, hasUpdate, nsfw } = parsed.data
+  const authUser = authGuard(event)
+  const { page, pageSize, ...filters } = await parseQuery(event, Query)
 
   const result = await extensionsService().listExtensions({
-    isAdmin: !!actor.canManageExtensions,
-    viewerCanSeeNsfw: !!actor.allowNsfw && !!actor.showNsfw,
+    isAdmin: !!authUser.canManageExtensions,
+    viewerCanSeeNsfw: !!authUser.allowNsfw && !!authUser.showNsfw,
     page,
     pageSize,
-    filters: { search, isInstalled, hasUpdate, nsfw },
+    filters,
   })
 
-  return toExtensionListResponseDto(result)
+  return toPageDto(result, toExtensionDto)
 })

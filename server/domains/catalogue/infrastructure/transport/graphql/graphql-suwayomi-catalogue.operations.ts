@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { graphql } from '../../../../../utils/suwayomi/generated'
 
 // NOTE: field names match the committed schema.graphql SDL.
@@ -17,22 +18,54 @@ export const LIST_SOURCES = graphql(`
   }
 `)
 
-// fetchSourceManga is a mutation but an idempotent fetch — re-fetching a search
-// page re-upserts the same rows in Suwayomi with no client-visible side effects,
-// so the client's transport/timeout retry policy is safe here.
-// NOTE: Suwayomi exposes source search as a mutation (fetchSourceManga), not a query.
-// The type field must be SEARCH to perform a keyword search.
-// sourceId is LongString! in the SDL (a 64-bit int encoded as string).
+// fetchSourceManga browses a source by type: SEARCH (uses query), POPULAR, or LATEST.
+// query is optional — only SEARCH uses it; popular/latest pass null.
+// sourceId is LongString! (a 64-bit int encoded as string).
 export const SEARCH_SOURCE = graphql(`
-  mutation SearchSource($sourceId: LongString!, $query: String!, $page: Int!) {
-    fetchSourceManga(input: { source: $sourceId, query: $query, page: $page, type: SEARCH }) {
+  mutation SearchSource($sourceId: LongString!, $type: FetchSourceMangaType!, $query: String, $page: Int!, $filters: [FilterChangeInput!]) {
+    fetchSourceManga(input: { source: $sourceId, type: $type, query: $query, page: $page, filters: $filters }) {
       mangas {
         id
         title
         thumbnailUrl
         inLibrary
+        # MangaType.realUrl is String (nullable) — the resolved manga page URL on the source site.
+        realUrl
       }
       hasNextPage
+    }
+  }
+`)
+
+// A source's dynamic filters (SourceType.filters: [Filter!]!). The union members
+// each alias `default` to a distinct key to avoid a field-type conflict, and
+// __typename drives discrimination in the mapper. Groups nest one level (leaves only).
+export const GET_SOURCE_FILTERS = graphql(`
+  query GetSourceFilters($sourceId: LongString!) {
+    source(id: $sourceId) {
+      filters {
+        __typename
+        ... on CheckBoxFilter { name checkBoxDefault: default }
+        ... on TriStateFilter { name triDefault: default }
+        ... on SelectFilter { name selectDefault: default values }
+        ... on TextFilter { name textDefault: default }
+        ... on SortFilter { name sortDefault: default { ascending index } values }
+        ... on HeaderFilter { name }
+        ... on SeparatorFilter { name }
+        ... on GroupFilter {
+          name
+          filters {
+            __typename
+            ... on CheckBoxFilter { name checkBoxDefault: default }
+            ... on TriStateFilter { name triDefault: default }
+            ... on SelectFilter { name selectDefault: default values }
+            ... on TextFilter { name textDefault: default }
+            ... on SortFilter { name sortDefault: default { ascending index } values }
+            ... on HeaderFilter { name }
+            ... on SeparatorFilter { name }
+          }
+        }
+      }
     }
   }
 `)
@@ -57,6 +90,33 @@ export const GET_MANGA_DETAILS = graphql(`
           uploadDate
           isDownloaded
         }
+      }
+    }
+  }
+`)
+
+// Cheap existence probe before the expensive fetchChapters scrape. The filtered
+// `mangas` list resolves from Suwayomi's DB and returns cleanly (totalCount 0, no
+// GraphQL error) for an unknown id — unlike `manga(id)` / `fetchChapters`, which
+// raise on a missing manga and could not be told apart from a source being down.
+export const MANGA_EXISTS = graphql(`
+  query MangaExists($id: Int!) {
+    mangas(filter: { id: { equalTo: $id } }) {
+      totalCount
+    }
+  }
+`)
+
+// Eager chapter enrichment for a search result. fetchChapters is a mutation that
+// makes Suwayomi fetch the manga's chapter list from the remote source (it hits the
+// site), then returns the full list. We derive count + last chapter from it.
+// mangaId is Int! in the SDL — convert from the domain string id before calling.
+export const FETCH_CHAPTERS = graphql(`
+  mutation FetchSourceMangaChapters($mangaId: Int!) {
+    fetchChapters(input: { mangaId: $mangaId }) {
+      chapters {
+        name
+        uploadDate
       }
     }
   }

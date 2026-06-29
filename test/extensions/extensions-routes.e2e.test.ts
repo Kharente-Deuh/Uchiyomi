@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import process from 'node:process'
 import { $fetch, fetch, setup } from '@nuxt/test-utils/e2e'
 import { PrismaPg } from '@prisma/adapter-pg'
@@ -133,12 +134,11 @@ describeIf('extensions routes e2e', async () => {
   const itWithSuwayomi = suwayomiBase ? it : it.skip
 
   itWithSuwayomi('GET /api/extensions → 200 with paginated shape (requires SUWAYOMI_URL)', async () => {
-    const res = await $fetch<{ items: unknown[], page: number, pageSize: number, totalCount: number }>('/api/extensions', {
+    const res = await $fetch<{ items: unknown[], total: number }>('/api/extensions', {
       headers: { cookie: adminCookie },
     })
     expect(Array.isArray(res.items)).toBe(true)
-    expect(typeof res.totalCount).toBe('number')
-    expect(res.page).toBe(1)
+    expect(typeof res.total).toBe('number')
   })
 
   itWithSuwayomi('GET /api/extensions?isInstalled=false → admin-only filtered items (requires SUWAYOMI_URL)', async () => {
@@ -146,11 +146,13 @@ describeIf('extensions routes e2e', async () => {
     expect(res.items.every(e => e.isInstalled === false)).toBe(true)
   })
 
-  itWithSuwayomi('GET /api/extensions/nonexistent/sources → 200 empty array (requires SUWAYOMI_URL)', async () => {
+  // Overlay-only route (no Suwayomi load): an unknown pkgName yields an empty
+  // source list, not a 404 — so this runs without a live engine.
+  it('gET /api/extensions/nonexistent/sources → 200 empty array', async () => {
     const res = await $fetch<{ sources: unknown[] }>('/api/extensions/com.nonexistent.pkg/sources', {
       headers: { cookie: adminCookie },
     })
-    expect(Array.isArray(res.sources)).toBe(true)
+    expect(res.sources).toEqual([])
   })
 
   // Install happy-path — mutates Suwayomi state, gated on SUWAYOMI_URL.
@@ -168,40 +170,117 @@ describeIf('extensions routes e2e', async () => {
     expect(res.status).not.toBe(403)
   })
 
-  // ----------------------------------------------------------------
-  // Source preferences routes — 403 gate (always-run, no Suwayomi needed).
-  // ----------------------------------------------------------------
+  // Icon visibility — managers may preview the icon of a not-yet-installed
+  // extension (adminBypassesInstallCheck), regular users may not. Discovers a
+  // real not-installed, non-NSFW extension from the catalogue so it stays robust
+  // across environments; skips its assertions if the engine has none.
+  itWithSuwayomi('GET /api/extensions/:pkgName/icon → manager bypasses the install gate that blocks a regular user', async () => {
+    const list = await $fetch<{ items: { pkgName: string, isInstalled: boolean, isNsfw: boolean }[] }>(
+      '/api/extensions?isInstalled=false&pageSize=50',
+      { headers: { cookie: adminCookie } },
+    )
+    const candidate = list.items.find(e => !e.isInstalled && !e.isNsfw)
+    if (!candidate) {
+      return // No not-installed extension available in this engine — nothing to assert.
+    }
 
-  it('gET /api/sources/1/preferences → 403 for non-admin user', async () => {
-    const res = await fetch('/api/sources/1/preferences', { headers: { cookie: nonAdminCookie } })
-    expect(res.status).toBe(403)
+    // Regular user: not installed → 403.
+    const asRegular = await fetch(`/api/extensions/${candidate.pkgName}/icon`, { headers: { cookie: nonAdminCookie } })
+    expect(asRegular.status).toBe(403)
+
+    // Manager: install gate bypassed → reaches the Suwayomi proxy (200, or 502 if
+    // the upstream icon fetch fails), never 403.
+    const asManager = await fetch(`/api/extensions/${candidate.pkgName}/icon`, { headers: { cookie: extManagerCookie } })
+    expect(asManager.status).not.toBe(403)
   })
 
-  it('pATCH /api/sources/1 → 403 for non-admin user', async () => {
-    const res = await fetch('/api/sources/1', {
-      method: 'PATCH',
+  // ----------------------------------------------------------------
+  // Source enable/disable route — 403 gate (always-run, no Suwayomi needed).
+  // POST /api/extensions/:pkgName/sources/:id/enable
+  // ----------------------------------------------------------------
+
+  it('pOST /api/extensions/:pkgName/sources/:id/enable → 403 for non-admin user', async () => {
+    const res = await fetch('/api/extensions/any.pkg/sources/1/enable', {
+      method: 'POST',
       headers: { 'content-type': 'application/json', 'cookie': nonAdminCookie },
       body: JSON.stringify({ isEnabled: false }),
     })
     expect(res.status).toBe(403)
   })
 
-  it('pUT /api/sources/1/preferences → 403 for non-admin user', async () => {
-    const res = await fetch('/api/sources/1/preferences', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'cookie': nonAdminCookie },
-      body: JSON.stringify({ position: 0 }),
+  it('pOST /api/extensions/:pkgName/sources/:id/enable → 400 for ext-manager with invalid body (missing isEnabled)', async () => {
+    // Guards validate the body before any Suwayomi/DB call — safe to run always.
+    const res = await fetch('/api/extensions/any.pkg/sources/1/enable', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'cookie': extManagerCookie },
+      body: JSON.stringify({}),
     })
+    expect(res.status).toBe(400)
+  })
+
+  // SUWAYOMI-gated: deeper enable.post guards require a Suwayomi-backed instance:
+  //   - 404 when extension pkgName is unknown
+  //   - 403 when extension is not installed or hasUpdate
+  //   - 404 when sourceId is unknown for that extension
+  // Add under itWithSuwayomi + itWithSourceId once those env vars are available.
+
+  // ----------------------------------------------------------------
+  // Extension sources/settings routes — 403/400 gate (always-run, no Suwayomi needed).
+  // GET/PUT /api/extensions/:pkgName/sources/settings
+  // ----------------------------------------------------------------
+
+  it('gET /api/extensions/:pkgName/sources/settings → 403 for non-admin user', async () => {
+    const res = await fetch('/api/extensions/any.pkg/sources/settings', { headers: { cookie: nonAdminCookie } })
     expect(res.status).toBe(403)
   })
 
-  // Source preferences happy-path — gated on SUWAYOMI_URL.
-  // Uses a configurable source id from env (TEST_SOURCE_ID) or skips if not available.
-  const testSourceId = process.env.TEST_SOURCE_ID
-  const itWithSourceId = suwayomiBase && testSourceId ? it : it.skip
+  describe('pUT /api/extensions/:pkgName/sources/settings', () => {
+    it('rejects a non-admin with 403', async () => {
+      await expect($fetch('/api/extensions/any.pkg/sources/settings', {
+        method: 'PUT',
+        headers: { cookie: nonAdminCookie },
+        body: { not: 'valid' },
+      }))
+        .rejects
+        .toMatchObject({ response: { status: 403 } })
+    })
 
-  itWithSourceId('GET /api/sources/:id/preferences → 200 with preferences array (requires SUWAYOMI_URL + TEST_SOURCE_ID)', async () => {
-    const res = await $fetch<{ preferences: unknown[] }>(`/api/sources/${testSourceId}/preferences`, { headers: { cookie: extManagerCookie } })
-    expect(Array.isArray(res.preferences)).toBe(true)
+    it('rejects an invalid PUT body with 400', async () => {
+      await expect($fetch('/api/extensions/any.pkg/sources/settings', {
+        method: 'PUT',
+        headers: { cookie: extManagerCookie },
+        body: { not: 'valid' },
+      }))
+        .rejects
+        .toMatchObject({ response: { status: 400 } })
+    })
+
+    it('rejects a settings PUT where a list pref is missing entries with 400', async () => {
+      // list/multiSelect prefs in the echo body must include entries and entryValues.
+      await expect($fetch('/api/extensions/any.pkg/sources/settings', {
+        method: 'PUT',
+        headers: { cookie: extManagerCookie },
+        body: {
+          common: [{ position: 0, type: 'list', visible: true }], // missing entries/entryValues
+          sources: [],
+        },
+      }))
+        .rejects
+        .toMatchObject({ response: { status: 400 } })
+    })
+
+    it('rejects a settings PUT where a switch pref is missing booleanDefault with 400', async () => {
+      // switch/checkbox prefs in the echo body must include booleanDefault.
+      await expect($fetch('/api/extensions/any.pkg/sources/settings', {
+        method: 'PUT',
+        headers: { cookie: extManagerCookie },
+        body: {
+          common: [{ position: 0, type: 'switch', visible: true }], // missing booleanDefault
+          sources: [],
+        },
+      }))
+        .rejects
+        .toMatchObject({ response: { status: 400 } })
+    })
   })
 })

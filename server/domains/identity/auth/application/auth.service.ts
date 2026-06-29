@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { SessionModel } from '../../sessions/session.domain'
 import type { UserModel } from '../../users/user.domain'
 import type { ChangePasswordUseCaseOpts, LoginUseCaseOpts, LogoutUseCaseOpts, SetupFirstAdminUseCaseOpts } from './usecases'

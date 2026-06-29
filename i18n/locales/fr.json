@@ -93,10 +93,6 @@
     "empty": {
       "title": "Aucune extension installée pour le moment"
     },
-    "health": {
-      "ok": "Fonctionnelle",
-      "error": "Erreur"
-    },
     "actions": {
       "install": "Installer",
       "uninstall": "Désinstaller"
@@ -116,7 +112,6 @@
     },
     "filters": {
       "nsfw": "NSFW",
-      "healthy": "Fonctionnelle",
       "installed": "Installée",
       "hasUpdate": "À jour"
     },
@@ -127,7 +122,8 @@
     },
     "uninstall": {
       "confirmation": "Voulez-vous vraiment désinstaller l’extension suivante ?"
-    }
+    },
+    "multiLanguages": "Multi langues"
   },
   "library": {
     "badges": {
@@ -136,7 +132,50 @@
   },
   "sources": {
     "settings": {
-      "title": "Réglages de la source"
+      "title": "Réglages de la source",
+      "errors": {
+        "loadFailed": "Impossible de charger les paramètres des sources"
+      },
+      "noSettings": "Aucun paramètre",
+      "common": {
+        "title": "Paramètres communs"
+      }
+    },
+    "title": "Sources",
+    "errors": {
+      "disableFailed": "Échec de la désactivation de la source",
+      "enableFailed": "Impossible d'activer la source",
+      "loadFailed": "Impossible de charger les sources"
+    },
+    "all": "Toutes",
+    "enabled": "{count} sur {total} activées",
+    "deselectAll": "Tout désélectionner",
+    "diableAll": "Désactiver tout",
+    "count": "Aucune source | 1 source | {count} sources",
+    "btn": {
+      "enabled": "Activées"
+    },
+    "series": {
+      "searchType": {
+        "popular": "Populaire",
+        "latest": "Plus récent",
+        "search": "Recherche"
+      },
+      "search": {
+        "errors": {
+          "loadFailed": "Échec du chargement des séries"
+        },
+        "empty": "Aucune série trouvée"
+      },
+      "filters": {
+        "btn": "Filtres",
+        "title": "Filtres",
+        "apply": "Appliquer",
+        "reset": "Réinitialiser",
+        "errors": {
+          "loadFailed": "Échec du chargement des filtres"
+        }
+      }
     }
   },
   "settings": {
@@ -188,7 +227,8 @@
     "continue": "Continuer",
     "install": "Installer",
     "update": "Mise à jour",
-    "uninstall": "Désinstaller"
+    "uninstall": "Désinstaller",
+    "settings": "Paramètres"
   },
   "browse": {
     "title": "Parcourir",
@@ -201,9 +241,26 @@
     }
   },
   "series": {
-    "title": "Séries"
+    "title": "Séries",
+    "summary": {
+      "chapterCount": "Aucun chapitre | 1 Chapitre | {count} chapitres",
+      "errors": {
+        "loadFailed": "Échec du chargement des données"
+      },
+      "lastChapter": "Dernier chapitre",
+      "alreadyInLibrary": "Déjà en bibliothèque"
+    }
   },
   "fields": {
     "search": "Recherche"
+  },
+  "extension": {
+    "uninstall": {
+      "confirmation": "Voulez-vous vraiment désinstaller cette extension ?"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger l'extension",
+      "uninstallFailed": "Impossible de désinstaller l'extension"
+    }
   }
 }

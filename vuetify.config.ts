@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { defineVuetifyConfiguration } from 'vuetify-nuxt-module/custom-configuration'
 
 /**
@@ -58,8 +59,8 @@ export default defineVuetifyConfiguration({
           'primary': '#14b8a6',
           'primary-darken-1': '#0d9488',
           'on-primary': '#04211d',
-          'secondary': '#64748b',
-          'secondary-darken-1': '#475569',
+          'secondary': '#7d99c1',
+          'secondary-darken-1': '#64748b',
           'error': '#e5484d',
           'info': '#4d96d9',
           'success': '#3fb950',

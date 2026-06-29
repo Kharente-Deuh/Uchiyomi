@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { graphql } from '../../../../../utils/suwayomi/generated'
 
 // Managed subset only (ADR-0012). Extend alongside the allowlist in M6.2.

@@ -45,7 +45,6 @@
   "iconify.annotations": true,
   "iconify.inplace": true,
   "i18n-ally.localesPaths": [
-    "i18n",
     "i18n/locales"
   ],
   "search.exclude": {
@@ -59,6 +58,12 @@
     "pnpm-lock.yaml": true
   },
   "files.exclude": {
+    ".claude": true,
+    ".conductor": true,
+    ".superpowers": true,
+    ".nuxtrc": true,
+    "docs/superpowers/": true,
+    "docs/design/": true,
     "**/node_modules": true,
     "**/bower_components": true,
     "**/*.code-search": true,

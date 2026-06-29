@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { SuwayomiError } from '../../server/utils/suwayomi/errors'

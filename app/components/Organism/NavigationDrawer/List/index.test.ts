@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { NavigationDrawerListProps } from './index.vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
@@ -9,8 +10,8 @@ import List from './index.vue'
 const props: NavigationDrawerListProps = {
   title: 'SYSTEM',
   items: [
-    { icon: 'fa6-solid:gear', title: 'Settings', to: '/settings', isActiveFn: () => false },
-    { icon: 'fa6-solid:house', title: 'Home', to: '/', isActiveFn: () => false },
+    { icon: 'fa6-solid:gear', title: 'Settings', to: '/settings', isActiveFn: () => false, baseRoute: '/somewhere-else' },
+    { icon: 'fa6-solid:house', title: 'Home', to: '/', isActiveFn: () => false, baseRoute: '/somewhere-else' },
   ],
 }
 

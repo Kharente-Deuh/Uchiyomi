@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, expect, it } from 'vitest'
-import { preferenceToDomain, toChangeInput } from '../../server/domains/extensions/infrastructure/transport/graphql/graphql-suwayomi-extensions.mapper'
+import { preferenceToDomain, sourceToDomain, toChangeInput } from '../../server/domains/extensions/infrastructure/transport/graphql/graphql-suwayomi-extensions.mapper'
+
+describe('sourceToDomain', () => {
+  it('maps supportsLatest: true', () => {
+    const domain = sourceToDomain({ id: 's1', name: 'Source 1', lang: 'en', isNsfw: false, isConfigurable: false, supportsLatest: true })
+    expect(domain).toMatchObject({ id: 's1', name: 'Source 1', lang: 'en', isNsfw: false, isConfigurable: false, supportsLatest: true })
+  })
+
+  it('maps supportsLatest: false', () => {
+    const domain = sourceToDomain({ id: 's2', name: 'Source 2', lang: 'fr', isNsfw: true, isConfigurable: true, supportsLatest: false })
+    expect(domain).toMatchObject({ id: 's2', supportsLatest: false })
+  })
+})
 
 describe('preferenceToDomain', () => {
   it('maps a SwitchPreference', () => {
@@ -64,22 +77,22 @@ describe('preferenceToDomain', () => {
 
 describe('toChangeInput', () => {
   it('builds switchState for a switch', () => {
-    expect(toChangeInput('switch', { sourceId: '1', position: 0, booleanValue: true })).toEqual({ position: 0, switchState: true })
+    expect(toChangeInput({ position: 0, type: 'switch', booleanValue: true })).toEqual({ position: 0, switchState: true })
   })
 
   it('builds checkBoxState for a checkbox', () => {
-    expect(toChangeInput('checkbox', { sourceId: '1', position: 1, booleanValue: false })).toEqual({ position: 1, checkBoxState: false })
+    expect(toChangeInput({ position: 1, type: 'checkbox', booleanValue: false })).toEqual({ position: 1, checkBoxState: false })
   })
 
   it('builds editTextState for editText', () => {
-    expect(toChangeInput('editText', { sourceId: '1', position: 0, textValue: 'hello' })).toEqual({ position: 0, editTextState: 'hello' })
+    expect(toChangeInput({ position: 0, type: 'editText', textValue: 'hello' })).toEqual({ position: 0, editTextState: 'hello' })
   })
 
   it('builds listState for a list', () => {
-    expect(toChangeInput('list', { sourceId: '1', position: 1, textValue: 'b' })).toEqual({ position: 1, listState: 'b' })
+    expect(toChangeInput({ position: 1, type: 'list', textValue: 'b' })).toEqual({ position: 1, listState: 'b' })
   })
 
   it('builds multiSelectState for a multiSelect', () => {
-    expect(toChangeInput('multiSelect', { sourceId: '1', position: 2, multiValue: ['a', 'b'] })).toEqual({ position: 2, multiSelectState: ['a', 'b'] })
+    expect(toChangeInput({ position: 2, type: 'multiSelect', multiValue: ['a', 'b'] })).toEqual({ position: 2, multiSelectState: ['a', 'b'] })
   })
 })

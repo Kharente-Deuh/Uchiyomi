@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Flat ESM module, consumed via `import * as User`.
 export type UserRole = 'ADMIN' | 'USER'
 export type UserStatus = 'ACTIVE' | 'DISABLED'

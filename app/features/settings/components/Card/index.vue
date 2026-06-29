@@ -1,5 +1,5 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-// SPDX-License-Identifier: AGPL-3.0-or-later
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -18,12 +18,19 @@ const { mobile } = useDisplay()
     :title="title"
     :admin-only="adminOnly"
   >
+    <template #append-title>
+      <slot name="append-title" />
+    </template>
     <slot />
   </SettingsCardMobile>
   <SettingsCardDesktop
     v-else
     v-bind="props"
   >
+    <template #append-title>
+      <slot name="append-title" />
+    </template>
+
     <slot />
   </SettingsCardDesktop>
 </template>

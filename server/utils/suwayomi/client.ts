@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core'
 import { ClientError, GraphQLClient } from 'graphql-request'
 import { classifySuwayomiError } from './errors'

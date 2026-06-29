@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { Ref } from 'vue'
 import type { InferType } from 'yup'
 import type { AnyObjectSchema, ArrayFieldApi, FieldApi, UseFormOptions, UseFormReturn, VuetifyFieldProps } from './types'

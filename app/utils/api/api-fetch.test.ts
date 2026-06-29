@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { __resetSessionLost, handleResponseError, onSessionLost } from './api-fetch'
 

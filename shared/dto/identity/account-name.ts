@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Single source of truth for the account-name identifier rule (Lot A).
 // Pure: NO zod / yup import — the server (zod) and front (yup) each build their
 // own validator from these constants so neither bundle pulls the other's lib.

@@ -93,10 +93,6 @@
     "empty": {
       "title": "No extensions installed yet"
     },
-    "health": {
-      "ok": "Healthy",
-      "error": "Error"
-    },
     "actions": {
       "install": "Install",
       "uninstall": "Uninstall"
@@ -116,7 +112,6 @@
     },
     "filters": {
       "nsfw": "NSFW",
-      "healthy": "Healthy",
       "installed": "Installed",
       "hasUpdate": "Up to date"
     },
@@ -127,7 +122,8 @@
     },
     "uninstall": {
       "confirmation": "Do you really want to uninstall the following extension ?"
-    }
+    },
+    "multiLanguages": "Multi languages"
   },
   "library": {
     "badges": {
@@ -136,7 +132,50 @@
   },
   "sources": {
     "settings": {
-      "title": "Source settings"
+      "title": "Source settings",
+      "errors": {
+        "loadFailed": "Cannot load sources settings"
+      },
+      "noSettings": "No settings",
+      "common": {
+        "title": "Common settings"
+      }
+    },
+    "title": "Sources",
+    "errors": {
+      "disableFailed": "Failed to disable source",
+      "enableFailed": "Fail to enable source",
+      "loadFailed": "Cannot load sources"
+    },
+    "all": "All sources",
+    "enabled": "{count} of {total} enabled",
+    "deselectAll": "Deselect all",
+    "diableAll": "Disable all",
+    "count": "No sources | 1 source | {count} sources",
+    "btn": {
+      "enabled": "Enabled"
+    },
+    "series": {
+      "searchType": {
+        "popular": "Popular",
+        "latest": "Latest",
+        "search": "Search"
+      },
+      "search": {
+        "errors": {
+          "loadFailed": "Failed to load series"
+        },
+        "empty": "No series found"
+      },
+      "filters": {
+        "btn": "Filters",
+        "title": "Filters",
+        "apply": "Apply",
+        "reset": "Reset",
+        "errors": {
+          "loadFailed": "Failed to load filters"
+        }
+      }
     }
   },
   "settings": {
@@ -188,7 +227,8 @@
     "continue": "Continue",
     "uninstall": "Uninstall",
     "install": "Install",
-    "update": "Update"
+    "update": "Update",
+    "settings": "Settings"
   },
   "browse": {
     "title": "Browse",
@@ -201,9 +241,26 @@
     }
   },
   "series": {
-    "title": "Series"
+    "title": "Series",
+    "summary": {
+      "chapterCount": "No chapters | 1 Chapter | {count} Chapters",
+      "errors": {
+        "loadFailed": "Failed to load data"
+      },
+      "lastChapter": "Last chapter",
+      "alreadyInLibrary": "Already in library"
+    }
   },
   "fields": {
     "search": "Search"
+  },
+  "extension": {
+    "uninstall": {
+      "confirmation": "Do you truly want to uninstall this extension ?"
+    },
+    "errors": {
+      "loadFailed": "Could not load extension",
+      "uninstallFailed": "Could not uninstall extension"
+    }
   }
 }

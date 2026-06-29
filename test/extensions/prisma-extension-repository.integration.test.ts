@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @vitest-environment node
 import process from 'node:process'
 import { PrismaPg } from '@prisma/adapter-pg'
@@ -20,7 +21,6 @@ describeIf('PrismaExtensionRepository', () => {
   }
 
   beforeEach(async () => {
-    await prisma.extensionErrorLog.deleteMany()
     await prisma.subscription.deleteMany()
     await prisma.series.deleteMany()
     await prisma.source.deleteMany()
@@ -28,7 +28,6 @@ describeIf('PrismaExtensionRepository', () => {
     await prisma.appUser.deleteMany()
   })
   afterAll(async () => {
-    await prisma.extensionErrorLog.deleteMany()
     await prisma.subscription.deleteMany()
     await prisma.series.deleteMany()
     await prisma.source.deleteMany()
@@ -37,33 +36,18 @@ describeIf('PrismaExtensionRepository', () => {
     await prisma.$disconnect()
   })
 
-  it('upserts an installed extension and lists health', async () => {
+  it('upserts an installed extension', async () => {
     const userId = await makeUser()
     await repo.upsertInstalled({ pkgName: 'p1', name: 'P1', lang: 'en', isNsfw: false, installedByUserId: userId })
-    const health = await repo.listHealthByPkgNames(['p1'])
-    expect(health).toHaveLength(1)
-    expect(health[0]).toMatchObject({ pkgName: 'p1', health: 'OK', consecutiveFailures: 0 })
+    const row = await prisma.extension.findUnique({ where: { pkgName: 'p1' } })
+    expect(row).toMatchObject({ pkgName: 'p1', name: 'P1', lang: 'en', installedByUserId: userId })
   })
 
-  it('records a failure then a success', async () => {
+  it('deletes by pkgName', async () => {
     const userId = await makeUser()
     await repo.upsertInstalled({ pkgName: 'p1', name: 'P1', lang: 'en', isNsfw: false, installedByUserId: userId })
-    await repo.recordFailure({ pkgName: 'p1', message: 'boom', context: 'install' })
-    let h = await repo.findHealth('p1')
-    expect(h).toMatchObject({ health: 'ERROR', consecutiveFailures: 1, lastErrorMessage: 'boom' })
-    expect(await repo.listErrorLog('p1')).toHaveLength(1)
-    await repo.recordSuccess('p1')
-    h = await repo.findHealth('p1')
-    expect(h).toMatchObject({ health: 'OK', consecutiveFailures: 0 })
-  })
-
-  it('deletes by pkgName (cascades error log)', async () => {
-    const userId = await makeUser()
-    await repo.upsertInstalled({ pkgName: 'p1', name: 'P1', lang: 'en', isNsfw: false, installedByUserId: userId })
-    await repo.recordFailure({ pkgName: 'p1', message: 'x' })
     await repo.deleteByPkgName('p1')
-    expect(await repo.findHealth('p1')).toBeUndefined()
-    expect(await repo.listErrorLog('p1')).toHaveLength(0)
+    expect(await prisma.extension.findUnique({ where: { pkgName: 'p1' } })).toBeNull()
   })
 
   it('deleteByPkgName drops source rows but preserves followed series and subscriptions', async () => {

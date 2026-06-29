@@ -1,5 +1,6 @@
-import type { Ref } from 'vue'
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
+import type { Ref } from 'vue'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -78,7 +79,7 @@ describe('useExtensions', () => {
     queryStub.isLoading.value = false
     // Filter mutations trigger the internal watch → fetchExtensions; give it a
     // benign default so unrelated tests don't crash on an unmocked response.
-    mockApi.listExtensions.mockResolvedValue({ success: true, data: { items: [], totalCount: 0 } })
+    mockApi.listExtensions.mockResolvedValue({ success: true, data: { items: [], total: 0 } })
   })
 
   // --- reactive filters ---

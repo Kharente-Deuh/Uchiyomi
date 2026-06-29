@@ -5,10 +5,12 @@
     "antfu.goto-alias",
     "csstools.postcss",
     "dbaeumer.vscode-eslint",
-    "vue.volar",
     "antfu.pnpm-catalog-lens",
     "lokalise.i18n-ally",
     "prisma.prisma",
     "prisma.vscode-graphql"
+  ],
+  "unwantedRecommendations": [
+    "esbenp.prettier-vscode"
   ]
 }

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
 import { h } from 'vue'
@@ -19,7 +20,7 @@ describe('moleculePaginationFooter', () => {
   })
 
   it('disables the previous button on the first page', async () => {
-    const wrapper = await mountSuspended(wrap({ modelValue: 1, pagesTotal: 5 }))
+    const wrapper = await mountSuspended(wrap({ modelValue: 1, pagesTotal: 5, hasNextPage: true }))
     const [prev, next] = wrapper.findAll('button')
     expect((prev!.element as HTMLButtonElement).disabled).toBe(true)
     expect((next!.element as HTMLButtonElement).disabled).toBe(false)
@@ -46,7 +47,7 @@ describe('moleculePaginationFooter', () => {
   })
 
   it('increments the page when clicking next', async () => {
-    const wrapper = await mountSuspended(wrap({ modelValue: 3, pagesTotal: 5 }))
+    const wrapper = await mountSuspended(wrap({ modelValue: 3, pagesTotal: 5, hasNextPage: true }))
     await wrapper.findAll('button')[1]!.trigger('click')
     expect(wrapper.findComponent(PaginationFooter).emitted('update:modelValue')![0]).toEqual([4])
   })

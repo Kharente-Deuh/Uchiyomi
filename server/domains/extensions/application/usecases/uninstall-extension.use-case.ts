@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { IUseCase } from '../../../../shared/use-case'
-import type { ExtensionsOverlayRepository, ListedExtension, SuwayomiExtensionsPort } from '../../extension.domain'
-import { toListedExtension } from '../../extension.domain'
+
+import type { IUseCase } from '~~/server/shared'
+import type { ExtensionModel, ExtensionsOverlayRepository, SuwayomiExtensionsPort } from '../../extension.domain'
 
 export interface UninstallExtensionUseCaseOpts {
   pkgName: string
 }
 
-export class UninstallExtensionUseCase implements IUseCase<UninstallExtensionUseCaseOpts, ListedExtension> {
+export class UninstallExtensionUseCase implements IUseCase<UninstallExtensionUseCaseOpts, ExtensionModel> {
   constructor(
     private readonly suwayomi: SuwayomiExtensionsPort,
     private readonly overlay: ExtensionsOverlayRepository,
   ) {}
 
-  async execute(opts: UninstallExtensionUseCaseOpts): Promise<ListedExtension> {
+  async execute(opts: UninstallExtensionUseCaseOpts): Promise<ExtensionModel> {
     const meta = await this.suwayomi.getExtension(opts.pkgName)
     if (!meta) {
       throw new Error(`Extension not found: ${opts.pkgName}`)
@@ -22,8 +22,6 @@ export class UninstallExtensionUseCase implements IUseCase<UninstallExtensionUse
     await this.suwayomi.uninstall(opts.pkgName)
     await this.overlay.deleteByPkgName(opts.pkgName)
 
-    // The extension is now uninstalled and its overlay health row is gone, so
-    // health is omitted (toListedExtension yields isHealthy: undefined anyway).
-    return toListedExtension({ ...meta, isInstalled: false })
+    return { ...meta, isInstalled: false }
   }
 }

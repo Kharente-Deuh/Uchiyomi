@@ -10,6 +10,7 @@ export interface RawSource {
   isNsfw: boolean
   isConfigurable: boolean
   isEnabled: boolean
+  supportsLatest: boolean
 }
 
 export function sourceToDomain(row: RawSource): StoredExtensionSource {
@@ -21,5 +22,6 @@ export function sourceToDomain(row: RawSource): StoredExtensionSource {
     isNsfw: row.isNsfw,
     isConfigurable: row.isConfigurable,
     isEnabled: row.isEnabled,
+    supportsLatest: row.supportsLatest,
   }
 }

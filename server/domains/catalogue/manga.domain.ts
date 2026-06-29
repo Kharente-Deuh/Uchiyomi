@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Flat ESM module, consumed via `import * as Manga`.
 
 import type { ChapterModel } from './chapter.domain'
@@ -8,6 +9,7 @@ export class MangaSummaryModel {
   declare title: string
   declare thumbnailUrl?: string
   declare inLibrary: boolean
+  declare realUrl?: string
 
   constructor(data: MangaSummaryModel) {
     Object.assign<MangaSummaryModel, MangaSummaryModel>(this, data)
@@ -23,5 +25,14 @@ export class MangaDetailsModel extends MangaSummaryModel {
   constructor(data: MangaDetailsModel) {
     super(data)
     Object.assign<MangaDetailsModel, MangaDetailsModel>(this, data)
+  }
+}
+
+export class MangaChapterSummaryModel {
+  declare chapterCount: number
+  declare lastChapter: { name: string, uploadedAt: string } | null
+
+  constructor(data: MangaChapterSummaryModel) {
+    Object.assign<MangaChapterSummaryModel, MangaChapterSummaryModel>(this, data)
   }
 }

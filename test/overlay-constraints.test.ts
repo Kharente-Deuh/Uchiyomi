@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @vitest-environment node
 import type { Series } from '../prisma/generated/client'
 import process from 'node:process'

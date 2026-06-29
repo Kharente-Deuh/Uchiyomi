@@ -68,11 +68,6 @@ enum DownloadPriority {
   BACKFILL
 }
 
-enum ExtensionHealth {
-  OK
-  ERROR
-}
-
 model AppUser {
   id                  String   @id @default(cuid())
   accountName         String   @unique @map("account_name")
@@ -207,30 +202,12 @@ model Extension {
   isNsfw              Boolean         @default(false) @map("is_nsfw")
   installedByUserId   String?         @map("installed_by_user_id")
   installedAt         DateTime        @default(now()) @map("installed_at")
-  health              ExtensionHealth @default(OK)
-  consecutiveFailures Int             @default(0) @map("consecutive_failures")
-  lastErrorAt         DateTime?       @map("last_error_at")
-  lastErrorMessage    String?         @map("last_error_message")
 
-  installedBy AppUser?          @relation("InstalledExtensions", fields: [installedByUserId], references: [id], onDelete: SetNull)
-  errors      ExtensionErrorLog[]
+  installedBy AppUser? @relation("InstalledExtensions", fields: [installedByUserId], references: [id], onDelete: SetNull)
   sources     Source[]
 
   @@index([installedByUserId])
   @@map("extension")
-}
-
-model ExtensionErrorLog {
-  id          String   @id @default(cuid())
-  extensionId String   @map("extension_id")
-  occurredAt  DateTime @default(now()) @map("occurred_at")
-  message     String
-  context     String?
-
-  extension Extension @relation(fields: [extensionId], references: [id], onDelete: Cascade)
-
-  @@index([extensionId, occurredAt])
-  @@map("extension_error_log")
 }
 
 model Source {
@@ -241,6 +218,7 @@ model Source {
   isNsfw         Boolean @default(false) @map("is_nsfw")
   isConfigurable Boolean @default(false) @map("is_configurable")
   isEnabled      Boolean @default(true) @map("is_enabled")
+  supportsLatest Boolean @default(false) @map("supports_latest")
 
   extension Extension @relation(fields: [pkgName], references: [pkgName], onDelete: Cascade)
 

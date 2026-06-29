@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { z } from 'zod'
 // Relative import (NOT `#shared`): this file is imported by a node-environment
 // vitest test, and the vitest `node` project has no `#shared` alias. A relative

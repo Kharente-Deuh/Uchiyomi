@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { ClientError } from 'graphql-request'
 
 export type SuwayomiErrorKind = 'transport' | 'graphql' | 'timeout'
 
-/** Unified error for every Suwayomi client failure (basis for extension-health later). */
+/** Unified error for every Suwayomi client failure. */
 export class SuwayomiError extends Error {
   readonly kind: SuwayomiErrorKind
   override readonly cause?: unknown

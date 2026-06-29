@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { IconAliases, IconProps, IconSet } from 'vuetify'
-import fa6Brands from '@iconify-json/fa6-brands/icons.json'
 import fa6Regular from '@iconify-json/fa6-regular/icons.json'
 import fa6Solid from '@iconify-json/fa6-solid/icons.json'
 import { addCollection, getIcon } from '@iconify/vue'
@@ -9,7 +8,6 @@ import { h } from 'vue'
 
 addCollection(fa6Solid)
 addCollection(fa6Regular)
-addCollection(fa6Brands)
 
 export const aliases: IconAliases = {
   collapse: 'fa6-solid:chevron-up',

@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import type { H3Event } from 'h3'
+import type { ExtensionModel } from '~~/server/domains/extensions/extension.domain'
+import type { AuthGuardOpts } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
+import type { UserModel } from '~~/server/domains/identity/users/user.domain'
+import { extensionsService } from '~~/server/domains/extensions/application/extensions.service'
+import { authGuard } from '~~/server/domains/identity/auth/infrastructure/http/guards/auth.guard'
+
+interface RequireExtensionOpts {
+  installationStatus?: 'installed' | 'not-installed'
+  byPassUpdateCheck?: boolean
+  // When set, a user who canManageExtensions skips the installationStatus gate
+  // entirely. Used by routes (e.g. the icon proxy) where managers legitimately
+  // browse not-yet-installed extensions while regular users are restricted to
+  // the installed set.
+  adminBypassesInstallCheck?: boolean
+}
+
+type ExtensionGuardOpts = AuthGuardOpts & RequireExtensionOpts
+
+// Cheap actor authorization — no I/O. Separated from the extension load so routes
+// that validate a body/query can run authz (401/403) → input validation (400) →
+// resource existence (404) in that order: a non-authorized caller never reaches,
+// and never learns about, input validation or resource existence.
+
+// Loads the extension from Suwayomi (the source of truth for installed / update /
+// nsfw state) and applies the install + NSFW visibility gates. Hits the network,
+// so only call it once cheap authz (authGuard) and input validation have
+// passed. Use it directly for routes with a body/query; the composed
+// extensionGuard below is the shorthand for routes with neither.
+export async function requireExtension(event: H3Event, authUser: UserModel, opts?: RequireExtensionOpts): Promise<ExtensionModel> {
+  const pkgName = getRouterParam(event, 'pkgName')
+  if (!pkgName) {
+    throw createError({ statusCode: 400, statusMessage: 'Missing pkgName' })
+  }
+
+  const extension = await extensionsService().getExtensionByPkgName({ pkgName })
+  if (!extension) {
+    throw createError({ statusCode: 404, statusMessage: 'Extension not found' })
+  }
+
+  const enforceInstallCheck = !(opts?.adminBypassesInstallCheck && authUser.canManageExtensions)
+
+  if (enforceInstallCheck && opts?.installationStatus === 'installed') {
+    if (!extension.isInstalled) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+    }
+
+    if (!opts?.byPassUpdateCheck && extension.hasUpdate) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+    }
+  }
+
+  if (enforceInstallCheck && opts?.installationStatus === 'not-installed' && extension.isInstalled) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  }
+
+  if (!authUser.allowNsfw && extension.isNsfw) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  }
+
+  return extension
+}
+
+// Shorthand for routes with no request body/query to validate: authorize the
+// actor, then load and gate the extension in one call.
+export async function extensionGuard(event: H3Event, opts?: ExtensionGuardOpts): Promise<{ authUser: UserModel, extension: ExtensionModel }> {
+  const authUser = authGuard(event, opts)
+  const extension = await requireExtension(event, authUser, opts)
+
+  return { authUser, extension }
+}

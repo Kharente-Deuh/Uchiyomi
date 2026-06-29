@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // @ts-check
 import type { OptionsConfig, TypedFlatConfigItem } from '@antfu/eslint-config'
 import antfu from '@antfu/eslint-config'
@@ -56,7 +58,15 @@ const customCfg: TypedFlatConfigItem = {
 }
 
 const opts: OptionsConfig & Omit<TypedFlatConfigItem, 'files' | 'ignores'> = {
-  ignores: ['prisma/generated', 'docs', '.nuxt', '.output', 'dist', '**/*.md'],
+  ignores: [
+    'prisma/generated',
+    'docs',
+    '.nuxt',
+    '.output',
+    'dist',
+    '**/*.md',
+    '**/.graphql',
+  ],
   vue: true,
   typescript: true,
   formatters: true,

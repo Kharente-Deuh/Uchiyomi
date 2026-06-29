@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
 export interface ExtensionActionRequestDto {
   action: 'install' | 'uninstall' | 'update'
-}
-
-export interface UpdateSourcePreferenceRequestDto {
-  position: number
-  booleanValue?: boolean
-  textValue?: string
-  multiValue?: string[]
 }
 
 export interface UpdateSourceRequestDto {

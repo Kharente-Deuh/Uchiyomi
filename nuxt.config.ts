@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import process from 'node:process'
 import { pwa } from './app/config/pwa'
 import { appDescription } from './app/constants/index'
 
-// SPDX-License-Identifier: AGPL-3.0-or-later
 export default defineNuxtConfig({
   modules: [
     '@vueuse/nuxt',

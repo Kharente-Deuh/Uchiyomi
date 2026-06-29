@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { IUseCase } from '../../../../shared/use-case'
+
+import type { IUseCase } from '~~/server/shared'
 import type { ExtensionSourceRepository, StoredExtensionSource } from '../../extension.domain'
 
 export interface ListExtensionSourcesUseCaseOpts {
   pkgName: string
   isAdmin: boolean
-  viewerCanSeeNsfw: boolean
+  canSeeNsfw: boolean
 }
 
 export class ListExtensionSourcesUseCase implements IUseCase<ListExtensionSourcesUseCaseOpts, StoredExtensionSource[]> {
   constructor(private readonly sources: ExtensionSourceRepository) {}
 
-  async execute(opts: ListExtensionSourcesUseCaseOpts): Promise<StoredExtensionSource[]> {
-    const all = await this.sources.listByPkg(opts.pkgName)
-    if (opts.isAdmin) {
-      return all
-    }
-
-    return all
-      .filter(s => s.isEnabled)
-      .filter(s => opts.viewerCanSeeNsfw || !s.isNsfw)
+  execute(opts: ListExtensionSourcesUseCaseOpts): Promise<StoredExtensionSource[]> {
+    return this.sources.findMany({
+      pkgName: opts.pkgName,
+      ...(!opts.isAdmin && { isEnabled: true }),
+      ...(!opts.canSeeNsfw && { isNsfw: false }),
+    })
   }
 }
