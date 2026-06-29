@@ -1,7 +1,7 @@
 {
   "name": "uchiyomi",
   "type": "module",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@11.8.0",
   "description": "Self-hosted manga & webtoon server with a modern PWA, built on Suwayomi.",
