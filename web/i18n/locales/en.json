@@ -54,5 +54,16 @@
       "min": "must have at least {min} items",
       "max": "must have at most {max} items"
     }
+  },
+  "login": {
+    "error": {
+      "invalid-credentials": "Invalid username/password",
+      "unknown-error": "Unknown error. Please try again."
+    },
+    "username": "Username",
+    "password": "Password",
+    "title": "Welcome back",
+    "subtitle": "Sign in to your Uchiyomi server",
+    "submit": "Sign in"
   }
 }

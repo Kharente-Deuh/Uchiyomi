@@ -12,6 +12,7 @@ export interface AuthStore {
   status: Ref<AuthStatus>
 
   fetchMe: () => Promise<AuthCheck>
+  setUser: (user: User) => void
   invalidate: () => void
 }
 
@@ -26,6 +27,11 @@ export const useAuthStore = defineStore('auth', (): AuthStore => {
   function invalidate(): void {
     user.value = undefined
     status.value = 'idle'
+  }
+
+  function setUser(next: User): void {
+    user.value = next
+    status.value = 'ready'
   }
 
   async function load(): Promise<AuthCheck> {
@@ -75,6 +81,7 @@ export const useAuthStore = defineStore('auth', (): AuthStore => {
     status,
 
     fetchMe,
+    setUser,
     invalidate,
   }
 })

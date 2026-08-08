@@ -54,5 +54,16 @@
       "min": "doit contenir au moins {min} éléments",
       "max": "doit contenir au maximum {max} éléments"
     }
+  },
+  "login": {
+    "error": {
+      "invalid-credentials": "Nom d'utilisateur/mot de passe invalide",
+      "unknown-error": "Erreur inconnue. \nVeuillez réessayer."
+    },
+    "username": "Nom d'utilisateur",
+    "password": "Mot de passe",
+    "title": "Bienvenue",
+    "subtitle": "Connectez-vous à votre serveur Uchiyomi",
+    "submit": "Se connecter"
   }
 }
