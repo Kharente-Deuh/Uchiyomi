@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ApiResponse } from '~/utils/api'
-import { ApiError, apiFetch } from '~/utils/api'
+import { ApiError, initApi } from '~/utils/api'
 
 export type DoSetupBody = {
   username: string
@@ -26,7 +26,7 @@ function isSetupStatusResponse(value: unknown): value is SetupStatusResponse {
 }
 
 export function createSetupApi(): SetupApi {
-  const api = apiFetch.create({ baseURL: '/api/setup' })
+  const api = initApi('/setup')
 
   async function getSetupStatus(): Promise<SetupState> {
     try {
