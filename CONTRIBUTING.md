@@ -27,8 +27,15 @@ cd web && pnpm dev                        # SPA on :3001
 ```
 
 The Go binary is configured through environment variables only — no config file,
-no flags besides `-healthcheck`. `DB_HOST`, `DB_USER`, `DB_PWD` and `DB_NAME`
-are required; see `api/cmd/uichiyomiserver/config.go` for the full list.
+no flags besides `-healthcheck`. `DB_HOST`, `DB_USER`, `DB_PWD`, `DB_NAME`,
+`PUBLIC_URL` and `OIDC_ENCRYPTION_KEY` are required; see
+`api/cmd/uichiyomiserver/config.go` for the full list.
+
+`OIDC_ENCRYPTION_KEY` is 32 bytes in base64 — `openssl rand -base64 32`. It
+encrypts the OIDC client secrets stored in the database, so changing it makes
+the existing ones unreadable. `PUBLIC_URL` is the externally reachable base URL
+of the instance, used to build the redirect URI registered at the identity
+provider.
 
 In dev, Nuxt proxies `/api` to `:3000`. In production the SPA is embedded into
 the binary through the `webui` build tag (`WITH_WEB=on`), so a single container
