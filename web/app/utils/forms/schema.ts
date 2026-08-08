@@ -10,8 +10,7 @@ function describeAtPath(schema: AnyObjectSchema, path: string): SchemaDescriptio
 
   for (const part of parts) {
     const objectDesc = desc as SchemaObjectDescription
-    // eslint-disable-next-line unicorn/no-computed-property-existence-check
-    if (!objectDesc.fields || !(part in objectDesc.fields)) {
+    if (!objectDesc.fields || !Object.hasOwn(objectDesc.fields, part)) {
       const sub = reach(schema, path) as { describe: () => SchemaDescription }
 
       return sub.describe()

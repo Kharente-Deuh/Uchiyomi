@@ -8,8 +8,11 @@ import { getFieldMeta, validateValues } from './schema'
 
 function flatten(object: Record<string, any>, prefix = ''): Record<string, true> {
   const out: Record<string, true> = {}
-  // eslint-disable-next-line unicorn/no-unreadable-for-of-expression
-  for (const [key, value] of Object.entries(object ?? {})) {
+  if (!object) {
+    return out
+  }
+
+  for (const [key, value] of Object.entries(object)) {
     const path = prefix ? `${prefix}.${key}` : key
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       Object.assign(out, flatten(value, path))
@@ -137,8 +140,8 @@ export function useForm<S extends AnyObjectSchema>(
   }
 
   function touchAll(): void {
-    // eslint-disable-next-line unicorn/no-unreadable-for-of-expression
-    for (const key of Object.keys(flatten(values.value))) {
+    const flattened = flatten(values.value)
+    for (const key of Object.keys(flattened)) {
       touched.value[key] = true
     }
   }
@@ -147,8 +150,7 @@ export function useForm<S extends AnyObjectSchema>(
     touchAll()
     await runValidation()
     if (Object.keys(errors.value).length > 0) {
-      // eslint-disable-next-line unicorn/prefer-simple-condition-first
-      if (options.scrollToError !== false && typeof document !== 'undefined') {
+      if (typeof document !== 'undefined' && options.scrollToError !== false) {
         document.querySelector('.v-input--error')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
 
