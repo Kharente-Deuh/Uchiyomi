@@ -67,6 +67,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		Logger:          logger,
 		SessionsService: services.Sessions,
 		SetupService:    services.Setup,
+		AuthService:     services.Auth,
 		AsuraApp:        apps.Asura,
 		Registry:        registry,
 	})
