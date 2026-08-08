@@ -14,6 +14,7 @@
     "**/*.{ts,vue}"
   ],
   "ignoreDependencies": [
+    "@microsoft/eslint-formatter-sarif",
     "@vueuse/core",
     "h3",
     "eslint-formatter-checkstyle",

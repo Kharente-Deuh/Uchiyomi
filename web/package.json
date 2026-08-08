@@ -38,6 +38,7 @@
     "@antfu/eslint-config": "catalog:dev",
     "@iconify-json/fa6-regular": "catalog:dev",
     "@iconify-json/fa6-solid": "catalog:dev",
+    "@microsoft/eslint-formatter-sarif": "catalog:dev",
     "@nuxt/eslint": "catalog:build",
     "@nuxt/fonts": "catalog:build",
     "@nuxt/test-utils": "catalog:dev",

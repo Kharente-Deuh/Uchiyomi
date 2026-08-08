@@ -1,0 +1,176 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (Go)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: api
+          # --path-prefix makes the SARIF paths repo-relative (api/pkg/...),
+          # without it code scanning looks for pkg/... at the root and drops
+          # every annotation.
+          args: --path-prefix=api --output.text.path=stdout --output.sarif.path=golangci.sarif
+
+      - name: Upload lint results
+        if: ${{ !cancelled() && hashFiles('api/golangci.sarif') != '' }}
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: api/golangci.sarif
+          category: golangci-lint
+
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: go build ./...
+
+      - name: Test
+        if: ${{ !cancelled() }}
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+      - name: Coverage report
+        id: coverage
+        if: ${{ !cancelled() }}
+        uses: vladopajic/go-test-coverage@v2
+        with:
+          profile: api/coverage.out
+          threshold-total: 0
+
+      - name: Comment coverage
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: api-coverage
+          message: |
+            ### API coverage — ${{ steps.coverage.outputs.total-coverage }}%
+
+            <details><summary>Detail per package</summary>
+
+            ```
+            ${{ steps.coverage.outputs.report }}
+            ```
+
+            </details>
+
+      - name: Fail on lint errors
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: exit 1
+
+  web:
+    name: Web (Nuxt)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      # Must run before setup-node, otherwise `cache: pnpm` finds no pnpm.
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      # postinstall runs `nuxt prepare`, which generates the .nuxt/ files that
+      # eslint.config.ts and tsconfig.json import. Never add --ignore-scripts.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: pnpm exec eslint . -f @microsoft/eslint-formatter-sarif -o eslint.sarif
+
+      - name: Upload lint results
+        if: ${{ !cancelled() && hashFiles('web/eslint.sarif') != '' }}
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: web/eslint.sarif
+          category: eslint
+
+      - name: Typecheck
+        if: ${{ !cancelled() }}
+        run: pnpm typecheck
+
+      - name: Knip
+        if: ${{ !cancelled() }}
+        run: pnpm knip
+
+      - name: Test
+        if: ${{ !cancelled() }}
+        run: pnpm test:coverage
+
+      - name: Coverage report
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          working-directory: web
+          name: Web
+
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: pnpm build
+
+      - name: Fail on lint errors
+        if: ${{ !cancelled() && steps.lint.outcome == 'failure' }}
+        run: exit 1
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # The Dockerfile uses RUN --mount=type=cache, which needs buildx.
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          build-args: WITH_WEB=on
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
