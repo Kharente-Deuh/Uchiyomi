@@ -249,3 +249,90 @@ func TestUserFromReturnsFalseWithoutMiddleware(t *testing.T) {
 		t.Error("UserFrom a trouvé un utilisateur dans un contexte vierge")
 	}
 }
+
+func newAuthenticatorForUser(t *testing.T, user *users.User) *sessionshttp.Authenticator {
+	t.Helper()
+
+	logger, _ := testLogger()
+
+	a, err := sessionshttp.NewAuthenticator(sessionshttp.AuthenticatorDeps{
+		SessionService: &stubSessionService{result: &sessions.AuthenticatedSession{
+			User: user,
+			Session: sessions.Session{
+				ID:        uuid.New(),
+				UserID:    user.ID,
+				ExpiresAt: time.Date(2026, time.August, 9, 12, 0, 0, 0, time.UTC).Add(time.Hour),
+			},
+		}},
+		Cookies: newCookies(t, true),
+		Logger:  logger,
+	})
+	if err != nil {
+		t.Fatalf("NewAuthenticator: %v", err)
+	}
+
+	return a
+}
+
+func serveThroughAdminChain(t *testing.T, a *sessionshttp.Authenticator, withCookie bool) *httptest.ResponseRecorder {
+	t.Helper()
+
+	handler := a.Middleware(a.RequireAdmin(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if withCookie {
+		req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	}
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func TestRequireAdminAllowsAnAdmin(t *testing.T) {
+	t.Parallel()
+
+	a := newAuthenticatorForUser(t, &users.User{ID: uuid.New(), Name: "root", IsAdmin: true})
+
+	rec := serveThroughAdminChain(t, a, true)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+}
+
+func TestRequireAdminRejectsANonAdmin(t *testing.T) {
+	t.Parallel()
+
+	a := newAuthenticatorForUser(t, &users.User{ID: uuid.New(), Name: "alice", IsAdmin: false})
+
+	rec := serveThroughAdminChain(t, a, true)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+
+	if strings.Contains(rec.Body.String(), "alice") {
+		t.Errorf("the identity leaked in the 403 body: %s", rec.Body.String())
+	}
+}
+
+func TestRequireAdminRejectsAnEmptyContext(t *testing.T) {
+	t.Parallel()
+
+	rec := httptest.NewRecorder()
+
+	a := newAuthenticatorForUser(t, &users.User{ID: uuid.New(), Name: "alice", IsAdmin: true})
+	handler := a.RequireAdmin(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
