@@ -1,0 +1,56 @@
+name: uchiyomi
+
+services:
+  uchiyomi-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-uchiyomi}
+      POSTGRES_PASSWORD: ${DB_PWD:-uchiyomi}
+      POSTGRES_DB: ${DB_NAME:-uchiyomi}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_EXPOSED_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-uchiyomi} -d ${DB_NAME:-uchiyomi}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  server:
+    build:
+      args:
+        WITH_WEB: ${WITH_WEB:-on}
+    restart: unless-stopped
+    depends_on:
+      uchiyomi-db:
+        condition: service_healthy
+    ports:
+      - "${API_EXPOSED_PORT:-3000}:3000"
+    environment:
+      DB_HOST: uchiyomi-db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-uchiyomi}
+      DB_PWD: ${DB_PWD:-uchiyomi}
+      DB_NAME: ${DB_NAME:-uchiyomi}
+      DB_SSL: "false"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 3000
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    healthcheck:
+      test: ["CMD", "/uichiyomiserver", "-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 15s
+
+volumes:
+  pgdata:

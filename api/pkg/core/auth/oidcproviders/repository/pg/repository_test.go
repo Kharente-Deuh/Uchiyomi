@@ -1,0 +1,354 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+package pg_test
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"reflect"
+	"testing"
+
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/repository/pg"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgtest"
+	"github.com/lib/pq"
+)
+
+const (
+	colDisplayName  = "display_name"
+	testDisplayName = "Keycloak"
+	scopeOpenID     = "openid"
+	scopeProfile    = "profile"
+	adminGroupValue = "admins"
+	testIssuerURL   = "https://sso.example.com"
+)
+
+func duplicateKeyErr() error {
+	return &pgconn.PgError{
+		Code:    "23505",
+		Message: `duplicate key value violates unique constraint "idx_oidc_providers_issuer_url"`,
+	}
+}
+
+func newRepo(t *testing.T) (*pg.PGOIDCProvidersRepository, sqlmock.Sqlmock) {
+	t.Helper()
+
+	db, mock := pgtest.New(t)
+
+	r, err := pg.New(pg.Deps{DB: db})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	return r, mock
+}
+
+func providerRows(id uuid.UUID) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{
+		"id", colDisplayName, "issuer_url", "client_id", "client_secret_enc",
+		"scopes", "username_claim", "admin_claim", "admin_values",
+		"allowed_claim", "allowed_values", "auto_provision",
+	}).AddRow(
+		id, testDisplayName, testIssuerURL, "uchiyomi", []byte("enc"),
+		pq.StringArray{scopeOpenID, scopeProfile}, "preferred_username",
+		"groups", pq.StringArray{adminGroupValue},
+		"groups", pq.StringArray{"users"},
+		true,
+	)
+}
+
+func TestCreateJoinsAmbientTransaction(t *testing.T) {
+	t.Parallel()
+
+	db, mock := pgtest.New(t)
+
+	r, err := pg.New(pg.Deps{DB: db})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	tr, err := pgtx.New(pgtx.Deps{DB: db})
+	if err != nil {
+		t.Fatalf("pgtx.New: %v", err)
+	}
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "oidc_providers"`).
+		WillReturnRows(sqlmock.NewRows([]string{"scopes", "id"}).AddRow(nil, uuid.New()))
+	mock.ExpectCommit()
+
+	err = tr.WithinTx(context.Background(), transaction.TxOpts{}, func(ctx context.Context) error {
+		_, createErr := r.Create(ctx, oidcproviders.CreateOIDCProviderOpts{DisplayName: "keycloak", IssuerURL: "https://idp"})
+
+		if createErr != nil {
+			return fmt.Errorf("r.Create: %w", createErr)
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WithinTx: %v", err)
+	}
+}
+
+func TestNewValidatesDeps(t *testing.T) {
+	t.Parallel()
+
+	if _, err := pg.New(pg.Deps{}); err == nil || err.Error() != "deps.Validate: db is required" {
+		t.Errorf("pg.New(pg.Deps{}) = %v, want %q", err, "deps.Validate: db is required")
+	}
+}
+
+func TestGetByID(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" WHERE id = \$1`).
+		WithArgs(id, 1).
+		WillReturnRows(providerRows(id))
+
+	got, err := r.GetByID(context.Background(), id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+
+	if got.ID != id || got.DisplayName != testDisplayName || got.IssuerURL != testIssuerURL {
+		t.Errorf("GetByID() = %+v", got)
+	}
+
+	if !reflect.DeepEqual(got.Scopes, []string{scopeOpenID, scopeProfile}) {
+		t.Errorf("Scopes = %v, want [openid profile]", got.Scopes)
+	}
+
+	if !reflect.DeepEqual(got.AdminValues, []string{adminGroupValue}) {
+		t.Errorf("AdminValues = %v, want [admins]", got.AdminValues)
+	}
+
+	if got.AdminClaim == nil || *got.AdminClaim != "groups" {
+		t.Errorf("AdminClaim = %v, want \"groups\"", got.AdminClaim)
+	}
+
+	if !got.AutoProvision {
+		t.Error("AutoProvision = false, want true")
+	}
+}
+
+func TestGetByIDNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	if _, err := r.GetByID(context.Background(), uuid.New()); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetByID = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestGetByIDError(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	sentinel := errors.New("connection refused")
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).WillReturnError(sentinel)
+
+	_, err := r.GetByID(context.Background(), uuid.New())
+	if !errors.Is(err, sentinel) {
+		t.Errorf("err = %v", err)
+	}
+
+	if errors.Is(err, domain.ErrNotFound) {
+		t.Error("une panne SQL ne doit pas être traduite en ErrNotFound")
+	}
+}
+
+func TestGetByIssuerURL(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" WHERE issuer_url = \$1`).
+		WithArgs(testIssuerURL, 1).
+		WillReturnRows(providerRows(id))
+
+	got, err := r.GetByIssuerURL(context.Background(), testIssuerURL)
+	if err != nil {
+		t.Fatalf("GetByIssuerURL: %v", err)
+	}
+
+	if got.ID != id {
+		t.Errorf("GetByIssuerURL() = %+v", got)
+	}
+}
+
+func TestGetByIssuerURLNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	_, err := r.GetByIssuerURL(context.Background(), "https://inconnu")
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetByIssuerURL = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestGetAll(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id1, id2 := uuid.New(), uuid.New()
+
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", colDisplayName, "client_secret_enc"}).
+				AddRow(id1, testDisplayName, []byte("secret1")).
+				AddRow(id2, "Authentik", []byte("secret2")),
+		)
+
+	got, err := r.GetAll(context.Background())
+	if err != nil {
+		t.Fatalf("GetAll: %v", err)
+	}
+
+	want := []oidcproviders.LightOIDCProvider{
+		{ID: id1, DisplayName: testDisplayName},
+		{ID: id2, DisplayName: "Authentik"},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("GetAll() = %+v, want %+v", got, want)
+	}
+}
+
+func TestGetAllEmpty(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", colDisplayName}))
+
+	got, err := r.GetAll(context.Background())
+	if err != nil {
+		t.Fatalf("GetAll: %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Errorf("GetAll() = %+v, want vide", got)
+	}
+}
+
+func TestGetAllError(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	sentinel := errors.New("timeout")
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).WillReturnError(sentinel)
+
+	if _, err := r.GetAll(context.Background()); !errors.Is(err, sentinel) {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestCreate(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "oidc_providers"`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+	mock.ExpectCommit()
+
+	adminClaim := "groups"
+
+	got, err := r.Create(context.Background(), oidcproviders.CreateOIDCProviderOpts{
+		DisplayName:     testDisplayName,
+		IssuerURL:       testIssuerURL,
+		ClientID:        "uchiyomi",
+		ClientSecretEnc: []byte("enc"),
+		Scopes:          []string{scopeOpenID, scopeProfile, "email"},
+		UsernameClaim:   "preferred_username",
+		AdminClaim:      &adminClaim,
+		AdminValues:     []string{adminGroupValue},
+		AutoProvision:   true,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if got.ID == uuid.Nil {
+		t.Error("Create n'a pas généré d'ID")
+	}
+
+	if got.DisplayName != testDisplayName || got.IssuerURL != testIssuerURL {
+		t.Errorf("Create() = %+v", got)
+	}
+
+	if !reflect.DeepEqual(got.Scopes, []string{scopeOpenID, scopeProfile, "email"}) {
+		t.Errorf("Scopes = %v", got.Scopes)
+	}
+
+	if got.CreatedAt.IsZero() || got.UpdatedAt.IsZero() {
+		t.Errorf("horodatages non renseignés: created=%v updated=%v", got.CreatedAt, got.UpdatedAt)
+	}
+}
+
+func TestCreateDuplicate(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "oidc_providers"`).WillReturnError(duplicateKeyErr())
+	mock.ExpectRollback()
+
+	got, err := r.Create(context.Background(), oidcproviders.CreateOIDCProviderOpts{IssuerURL: testIssuerURL})
+	if !errors.Is(err, domain.ErrAlreadyExists) {
+		t.Errorf("Create = %v, want domain.ErrAlreadyExists", err)
+	}
+
+	if got != nil {
+		t.Errorf("Create a renvoyé %+v en plus de l'erreur", got)
+	}
+}
+
+func TestCreateError(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	sentinel := errors.New("disk full")
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "oidc_providers"`).WillReturnError(sentinel)
+	mock.ExpectRollback()
+
+	_, err := r.Create(context.Background(), oidcproviders.CreateOIDCProviderOpts{})
+	if !errors.Is(err, sentinel) {
+		t.Errorf("err = %v", err)
+	}
+
+	if errors.Is(err, domain.ErrAlreadyExists) {
+		t.Error("une panne SQL ne doit pas être traduite en ErrAlreadyExists")
+	}
+}

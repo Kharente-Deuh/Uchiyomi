@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "fill-labs.dependi",
+    "dbaeumer.vscode-eslint",
+    "yoavbls.pretty-ts-errors",
+    "vue.volar"
+  ]
+}

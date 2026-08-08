@@ -1,0 +1,53 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - dupl
+    - errcheck
+    - gochecknoglobals
+    - goconst
+    - godot
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nestif
+    - nlreturn
+    - prealloc
+    - predeclared
+    - staticcheck
+    - testpackage
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+    - wrapcheck
+  settings:
+    govet:
+      enable:
+        - fieldalignment
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - revive
+        text: 'package-comments:'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -1,0 +1,533 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+package http_test
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"testing"
+
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
+	asurahttp "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
+)
+
+func newTestClient(t *testing.T, handler http.HandlerFunc) *asurahttp.Client {
+	t.Helper()
+
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+
+	c, err := asurahttp.New(asurahttp.Deps{Http: srv.Client()}, asurahttp.Config{AsuraURL: srv.URL})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	return c
+}
+
+func TestConfigValidate(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		cfg     asurahttp.Config
+		wantErr string
+	}{
+		"valide":       {cfg: asurahttp.Config{AsuraURL: "https://api.example.com"}},
+		"URL vide":     {cfg: asurahttp.Config{}, wantErr: "asuraURL is not a valid URL"},
+		"URL relative": {cfg: asurahttp.Config{AsuraURL: "example.com"}, wantErr: "asuraURL is not a valid URL"},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := tc.cfg
+			err := cfg.Validate()
+
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("Validate() = %v, want nil", err)
+				}
+
+				return
+			}
+
+			if err == nil || err.Error() != tc.wantErr {
+				t.Errorf("Validate() = %v, want %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestDepsValidate(t *testing.T) {
+	t.Parallel()
+
+	var deps asurahttp.Deps
+	if err := deps.Validate(); err == nil {
+		t.Error("Validate() sans client HTTP doit échouer")
+	}
+
+	deps = asurahttp.Deps{Http: http.DefaultClient}
+	if err := deps.Validate(); err != nil {
+		t.Errorf("Validate() = %v, want nil", err)
+	}
+}
+
+func TestNewRejectsInvalidInput(t *testing.T) {
+	t.Parallel()
+
+	if _, err := asurahttp.New(asurahttp.Deps{}, asurahttp.Config{AsuraURL: "https://x.dev"}); err == nil {
+		t.Error("New sans client HTTP doit échouer")
+	}
+
+	if _, err := asurahttp.New(asurahttp.Deps{Http: http.DefaultClient}, asurahttp.Config{}); err == nil {
+		t.Error("New avec une config vide doit échouer")
+	}
+}
+
+func TestSearchRequestShape(t *testing.T) {
+	t.Parallel()
+
+	var got *url.URL
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL
+
+		if accept := r.Header.Get("Accept"); accept != "application/json" {
+			t.Errorf("Accept = %q, want %q", accept, "application/json")
+		}
+
+		_, _ = w.Write([]byte(`{"data":[],"meta":{}}`))
+	})
+
+	if _, err := c.Search(context.Background(), domain.SearchOpts{}); err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+
+	if got == nil {
+		t.Fatal("aucune requête reçue")
+	}
+
+	if got.Path != "/series" {
+		t.Errorf("path = %q, want %q", got.Path, "/series")
+	}
+
+	q := got.Query()
+
+	for key, want := range map[string]string{
+		"offset": "0",
+		"limit":  "20",
+		"sort":   string(domain.SortTypePopular),
+		"order":  string(domain.SortOrderDesc),
+	} {
+		if q.Get(key) != want {
+			t.Errorf("query[%s] = %q, want %q", key, q.Get(key), want)
+		}
+	}
+}
+
+func TestSearchQueryParameters(t *testing.T) {
+	t.Parallel()
+
+	var got url.Values
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Query()
+		_, _ = w.Write([]byte(`{"data":[],"meta":{}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := asurahttp.New(asurahttp.Deps{Http: srv.Client()}, asurahttp.Config{AsuraURL: srv.URL})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	opts := domain.SearchOpts{
+		Offset:    40,
+		Limit:     5,
+		Search:    "one piece",
+		Sort:      domain.SortTypeTitle,
+		SortOrder: domain.SortOrderAsc,
+		Status:    domain.SeriesStatusOngoing,
+		Type:      "manga",
+		Artist:    "oda",
+		Genres:    []domain.SeriesGenre{domain.SeriesGenreAction, domain.SeriesGenreAdventure},
+	}
+
+	if _, err := c.Search(context.Background(), opts); err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+
+	tests := map[string]string{
+		"offset": "40",
+		"limit":  "5",
+		"search": "one piece",
+		"sort":   "title",
+		"order":  "asc",
+		"status": string(domain.SeriesStatusOngoing),
+		"type":   "manga",
+		"artist": "oda",
+		"genres": "action,adventure",
+	}
+
+	for key, want := range tests {
+		if got.Get(key) != want {
+			t.Errorf("query[%s] = %q, want %q", key, got.Get(key), want)
+		}
+	}
+}
+
+func TestSearchDefaultOrderFollowsSort(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		sort      domain.SortType
+		wantOrder string
+	}{
+		"tri par titre => ascendant":       {sort: domain.SortTypeTitle, wantOrder: "asc"},
+		"tri par popularité => descendant": {sort: domain.SortTypePopular, wantOrder: "desc"},
+		"tri par défaut => descendant":     {sort: "", wantOrder: "desc"},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			var got url.Values
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				got = r.URL.Query()
+				_, _ = w.Write([]byte(`{"data":[],"meta":{}}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			c, err := asurahttp.New(asurahttp.Deps{Http: srv.Client()}, asurahttp.Config{AsuraURL: srv.URL})
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+
+			if _, err := c.Search(context.Background(), domain.SearchOpts{Sort: tc.sort}); err != nil {
+				t.Fatalf("Search: %v", err)
+			}
+
+			if got.Get("order") != tc.wantOrder {
+				t.Errorf("order = %q, want %q", got.Get("order"), tc.wantOrder)
+			}
+		})
+	}
+}
+
+func TestSearchDecodesResponse(t *testing.T) {
+	t.Parallel()
+
+	const body = `{
+		"data": [{
+			"id": 12,
+			"slug": "one-piece",
+			"title": "One Piece",
+			"description": "pirates",
+			"cover": "cover.jpg",
+			"status": "ongoing",
+			"type": "manga",
+			"author": "Oda",
+			"artist": "Oda",
+			"rating": 9.5,
+			"chapter_count": 1100,
+			"genres": [{"id": 1, "name": "Action", "slug": "action"}],
+			"latest_chapters": [{"id": 9, "number": 1100, "slug": "1100", "title": "Chapitre 1100"}]
+		}],
+		"meta": {"total": 1, "per_page": 20, "has_more": true}
+	}`
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(body))
+	})
+
+	res, err := c.Search(context.Background(), domain.SearchOpts{})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+
+	if res.Meta.Total != 1 || res.Meta.PerPage != 20 || !res.Meta.HasMore {
+		t.Errorf("meta = %+v", res.Meta)
+	}
+
+	if len(res.Items) != 1 {
+		t.Fatalf("len(items) = %d, want 1", len(res.Items))
+	}
+
+	item := res.Items[0]
+	if item.ID != 12 || item.Slug != "one-piece" || item.Title != "One Piece" {
+		t.Errorf("item = %+v", item)
+	}
+
+	if item.Status != domain.SeriesStatusOngoing {
+		t.Errorf("status = %q, want %q", item.Status, domain.SeriesStatusOngoing)
+	}
+
+	if len(item.Genres) != 1 || item.Genres[0] != domain.SeriesGenre("action") {
+		t.Errorf("genres = %v", item.Genres)
+	}
+
+	if len(item.LatestChapters) != 1 || item.LatestChapters[0].Number != 1100 {
+		t.Errorf("latestChapters = %+v", item.LatestChapters)
+	}
+}
+
+func TestSearchServerErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]int{
+		"500": http.StatusInternalServerError,
+		"404": http.StatusNotFound,
+		"403": http.StatusForbidden,
+	}
+
+	for name, status := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(status)
+			})
+
+			if _, err := c.Search(context.Background(), domain.SearchOpts{}); err == nil {
+				t.Errorf("Search sur un %d = nil, want une erreur", status)
+			}
+		})
+	}
+}
+
+func TestSearchMalformedJSON(t *testing.T) {
+	t.Parallel()
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data": [`))
+	})
+
+	if _, err := c.Search(context.Background(), domain.SearchOpts{}); err == nil {
+		t.Error("Search sur un JSON tronqué = nil, want une erreur")
+	}
+}
+
+func TestSearchHonoursContext(t *testing.T) {
+	t.Parallel()
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[],"meta":{}}`))
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, err := c.Search(ctx, domain.SearchOpts{}); !errors.Is(err, context.Canceled) {
+		t.Errorf("Search = %v, want context.Canceled", err)
+	}
+}
+
+func TestGetInfosBySlug(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"series":{"id":3,"slug":"solo-leveling","title":"Solo Leveling"}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := asurahttp.New(asurahttp.Deps{Http: srv.Client()}, asurahttp.Config{AsuraURL: srv.URL})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	if _, err := c.GetInfosBySlug(context.Background(), "solo-leveling"); err != nil {
+		t.Fatalf("GetInfosBySlug: %v", err)
+	}
+
+	if want := "/series/solo-leveling"; gotPath != want {
+		t.Errorf("path = %q, want %q", gotPath, want)
+	}
+}
+
+func TestGetInfosBySlugNotFound(t *testing.T) {
+	t.Parallel()
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	if _, err := c.GetInfosBySlug(context.Background(), "inconnu"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetInfosBySlug = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestGetChaptersListBySerie(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"data":[
+			{"id":1,"slug":"chapter-1","number":1,"title":"Le début"},
+			{"id":2,"slug":"chapter-2","number":2}
+		]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := asurahttp.New(asurahttp.Deps{Http: srv.Client()}, asurahttp.Config{AsuraURL: srv.URL})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	chaptersPtr, err := c.GetChaptersListBySerie(context.Background(), "one-piece")
+	if err != nil {
+		t.Fatalf("GetChaptersListBySerie: %v", err)
+	}
+
+	if chaptersPtr == nil {
+		t.Fatal("GetChaptersListBySerie a renvoyé un résultat nil sans erreur")
+	}
+
+	chapters := *chaptersPtr
+
+	if want := "/series/one-piece/chapters"; gotPath != want {
+		t.Errorf("path = %q, want %q", gotPath, want)
+	}
+
+	if len(chapters) != 2 {
+		t.Fatalf("len(chapters) = %d, want 2", len(chapters))
+	}
+
+	if chapters[0].ID != "chapter-1" {
+		t.Errorf("chapters[0].ID = %q, want %q", chapters[0].ID, "chapter-1")
+	}
+
+	if chapters[0].Number != 1 || chapters[0].Title != "Le début" {
+		t.Errorf("chapters[0] = %+v", chapters[0])
+	}
+
+	if chapters[1].Title != "" {
+		t.Errorf("chapters[1].Title = %q, want vide", chapters[1].Title)
+	}
+}
+
+func TestGetChaptersListBySerieNotFound(t *testing.T) {
+	t.Parallel()
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	if _, err := c.GetChaptersListBySerie(context.Background(), "inconnu"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetChaptersListBySerie = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestGetImageURLsByChapter(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"data":{"chapter":{"id":7,"pages":[
+			{"url":"https://cdn/1.webp","width":800,"height":1200},
+			{"url":"https://cdn/2.webp","width":800,"height":1200}
+		]}}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := asurahttp.New(asurahttp.Deps{Http: srv.Client()}, asurahttp.Config{AsuraURL: srv.URL})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	urlsPtr, err := c.GetImageURLsByChapter(context.Background(), domain.GetImageURLsByChapterOpts{
+		SeriesSlug: "one-piece",
+		ChapterID:  "1100",
+	})
+
+	if err != nil {
+		t.Fatalf("GetImageURLsByChapter: %v", err)
+	}
+
+	if urlsPtr == nil {
+		t.Fatal("GetImageURLsByChapter a renvoyé un résultat nil sans erreur")
+	}
+
+	urls := *urlsPtr
+
+	if want := "/series/one-piece/chapters/1100"; gotPath != want {
+		t.Errorf("path = %q, want %q", gotPath, want)
+	}
+
+	want := []string{"https://cdn/1.webp", "https://cdn/2.webp"}
+	if len(urls) != len(want) {
+		t.Fatalf("len(urls) = %d, want %d", len(urls), len(want))
+	}
+
+	for i := range want {
+		if urls[i] != want[i] {
+			t.Errorf("urls[%d] = %q, want %q", i, urls[i], want[i])
+		}
+	}
+}
+
+func TestGetImageURLsByChapterEmptyPages(t *testing.T) {
+	t.Parallel()
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":{"chapter":{"id":7,"pages":[]}}}`))
+	})
+
+	urlsPtr, err := c.GetImageURLsByChapter(context.Background(), domain.GetImageURLsByChapterOpts{
+		SeriesSlug: "s",
+		ChapterID:  "1",
+	})
+
+	if err != nil {
+		t.Fatalf("GetImageURLsByChapter: %v", err)
+	}
+
+	if urlsPtr == nil {
+		t.Fatal("GetImageURLsByChapter a renvoyé un résultat nil sans erreur")
+	}
+
+	if len(*urlsPtr) != 0 {
+		t.Errorf("urls = %v, want vide", *urlsPtr)
+	}
+}
+
+func TestGetImageURLsByChapterNotFound(t *testing.T) {
+	t.Parallel()
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	_, err := c.GetImageURLsByChapter(context.Background(), domain.GetImageURLsByChapterOpts{
+		SeriesSlug: "s",
+		ChapterID:  "1",
+	})
+
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetImageURLsByChapter = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestSearchNotFound(t *testing.T) {
+	t.Parallel()
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	if _, err := c.Search(context.Background(), domain.SearchOpts{}); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("Search sur un 404 = %v, want domain.ErrNotFound", err)
+	}
+}

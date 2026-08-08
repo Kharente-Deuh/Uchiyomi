@@ -1,0 +1,63 @@
+commit-msg:
+  commands:
+    conventional-commit:
+      run: |
+        types='build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test'
+        pattern="^((Merge|Revert|fixup!|squash!)|($types)(\([a-z0-9 ,\/-]+\))?!?: .+)"
+
+        if head -n1 "{1}" | grep -qE "$pattern"; then
+          exit 0
+        fi
+
+        cat >&2 <<'MSG'
+        ✗ Commit message does not follow Conventional Commits.
+
+          <type>[(scope)][!]: <description>
+
+          types  : build chore ci docs feat fix perf refactor revert style test
+          example: feat(web): add vertical reader
+                   fix(api)!: rename the chapterId field
+        MSG
+        exit 1
+
+pre-commit:
+  commands:
+    license-header:
+      glob: "*.{go,ts,tsx,js,mjs,cjs,vue,css,scss,sh}"
+      stage_fixed: true
+      run: ./scripts/add-license-header.sh {staged_files}
+
+pre-push:
+  parallel: true
+  skip:
+    - merge
+    - rebase
+  commands:
+    api-lint:
+      root: api/
+      glob: "**/*.go"
+      run: golangci-lint run ./...
+    api-build:
+      root: api/
+      glob: "**/*.go"
+      run: go build ./...
+    api-test:
+      root: api/
+      glob: "**/*.go"
+      run: go test ./...
+    web-lint:
+      root: web/
+      glob: "**"
+      run: pnpm lint
+    web-typecheck:
+      root: web/
+      glob: "**"
+      run: pnpm typecheck
+    web-test:
+      root: web/
+      glob: "**"
+      run: pnpm test
+    web-knip:
+      root: web/
+      glob: "**"
+      run: pnpm knip

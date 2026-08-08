@@ -1,0 +1,21 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<script setup lang="ts">
+import { APP_NAME } from '~/constants'
+
+import '~/assets/styles/reset.scss'
+import '~/assets/styles/global.scss'
+import '~/assets/styles/vuetify-overrides.scss'
+import '~/assets/styles/constants.scss'
+
+useHead({
+  titleTemplate: title => (title ? `${title} · ${APP_NAME}` : APP_NAME),
+})
+</script>
+
+<template>
+  <VitePwaManifest />
+  <NuxtLoadingIndicator />
+  <NuxtLayout>
+    <NuxtPage />
+  </NuxtLayout>
+</template>

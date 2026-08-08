@@ -1,0 +1,58 @@
+{
+  "status": {
+    "componentFailure": "{name}: {reason}",
+    "failedHint": "Retrying automatically every few seconds.",
+    "failedTitle": "The server is unavailable"
+  },
+  "setup": {
+    "username": "Username",
+    "password": "Password",
+    "passwordMismatch": "Passwords do not match.",
+    "confirmPassword": "Confirm password",
+    "error": {
+      "generic": "Could not create the account. Please try again."
+    },
+    "title": "Let's begin",
+    "subtitle": "Please create your administrator account. There is no password recovery by email.",
+    "submit": "Create account"
+  },
+  "validation": {
+    "mixed": {
+      "default": "{path} is invalid",
+      "required": "{path} is a required field",
+      "oneOf": "{path} must be one of the following values: {values}",
+      "notOneOf": "{path} must not be one of the following values: {values}"
+    },
+    "string": {
+      "length": "{path} must be exactly {length} characters",
+      "min": "{path} must be at least {min} characters",
+      "max": "{path} must be at most {max} characters",
+      "matches": "{path} must match the following format: {regex}",
+      "email": "{path} must be a valid email",
+      "url": "{path} must be a valid URL",
+      "trim": "{path} must not have leading or trailing spaces",
+      "lowercase": "{path} must be lowercase",
+      "uppercase": "{path} must be uppercase"
+    },
+    "number": {
+      "min": "{path} must be greater than or equal to {min}",
+      "max": "{path} must be less than or equal to {max}",
+      "lessThan": "{path} must be less than {less}",
+      "moreThan": "{path} must be greater than {more}",
+      "positive": "{path} must be a positive number",
+      "negative": "{path} must be a negative number",
+      "integer": "{path} must be an integer"
+    },
+    "date": {
+      "min": "{path} must be later than {min}",
+      "max": "{path} must be earlier than {max}"
+    },
+    "object": {
+      "noUnknown": "{path} contains unspecified keys"
+    },
+    "array": {
+      "min": "must have at least {min} items",
+      "max": "must have at most {max} items"
+    }
+  }
+}

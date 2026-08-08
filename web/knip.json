@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "vuetify.config.ts",
+    "i18n/i18n.config.ts",
+    "app/pages/**/*.vue",
+    "app/layouts/**/*.vue",
+    "app/middleware/**/*.ts",
+    "app/components/**/*.vue",
+    "app/plugins/**/*.ts",
+    "app/composables/**/*.ts"
+  ],
+  "project": [
+    "**/*.{ts,vue}"
+  ],
+  "ignoreDependencies": [
+    "@vueuse/core",
+    "h3",
+    "eslint-formatter-checkstyle",
+    "ofetch",
+    "sass-embedded",
+    "vitest-environment-nuxt",
+    "vue-i18n",
+    "vue-router",
+    "vue-tsc"
+  ]
+}

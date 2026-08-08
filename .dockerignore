@@ -1,0 +1,16 @@
+*
+
+!api/go.mod
+!api/go.sum
+!api/cmd/
+!api/pkg/
+!web/
+
+api/pkg/webui/dist/
+**/*_test.go
+**/vendor/
+
+web/node_modules/
+web/.nuxt/
+web/.output/
+web/.data/
