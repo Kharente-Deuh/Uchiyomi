@@ -62,7 +62,7 @@ func (f *fakeAuthService) CreateUserWithPwd(
 	return f.user, nil
 }
 
-func (f *fakeAuthService) LoginWithPwd(context.Context, auth.LoginWithPwdOpts) (*sessions.IssuedSession, error) {
+func (f *fakeAuthService) LoginWithPwd(context.Context, auth.LoginWithPwdOpts) (*auth.LoginResult, error) {
 	panic("LoginWithPwd ne doit pas être appelée par DoSetup")
 }
 

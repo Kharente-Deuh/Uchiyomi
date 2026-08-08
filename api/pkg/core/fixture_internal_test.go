@@ -116,7 +116,7 @@ func (fakeSetupService) DoSetup(context.Context, setup.DoSetupOpts) (*sessions.I
 
 type fakeAuthService struct{}
 
-func (fakeAuthService) LoginWithPwd(context.Context, auth.LoginWithPwdOpts) (*sessions.IssuedSession, error) {
+func (fakeAuthService) LoginWithPwd(context.Context, auth.LoginWithPwdOpts) (*auth.LoginResult, error) {
 	return nil, errors.New(notImplemented)
 }
 

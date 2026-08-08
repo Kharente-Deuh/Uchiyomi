@@ -34,7 +34,7 @@ const (
 
 type stubAuthService struct {
 	err     error
-	session *sessions.IssuedSession
+	result  *auth.LoginResult
 	gotOpts auth.LoginWithPwdOpts
 	calls   int
 }
@@ -42,7 +42,7 @@ type stubAuthService struct {
 func (s *stubAuthService) LoginWithPwd(
 	_ context.Context,
 	opts auth.LoginWithPwdOpts,
-) (*sessions.IssuedSession, error) {
+) (*auth.LoginResult, error) {
 	s.calls++
 	s.gotOpts = opts
 
@@ -50,7 +50,7 @@ func (s *stubAuthService) LoginWithPwd(
 		return nil, s.err
 	}
 
-	return s.session, nil
+	return s.result, nil
 }
 
 func (s *stubAuthService) CreateUserWithPwd(context.Context, auth.CreateUserWithPwdOpts) (*users.User, error) {
@@ -68,8 +68,12 @@ func issuedSession() *sessions.IssuedSession {
 	}
 }
 
+func loggedInUser() *users.User {
+	return &users.User{ID: uuid.New(), Name: username, IsAdmin: true}
+}
+
 func loggedInStub() *stubAuthService {
-	return &stubAuthService{session: issuedSession()}
+	return &stubAuthService{result: &auth.LoginResult{Session: issuedSession(), User: loggedInUser()}}
 }
 
 func testLogger() (*slog.Logger, *bytes.Buffer) {
@@ -345,6 +349,30 @@ func TestLoginSetsSessionCookie(t *testing.T) {
 
 	if logs.Len() != 0 {
 		t.Errorf("aucun log attendu sur le chemin nominal: %s", logs.String())
+	}
+}
+
+func TestLoginReturnsTheAuthenticatedUser(t *testing.T) {
+	t.Parallel()
+
+	svc := loggedInStub()
+	r, _ := newTestRouter(t, svc)
+
+	rec := postLogin(t, r, loginBody(username, password))
+
+	var got authhttp.LoginWithPwdResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal(%s): %v", rec.Body.String(), err)
+	}
+
+	want := authhttp.LoginWithPwdResponse{
+		ID:       svc.result.User.ID.String(),
+		Username: username,
+		IsAdmin:  true,
+	}
+
+	if got != want {
+		t.Errorf("body = %+v, want %+v", got, want)
 	}
 }
 

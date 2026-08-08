@@ -11,8 +11,13 @@ import (
 )
 
 type AuthService interface {
-	LoginWithPwd(context.Context, LoginWithPwdOpts) (*sessions.IssuedSession, error)
+	LoginWithPwd(context.Context, LoginWithPwdOpts) (*LoginResult, error)
 	CreateUserWithPwd(context.Context, CreateUserWithPwdOpts) (*users.User, error)
+}
+
+type LoginResult struct {
+	Session *sessions.IssuedSession
+	User    *users.User
 }
 
 type CreateUserWithPwdOpts struct {
