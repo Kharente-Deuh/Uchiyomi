@@ -10,7 +10,6 @@ const POLL_INTERVAL_MS = 5 * 1000
 
 const { getServerStatus } = createHealthApi()
 const route = useRoute('status')
-const router = useRouter()
 
 const serverStatus = ref<ServerStatusResponse>()
 let stopped = false
@@ -41,10 +40,6 @@ const loaderValue = computed(() => {
   return (started.length / components.length) * 100
 })
 
-function isKnownRoute(path: string): boolean {
-  return router.resolve(path).matched.length > 0
-}
-
 async function statusCheckLoop(): Promise<void> {
   while (true) {
     if (stopped) {
@@ -60,7 +55,7 @@ async function statusCheckLoop(): Promise<void> {
     serverStatus.value = status
 
     if (status.status === 'ok') {
-      await navigateTo(safeRedirect(route.query.redirect, isKnownRoute))
+      await navigateTo(safeRedirect(route.query.redirect))
       if (!isStatusPath(route.fullPath)) {
         return
       }
