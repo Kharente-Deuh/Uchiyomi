@@ -63,11 +63,6 @@ pnpm knip         # dead code detection, must stay green
 
 ### Code
 
-Architecture and per-side conventions live in [`api/CLAUDE.md`](./api/CLAUDE.md)
-and [`web/CLAUDE.md`](./web/CLAUDE.md). Read the one that covers the side you
-are touching before adding a feature — both halves have a layout that new code
-is expected to follow.
-
 The codebase carries no explanatory comments. The only ones allowed are:
 
 - the `SPDX-License-Identifier: AGPL-3.0-or-later` header every source file
