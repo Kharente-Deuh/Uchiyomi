@@ -457,8 +457,12 @@ func TestLoginWithPwdIssuesPasswordSession(t *testing.T) {
 		t.Fatalf("LoginWithPwd: %v", err)
 	}
 
-	if got == nil || got.Token != "letoken" {
+	if got == nil || got.Session == nil || got.Session.Token != "letoken" {
 		t.Fatalf("LoginWithPwd() = %+v", got)
+	}
+
+	if got.User == nil || got.User.ID != f.ur.user.ID {
+		t.Errorf("LoginWithPwd() user = %+v, want %v", got.User, f.ur.user.ID)
 	}
 
 	if f.ur.gotName != userName {

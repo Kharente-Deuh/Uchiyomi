@@ -7,7 +7,6 @@ interface Props {
   error?: string
   onSubmit: () => void
   submitText: string
-  notice?: string
 }
 
 defineProps<Props>()
@@ -28,19 +27,10 @@ const { mobile } = useDisplay()
         {{ subtitle }}
       </span>
     </div>
-
-    <VAlert
-      v-if="notice"
-      type="info"
-      class="rounded-lg"
-      variant="tonal"
-      data-test="auth-form-notice"
-    >
-      {{ notice }}
-    </VAlert>
     <VAlert
       v-if="error"
-      class="rounded-lg"
+      class="rounded-lg border-thin-error text-body-medium"
+      density="compact"
       type="error"
       variant="tonal"
       data-test="auth-form-error"

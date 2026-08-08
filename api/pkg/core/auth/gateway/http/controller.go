@@ -101,7 +101,7 @@ func (c *Controller) loginWithPwd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := c.deps.AuthService.LoginWithPwd(ctx, auth.LoginWithPwdOpts{
+	res, err := c.deps.AuthService.LoginWithPwd(ctx, auth.LoginWithPwdOpts{
 		Username: req.Username.String(),
 		Password: req.Password.String(),
 	})
@@ -118,7 +118,11 @@ func (c *Controller) loginWithPwd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.deps.Cookies.Set(w, session.Token, session.ExpiresAt, c.deps.Now())
+	c.deps.Cookies.Set(w, res.Session.Token, res.Session.ExpiresAt, c.deps.Now())
 
-	w.WriteHeader(http.StatusOK)
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, LoginWithPwdResponse{
+		ID:       res.User.ID.String(),
+		Username: res.User.Name,
+		IsAdmin:  res.User.IsAdmin,
+	})
 }

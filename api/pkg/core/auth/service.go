@@ -92,7 +92,7 @@ func (s *Service) CreateUserWithPwd(ctx context.Context, opts CreateUserWithPwdO
 	return user, nil
 }
 
-func (s *Service) LoginWithPwd(ctx context.Context, opts LoginWithPwdOpts) (*sessions.IssuedSession, error) {
+func (s *Service) LoginWithPwd(ctx context.Context, opts LoginWithPwdOpts) (*LoginResult, error) {
 	user, err := s.deps.UsersRepository.GetByUsername(ctx, opts.Username)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
@@ -133,7 +133,7 @@ func (s *Service) LoginWithPwd(ctx context.Context, opts LoginWithPwdOpts) (*ses
 		return nil, fmt.Errorf("s.deps.SessionService.Create: %w", err)
 	}
 
-	return session, nil
+	return &LoginResult{Session: session, User: user}, nil
 }
 
 func (s *Service) equalizeLoginTiming(password string) {

@@ -3,7 +3,13 @@
 import { DEFAULT_PAGE } from '~/constants'
 import { isStatusPath } from './routes'
 
-export function safeRedirect(raw: unknown, isKnownRoute: (path: string) => boolean): string {
+function isKnownRoute(path: string): boolean {
+  const router = useRouter()
+
+  return router.resolve(path).matched.length > 0
+}
+
+export function safeRedirect(raw: unknown): string {
   const defaultRedirect = DEFAULT_PAGE as unknown as string
 
   if (typeof raw !== 'string') {

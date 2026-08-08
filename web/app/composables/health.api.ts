@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { apiFetch } from '~/utils/api'
+import { initApi } from '~/utils/api'
 
 export type ServerStatus = 'ok' | 'starting' | 'failed'
 
@@ -25,7 +25,7 @@ function isServerStatusResponse(value: unknown): value is ServerStatusResponse {
 
 async function getServerStatus(): Promise<ServerStatusResponse> {
   try {
-    const res = await apiFetch.raw<ServerStatusResponse>('/readyz', {
+    const res = await initApi().raw<ServerStatusResponse>('/readyz', {
       ignoreResponseError: true,
       timeout: READYZ_TIMEOUT_MS,
     })

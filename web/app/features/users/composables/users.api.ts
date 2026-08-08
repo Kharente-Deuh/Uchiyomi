@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ApiResponse } from '~/utils/api'
-import { ApiError, apiFetch } from '~/utils/api'
+import { ApiError, initApi } from '~/utils/api'
 
 export interface UsersApi {
   getCurrentUser: () => Promise<ApiResponse<User>>
@@ -14,7 +14,7 @@ export interface User {
 }
 
 export function createUsersApi(): UsersApi {
-  const api = apiFetch.create({ baseURL: '/api/users' })
+  const api = initApi('/users')
 
   async function getCurrentUser(): Promise<ApiResponse<User>> {
     try {
