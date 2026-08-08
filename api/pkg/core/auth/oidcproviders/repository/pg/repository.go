@@ -14,7 +14,9 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgmodels"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var _ oidcproviders.OIDCProvidersRepository = (*PGOIDCProvidersRepository)(nil)
@@ -81,7 +83,7 @@ func (r *PGOIDCProvidersRepository) GetByIssuerURL(ctx context.Context, issuerUR
 }
 
 func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders.LightOIDCProvider, error) {
-	models, err := r.db(ctx).Find(ctx)
+	models, err := r.db(ctx).Order("display_name").Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("r.db(ctx).Find: %w", err)
 	}
@@ -122,6 +124,55 @@ func (r *PGOIDCProvidersRepository) Create(ctx context.Context, opts oidcprovide
 	p := r.modelToDomain(*model)
 
 	return &p, nil
+}
+
+//nolint:lll
+func (r *PGOIDCProvidersRepository) Update(ctx context.Context, id uuid.UUID, opts oidcproviders.UpdateOIDCProviderOpts) (*oidcproviders.OIDCProvider, error) {
+	values := map[string]any{
+		"display_name":   opts.DisplayName,
+		"issuer_url":     opts.IssuerURL,
+		"client_id":      opts.ClientID,
+		"scopes":         pq.StringArray(opts.Scopes),
+		"username_claim": opts.UsernameClaim,
+		"admin_claim":    opts.AdminClaim,
+		"admin_values":   pq.StringArray(opts.AdminValues),
+		"allowed_claim":  opts.AllowedClaim,
+		"allowed_values": pq.StringArray(opts.AllowedValues),
+		"auto_provision": opts.AutoProvision,
+		"updated_at":     time.Now(),
+	}
+
+	if opts.ClientSecretEnc != nil {
+		values["client_secret_enc"] = opts.ClientSecretEnc
+	}
+
+	rows, err := r.db(ctx).Where("id = ?", id).Set(clause.Assignments(values)).Update(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return nil, domain.ErrAlreadyExists
+		}
+
+		return nil, fmt.Errorf("r.db(ctx).Updates: %w", err)
+	}
+
+	if rows == 0 {
+		return nil, domain.ErrNotFound
+	}
+
+	return r.GetByID(ctx, id)
+}
+
+func (r *PGOIDCProvidersRepository) DeleteByID(ctx context.Context, id uuid.UUID) error {
+	rows, err := r.db(ctx).Where("id = ?", id).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("r.db(ctx).Delete: %w", err)
+	}
+
+	if rows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }
 
 func (r *PGOIDCProvidersRepository) lightModelToDomain(model pgmodels.OIDCProvider) oidcproviders.LightOIDCProvider {
