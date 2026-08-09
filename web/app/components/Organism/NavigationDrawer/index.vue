@@ -24,7 +24,11 @@ watch(compact, (value) => {
     style="z-index: 1004"
     :style="{ width: compact ? 'var(--navigation-drawer-compact-width)' : 'var(--navigation-drawer-width)' }"
   >
-    <div class="d-flex flex-column h-100 justify-space-between border-thin bg-surface rounded-lg elevation-down" :class="{ 'pa-4': !compact, 'pa-3': compact }">
+    <div
+      class="d-flex flex-column h-100 justify-space-between border-thin bg-surface elevation-down"
+      :class="{ 'pa-4': !compact, 'pa-3': compact }"
+      style="border-radius: 16px;"
+    >
       <div class="d-flex flex-column" :class="{ 'ga-6': !compact, 'ga-2': compact }">
         <AtomLink to="/">
           <AtomProjectLogo :compact :class="{ 'mb-6': compact }" />
