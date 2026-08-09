@@ -136,6 +136,14 @@ func (s *Service) LoginWithPwd(ctx context.Context, opts LoginWithPwdOpts) (*Log
 	return &LoginResult{Session: session, User: user}, nil
 }
 
+func (s *Service) Logout(ctx context.Context, token string) error {
+	if err := s.deps.SessionService.Revoke(ctx, token); err != nil {
+		return fmt.Errorf("s.deps.SessionService.Revoke: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Service) equalizeLoginTiming(password string) {
 	_, _ = s.deps.HashService.Hash([]byte(password))
 }

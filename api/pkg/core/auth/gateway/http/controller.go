@@ -88,6 +88,7 @@ func New(cfg Config, deps Deps) (*Controller, error) {
 func (c *Controller) InitRouter(r chi.Router) {
 	r.Route(c.cfg.Endpoint, func(r chi.Router) {
 		r.Post("/login", c.loginWithPwd)
+		r.Post("/logout", c.logout)
 	})
 }
 
@@ -125,4 +126,20 @@ func (c *Controller) loginWithPwd(w http.ResponseWriter, r *http.Request) {
 		Username: res.User.Name,
 		IsAdmin:  res.User.IsAdmin,
 	})
+}
+
+func (c *Controller) logout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if token := c.deps.Cookies.Read(r); token != "" {
+		if err := c.deps.AuthService.Logout(ctx, token); err != nil {
+			c.deps.Logger.ErrorContext(ctx, "failed to logout", logging.Err(err))
+			httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
+
+			return
+		}
+	}
+
+	c.deps.Cookies.Clear(w)
+	w.WriteHeader(http.StatusNoContent)
 }

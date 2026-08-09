@@ -11,11 +11,13 @@ export interface AuthComposable {
   isAuthenticated: Ref<boolean>
   isAdmin: Ref<boolean>
   loading: Ref<boolean>
+  logoutLoading: Ref<boolean>
 
   fetchMe: () => Promise<AuthCheck>
   invalidate: () => void
 
   login: (request: LoginWithPwdRequest) => Promise<LoginWithPwdStatus>
+  logout: () => Promise<void>
 }
 
 export function useAuth(): AuthComposable {
@@ -26,6 +28,7 @@ export function useAuth(): AuthComposable {
   const isAuthenticated = computed(() => !!user.value)
   const isAdmin = computed(() => !!user.value?.isAdmin)
   const loading = computed(() => store.status === 'loading')
+  const logoutLoading = ref(false)
 
   async function login(request: LoginWithPwdRequest): Promise<LoginWithPwdStatus> {
     const res = await authApi.loginWithPwd(request)
@@ -35,6 +38,19 @@ export function useAuth(): AuthComposable {
     }
 
     return res.status
+  }
+
+  async function logout(): Promise<void> {
+    logoutLoading.value = true
+
+    const res = await authApi.logout()
+    if (!res.success) {
+      console.error('authApi.logout', res.error)
+    }
+
+    store.invalidate()
+
+    logoutLoading.value = false
   }
 
   return {
@@ -48,5 +64,8 @@ export function useAuth(): AuthComposable {
 
     fetchMe: store.fetchMe,
     invalidate: store.invalidate,
+
+    logout,
+    logoutLoading,
   }
 }

@@ -25,18 +25,23 @@ import (
 )
 
 const (
-	authEndpoint = "/auth"
-	loginPath    = "/auth/login"
-	username     = "alice"
-	password     = "hunter2hunter2"
-	token        = "letoken"
+	authEndpoint      = "/auth"
+	loginPath         = "/auth/login"
+	logoutPath        = "/auth/logout"
+	username          = "alice"
+	password          = "hunter2hunter2"
+	token             = "letoken"
+	sessionCookieName = "uchiyomi_session"
 )
 
 type stubAuthService struct {
-	err     error
-	result  *auth.LoginResult
-	gotOpts auth.LoginWithPwdOpts
-	calls   int
+	err         error
+	logoutErr   error
+	result      *auth.LoginResult
+	gotOpts     auth.LoginWithPwdOpts
+	logoutToken string
+	calls       int
+	logoutCalls int
 }
 
 func (s *stubAuthService) LoginWithPwd(
@@ -55,6 +60,13 @@ func (s *stubAuthService) LoginWithPwd(
 
 func (s *stubAuthService) CreateUserWithPwd(context.Context, auth.CreateUserWithPwdOpts) (*users.User, error) {
 	panic("CreateUserWithPwd n'est pas exposée par ce controller")
+}
+
+func (s *stubAuthService) Logout(_ context.Context, token string) error {
+	s.logoutCalls++
+	s.logoutToken = token
+
+	return s.logoutErr
 }
 
 func frozenNow() time.Time {
@@ -85,7 +97,7 @@ func testLogger() (*slog.Logger, *bytes.Buffer) {
 func newCookies(t *testing.T) *sessionshttp.CookieManager {
 	t.Helper()
 
-	m, err := sessionshttp.NewCookieManager(sessionshttp.CookieConfig{Name: "uchiyomi_session", Path: "/"})
+	m, err := sessionshttp.NewCookieManager(sessionshttp.CookieConfig{Name: sessionCookieName, Path: "/"})
 	if err != nil {
 		t.Fatalf("NewCookieManager: %v", err)
 	}
@@ -506,5 +518,101 @@ func TestLoggerCarriesComponentAttribute(t *testing.T) {
 
 	if entry["component"] != "auth.gateway.http" {
 		t.Errorf("component = %v, want %q", entry["component"], "auth.gateway.http")
+	}
+}
+
+func postLogout(t *testing.T, r chi.Router, cookie *http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, logoutPath, nil)
+
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+
+	r.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func TestLogoutRevokesSessionAndClearsCookie(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{}
+	r, _ := newTestRouter(t, svc)
+
+	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+
+	if svc.logoutCalls != 1 {
+		t.Errorf("Logout appelé %d fois, want 1", svc.logoutCalls)
+	}
+
+	if svc.logoutToken != token {
+		t.Errorf("token reçu = %q, want %q", svc.logoutToken, token)
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("%d cookies posés, want 1", len(cookies))
+	}
+
+	if cookies[0].MaxAge != -1 {
+		t.Errorf("MaxAge = %d, want -1", cookies[0].MaxAge)
+	}
+
+	if cookies[0].Value != "" {
+		t.Errorf("Value = %q, want vide", cookies[0].Value)
+	}
+}
+
+func TestLogoutWithoutCookieClearsCookieAndSkipsService(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{}
+	r, _ := newTestRouter(t, svc)
+
+	rec := postLogout(t, r, nil)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+
+	if svc.logoutCalls != 0 {
+		t.Errorf("Logout appelé %d fois, want 0", svc.logoutCalls)
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("%d cookies posés, want 1", len(cookies))
+	}
+
+	if cookies[0].MaxAge != -1 {
+		t.Errorf("MaxAge = %d, want -1", cookies[0].MaxAge)
+	}
+}
+
+func TestLogoutServiceErrorLeavesCookieIntact(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{logoutErr: errors.New("database is down")}
+	r, logs := newTestRouter(t, svc)
+
+	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+
+	if n := len(rec.Result().Cookies()); n != 0 {
+		t.Errorf("%d cookies posés alors que le logout a échoué", n)
+	}
+
+	if !strings.Contains(logs.String(), "failed to logout") {
+		t.Errorf("message de log attendu absent: %s", logs.String())
 	}
 }

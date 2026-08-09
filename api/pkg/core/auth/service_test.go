@@ -20,6 +20,7 @@ import (
 const (
 	userName = "alice"
 	pwd      = "hunter2hunter2"
+	token    = "letoken"
 )
 
 type txCtxKey struct{}
@@ -175,10 +176,13 @@ func (f *fakePwdRepository) UpdateByUserID(context.Context, password.UpsertPassw
 }
 
 type fakeSessionService struct {
-	err     error
-	issued  *sessions.IssuedSession
-	gotOpts sessions.CreateSessionOpts
-	calls   int
+	err         error
+	revokeErr   error
+	issued      *sessions.IssuedSession
+	gotToken    string
+	gotOpts     sessions.CreateSessionOpts
+	calls       int
+	revokeCalls int
 }
 
 func (f *fakeSessionService) Create(
@@ -199,8 +203,15 @@ func (f *fakeSessionService) Authenticate(context.Context, string) (*sessions.Au
 	panic("Authenticate n'est pas utilisée par le service auth")
 }
 
-func (f *fakeSessionService) Revoke(context.Context, string) error {
-	panic("Revoke n'est pas utilisée par le service auth")
+func (f *fakeSessionService) Revoke(_ context.Context, token string) error {
+	f.revokeCalls++
+	f.gotToken = token
+
+	if f.revokeErr != nil {
+		return f.revokeErr
+	}
+
+	return nil
 }
 
 func (f *fakeSessionService) RevokeAllForUser(context.Context, uuid.UUID) error {
@@ -228,7 +239,7 @@ func newFakes() *fakes {
 		tr:    &fakeTransactor{clock: c},
 		ss: &fakeSessionService{issued: &sessions.IssuedSession{
 			Session: sessions.Session{ID: uuid.New(), UserID: user.ID},
-			Token:   "letoken",
+			Token:   token,
 		}},
 	}
 }
@@ -457,7 +468,7 @@ func TestLoginWithPwdIssuesPasswordSession(t *testing.T) {
 		t.Fatalf("LoginWithPwd: %v", err)
 	}
 
-	if got == nil || got.Session == nil || got.Session.Token != "letoken" {
+	if got == nil || got.Session == nil || got.Session.Token != token {
 		t.Fatalf("LoginWithPwd() = %+v", got)
 	}
 
@@ -617,5 +628,45 @@ func TestLoginWithPwdPropagatesInfrastructureErrors(t *testing.T) {
 				t.Errorf("LoginWithPwd a renvoyé %+v en plus de l'erreur", got)
 			}
 		})
+	}
+}
+
+func TestLogoutForwardsTokenToRevoke(t *testing.T) {
+	t.Parallel()
+
+	f := newFakes()
+
+	if err := f.svc(t).Logout(context.Background(), token); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+
+	if f.ss.revokeCalls != 1 {
+		t.Errorf("Revoke appelée %d fois, want 1", f.ss.revokeCalls)
+	}
+
+	if f.ss.gotToken != token {
+		t.Errorf("Revoke a reçu %q, want %q", f.ss.gotToken, token)
+	}
+}
+
+func TestLogoutPropagatesRevokeError(t *testing.T) {
+	t.Parallel()
+
+	f := newFakes()
+	f.ss.revokeErr = sessions.ErrInvalidSession
+
+	err := f.svc(t).Logout(context.Background(), token)
+	if !errors.Is(err, sessions.ErrInvalidSession) {
+		t.Errorf("err = %v, want ErrInvalidSession", err)
+	}
+}
+
+func TestLogoutReturnsNilOnSuccess(t *testing.T) {
+	t.Parallel()
+
+	f := newFakes()
+
+	if err := f.svc(t).Logout(context.Background(), token); err != nil {
+		t.Errorf("Logout() = %v, want nil", err)
 	}
 }

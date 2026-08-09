@@ -126,6 +126,10 @@ func (fakeAuthService) CreateUserWithPwd(context.Context, auth.CreateUserWithPwd
 	return nil, errors.New(notImplemented)
 }
 
+func (fakeAuthService) Logout(context.Context, string) error {
+	return errors.New(notImplemented)
+}
+
 type fakeOIDCProvidersService struct{}
 
 func (fakeOIDCProvidersService) List(context.Context) ([]oidcproviders.LightOIDCProvider, error) {
