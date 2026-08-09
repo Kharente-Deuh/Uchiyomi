@@ -323,6 +323,36 @@ func TestCreateReturnsCreated(t *testing.T) {
 	}
 }
 
+func TestCreateAcceptsEmptyValueListsWithoutARoleClaim(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
+
+	//nolint:lll
+	body := `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"adminValues":[],"allowedValues":[]}`
+
+	rec := do(r, http.MethodPost, endpoint, body)
+
+	if rec.Code != http.StatusCreated {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+}
+
+func TestUpdateRejectsValuesWithoutARoleClaim(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
+
+	//nolint:lll
+	body := `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":null,"usernameClaim":"u","scopes":["openid"],"adminValues":["admins"]}`
+
+	rec := do(r, http.MethodPut, endpoint+"/"+uuid.New().String(), body)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
 func TestCreateRejectsAMalformedBody(t *testing.T) {
 	t.Parallel()
 
@@ -333,6 +363,10 @@ func TestCreateRejectsAMalformedBody(t *testing.T) {
 		"unknown field":    `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"nope":1}`, //nolint:lll
 		"no scope":         `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":[]}`,                  //nolint:lll
 		"no client secret": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`,                             //nolint:lll
+		//nolint:lll
+		"admin values without a role claim": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"adminValues":["admins"]}`,
+		//nolint:lll
+		"allowed values with a blank role claim": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"roleClaim":"  ","allowedValues":["users"]}`,
 	}
 
 	for name, body := range tests {

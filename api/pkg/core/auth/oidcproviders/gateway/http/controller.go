@@ -154,6 +154,12 @@ func (c *Controller) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := req.validate(); err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, err.Error())
+
+		return
+	}
+
 	provider, err := c.deps.Service.Create(ctx, oidcproviders.CreateOpts{
 		DisplayName:   req.DisplayName.String(),
 		IssuerURL:     req.IssuerURL.String(),
@@ -187,6 +193,12 @@ func (c *Controller) update(w http.ResponseWriter, r *http.Request) {
 
 	req, err := httputils.DecodeJSON[UpdateProviderRequest](r)
 	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, err.Error())
+
+		return
+	}
+
+	if err := req.validate(); err != nil {
 		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, err.Error())
 
 		return

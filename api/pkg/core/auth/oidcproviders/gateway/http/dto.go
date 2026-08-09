@@ -3,6 +3,8 @@
 package http
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/httputils"
@@ -32,6 +34,28 @@ type UpdateProviderRequest struct {
 	AdminValues   []string                 `json:"adminValues"`
 	AllowedValues []string                 `json:"allowedValues"`
 	AutoProvision bool                     `json:"autoProvision"`
+}
+
+var errRoleClaimRequired = errors.New("roleClaim is required when adminValues or allowedValues is set")
+
+func (r CreateProviderRequest) validate() error {
+	return validateRoleClaim(r.RoleClaim, r.AdminValues, r.AllowedValues)
+}
+
+func (r UpdateProviderRequest) validate() error {
+	return validateRoleClaim(r.RoleClaim, r.AdminValues, r.AllowedValues)
+}
+
+func validateRoleClaim(claim *string, adminValues, allowedValues []string) error {
+	if claim != nil && strings.TrimSpace(*claim) != "" {
+		return nil
+	}
+
+	if len(adminValues) > 0 || len(allowedValues) > 0 {
+		return errRoleClaimRequired
+	}
+
+	return nil
 }
 
 type ProbeRequest struct {
