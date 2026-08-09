@@ -17,6 +17,10 @@ type taggedRequest struct {
 	UsernameClaim string `json:"usernameClaim,omitempty" validate:"omitempty,oneof=sub email"`
 }
 
+type sliceRequest struct {
+	Scopes []string `json:"scopes" validate:"required,min=1,dive,required"`
+}
+
 type untaggedRequest struct {
 	IssuerURL string `validate:"required,url"`
 }
@@ -40,23 +44,23 @@ func TestDecodeJSONNamesTheJSONKey(t *testing.T) {
 		body    string
 		wantErr string
 	}{
-		"url invalide": {
+		"invalid url": {
 			body:    `{"issuerUrl":"nope","clientSecret":"averylongsecret"}`,
 			wantErr: "issuerUrl must be a valid URL",
 		},
-		"champ manquant": {
+		"missing field": {
 			body:    `{"issuerUrl":"https://idp.example.com"}`,
 			wantErr: "clientSecret is required",
 		},
-		"longueur minimale": {
+		"below min length": {
 			body:    `{"issuerUrl":"https://idp.example.com","clientSecret":"short"}`,
 			wantErr: "clientSecret must be at least 8 characters",
 		},
-		"valeur hors liste": {
+		"value outside oneof": {
 			body:    `{"issuerUrl":"https://idp.example.com","clientSecret":"averylongsecret","usernameClaim":"name"}`,
 			wantErr: "usernameClaim must be one of: sub, email",
 		},
-		"erreurs cumulées": {
+		"several errors joined": {
 			body:    `{}`,
 			wantErr: "issuerUrl is required, clientSecret is required",
 		},
@@ -78,12 +82,40 @@ func TestDecodeJSONNamesTheJSONKey(t *testing.T) {
 	}
 }
 
+func TestDecodeJSONNamesTheJSONKeyInsideSlices(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		body    string
+		wantErr string
+	}{
+		"empty element": {body: `{"scopes":["openid",""]}`, wantErr: "scopes[1] is required"},
+		"empty slice":   {body: `{"scopes":[]}`, wantErr: "scopes must be at least 1"},
+		"missing key":   {body: `{}`, wantErr: "scopes is required"},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := decode[sliceRequest](t, tc.body)
+			if err == nil {
+				t.Fatalf("DecodeJSON(%s) = nil, want %q", tc.body, tc.wantErr)
+			}
+
+			if got := err.Error(); got != tc.wantErr {
+				t.Errorf("err = %q, want %q", got, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestDecodeJSONFallsBackToTheGoFieldWithoutJSONTag(t *testing.T) {
 	t.Parallel()
 
 	_, err := decode[untaggedRequest](t, `{}`)
 	if err == nil {
-		t.Fatal("DecodeJSON({}) = nil, want une erreur de validation")
+		t.Fatal("DecodeJSON({}) = nil, want a validation error")
 	}
 
 	if want := "IssuerURL is required"; err.Error() != want {
@@ -96,7 +128,7 @@ func TestDecodeJSONFallsBackToTheGoFieldOnDashTag(t *testing.T) {
 
 	_, err := decode[skippedRequest](t, `{}`)
 	if err == nil {
-		t.Fatal("DecodeJSON({}) = nil, want une erreur de validation")
+		t.Fatal("DecodeJSON({}) = nil, want a validation error")
 	}
 
 	if want := "Internal is required"; err.Error() != want {
@@ -121,9 +153,9 @@ func TestDecodeJSONRejectsMalformedBody(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]string{
-		"json invalide": `{`,
-		"champ inconnu": `{"issuerUrl":"https://idp.example.com","clientSecret":"averylongsecret","nope":1}`,
-		"corps vide":    ``,
+		"malformed json": `{`,
+		"unknown field":  `{"issuerUrl":"https://idp.example.com","clientSecret":"averylongsecret","nope":1}`,
+		"empty body":     ``,
 	}
 
 	for name, body := range tests {
@@ -132,7 +164,7 @@ func TestDecodeJSONRejectsMalformedBody(t *testing.T) {
 
 			_, err := decode[taggedRequest](t, body)
 			if err == nil {
-				t.Fatalf("DecodeJSON(%q) = nil, want une erreur", body)
+				t.Fatalf("DecodeJSON(%q) = nil, want an error", body)
 			}
 
 			if want := "invalid request body"; err.Error() != want {
