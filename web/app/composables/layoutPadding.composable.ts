@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useLayoutStore } from '~/store/layout.store'
+import { useLayoutStore } from '~/stores/layout.store'
 
 interface LayoutPaddingsComposable {
   bottomLayout: ComputedRef<string | undefined>

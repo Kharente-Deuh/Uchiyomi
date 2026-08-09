@@ -2,7 +2,7 @@
 
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useLayoutStore } from '~/store/layout.store'
+import { useLayoutStore } from '~/stores/layout.store'
 
 describe('useLayoutStore', () => {
   beforeEach(() => {

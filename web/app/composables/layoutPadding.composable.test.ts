@@ -15,7 +15,7 @@ function useDisplayStub(): typeof displayStub {
 mockNuxtImport('useDisplay', () => useDisplayStub)
 
 const { useLayoutPadding } = await import('~/composables/layoutPadding.composable')
-const { useLayoutStore } = await import('~/store/layout.store')
+const { useLayoutStore } = await import('~/stores/layout.store')
 
 describe('useLayoutPadding', () => {
   beforeEach(() => {
