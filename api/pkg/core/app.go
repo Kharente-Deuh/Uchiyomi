@@ -20,6 +20,7 @@ import (
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/logging"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/webui"
 	"golang.org/x/sync/errgroup"
 
@@ -193,10 +194,24 @@ func (a *App) runComponent(ctx context.Context, name string, run func(context.Co
 
 func (a *App) initServer() *http.Server {
 	ui, _ := webui.Handler()
+	r := a.newRouter(ui)
+	a.logRoutes(r)
 
 	return &http.Server{
 		Addr:    fmt.Sprintf(":%d", a.cfg.ServerPort),
-		Handler: a.newRouter(ui),
+		Handler: r,
+	}
+}
+
+func (a *App) logRoutes(r chi.Router) {
+	walk := func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		a.deps.Logger.Info(fmt.Sprintf("[%s] %s", method, route))
+
+		return nil
+	}
+
+	if err := chi.Walk(r, walk); err != nil {
+		a.deps.Logger.Warn("failed to list routes", logging.Err(err))
 	}
 }
 
@@ -214,7 +229,7 @@ func (a *App) newRouter(ui http.Handler) chi.Router {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequestID)
 			r.Use(middleware.ClientIPFromRemoteAddr)
-			r.Use(middleware.Logger)
+			r.Use(a.requestLogger)
 			r.Use(middleware.Recoverer)
 
 			if len(a.cfg.AllowedOrigins) > 0 {
