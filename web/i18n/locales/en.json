@@ -130,6 +130,10 @@
           "title": "Claims"
         }
       },
+      "errors": {
+        "notFound": "Provider not found",
+        "noProviders": "There is not provders set"
+      },
       "test": {
         "title": "Issuer test result",
         "fields": {
@@ -159,7 +163,10 @@
           "unreachable": "Issuer unreachable"
         }
       },
-      "no-providers": "There is not provders set"
+      "titleShort": "OIDC",
+      "update": {
+        "success": "Provider updated !"
+      }
     }
   },
   "error": {
@@ -169,5 +176,8 @@
     "cancel": "Cancel",
     "save": "Save",
     "create": "Create"
+  },
+  "common": {
+    "loading": "Loading..."
   }
 }

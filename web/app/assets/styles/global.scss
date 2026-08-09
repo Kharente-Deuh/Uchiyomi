@@ -107,7 +107,7 @@ input::-webkit-inner-spin-button {
 }
 
 .transition-smooth {
-  transition: all 0.3s ease-in-out;
+  transition: all 0.2s ease-in-out;
 }
 
 .secondary-on-hover {
@@ -128,8 +128,7 @@ input::-webkit-inner-spin-button {
   text-wrap: nowrap;
 }
 
-
-.border-primary-on-hover {
+.border-primary-hover {
   @extend .transition-smooth;
 
   &:hover {
@@ -137,10 +136,18 @@ input::-webkit-inner-spin-button {
   }
 }
 
-.text-primary-on-hover {
+.text-primary-hover {
   @extend .transition-smooth;
 
   &:hover {
     color: rgb(var(--v-theme-primary));
+  }
+}
+
+.text-underline-hover {
+  @extend .transition-smooth;
+
+  &:hover {
+    text-decoration: underline;
   }
 }

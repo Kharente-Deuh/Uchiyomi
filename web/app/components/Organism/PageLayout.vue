@@ -4,6 +4,7 @@ import type { RouteLocationRaw } from 'vue-router'
 
 const props = defineProps<{
   title: string
+  backRouteName?: string
   subtitle?: string
   showBackRoute?: boolean
   backRoute?: RouteLocationRaw
@@ -44,13 +45,15 @@ const isStickyHeader = computed(() => props.stickyHeader && mobile.value)
       class="d-flex ga-3 align-center justify-space-between"
       :class="[mobile ? 'px-6 py-3' : 'mb-8', { 'page-layout__sticky-header bg-background': isStickyHeader }]"
     >
-      <div class="d-flex align-center ga-6 text-truncate">
-        <AtomLink
-          v-if="backRoute && (showBackRoute || mobile)"
-          :to="backRoute"
-        >
-          <VIcon icon="fa6-solid:chevron-left" />
-        </AtomLink>
+      <div class="d-flex align-center ga-4 text-truncate">
+        <div v-if="backRoute && (showBackRoute || mobile)" class="d-flex ga-4 align-center">
+          <AtomLink :to="backRoute">
+            <span v-if="backRouteName" class="text-primary-hover text-underline-hover text-title-large">{{ backRouteName }}</span>
+            <VIcon v-else icon="fa6-solid:chevron-left" />
+          </AtomLink>
+
+          <span v-if="backRouteName" class="opacity-50 text-title-large">/</span>
+        </div>
 
         <slot name="prepend-title" />
 

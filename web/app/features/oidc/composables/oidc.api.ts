@@ -8,7 +8,7 @@ export interface OidcApi {
   getById: (id: string) => Promise<ApiResponse<OidcProvider>>
   testByIssuerUrl: (url: string) => Promise<ApiResponse<TestResponse>>
   create: (request: CreateOidcProviderRequest) => Promise<ApiResponse<OidcProvider>>
-  updateById: (id: string, request: CreateOidcProviderRequest) => Promise<ApiResponse<OidcProvider>>
+  updateById: (id: string, request: UpdateOidcProviderRequest) => Promise<ApiResponse<OidcProvider>>
   deleteById: (id: string) => Promise<ApiResponse<void>>
 }
 
@@ -24,6 +24,8 @@ export interface CreateOidcProviderRequest {
   allowedValues?: string[]
   autoProvision: boolean
 }
+
+export type UpdateOidcProviderRequest = Omit<CreateOidcProviderRequest, 'clientSecret'>
 
 export interface LightOidcProvider {
   id: string
@@ -121,9 +123,9 @@ export function createOidcApi(): OidcApi {
     }
   }
 
-  async function updateById(id: string, body: CreateOidcProviderRequest): Promise<ApiResponse<OidcProvider>> {
+  async function updateById(id: string, body: UpdateOidcProviderRequest): Promise<ApiResponse<OidcProvider>> {
     try {
-      const provider = await api<OidcProvider>('/', { method: 'PUT', body })
+      const provider = await api<OidcProvider>(`/${id}`, { method: 'PUT', body })
 
       return { success: true, data: createOidcProvider(provider) }
     } catch (error) {

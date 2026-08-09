@@ -8,7 +8,7 @@ const { locale } = useI18n()
 <template>
   <AtomLink :to="`/settings/oidc/${id}`">
     <VCard
-      class="provider-card pa-4 border-thin border-primary-on-hover text-primary-on-hover cursor-pointer"
+      class="provider-card pa-4 border-thin"
       style="border-radius: 12px;"
     >
       <div class="d-flex ga-4 flex-column">

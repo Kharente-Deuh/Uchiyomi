@@ -82,12 +82,12 @@
     "oidc": {
       "title": "Fournisseurs OIDC",
       "create": {
-        "success": "Fournisseur {nom} créé !",
+        "success": "Fournisseur {nom} créé !",
         "error": "Le fournisseur existe déjà",
         "title": "Nouveau fournisseur OIDC"
       },
       "delete": {
-        "success": "Fournisseur supprimé !"
+        "success": "Fournisseur supprimé !"
       },
       "fields": {
         "displayName": {
@@ -158,7 +158,14 @@
           "unreachable": "Émetteur inaccessible"
         }
       },
-      "no-providers": "Aucun fournisseur n'est défini"
+      "titleShort": "OIDC",
+      "update": {
+        "success": "Fournisseur mis à jour !"
+      },
+      "errors": {
+        "noProviders": "Aucun fournisseur n'est défini",
+        "notFound": "Fournisseur introuvable"
+      }
     }
   },
   "error": {
@@ -168,5 +175,8 @@
     "cancel": "Annuler",
     "save": "Sauvegarder",
     "create": "Créer"
+  },
+  "common": {
+    "loading": "Chargement..."
   }
 }

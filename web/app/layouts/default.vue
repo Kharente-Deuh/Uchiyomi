@@ -27,7 +27,7 @@ const settingsNavItems = computed((): NavigationDrawerListItemProps[] => {
       title: t('settings.oidc.title'),
       to: '/settings/oidc',
       icon: 'fa6-regular:address-card',
-      isActiveFn: (route: RouteLocationNormalized) => route.path === '/settings/oidc',
+      isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/settings/oidc'),
       baseRoute: '/settings/oidc',
     },
   ]

@@ -79,13 +79,13 @@ watch(() => field('roleClaim').props.modelValue, (value: string) => {
       <span class="text-title-large font-title text-truncate">{{ $t('settings.oidc.category.providerInfos.title') }}</span>
     </div>
     <VTextField v-bind="field('displayName').props" />
+    <VTextField v-bind="field('clientId').props" />
+    <AtomInputPassword v-bind="field('clientSecret').props" />
     <VTextField v-bind="field('issuerUrl').props">
       <template #append>
         <OidcBtnTest :issuer-url="field('issuerUrl').props.modelValue" />
       </template>
     </VTextField>
-    <VTextField v-bind="field('clientId').props" />
-    <AtomInputPassword v-bind="field('clientSecret').props" />
     <VCheckbox
       density="compact"
       :messages="[$t('settings.oidc.fields.autoProvision.hint')]"
@@ -98,48 +98,16 @@ watch(() => field('roleClaim').props.modelValue, (value: string) => {
       <span class="text-title-large font-title text-truncate">{{ $t('settings.oidc.category.claims.title') }}</span>
     </div>
 
-    <VCombobox
-      v-bind="field('scopes').props"
-      clear-icon="fa6-solid:xmark"
-      density="comfortable"
-      bg-color="surface-variant"
-      class="text-field-override"
-      color="primary"
-      variant="outlined"
-      menu-icon="fa6-solid:caret-down"
-      chips
-      clearable
-      multiple
-    />
+    <VCombobox v-bind="field('scopes').props" />
     <VTextField v-bind="field('usernameClaim').props" />
     <VTextField v-bind="field('roleClaim').props" clearable />
     <VCombobox
       v-bind="field('adminValues').props"
-      clear-icon="fa6-solid:xmark"
-      density="comfortable"
-      bg-color="surface-variant"
-      class="text-field-override"
       :disabled="!field('roleClaim').props.modelValue"
-      color="primary"
-      variant="outlined"
-      menu-icon="fa6-solid:caret-down"
-      chips
-      clearable
-      multiple
     />
     <VCombobox
       v-bind="field('allowedValues').props"
-      clear-icon="fa6-solid:xmark"
-      density="comfortable"
       :disabled="!field('roleClaim').props.modelValue"
-      bg-color="surface-variant"
-      class="text-field-override"
-      color="primary"
-      variant="outlined"
-      menu-icon="fa6-solid:caret-down"
-      chips
-      clearable
-      multiple
     />
   </OrganismModal>
 </template>
