@@ -60,13 +60,13 @@ func newRepo(t *testing.T) (*pg.PGOIDCProvidersRepository, sqlmock.Sqlmock) {
 func providerRows(id uuid.UUID) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id", colDisplayName, "issuer_url", "client_id", colClientSecretEnc,
-		colScopes, "username_claim", "admin_claim", "admin_values",
-		"allowed_claim", "allowed_values", "auto_provision",
+		colScopes, "username_claim", "role_claim", "admin_values",
+		"allowed_values", "auto_provision",
 	}).AddRow(
 		id, testDisplayName, testIssuerURL, "uchiyomi", []byte("enc"),
 		pq.StringArray{scopeOpenID, scopeProfile}, "preferred_username",
 		"groups", pq.StringArray{adminGroupValue},
-		"groups", pq.StringArray{"users"},
+		pq.StringArray{"users"},
 		true,
 	)
 }
@@ -141,8 +141,8 @@ func TestGetByID(t *testing.T) {
 		t.Errorf("AdminValues = %v, want [admins]", got.AdminValues)
 	}
 
-	if got.AdminClaim == nil || *got.AdminClaim != "groups" {
-		t.Errorf("AdminClaim = %v, want \"groups\"", got.AdminClaim)
+	if got.RoleClaim == nil || *got.RoleClaim != "groups" {
+		t.Errorf("RoleClaim = %v, want \"groups\"", got.RoleClaim)
 	}
 
 	if !got.AutoProvision {
@@ -286,7 +286,7 @@ func TestCreate(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
 	mock.ExpectCommit()
 
-	adminClaim := "groups"
+	roleClaim := "groups"
 
 	got, err := r.Create(context.Background(), oidcproviders.CreateOIDCProviderOpts{
 		DisplayName:     testDisplayName,
@@ -295,7 +295,7 @@ func TestCreate(t *testing.T) {
 		ClientSecretEnc: []byte("enc"),
 		Scopes:          []string{scopeOpenID, scopeProfile, "email"},
 		UsernameClaim:   "preferred_username",
-		AdminClaim:      &adminClaim,
+		RoleClaim:       &roleClaim,
 		AdminValues:     []string{adminGroupValue},
 		AutoProvision:   true,
 	})

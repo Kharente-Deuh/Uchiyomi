@@ -31,10 +31,10 @@ const (
 	testIssuerURL   = "https://sso.example.com"
 
 	//nolint:lll
-	validBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"s3cr3t","usernameClaim":"preferred_username","scopes":["openid"],"adminClaim":null,"adminValues":null,"allowedClaim":null,"allowedValues":null,"autoProvision":true}`
+	validBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"s3cr3t","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 
 	//nolint:lll
-	validPutBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","usernameClaim":"preferred_username","scopes":["openid"],"adminClaim":null,"adminValues":null,"allowedClaim":null,"allowedValues":null,"autoProvision":true,"clientSecret":null}`
+	validPutBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true,"clientSecret":null}`
 )
 
 var errUnexpected = errors.New("boom")
@@ -162,11 +162,13 @@ func admin() *users.User {
 	return &users.User{ID: uuid.New(), Name: "root", IsAdmin: true}
 }
 
-func TestListReturnsOnlyIDAndDisplayName(t *testing.T) {
+func TestListReturnsOnlyTheLightFields(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
-	svc := &stubService{list: []oidcproviders.LightOIDCProvider{{ID: id, DisplayName: testDisplayName}}}
+	svc := &stubService{list: []oidcproviders.LightOIDCProvider{
+		{ID: id, DisplayName: testDisplayName, IssuerURL: testIssuerURL},
+	}}
 	r := newRouter(t, svc, adminMiddlewares(t, admin()))
 
 	rec := do(r, http.MethodGet, endpoint, "")
@@ -184,7 +186,7 @@ func TestListReturnsOnlyIDAndDisplayName(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
 
-	want := map[string]bool{"id": true, "displayName": true}
+	want := map[string]bool{"id": true, "displayName": true, "issuerUrl": true}
 	for key := range got[0] {
 		if !want[key] {
 			t.Errorf("the list exposes %q, which belongs to the detail response", key)
@@ -416,7 +418,7 @@ func TestUpdateForwardsTheSecretWhenPresent(t *testing.T) {
 	r := newRouter(t, svc, adminMiddlewares(t, admin()))
 
 	//nolint:lll
-	body := `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"rotated","usernameClaim":"preferred_username","scopes":["openid"],"adminClaim":null,"adminValues":null,"allowedClaim":null,"allowedValues":null,"autoProvision":true}`
+	body := `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"rotated","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 
 	rec := do(r, http.MethodPut, endpoint+"/"+uuid.New().String(), body)
 

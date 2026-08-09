@@ -9,8 +9,7 @@ import (
 )
 
 type CreateProviderRequest struct {
-	AdminClaim    *string                 `json:"adminClaim"`
-	AllowedClaim  *string                 `json:"allowedClaim"`
+	RoleClaim     *string                 `json:"roleClaim"`
 	DisplayName   httputils.TrimmedString `json:"displayName" validate:"required,max=64"`
 	IssuerURL     httputils.TrimmedString `json:"issuerUrl" validate:"required,url"`
 	ClientID      httputils.TrimmedString `json:"clientId" validate:"required"`
@@ -23,8 +22,7 @@ type CreateProviderRequest struct {
 }
 
 type UpdateProviderRequest struct {
-	AdminClaim    *string                  `json:"adminClaim"`
-	AllowedClaim  *string                  `json:"allowedClaim"`
+	RoleClaim     *string                  `json:"roleClaim"`
 	ClientSecret  *httputils.TrimmedString `json:"clientSecret" validate:"omitempty,min=1"`
 	DisplayName   httputils.TrimmedString  `json:"displayName" validate:"required,max=64"`
 	IssuerURL     httputils.TrimmedString  `json:"issuerUrl" validate:"required,url"`
@@ -43,13 +41,13 @@ type ProbeRequest struct {
 type LightProviderResponse struct {
 	ID          string `json:"id"`
 	DisplayName string `json:"displayName"`
+	IssuerURL   string `json:"issuerUrl"`
 }
 
 type ProviderResponse struct {
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
-	AdminClaim    *string   `json:"adminClaim"`
-	AllowedClaim  *string   `json:"allowedClaim"`
+	RoleClaim     *string   `json:"roleClaim"`
 	ID            string    `json:"id"`
 	DisplayName   string    `json:"displayName"`
 	IssuerURL     string    `json:"issuerUrl"`

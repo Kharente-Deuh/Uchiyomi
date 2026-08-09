@@ -12,8 +12,7 @@ import (
 type OIDCProvider struct {
 	UpdatedAt           time.Time `gorm:"autoUpdateTime"`
 	CreatedAt           time.Time `gorm:"autoCreateTime"`
-	AdminClaim          *string
-	AllowedClaim        *string
+	RoleClaim           *string
 	ClientID            string
 	UsernameClaim       string
 	IssuerURL           string `gorm:"type:text;not null;uniqueIndex"`

@@ -62,10 +62,9 @@ type CreateOpts struct {
 
 	Scopes []string
 
-	AdminClaim  *string
-	AdminValues []string
+	RoleClaim *string
 
-	AllowedClaim  *string
+	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
 }
@@ -80,10 +79,9 @@ type UpdateOpts struct {
 
 	Scopes []string
 
-	AdminClaim  *string
-	AdminValues []string
+	RoleClaim *string
 
-	AllowedClaim  *string
+	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
 }
@@ -150,9 +148,8 @@ func (s *Service) Create(ctx context.Context, opts CreateOpts) (*OIDCProvider, e
 		ClientSecretEnc: secretEnc,
 		Scopes:          opts.Scopes,
 		UsernameClaim:   opts.UsernameClaim,
-		AdminClaim:      opts.AdminClaim,
+		RoleClaim:       opts.RoleClaim,
 		AdminValues:     opts.AdminValues,
-		AllowedClaim:    opts.AllowedClaim,
 		AllowedValues:   opts.AllowedValues,
 		AutoProvision:   opts.AutoProvision,
 	})
@@ -186,9 +183,8 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, opts UpdateOpts) (*O
 		ClientSecretEnc: secretEnc,
 		Scopes:          opts.Scopes,
 		UsernameClaim:   opts.UsernameClaim,
-		AdminClaim:      opts.AdminClaim,
+		RoleClaim:       opts.RoleClaim,
 		AdminValues:     opts.AdminValues,
-		AllowedClaim:    opts.AllowedClaim,
 		AllowedValues:   opts.AllowedValues,
 		AutoProvision:   opts.AutoProvision,
 	})

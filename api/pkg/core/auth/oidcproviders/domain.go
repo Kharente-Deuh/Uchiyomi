@@ -22,8 +22,7 @@ type OIDCProvidersRepository interface {
 type OIDCProvider struct {
 	UpdatedAt       time.Time
 	CreatedAt       time.Time
-	AdminClaim      *string
-	AllowedClaim    *string
+	RoleClaim       *string
 	ClientID        string
 	UsernameClaim   string
 	IssuerURL       string
@@ -45,11 +44,9 @@ type UpdateOIDCProviderOpts struct {
 	Scopes          []string
 
 	UsernameClaim string
+	RoleClaim     *string
 
-	AdminClaim  *string
-	AdminValues []string
-
-	AllowedClaim  *string
+	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
 }
@@ -63,17 +60,16 @@ type CreateOIDCProviderOpts struct {
 	Scopes          []string
 
 	UsernameClaim string
+	RoleClaim     *string
 
-	AdminClaim  *string
-	AdminValues []string
-
-	AllowedClaim  *string
+	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
 }
 
 type LightOIDCProvider struct {
 	DisplayName string
+	IssuerURL   string
 	ID          uuid.UUID
 }
 

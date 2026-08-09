@@ -118,7 +118,7 @@ func (c *Controller) list(w http.ResponseWriter, r *http.Request) {
 
 	res := make([]LightProviderResponse, 0, len(providers))
 	for _, p := range providers {
-		res = append(res, LightProviderResponse{ID: p.ID.String(), DisplayName: p.DisplayName})
+		res = append(res, LightProviderResponse{ID: p.ID.String(), DisplayName: p.DisplayName, IssuerURL: p.IssuerURL})
 	}
 
 	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, res)
@@ -161,9 +161,8 @@ func (c *Controller) create(w http.ResponseWriter, r *http.Request) {
 		ClientSecret:  req.ClientSecret.String(),
 		UsernameClaim: req.UsernameClaim.String(),
 		Scopes:        req.Scopes,
-		AdminClaim:    req.AdminClaim,
+		RoleClaim:     req.RoleClaim,
 		AdminValues:   req.AdminValues,
-		AllowedClaim:  req.AllowedClaim,
 		AllowedValues: req.AllowedValues,
 		AutoProvision: req.AutoProvision,
 	})
@@ -207,9 +206,8 @@ func (c *Controller) update(w http.ResponseWriter, r *http.Request) {
 		ClientID:      req.ClientID.String(),
 		UsernameClaim: req.UsernameClaim.String(),
 		Scopes:        req.Scopes,
-		AdminClaim:    req.AdminClaim,
+		RoleClaim:     req.RoleClaim,
 		AdminValues:   req.AdminValues,
-		AllowedClaim:  req.AllowedClaim,
 		AllowedValues: req.AllowedValues,
 		AutoProvision: req.AutoProvision,
 	})
@@ -290,8 +288,7 @@ func toProviderResponse(p *oidcproviders.OIDCProvider) ProviderResponse {
 	return ProviderResponse{
 		CreatedAt:     p.CreatedAt,
 		UpdatedAt:     p.UpdatedAt,
-		AdminClaim:    p.AdminClaim,
-		AllowedClaim:  p.AllowedClaim,
+		RoleClaim:     p.RoleClaim,
 		ID:            p.ID.String(),
 		DisplayName:   p.DisplayName,
 		IssuerURL:     p.IssuerURL,

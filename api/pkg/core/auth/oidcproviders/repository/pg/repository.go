@@ -105,9 +105,8 @@ func (r *PGOIDCProvidersRepository) Create(ctx context.Context, opts oidcprovide
 		ClientSecretEnc: opts.ClientSecretEnc,
 		Scopes:          opts.Scopes,
 		UsernameClaim:   opts.UsernameClaim,
-		AdminClaim:      opts.AdminClaim,
+		RoleClaim:       opts.RoleClaim,
 		AdminValues:     opts.AdminValues,
-		AllowedClaim:    opts.AllowedClaim,
 		AllowedValues:   opts.AllowedValues,
 		AutoProvision:   opts.AutoProvision,
 	}
@@ -134,9 +133,8 @@ func (r *PGOIDCProvidersRepository) Update(ctx context.Context, id uuid.UUID, op
 		"client_id":      opts.ClientID,
 		"scopes":         pq.StringArray(opts.Scopes),
 		"username_claim": opts.UsernameClaim,
-		"admin_claim":    opts.AdminClaim,
+		"role_claim":     opts.RoleClaim,
 		"admin_values":   pq.StringArray(opts.AdminValues),
-		"allowed_claim":  opts.AllowedClaim,
 		"allowed_values": pq.StringArray(opts.AllowedValues),
 		"auto_provision": opts.AutoProvision,
 		"updated_at":     time.Now(),
@@ -179,6 +177,7 @@ func (r *PGOIDCProvidersRepository) lightModelToDomain(model pgmodels.OIDCProvid
 	return oidcproviders.LightOIDCProvider{
 		ID:          model.ID,
 		DisplayName: model.DisplayName,
+		IssuerURL:   model.IssuerURL,
 	}
 }
 
@@ -191,9 +190,8 @@ func (r *PGOIDCProvidersRepository) modelToDomain(model pgmodels.OIDCProvider) o
 		ClientSecretEnc: model.ClientSecretEnc,
 		Scopes:          model.Scopes,
 		UsernameClaim:   model.UsernameClaim,
-		AdminClaim:      model.AdminClaim,
+		RoleClaim:       model.RoleClaim,
 		AdminValues:     model.AdminValues,
-		AllowedClaim:    model.AllowedClaim,
 		AllowedValues:   model.AllowedValues,
 		AutoProvision:   model.AutoProvision,
 		CreatedAt:       model.CreatedAt,
