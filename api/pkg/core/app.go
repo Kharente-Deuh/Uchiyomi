@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	httpauth "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/gateway/http"
+	httpoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
@@ -30,7 +31,8 @@ const (
 	portMaxValue    = 65535
 	shutdownTimeout = 5 * time.Second
 
-	apiPrefix = "/api"
+	APIPrefix = "/api"
+	apiPrefix = APIPrefix
 )
 
 type Config struct {
@@ -59,11 +61,12 @@ type Database interface {
 type Deps struct {
 	DB Database
 
-	SetupCtrl  *httpsetup.Controller
-	AsuraCtrl  *httpasura.Controller
-	HealthCtrl *httphealth.Controller
-	AuthCtrl   *httpauth.Controller
-	UsersCtrl  *httpusers.Controller
+	SetupCtrl         *httpsetup.Controller
+	AsuraCtrl         *httpasura.Controller
+	HealthCtrl        *httphealth.Controller
+	AuthCtrl          *httpauth.Controller
+	UsersCtrl         *httpusers.Controller
+	OIDCProvidersCtrl *httpoidcproviders.Controller
 
 	Logger *slog.Logger
 	Health *health.Registry
@@ -107,6 +110,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.UsersCtrl == nil {
 		return errors.New("usersCtrl is required")
+	}
+
+	if deps.OIDCProvidersCtrl == nil {
+		return errors.New("oidcProvidersCtrl is required")
 	}
 
 	if deps.Health == nil {
@@ -225,6 +232,7 @@ func (a *App) newRouter(ui http.Handler) chi.Router {
 			a.deps.SetupCtrl.InitRouter(r)
 			a.deps.AuthCtrl.InitRouter(r)
 			a.deps.UsersCtrl.InitRouter(r)
+			a.deps.OIDCProvidersCtrl.InitRouter(r)
 			r.Route("/sources", func(r chi.Router) {
 				a.deps.AsuraCtrl.InitRouter(r)
 			})

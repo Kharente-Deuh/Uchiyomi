@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/repository/pg"
@@ -20,15 +22,19 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgtest"
 	"github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 const (
-	colDisplayName  = "display_name"
-	testDisplayName = "Keycloak"
-	scopeOpenID     = "openid"
-	scopeProfile    = "profile"
-	adminGroupValue = "admins"
-	testIssuerURL   = "https://sso.example.com"
+	colDisplayName     = "display_name"
+	colScopes          = "scopes"
+	colClientSecretEnc = "client_secret_enc"
+	testDisplayName    = "Keycloak"
+	scopeOpenID        = "openid"
+	scopeProfile       = "profile"
+	adminGroupValue    = "admins"
+	testIssuerURL      = "https://sso.example.com"
 )
 
 func duplicateKeyErr() error {
@@ -53,8 +59,8 @@ func newRepo(t *testing.T) (*pg.PGOIDCProvidersRepository, sqlmock.Sqlmock) {
 
 func providerRows(id uuid.UUID) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", colDisplayName, "issuer_url", "client_id", "client_secret_enc",
-		"scopes", "username_claim", "admin_claim", "admin_values",
+		"id", colDisplayName, "issuer_url", "client_id", colClientSecretEnc,
+		colScopes, "username_claim", "admin_claim", "admin_values",
 		"allowed_claim", "allowed_values", "auto_provision",
 	}).AddRow(
 		id, testDisplayName, testIssuerURL, "uchiyomi", []byte("enc"),
@@ -217,9 +223,9 @@ func TestGetAll(t *testing.T) {
 
 	id1, id2 := uuid.New(), uuid.New()
 
-	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" ORDER BY display_name, id`).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", colDisplayName, "client_secret_enc"}).
+			sqlmock.NewRows([]string{"id", colDisplayName, colClientSecretEnc}).
 				AddRow(id1, testDisplayName, []byte("secret1")).
 				AddRow(id2, "Authentik", []byte("secret2")),
 		)
@@ -350,5 +356,205 @@ func TestCreateError(t *testing.T) {
 
 	if errors.Is(err, domain.ErrAlreadyExists) {
 		t.Error("une panne SQL ne doit pas être traduite en ErrAlreadyExists")
+	}
+}
+
+func TestUpdateWritesTheSecretWhenGiven(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "oidc_providers" SET .*"client_secret_enc"`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" WHERE id = \$1`).
+		WithArgs(id, 1).
+		WillReturnRows(providerRows(id))
+
+	got, err := r.Update(context.Background(), id, oidcproviders.UpdateOIDCProviderOpts{
+		DisplayName:     testDisplayName,
+		IssuerURL:       testIssuerURL,
+		ClientID:        "uchiyomi",
+		ClientSecretEnc: []byte("newenc"),
+		Scopes:          []string{scopeOpenID},
+		UsernameClaim:   "preferred_username",
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	if got.ID != id {
+		t.Errorf("Update() = %+v", got)
+	}
+}
+
+func TestUpdateLeavesTheSecretAloneWhenOmitted(t *testing.T) {
+	t.Parallel()
+
+	var updateSQL string
+
+	sqlDB, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherFunc(
+		func(expectedSQL, actualSQL string) error {
+			if strings.HasPrefix(actualSQL, `UPDATE "oidc_providers"`) {
+				updateSQL = actualSQL
+			}
+
+			matched, matchErr := regexp.MatchString(expectedSQL, actualSQL)
+			if matchErr != nil {
+				return fmt.Errorf("regexp.MatchString: %w", matchErr)
+			}
+
+			if !matched {
+				return fmt.Errorf("actual sql %q does not match expected regexp %q", actualSQL, expectedSQL)
+			}
+
+			return nil
+		},
+	)))
+	if err != nil {
+		t.Fatalf("sqlmock.New: %v", err)
+	}
+
+	t.Cleanup(func() {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("sqlmock expectations not met: %v", err)
+		}
+
+		sqlDB.Close()
+	})
+
+	db, err := gorm.Open(
+		postgres.New(postgres.Config{Conn: sqlDB, PreferSimpleProtocol: true}),
+		&gorm.Config{TranslateError: true},
+	)
+	if err != nil {
+		t.Fatalf("gorm.Open: %v", err)
+	}
+
+	r, err := pg.New(pg.Deps{DB: db})
+	if err != nil {
+		t.Fatalf("pg.New: %v", err)
+	}
+
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "oidc_providers" SET`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).WillReturnRows(providerRows(id))
+
+	if _, err := r.Update(context.Background(), id, oidcproviders.UpdateOIDCProviderOpts{
+		DisplayName: testDisplayName,
+		IssuerURL:   testIssuerURL,
+	}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	if strings.Contains(updateSQL, colClientSecretEnc) {
+		t.Errorf("Update() SET clause included %s: %s", colClientSecretEnc, updateSQL)
+	}
+}
+
+func TestUpdateNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "oidc_providers"`).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	_, err := r.Update(context.Background(), uuid.New(), oidcproviders.UpdateOIDCProviderOpts{})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("Update = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestUpdateDuplicate(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "oidc_providers"`).WillReturnError(duplicateKeyErr())
+	mock.ExpectRollback()
+
+	_, err := r.Update(context.Background(), uuid.New(), oidcproviders.UpdateOIDCProviderOpts{IssuerURL: testIssuerURL})
+	if !errors.Is(err, domain.ErrAlreadyExists) {
+		t.Errorf("Update = %v, want domain.ErrAlreadyExists", err)
+	}
+}
+
+func TestUpdateError(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	sentinel := errors.New("disk full")
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "oidc_providers"`).WillReturnError(sentinel)
+	mock.ExpectRollback()
+
+	_, err := r.Update(context.Background(), uuid.New(), oidcproviders.UpdateOIDCProviderOpts{})
+	if !errors.Is(err, sentinel) {
+		t.Errorf("err = %v", err)
+	}
+
+	if errors.Is(err, domain.ErrAlreadyExists) {
+		t.Error("a plain SQL failure must not be translated into domain.ErrAlreadyExists")
+	}
+
+	if errors.Is(err, domain.ErrNotFound) {
+		t.Error("a plain SQL failure must not be translated into domain.ErrNotFound")
+	}
+}
+
+func TestDeleteByID(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "oidc_providers" WHERE id = \$1`).
+		WithArgs(id).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	if err := r.DeleteByID(context.Background(), id); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+}
+
+func TestDeleteByIDNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "oidc_providers"`).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	if err := r.DeleteByID(context.Background(), uuid.New()); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("Delete = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestDeleteByIDError(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	sentinel := errors.New("connection reset")
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "oidc_providers"`).WillReturnError(sentinel)
+	mock.ExpectRollback()
+
+	if err := r.DeleteByID(context.Background(), uuid.New()); !errors.Is(err, sentinel) {
+		t.Errorf("err = %v", err)
 	}
 }

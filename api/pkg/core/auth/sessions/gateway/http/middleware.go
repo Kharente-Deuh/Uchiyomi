@@ -104,3 +104,16 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, userCtxKey{}, authenticated.User)))
 	})
 }
+
+func (a *Authenticator) RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := UserFrom(r.Context())
+		if !ok || !user.IsAdmin {
+			httputils.WriteError(w, a.deps.Logger, http.StatusForbidden, "")
+
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}

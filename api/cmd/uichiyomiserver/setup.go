@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +24,10 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/hash/bcrypthash"
 	pgpwd "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/password/repository/pg"
 	httpauth "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidc"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
+	httpoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/gateway/http"
+	pgoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	httpsession "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	pgsessions "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/repository/pg"
@@ -32,7 +37,10 @@ import (
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
 	pgusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/repository/pg"
 	httpasura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/crypto"
 )
+
+const oidcCallbackPath = core.APIPrefix + "/auth/oidc/callback"
 
 func setupApp(cfg *cfg) (*core.App, error) {
 	logger := logging.New(logging.Config{Level: cfg.Logger.Level})
@@ -44,8 +52,10 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	}
 
 	services, err := setupServices(servicesDeps{
-		DBr:    dbr,
-		Logger: logger,
+		DBr:           dbr,
+		Logger:        logger,
+		EncryptionKey: cfg.OIDC.EncryptionKey,
+		PublicURL:     strings.TrimSuffix(cfg.OIDC.PublicURL, "/"),
 	})
 	if err != nil {
 		//nolint:wrapcheck
@@ -64,12 +74,13 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	registry := core.NewHealthRegistry(dbr.PGDB)
 
 	ctrls, err := setupCtrls(ctrlsDeps{
-		Logger:          logger,
-		SessionsService: services.Sessions,
-		SetupService:    services.Setup,
-		AuthService:     services.Auth,
-		AsuraApp:        apps.Asura,
-		Registry:        registry,
+		Logger:               logger,
+		SessionsService:      services.Sessions,
+		SetupService:         services.Setup,
+		AuthService:          services.Auth,
+		OIDCProvidersService: services.OIDCProviders,
+		AsuraApp:             apps.Asura,
+		Registry:             registry,
 	})
 	if err != nil {
 		//nolint:wrapcheck
@@ -82,11 +93,12 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			AllowedOrigins: cfg.Http.AllowedOrigins,
 		},
 		core.Deps{
-			SetupCtrl:  ctrls.Setup,
-			AsuraCtrl:  ctrls.Asura,
-			HealthCtrl: ctrls.Health,
-			AuthCtrl:   ctrls.Auth,
-			UsersCtrl:  ctrls.Users,
+			SetupCtrl:         ctrls.Setup,
+			AsuraCtrl:         ctrls.Asura,
+			HealthCtrl:        ctrls.Health,
+			AuthCtrl:          ctrls.Auth,
+			UsersCtrl:         ctrls.Users,
+			OIDCProvidersCtrl: ctrls.OIDCProviders,
 
 			Health:   registry,
 			Logger:   logger,
@@ -102,11 +114,12 @@ func setupApp(cfg *cfg) (*core.App, error) {
 }
 
 type dbRelated struct {
-	PGDB               *database.PGDB
-	Txor               *pgtx.PGTransactor
-	UsersRepository    *pgusers.PGUsersRepository
-	SessionsRepository *pgsessions.PGSessionsRepository
-	PwdRepository      *pgpwd.PGPasswordCredsRepository
+	PGDB                    *database.PGDB
+	Txor                    *pgtx.PGTransactor
+	UsersRepository         *pgusers.PGUsersRepository
+	SessionsRepository      *pgsessions.PGSessionsRepository
+	PwdRepository           *pgpwd.PGPasswordCredsRepository
+	OIDCProvidersRepository *pgoidcproviders.PGOIDCProvidersRepository
 }
 
 func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
@@ -146,26 +159,35 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		return nil, fmt.Errorf("failed to init pwdRepository: %w", err)
 	}
 
+	oidcProvidersRepository, err := pgoidcproviders.New(pgoidcproviders.Deps{DB: pgdb.DB})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init oidcProvidersRepository: %w", err)
+	}
+
 	dbr := &dbRelated{
-		PGDB:               pgdb,
-		Txor:               txor,
-		UsersRepository:    usersRepository,
-		SessionsRepository: sessionsRepository,
-		PwdRepository:      pwdRepository,
+		PGDB:                    pgdb,
+		Txor:                    txor,
+		UsersRepository:         usersRepository,
+		SessionsRepository:      sessionsRepository,
+		PwdRepository:           pwdRepository,
+		OIDCProvidersRepository: oidcProvidersRepository,
 	}
 
 	return dbr, nil
 }
 
 type services struct {
-	Auth     *auth.Service
-	Setup    *setup.Service
-	Sessions *sessions.Service
+	Auth          *auth.Service
+	Setup         *setup.Service
+	Sessions      *sessions.Service
+	OIDCProviders *oidcproviders.Service
 }
 
 type servicesDeps struct {
-	Logger *slog.Logger
-	DBr    *dbRelated
+	Logger        *slog.Logger
+	DBr           *dbRelated
+	PublicURL     string
+	EncryptionKey []byte
 }
 
 func setupServices(deps servicesDeps) (*services, error) {
@@ -213,10 +235,36 @@ func setupServices(deps servicesDeps) (*services, error) {
 		return nil, fmt.Errorf("failed to init setupSvc: %w", err)
 	}
 
+	cipher, err := crypto.New(crypto.Config{Key: deps.EncryptionKey})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init cipher: %w", err)
+	}
+
+	discoverer, err := oidc.New(
+		oidc.Config{Timeout: 10 * time.Second},
+		oidc.Deps{HTTPClient: &http.Client{Timeout: 10 * time.Second}},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init discoverer: %w", err)
+	}
+
+	oidcProvidersSvc, err := oidcproviders.NewService(
+		oidcproviders.ServiceConfig{RedirectURI: deps.PublicURL + oidcCallbackPath},
+		oidcproviders.ServiceDeps{
+			Repository: deps.DBr.OIDCProvidersRepository,
+			Cipher:     cipher,
+			Discoverer: discoverer,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init oidcProvidersSvc: %w", err)
+	}
+
 	svcs := &services{
-		Auth:     authSvc,
-		Sessions: sessionsSvc,
-		Setup:    setupSvc,
+		Auth:          authSvc,
+		Sessions:      sessionsSvc,
+		Setup:         setupSvc,
+		OIDCProviders: oidcProvidersSvc,
 	}
 
 	return svcs, nil
@@ -386,20 +434,22 @@ func setupAsura(logger *slog.Logger) (*asura.App, error) {
 }
 
 type ctrls struct {
-	Setup  *httpsetup.Controller
-	Asura  *httpasura.Controller
-	Health *httphealth.Controller
-	Auth   *httpauth.Controller
-	Users  *httpusers.Controller
+	Setup         *httpsetup.Controller
+	Asura         *httpasura.Controller
+	Health        *httphealth.Controller
+	Auth          *httpauth.Controller
+	Users         *httpusers.Controller
+	OIDCProviders *httpoidcproviders.Controller
 }
 
 type ctrlsDeps struct {
-	AsuraApp        *asura.App
-	SetupService    *setup.Service
-	SessionsService *sessions.Service
-	Logger          *slog.Logger
-	Registry        *health.Registry
-	AuthService     *auth.Service
+	AsuraApp             *asura.App
+	SetupService         *setup.Service
+	SessionsService      *sessions.Service
+	Logger               *slog.Logger
+	Registry             *health.Registry
+	AuthService          *auth.Service
+	OIDCProvidersService *oidcproviders.Service
 }
 
 func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
@@ -478,12 +528,27 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init users controller: %w", err)
 	}
 
+	oidcProvidersCtrl, err := httpoidcproviders.New(
+		httpoidcproviders.Config{
+			Endpoint:    "/oidc/providers",
+			Middlewares: chi.Middlewares{authenticator.Middleware, authenticator.RequireAdmin},
+		},
+		httpoidcproviders.Deps{
+			Logger:  deps.Logger,
+			Service: deps.OIDCProvidersService,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init oidc providers controller: %w", err)
+	}
+
 	c := &ctrls{
-		Asura:  asura,
-		Setup:  setup,
-		Health: healthCtrl,
-		Auth:   authCtrl,
-		Users:  usersCtrl,
+		Asura:         asura,
+		Setup:         setup,
+		Health:        healthCtrl,
+		Auth:          authCtrl,
+		Users:         usersCtrl,
+		OIDCProviders: oidcProvidersCtrl,
 	}
 
 	return c, nil
