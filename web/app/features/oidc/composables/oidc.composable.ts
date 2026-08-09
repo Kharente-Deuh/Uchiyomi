@@ -93,7 +93,7 @@ export function useOidc(): OidcComposable {
     const res = await api.deleteById(id)
     if (res.success || res.error.status === 404) {
       toast.success(t('settings.oidc.delete.success'))
-      providers.value.filter(p => p.id !== id)
+      providers.value = providers.value.filter(p => p.id !== id)
     } else {
       console.error('api.deleteById', res.error)
       toast.error(t('error.unknown'))

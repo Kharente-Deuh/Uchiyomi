@@ -60,10 +60,10 @@ function createOidcProvider(data: OidcProvider): OidcProvider {
     scopes: data.scopes,
     roleClaim: data.roleClaim ?? undefined,
     adminValues: data.adminValues?.length ? data.adminValues : undefined,
-    allowedValues: data.allowedValues?.length ? data.adminValues : undefined,
+    allowedValues: data.allowedValues?.length ? data.allowedValues : undefined,
     autoProvision: data.autoProvision,
-    updatedAt: new Date(data.createdAt),
-    createdAt: new Date(data.updatedAt),
+    updatedAt: new Date(data.updatedAt),
+    createdAt: new Date(data.createdAt),
   }
 }
 
@@ -87,7 +87,7 @@ export function createOidcApi(): OidcApi {
     try {
       const provider = await api<OidcProvider>(`/${id}`)
 
-      return { success: true, data: provider }
+      return { success: true, data: createOidcProvider(provider) }
     } catch (error) {
       return { success: false, error: ApiError.fromFetchError(error) }
     }
