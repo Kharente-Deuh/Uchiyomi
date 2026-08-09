@@ -80,7 +80,92 @@
   "settings": {
     "title": "Paramètres",
     "oidc": {
-      "title": "Fournisseurs OIDC"
+      "title": "Fournisseurs OIDC",
+      "create": {
+        "success": "Fournisseur {nom} créé !",
+        "error": "Le fournisseur existe déjà",
+        "title": "Nouveau fournisseur OIDC"
+      },
+      "delete": {
+        "success": "Fournisseur supprimé !"
+      },
+      "fields": {
+        "displayName": {
+          "label": "Nom d'affichage"
+        },
+        "issuerUrl": {
+          "label": "URL de l'émetteur"
+        },
+        "clienId": {
+          "label": "Identifiant client"
+        },
+        "clientSecret": {
+          "label": "Secret client"
+        },
+        "scopes": {
+          "label": "Scopes"
+        },
+        "usernameClame": {
+          "label": "Claim nom d'utilisateur"
+        },
+        "roleClaim": {
+          "label": "Claim role"
+        },
+        "adminValues": {
+          "label": "Valeurs du rôle d'administrateur"
+        },
+        "allowedValues": {
+          "label": "Valeurs du rôle d'utilisateur normal"
+        },
+        "autoProvision": {
+          "hint": "Crée le compte lors de la première connexion. \nSinon, l'utilisateur doit déjà exister."
+        }
+      },
+      "category": {
+        "providerInfos": {
+          "title": "Informations sur le fournisseur"
+        },
+        "claims": {
+          "title": "Claims"
+        }
+      },
+      "test": {
+        "title": "Résultat du test de l'émetteur",
+        "fields": {
+          "issuer": {
+            "label": "Émetteur"
+          },
+          "authorizationEndpoint": {
+            "label": "Authorization endpoint"
+          },
+          "tokenEndpoint": {
+            "label": "Token endpoint"
+          },
+          "userInfoEndpoint": {
+            "label": "UserInfo endpoint"
+          },
+          "endSessionEndpoint": {
+            "label": "End session endpoint"
+          },
+          "redirectUri": {
+            "label": "Redirect URI"
+          },
+          "supportsRpInitiatedLogout": {
+            "label": "Prend en charge la déconnexion initiée par RP"
+          }
+        },
+        "error": {
+          "unreachable": "Émetteur inaccessible"
+        }
+      }
     }
+  },
+  "error": {
+    "unknown": "Erreur inconnue"
+  },
+  "actions": {
+    "cancel": "Annuler",
+    "save": "Sauvegarder",
+    "create": "Créer"
   }
 }

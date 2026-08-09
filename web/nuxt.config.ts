@@ -20,6 +20,7 @@ export default defineNuxtConfig({
   components: [
     { path: '~/components', pathPrefix: true },
     { path: '~/features/auth/components', prefix: 'Auth' },
+    { path: '~/features/oidc/components', prefix: 'Oidc' },
   ],
 
   imports: {
