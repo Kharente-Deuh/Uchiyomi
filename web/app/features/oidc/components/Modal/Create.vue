@@ -100,7 +100,11 @@ watch(() => field('roleClaim').props.modelValue, (value: string) => {
 
     <VCombobox v-bind="field('scopes').props" />
     <VTextField v-bind="field('usernameClaim').props" />
-    <VTextField v-bind="field('roleClaim').props" clearable />
+    <VTextField
+      v-bind="field('roleClaim').props"
+      clearable
+      @update:model-value="field('roleClaim').props['onUpdate:modelValue']($event ?? '')"
+    />
     <VCombobox
       v-bind="field('adminValues').props"
       :disabled="!field('roleClaim').props.modelValue"

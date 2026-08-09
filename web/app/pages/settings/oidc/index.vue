@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
 import { ADMIN_ROUTE_GROUP, AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
 definePageMeta({
@@ -7,11 +8,13 @@ definePageMeta({
   authGroups: [AUTHENTICATED_ROUTE_GROUP, ADMIN_ROUTE_GROUP],
 })
 
+const { t } = useI18n()
+const { smAndDown } = useDisplay()
 const { providers, getAll } = useOidc()
 
 const showCreateModal = ref(false)
-
 const globalLoading = ref(false)
+
 async function init(): Promise<void> {
   globalLoading.value = true
 
@@ -23,12 +26,26 @@ async function init(): Promise<void> {
 onMounted(() => {
   init()
 })
+
+const backRoutes = computed((): PageLayoutBackRoute[] | undefined => {
+  if (!smAndDown.value) {
+    return
+  }
+
+  return [
+    {
+      to: '/settings',
+      name: t('settings.title'),
+    },
+  ]
+})
 </script>
 
 <template>
   <OrganismPageLayout
-    :title="$t('settings.oidc.title')"
+    :title="smAndDown ? $t('settings.oidc.titleShort') : $t('settings.oidc.title')"
     icon="fa6-solid:gear"
+    :back-routes
     :loading="globalLoading"
   >
     <template #append-title>

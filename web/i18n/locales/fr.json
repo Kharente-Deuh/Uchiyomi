@@ -165,7 +165,8 @@
       "errors": {
         "noProviders": "Aucun fournisseur n'est défini",
         "notFound": "Fournisseur introuvable"
-      }
+      },
+      "description": "Gérer les fournisseurs OIDC"
     }
   },
   "error": {

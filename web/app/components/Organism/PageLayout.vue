@@ -2,12 +2,15 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router'
 
+export interface PageLayoutBackRoute {
+  to: RouteLocationRaw
+  name: string
+}
+
 const props = defineProps<{
   title: string
-  backRouteName?: string
+  backRoutes?: PageLayoutBackRoute[]
   subtitle?: string
-  showBackRoute?: boolean
-  backRoute?: RouteLocationRaw
   loading?: boolean
   prependImage?: string
   globalLoader?: boolean
@@ -46,13 +49,19 @@ const isStickyHeader = computed(() => props.stickyHeader && mobile.value)
       :class="[mobile ? 'px-6 py-3' : 'mb-8', { 'page-layout__sticky-header bg-background': isStickyHeader }]"
     >
       <div class="d-flex align-center ga-4 text-truncate">
-        <div v-if="backRoute && (showBackRoute || mobile)" class="d-flex ga-4 align-center">
-          <AtomLink :to="backRoute">
-            <span v-if="backRouteName" class="text-primary-hover text-underline-hover text-title-large">{{ backRouteName }}</span>
-            <VIcon v-else icon="fa6-solid:chevron-left" />
-          </AtomLink>
-
-          <span v-if="backRouteName" class="opacity-50 text-title-large">/</span>
+        <div v-if="backRoutes?.length" class="d-flex ga-4 align-center">
+          <template v-for="({ to, name }, i) of backRoutes" :key="i">
+            <AtomLink :to>
+              <span
+                class="text-primary-hover text-underline-hover font-title"
+                :class="{
+                  'text-title-large': !mobile,
+                  'text-title-medium': mobile,
+                }"
+              >{{ name }}</span>
+            </AtomLink>
+            <span class="opacity-50 text-title-large">/</span>
+          </template>
         </div>
 
         <slot name="prepend-title" />

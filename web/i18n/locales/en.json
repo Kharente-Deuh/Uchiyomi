@@ -166,7 +166,8 @@
       "titleShort": "OIDC",
       "update": {
         "success": "Provider updated !"
-      }
+      },
+      "description": "Manage OIDC providers"
     }
   },
   "error": {
