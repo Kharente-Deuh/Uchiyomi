@@ -7,7 +7,7 @@ import type { NavigationDrawerListItemProps } from '~/components/Organism/Naviga
 import { useDisplay } from 'vuetify'
 
 const { mobile } = useDisplay()
-const { logout, logoutLoading, isAdmin } = useAuth()
+const { logout, loading, isAdmin } = useAuth()
 const { messages } = useToast()
 
 async function onLogout(): Promise<void> {
@@ -63,7 +63,7 @@ const { bottomLayout, leftLayout } = useLayoutPadding()
       <OrganismNavigationDrawer
         v-if="!mobile"
         :items="navigationDrawerItems"
-        :logout-loading
+        :logout-loading="loading"
         @logout="onLogout"
       />
 

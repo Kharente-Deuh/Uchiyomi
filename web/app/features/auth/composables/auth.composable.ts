@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { LoginWithPwdRequest, LoginWithPwdStatus } from './auth.api'
-import type { AuthCheck } from '~/features/auth/store/auth.store'
 import type { User } from '~/features/users/composables/users.api'
 import { createAuthApi } from './auth.api'
+
+export type AuthCheck = 'ok' | 'unauthenticated' | 'unreachable'
 
 export interface AuthComposable {
   user: Ref<User | undefined>
@@ -11,11 +12,8 @@ export interface AuthComposable {
   isAuthenticated: Ref<boolean>
   isAdmin: Ref<boolean>
   loading: Ref<boolean>
-  logoutLoading: Ref<boolean>
 
   fetchMe: () => Promise<AuthCheck>
-  invalidate: () => void
-
   login: (request: LoginWithPwdRequest) => Promise<LoginWithPwdStatus>
   logout: () => Promise<void>
 }
@@ -23,12 +21,12 @@ export interface AuthComposable {
 export function useAuth(): AuthComposable {
   const store = useAuthStore()
   const authApi = createAuthApi()
+  const usersApi = createUsersApi()
 
   const user = computed(() => store.user)
   const isAuthenticated = computed(() => !!user.value)
   const isAdmin = computed(() => !!user.value?.isAdmin)
-  const loading = computed(() => store.status === 'loading')
-  const logoutLoading = ref(false)
+  const loading = ref(false)
 
   async function login(request: LoginWithPwdRequest): Promise<LoginWithPwdStatus> {
     const res = await authApi.loginWithPwd(request)
@@ -41,7 +39,7 @@ export function useAuth(): AuthComposable {
   }
 
   async function logout(): Promise<void> {
-    logoutLoading.value = true
+    loading.value = true
 
     const res = await authApi.logout()
     if (!res.success) {
@@ -50,7 +48,23 @@ export function useAuth(): AuthComposable {
 
     store.invalidate()
 
-    logoutLoading.value = false
+    loading.value = false
+  }
+
+  async function fetchMe(): Promise<AuthCheck> {
+    const res = await usersApi.getCurrentUser()
+    if (res.success) {
+      store.setUser(res.data)
+
+      return 'ok'
+    }
+
+    store.invalidate()
+    if (res.error.status === 401) {
+      return 'unauthenticated'
+    }
+
+    return 'unreachable'
   }
 
   return {
@@ -61,11 +75,7 @@ export function useAuth(): AuthComposable {
     loading,
 
     login,
-
-    fetchMe: store.fetchMe,
-    invalidate: store.invalidate,
-
+    fetchMe,
     logout,
-    logoutLoading,
   }
 }
