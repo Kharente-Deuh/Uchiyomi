@@ -2,9 +2,9 @@
 <script setup lang="ts">
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
-definePageMeta({ layout: 'auth', authGroups: [AUTHENTICATED_ROUTE_GROUP] })
+definePageMeta({ layout: 'default', authGroups: [AUTHENTICATED_ROUTE_GROUP] })
 </script>
 
 <template>
-  <h1>YOLO</h1>
+  <OrganismPageLayout title="YOLO" />
 </template>

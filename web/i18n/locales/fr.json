@@ -65,5 +65,22 @@
     "title": "Bienvenue",
     "subtitle": "Connectez-vous à votre serveur Uchiyomi",
     "submit": "Se connecter"
+  },
+  "auth": {
+    "signOut": "Se déconnecter"
+  },
+  "nav": {
+    "system": {
+      "title": "Système"
+    },
+    "settings": {
+      "title": "Paramètres"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "oidc": {
+      "title": "Fournisseurs OIDC"
+    }
   }
 }

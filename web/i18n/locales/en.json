@@ -65,5 +65,22 @@
     "title": "Welcome back",
     "subtitle": "Sign in to your Uchiyomi server",
     "submit": "Sign in"
+  },
+  "auth": {
+    "signOut": "Sign out"
+  },
+  "nav": {
+    "system": {
+      "title": "System"
+    },
+    "settings": {
+      "title": "Settings"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "oidc": {
+      "title": "OIDC Providers"
+    }
   }
 }
