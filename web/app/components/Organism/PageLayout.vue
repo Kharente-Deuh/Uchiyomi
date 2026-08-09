@@ -34,7 +34,7 @@ const isStickyHeader = computed(() => props.stickyHeader && mobile.value)
     <VProgressLinear
       v-if="loading"
       indeterminate
-      class="position-absolute bottom-0 left-0 w-100"
+      class="position-absolute rounded-lg bottom-0 left-0 w-100"
     />
 
     <slot name="header" />

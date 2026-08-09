@@ -158,7 +158,8 @@
         "error": {
           "unreachable": "Issuer unreachable"
         }
-      }
+      },
+      "no-providers": "There is not provders set"
     }
   },
   "error": {

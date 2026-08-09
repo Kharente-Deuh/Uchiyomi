@@ -127,3 +127,20 @@ input::-webkit-inner-spin-button {
 .text-nowrap {
   text-wrap: nowrap;
 }
+
+
+.border-primary-on-hover {
+  @extend .transition-smooth;
+
+  &:hover {
+    @extend .border-thin-primary;
+  }
+}
+
+.text-primary-on-hover {
+  @extend .transition-smooth;
+
+  &:hover {
+    color: rgb(var(--v-theme-primary));
+  }
+}

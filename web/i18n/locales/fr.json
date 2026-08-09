@@ -157,7 +157,8 @@
         "error": {
           "unreachable": "Émetteur inaccessible"
         }
-      }
+      },
+      "no-providers": "Aucun fournisseur n'est défini"
     }
   },
   "error": {
