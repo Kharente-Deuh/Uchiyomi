@@ -83,7 +83,7 @@ func (r *PGOIDCProvidersRepository) GetByIssuerURL(ctx context.Context, issuerUR
 }
 
 func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders.LightOIDCProvider, error) {
-	models, err := r.db(ctx).Order("display_name").Find(ctx)
+	models, err := r.db(ctx).Order("display_name, id").Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("r.db(ctx).Find: %w", err)
 	}

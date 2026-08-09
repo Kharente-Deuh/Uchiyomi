@@ -223,7 +223,7 @@ func TestGetAll(t *testing.T) {
 
 	id1, id2 := uuid.New(), uuid.New()
 
-	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" ORDER BY display_name, id`).
 		WillReturnRows(
 			sqlmock.NewRows([]string{"id", colDisplayName, colClientSecretEnc}).
 				AddRow(id1, testDisplayName, []byte("secret1")).

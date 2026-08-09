@@ -10,7 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrUnreachableIssuer = errors.New("issuer is unreachable")
+var (
+	ErrUnreachableIssuer = errors.New("issuer is unreachable")
+	ErrIncompleteIssuer  = errors.New("issuer discovery document is incomplete")
+)
 
 type Cipher interface {
 	Seal(plaintext []byte) ([]byte, error)
@@ -224,6 +227,10 @@ func (s *Service) Probe(ctx context.Context, issuerURL string) (*ProbeResult, er
 func (s *Service) discover(ctx context.Context, issuerURL string) (*Discovery, error) {
 	discovery, err := s.deps.Discoverer.Discover(ctx, issuerURL)
 	if err != nil {
+		if errors.Is(err, ErrIncompleteDiscovery) {
+			return nil, fmt.Errorf("%w: %w", ErrIncompleteIssuer, err)
+		}
+
 		return nil, fmt.Errorf("%w: %w", ErrUnreachableIssuer, err)
 	}
 

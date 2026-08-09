@@ -4,6 +4,7 @@ package oidcproviders
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,6 +76,8 @@ type LightOIDCProvider struct {
 	DisplayName string
 	ID          uuid.UUID
 }
+
+var ErrIncompleteDiscovery = errors.New("discovery document is incomplete")
 
 type Discoverer interface {
 	Discover(ctx context.Context, issuerURL string) (*Discovery, error)

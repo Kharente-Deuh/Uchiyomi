@@ -189,6 +189,26 @@ func TestCreateRejectsAnIssuerThatFailsDiscovery(t *testing.T) {
 	}
 }
 
+func TestCreateRejectsAnIncompleteDiscoveryDocument(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeRepository{}
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{err: oidcproviders.ErrIncompleteDiscovery})
+
+	_, err := s.Create(context.Background(), createOpts())
+	if !errors.Is(err, oidcproviders.ErrIncompleteIssuer) {
+		t.Fatalf("Create = %v, want ErrIncompleteIssuer", err)
+	}
+
+	if errors.Is(err, oidcproviders.ErrUnreachableIssuer) {
+		t.Error("an incomplete document must not also read as ErrUnreachableIssuer")
+	}
+
+	if repo.created != nil {
+		t.Error("the provider was written despite the incomplete discovery document")
+	}
+}
+
 func TestCreatePropagatesADuplicateIssuer(t *testing.T) {
 	t.Parallel()
 
@@ -399,6 +419,16 @@ func TestProbeRejectsAnUnreachableIssuer(t *testing.T) {
 
 	if _, err := s.Probe(context.Background(), testIssuerURL); !errors.Is(err, oidcproviders.ErrUnreachableIssuer) {
 		t.Errorf("Probe = %v, want ErrUnreachableIssuer", err)
+	}
+}
+
+func TestProbeRejectsAnIncompleteDiscoveryDocument(t *testing.T) {
+	t.Parallel()
+
+	s := newService(t, &fakeRepository{}, &fakeCipher{}, &fakeDiscoverer{err: oidcproviders.ErrIncompleteDiscovery})
+
+	if _, err := s.Probe(context.Background(), testIssuerURL); !errors.Is(err, oidcproviders.ErrIncompleteIssuer) {
+		t.Errorf("Probe = %v, want ErrIncompleteIssuer", err)
 	}
 }
 

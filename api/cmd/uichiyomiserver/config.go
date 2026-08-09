@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"net/url"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/crypto"
@@ -45,6 +46,10 @@ func newConfig() (*cfg, error) {
 		return nil, err
 	}
 
+	if err := c.validatePublicURL(); err != nil {
+		return nil, err
+	}
+
 	return &c, nil
 }
 
@@ -59,6 +64,23 @@ func (c *cfg) decodeEncryptionKey() error {
 	}
 
 	c.OIDC.EncryptionKey = key
+
+	return nil
+}
+
+func (c *cfg) validatePublicURL() error {
+	u, err := url.Parse(c.OIDC.PublicURL)
+	if err != nil {
+		return fmt.Errorf("PUBLIC_URL is not a valid URL: %w", err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("PUBLIC_URL must have an http or https scheme, got %q", c.OIDC.PublicURL)
+	}
+
+	if u.Host == "" {
+		return fmt.Errorf("PUBLIC_URL must have a host, got %q", c.OIDC.PublicURL)
+	}
 
 	return nil
 }

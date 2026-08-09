@@ -40,7 +40,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/crypto"
 )
 
-const oidcCallbackPath = "/api/auth/oidc/callback"
+const oidcCallbackPath = core.APIPrefix + "/auth/oidc/callback"
 
 func setupApp(cfg *cfg) (*core.App, error) {
 	logger := logging.New(logging.Config{Level: cfg.Logger.Level})

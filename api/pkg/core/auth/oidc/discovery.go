@@ -88,7 +88,7 @@ func (d *Discoverer) Discover(ctx context.Context, issuerURL string) (*oidcprovi
 	}
 
 	if doc.AuthorizationEndpoint == "" || doc.TokenEndpoint == "" {
-		return nil, ErrDiscoveryIncomplete
+		return nil, fmt.Errorf("%w: %w", oidcproviders.ErrIncompleteDiscovery, ErrDiscoveryIncomplete)
 	}
 
 	return &oidcproviders.Discovery{

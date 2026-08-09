@@ -273,6 +273,9 @@ func (c *Controller) writeServiceError(w http.ResponseWriter, r *http.Request, m
 	switch {
 	case errors.Is(err, oidcproviders.ErrUnreachableIssuer):
 		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "issuer is unreachable")
+	case errors.Is(err, oidcproviders.ErrIncompleteIssuer):
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest,
+			"issuer discovery document does not advertise the required endpoints")
 	case errors.Is(err, domain.ErrAlreadyExists):
 		httputils.WriteError(w, c.deps.Logger, http.StatusConflict, "issuer URL is already declared")
 	case errors.Is(err, domain.ErrNotFound):

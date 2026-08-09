@@ -66,6 +66,38 @@ func TestNewConfigRejectsAnUnusableEncryptionKey(t *testing.T) {
 	}
 }
 
+func TestNewConfigRejectsAnUnusablePublicURL(t *testing.T) {
+	tests := map[string]struct {
+		value   string
+		wantErr string
+	}{
+		"no scheme": {
+			value:   "manga.example.com",
+			wantErr: "must have an http or https scheme",
+		},
+		"unsupported scheme": {
+			value:   "ftp://manga.example.com",
+			wantErr: "must have an http or https scheme",
+		},
+		"no host": {
+			value:   "https://",
+			wantErr: "must have a host",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("PUBLIC_URL", tc.value)
+
+			_, err := newConfig()
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("newConfig() = %v, want an error mentioning %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestNewConfigRequiresTheNewVariables(t *testing.T) {
 	for _, name := range []string{"OIDC_ENCRYPTION_KEY", "PUBLIC_URL"} {
 		t.Run(name, func(t *testing.T) {

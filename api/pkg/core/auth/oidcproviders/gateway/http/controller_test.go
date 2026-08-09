@@ -372,6 +372,22 @@ func TestCreateBadRequestOnAnUnreachableIssuer(t *testing.T) {
 	}
 }
 
+func TestCreateBadRequestOnAnIncompleteDiscoveryDocument(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{err: oidcproviders.ErrIncompleteIssuer}, adminMiddlewares(t, admin()))
+
+	rec := do(r, http.MethodPost, endpoint, validBody)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	if strings.Contains(rec.Body.String(), "unreachable") {
+		t.Errorf("an incomplete discovery document must not be reported as unreachable: %s", rec.Body.String())
+	}
+}
+
 func TestUpdateWithoutASecretLeavesItNil(t *testing.T) {
 	t.Parallel()
 
@@ -502,6 +518,18 @@ func TestProbeBadRequestOnAnUnreachableIssuer(t *testing.T) {
 	t.Parallel()
 
 	r := newRouter(t, &stubService{err: oidcproviders.ErrUnreachableIssuer}, adminMiddlewares(t, admin()))
+
+	rec := do(r, http.MethodPost, endpoint+"/probe", `{"issuerUrl":"https://sso.example.com"}`)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestProbeBadRequestOnAnIncompleteDiscoveryDocument(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{err: oidcproviders.ErrIncompleteIssuer}, adminMiddlewares(t, admin()))
 
 	rec := do(r, http.MethodPost, endpoint+"/probe", `{"issuerUrl":"https://sso.example.com"}`)
 

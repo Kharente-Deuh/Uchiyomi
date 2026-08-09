@@ -31,7 +31,8 @@ const (
 	portMaxValue    = 65535
 	shutdownTimeout = 5 * time.Second
 
-	apiPrefix = "/api"
+	APIPrefix = "/api"
+	apiPrefix = APIPrefix
 )
 
 type Config struct {
