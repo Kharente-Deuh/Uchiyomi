@@ -23,11 +23,25 @@ func DecodeJSON[T any](r *http.Request) (*T, error) {
 		return nil, errors.New("invalid request body")
 	}
 
-	if err := validator.New(validator.WithRequiredStructEnabled()).Struct(&v); err != nil {
+	if err := newValidator().Struct(&v); err != nil {
 		return nil, formatValidationErr(err)
 	}
 
 	return &v, nil
+}
+
+func newValidator() *validator.Validate {
+	v := validator.New(validator.WithRequiredStructEnabled())
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name, _, _ := strings.Cut(fld.Tag.Get("json"), ",")
+		if name == "-" {
+			return ""
+		}
+
+		return name
+	})
+
+	return v
 }
 
 type TrimmedString string
