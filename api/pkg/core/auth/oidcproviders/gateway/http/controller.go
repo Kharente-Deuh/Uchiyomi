@@ -21,7 +21,7 @@ import (
 
 type providersService interface {
 	List(ctx context.Context) ([]oidcproviders.LightOIDCProvider, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*oidcproviders.OIDCProvider, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*oidcproviders.OIDCProviderDetails, error)
 	Create(ctx context.Context, opts oidcproviders.CreateOpts) (*oidcproviders.OIDCProvider, error)
 	Update(ctx context.Context, id uuid.UUID, opts oidcproviders.UpdateOpts) (*oidcproviders.OIDCProvider, error)
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -139,14 +139,14 @@ func (c *Controller) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	provider, err := c.deps.Service.GetByID(ctx, id)
+	details, err := c.deps.Service.GetByID(ctx, id)
 	if err != nil {
 		c.writeServiceError(w, r, "failed to read an oidc provider", err)
 
 		return
 	}
 
-	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, toProviderResponse(provider))
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, toProviderDetailsResponse(details))
 }
 
 func (c *Controller) create(w http.ResponseWriter, r *http.Request) {
@@ -298,6 +298,23 @@ func (c *Controller) writeServiceError(w http.ResponseWriter, r *http.Request, m
 	default:
 		c.deps.Logger.ErrorContext(r.Context(), msg, logging.Err(err))
 		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
+	}
+}
+
+func toProviderDetailsResponse(d *oidcproviders.OIDCProviderDetails) ProviderDetailsResponse {
+	users := make([]ProviderUserResponse, 0, len(d.Users))
+	for _, u := range d.Users {
+		users = append(users, ProviderUserResponse{
+			LinkedAt: u.LinkedAt,
+			ID:       u.ID.String(),
+			Username: u.Username,
+			IsAdmin:  u.IsAdmin,
+		})
+	}
+
+	return ProviderDetailsResponse{
+		ProviderResponse: toProviderResponse(&d.Provider),
+		Users:            users,
 	}
 }
 

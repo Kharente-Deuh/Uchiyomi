@@ -84,6 +84,18 @@ type ProviderResponse struct {
 	AutoProvision bool      `json:"autoProvision"`
 }
 
+type ProviderUserResponse struct {
+	LinkedAt time.Time `json:"linkedAt"`
+	ID       string    `json:"id"`
+	Username string    `json:"username"`
+	IsAdmin  bool      `json:"isAdmin"`
+}
+
+type ProviderDetailsResponse struct {
+	Users []ProviderUserResponse `json:"users"`
+	ProviderResponse
+}
+
 type ProbeResponse struct {
 	Issuer                    string `json:"issuer"`
 	AuthorizationEndpoint     string `json:"authorizationEndpoint"`

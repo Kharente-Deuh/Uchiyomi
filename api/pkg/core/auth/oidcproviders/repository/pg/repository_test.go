@@ -278,6 +278,67 @@ func TestGetAllError(t *testing.T) {
 	}
 }
 
+func TestGetUsers(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id1, id2 := uuid.New(), uuid.New()
+	linkedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+
+	mock.ExpectQuery(`JOIN users ON users.id = federated_identities.user_id`).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", "username", "is_admin", "linked_at"}).
+				AddRow(id1, "alice", true, linkedAt).
+				AddRow(id2, "bob", false, linkedAt),
+		)
+
+	got, err := r.GetUsers(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("GetUsers: %v", err)
+	}
+
+	want := []oidcproviders.OIDCProviderUser{
+		{ID: id1, Username: "alice", LinkedAt: linkedAt, IsAdmin: true},
+		{ID: id2, Username: "bob", LinkedAt: linkedAt, IsAdmin: false},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("GetUsers() = %+v, want %+v", got, want)
+	}
+}
+
+func TestGetUsersEmpty(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectQuery(`JOIN users ON users.id = federated_identities.user_id`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "is_admin", "linked_at"}))
+
+	got, err := r.GetUsers(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("GetUsers: %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Errorf("GetUsers() = %+v, want vide", got)
+	}
+}
+
+func TestGetUsersError(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	sentinel := errors.New("timeout")
+	mock.ExpectQuery(`JOIN users ON users.id = federated_identities.user_id`).WillReturnError(sentinel)
+
+	if _, err := r.GetUsers(context.Background(), uuid.New()); !errors.Is(err, sentinel) {
+		t.Errorf("err = %v", err)
+	}
+}
+
 func TestCreate(t *testing.T) {
 	t.Parallel()
 

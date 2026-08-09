@@ -122,13 +122,18 @@ func (s *Service) List(ctx context.Context) ([]LightOIDCProvider, error) {
 	return providers, nil
 }
 
-func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*OIDCProvider, error) {
+func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*OIDCProviderDetails, error) {
 	provider, err := s.deps.Repository.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("s.deps.Repository.GetByID: %w", err)
 	}
 
-	return withoutSecret(provider), nil
+	users, err := s.deps.Repository.GetUsers(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.GetUsers: %w", err)
+	}
+
+	return &OIDCProviderDetails{Provider: *withoutSecret(provider), Users: users}, nil
 }
 
 func (s *Service) Create(ctx context.Context, opts CreateOpts) (*OIDCProvider, error) {

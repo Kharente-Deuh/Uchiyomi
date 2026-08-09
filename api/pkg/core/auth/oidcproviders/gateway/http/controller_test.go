@@ -29,6 +29,7 @@ const (
 	testToken       = "letoken"
 	testDisplayName = "Keycloak"
 	testIssuerURL   = "https://sso.example.com"
+	testUsername    = "alice"
 
 	//nolint:lll
 	validBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"s3cr3t","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
@@ -45,6 +46,7 @@ type stubService struct {
 	probe     *oidcproviders.ProbeResult
 	updateOpt *oidcproviders.UpdateOpts
 	list      []oidcproviders.LightOIDCProvider
+	users     []oidcproviders.OIDCProviderUser
 }
 
 func (s *stubService) List(context.Context) ([]oidcproviders.LightOIDCProvider, error) {
@@ -52,8 +54,12 @@ func (s *stubService) List(context.Context) ([]oidcproviders.LightOIDCProvider, 
 }
 
 //nolint:lll
-func (s *stubService) GetByID(context.Context, uuid.UUID) (*oidcproviders.OIDCProvider, error) {
-	return s.provider, s.err
+func (s *stubService) GetByID(context.Context, uuid.UUID) (*oidcproviders.OIDCProviderDetails, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+
+	return &oidcproviders.OIDCProviderDetails{Provider: *s.provider, Users: s.users}, nil
 }
 
 //nolint:lll
@@ -234,6 +240,55 @@ func TestGetReturnsTheProviderWithoutASecret(t *testing.T) {
 	}
 }
 
+func TestGetReturnsTheLinkedUsers(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	linkedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+	svc := &stubService{
+		provider: sampleProvider(),
+		users: []oidcproviders.OIDCProviderUser{
+			{ID: userID, Username: testUsername, LinkedAt: linkedAt, IsAdmin: true},
+		},
+	}
+	r := newRouter(t, svc, adminMiddlewares(t, admin()))
+
+	rec := do(r, http.MethodGet, endpoint+"/"+uuid.New().String(), "")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var got struct {
+		Users []map[string]any `json:"users"`
+	}
+
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("undecodable body (%q): %v", rec.Body.String(), err)
+	}
+
+	if len(got.Users) != 1 {
+		t.Fatalf("users = %+v, want one entry", got.Users)
+	}
+
+	if got.Users[0]["id"] != userID.String() || got.Users[0]["username"] != testUsername ||
+		got.Users[0]["isAdmin"] != true || got.Users[0]["linkedAt"] != "2026-01-02T03:04:05Z" {
+		t.Errorf("users[0] = %+v", got.Users[0])
+	}
+}
+
+func TestGetReturnsAnEmptyUserListWhenNobodyIsLinked(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
+
+	rec := do(r, http.MethodGet, endpoint+"/"+uuid.New().String(), "")
+
+	if !strings.Contains(rec.Body.String(), `"users":[]`) {
+		t.Errorf("body = %s, want an empty users array", rec.Body.String())
+	}
+}
+
 func TestGetNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -261,7 +316,7 @@ func TestGetRejectsAMalformedID(t *testing.T) {
 func TestListForbiddenForANonAdmin(t *testing.T) {
 	t.Parallel()
 
-	user := &users.User{ID: uuid.New(), Name: "alice", IsAdmin: false}
+	user := &users.User{ID: uuid.New(), Name: testUsername, IsAdmin: false}
 	r := newRouter(t, &stubService{}, adminMiddlewares(t, user))
 
 	rec := do(r, http.MethodGet, endpoint, "")
@@ -293,7 +348,7 @@ func TestEveryRouteIsForbiddenForANonAdmin(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			user := &users.User{ID: uuid.New(), Name: "alice"}
+			user := &users.User{ID: uuid.New(), Name: testUsername}
 			r := newRouter(t, &stubService{}, adminMiddlewares(t, user))
 
 			rec := do(r, tc.method, tc.path, tc.body)

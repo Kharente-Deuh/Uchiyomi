@@ -137,7 +137,7 @@ func (fakeOIDCProvidersService) List(context.Context) ([]oidcproviders.LightOIDC
 }
 
 //nolint:lll
-func (fakeOIDCProvidersService) GetByID(context.Context, uuid.UUID) (*oidcproviders.OIDCProvider, error) {
+func (fakeOIDCProvidersService) GetByID(context.Context, uuid.UUID) (*oidcproviders.OIDCProviderDetails, error) {
 	return nil, errors.New(notImplemented)
 }
 

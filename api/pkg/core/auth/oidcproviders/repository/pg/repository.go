@@ -102,6 +102,25 @@ func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders
 }
 
 //nolint:lll
+func (r *PGOIDCProvidersRepository) GetUsers(ctx context.Context, id uuid.UUID) ([]oidcproviders.OIDCProviderUser, error) {
+	var rows []providerUserRow
+
+	err := pgtx.From(ctx, r.deps.DB).
+		WithContext(ctx).
+		Model(&pgmodels.FederatedIdentity{}).
+		Select("users.id, users.name AS username, users.is_admin, federated_identities.created_at AS linked_at").
+		Joins("JOIN users ON users.id = federated_identities.user_id").
+		Where("federated_identities.provider_id = ?", id).
+		Order("federated_identities.created_at, users.name").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("pgtx.From(ctx, r.deps.DB).Scan: %w", err)
+	}
+
+	return utils.MapSlice(rows, r.userRowToDomain), nil
+}
+
+//nolint:lll
 func (r *PGOIDCProvidersRepository) Create(ctx context.Context, opts oidcproviders.CreateOIDCProviderOpts) (*oidcproviders.OIDCProvider, error) {
 	now := time.Now()
 	model := &pgmodels.OIDCProvider{
@@ -188,6 +207,22 @@ type lightProviderRow struct {
 	DisplayName string
 	ID          uuid.UUID
 	UserCount   int64
+}
+
+type providerUserRow struct {
+	LinkedAt time.Time
+	Username string
+	ID       uuid.UUID
+	IsAdmin  bool
+}
+
+func (r *PGOIDCProvidersRepository) userRowToDomain(row providerUserRow) oidcproviders.OIDCProviderUser {
+	return oidcproviders.OIDCProviderUser{
+		ID:       row.ID,
+		Username: row.Username,
+		LinkedAt: row.LinkedAt,
+		IsAdmin:  row.IsAdmin,
+	}
 }
 
 func (r *PGOIDCProvidersRepository) lightRowToDomain(row lightProviderRow) oidcproviders.LightOIDCProvider {

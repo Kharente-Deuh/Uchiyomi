@@ -17,6 +17,7 @@ type OIDCProvidersRepository interface {
 	Update(context.Context, uuid.UUID, UpdateOIDCProviderOpts) (*OIDCProvider, error)
 	DeleteByID(context.Context, uuid.UUID) error
 	GetAll(context.Context) ([]LightOIDCProvider, error)
+	GetUsers(context.Context, uuid.UUID) ([]OIDCProviderUser, error)
 }
 
 type OIDCProvider struct {
@@ -65,6 +66,18 @@ type CreateOIDCProviderOpts struct {
 	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
+}
+
+type OIDCProviderUser struct {
+	LinkedAt time.Time
+	Username string
+	ID       uuid.UUID
+	IsAdmin  bool
+}
+
+type OIDCProviderDetails struct {
+	Users    []OIDCProviderUser
+	Provider OIDCProvider
 }
 
 type LightOIDCProvider struct {
