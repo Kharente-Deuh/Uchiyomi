@@ -70,8 +70,6 @@ type CreateOpts struct {
 }
 
 type UpdateOpts struct {
-	ClientSecret *string
-
 	DisplayName   string
 	IssuerURL     string
 	ClientID      string
@@ -170,28 +168,16 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, opts UpdateOpts) (*O
 		return nil, err
 	}
 
-	var secretEnc []byte
-
-	if opts.ClientSecret != nil {
-		sealed, err := s.deps.Cipher.Seal([]byte(*opts.ClientSecret))
-		if err != nil {
-			return nil, fmt.Errorf("s.deps.Cipher.Seal: %w", err)
-		}
-
-		secretEnc = sealed
-	}
-
 	provider, err := s.deps.Repository.Update(ctx, id, UpdateOIDCProviderOpts{
-		DisplayName:     opts.DisplayName,
-		IssuerURL:       opts.IssuerURL,
-		ClientID:        opts.ClientID,
-		ClientSecretEnc: secretEnc,
-		Scopes:          opts.Scopes,
-		UsernameClaim:   opts.UsernameClaim,
-		RoleClaim:       opts.RoleClaim,
-		AdminValues:     opts.AdminValues,
-		AllowedValues:   opts.AllowedValues,
-		AutoProvision:   opts.AutoProvision,
+		DisplayName:   opts.DisplayName,
+		IssuerURL:     opts.IssuerURL,
+		ClientID:      opts.ClientID,
+		Scopes:        opts.Scopes,
+		UsernameClaim: opts.UsernameClaim,
+		RoleClaim:     opts.RoleClaim,
+		AdminValues:   opts.AdminValues,
+		AllowedValues: opts.AllowedValues,
+		AutoProvision: opts.AutoProvision,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("s.deps.Repository.Update: %w", err)

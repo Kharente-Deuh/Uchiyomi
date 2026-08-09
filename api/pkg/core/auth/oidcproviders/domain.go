@@ -39,10 +39,9 @@ type OIDCProvider struct {
 type UpdateOIDCProviderOpts struct {
 	DisplayName string
 
-	IssuerURL       string
-	ClientID        string
-	ClientSecretEnc []byte
-	Scopes          []string
+	IssuerURL string
+	ClientID  string
+	Scopes    []string
 
 	UsernameClaim string
 	RoleClaim     *string

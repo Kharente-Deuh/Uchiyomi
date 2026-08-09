@@ -24,16 +24,15 @@ type CreateProviderRequest struct {
 }
 
 type UpdateProviderRequest struct {
-	RoleClaim     *string                  `json:"roleClaim"`
-	ClientSecret  *httputils.TrimmedString `json:"clientSecret" validate:"omitempty,min=1"`
-	DisplayName   httputils.TrimmedString  `json:"displayName" validate:"required,max=64"`
-	IssuerURL     httputils.TrimmedString  `json:"issuerUrl" validate:"required,url"`
-	ClientID      httputils.TrimmedString  `json:"clientId" validate:"required"`
-	UsernameClaim httputils.TrimmedString  `json:"usernameClaim" validate:"required"`
-	Scopes        []string                 `json:"scopes" validate:"required,min=1,dive,required"`
-	AdminValues   []string                 `json:"adminValues"`
-	AllowedValues []string                 `json:"allowedValues"`
-	AutoProvision bool                     `json:"autoProvision"`
+	RoleClaim     *string                 `json:"roleClaim"`
+	DisplayName   httputils.TrimmedString `json:"displayName" validate:"required,max=64"`
+	IssuerURL     httputils.TrimmedString `json:"issuerUrl" validate:"required,url"`
+	ClientID      httputils.TrimmedString `json:"clientId" validate:"required"`
+	UsernameClaim httputils.TrimmedString `json:"usernameClaim" validate:"required"`
+	Scopes        []string                `json:"scopes" validate:"required,min=1,dive,required"`
+	AdminValues   []string                `json:"adminValues"`
+	AllowedValues []string                `json:"allowedValues"`
+	AutoProvision bool                    `json:"autoProvision"`
 }
 
 var errRoleClaimRequired = errors.New("roleClaim is required when adminValues or allowedValues is set")

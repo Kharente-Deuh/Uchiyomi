@@ -209,15 +209,7 @@ func (c *Controller) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var secret *string
-
-	if req.ClientSecret != nil {
-		value := req.ClientSecret.String()
-		secret = &value
-	}
-
 	provider, err := c.deps.Service.Update(ctx, id, oidcproviders.UpdateOpts{
-		ClientSecret:  secret,
 		DisplayName:   req.DisplayName.String(),
 		IssuerURL:     req.IssuerURL.String(),
 		ClientID:      req.ClientID.String(),

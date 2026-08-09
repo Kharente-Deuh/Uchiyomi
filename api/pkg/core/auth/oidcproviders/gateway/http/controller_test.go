@@ -35,7 +35,7 @@ const (
 	validBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"s3cr3t","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 
 	//nolint:lll
-	validPutBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true,"clientSecret":null}`
+	validPutBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 )
 
 var errUnexpected = errors.New("boom")
@@ -483,7 +483,7 @@ func TestCreateBadRequestOnAnIncompleteDiscoveryDocument(t *testing.T) {
 	}
 }
 
-func TestUpdateWithoutASecretLeavesItNil(t *testing.T) {
+func TestUpdateForwardsTheRequest(t *testing.T) {
 	t.Parallel()
 
 	svc := &stubService{provider: sampleProvider()}
@@ -499,12 +499,12 @@ func TestUpdateWithoutASecretLeavesItNil(t *testing.T) {
 		t.Fatal("the service was never called")
 	}
 
-	if svc.updateOpt.ClientSecret != nil {
-		t.Errorf("ClientSecret = %q, want nil", *svc.updateOpt.ClientSecret)
+	if svc.updateOpt.IssuerURL != testIssuerURL {
+		t.Errorf("IssuerURL = %q, want %q", svc.updateOpt.IssuerURL, testIssuerURL)
 	}
 }
 
-func TestUpdateForwardsTheSecretWhenPresent(t *testing.T) {
+func TestUpdateRejectsAClientSecret(t *testing.T) {
 	t.Parallel()
 
 	svc := &stubService{provider: sampleProvider()}
@@ -515,12 +515,12 @@ func TestUpdateForwardsTheSecretWhenPresent(t *testing.T) {
 
 	rec := do(r, http.MethodPut, endpoint+"/"+uuid.New().String(), body)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	if svc.updateOpt.ClientSecret == nil || *svc.updateOpt.ClientSecret != "rotated" {
-		t.Errorf("ClientSecret = %v, want \"rotated\"", svc.updateOpt.ClientSecret)
+	if svc.updateOpt != nil {
+		t.Error("the service was called despite the rejected body")
 	}
 }
 

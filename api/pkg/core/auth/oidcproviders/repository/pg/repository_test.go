@@ -422,7 +422,7 @@ func TestCreateError(t *testing.T) {
 	}
 }
 
-func TestUpdateWritesTheSecretWhenGiven(t *testing.T) {
+func TestUpdate(t *testing.T) {
 	t.Parallel()
 
 	r, mock := newRepo(t)
@@ -430,20 +430,18 @@ func TestUpdateWritesTheSecretWhenGiven(t *testing.T) {
 	id := uuid.New()
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`UPDATE "oidc_providers" SET .*"client_secret_enc"`).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE "oidc_providers" SET`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" WHERE id = \$1`).
 		WithArgs(id, 1).
 		WillReturnRows(providerRows(id))
 
 	got, err := r.Update(context.Background(), id, oidcproviders.UpdateOIDCProviderOpts{
-		DisplayName:     testDisplayName,
-		IssuerURL:       testIssuerURL,
-		ClientID:        "uchiyomi",
-		ClientSecretEnc: []byte("newenc"),
-		Scopes:          []string{scopeOpenID},
-		UsernameClaim:   "preferred_username",
+		DisplayName:   testDisplayName,
+		IssuerURL:     testIssuerURL,
+		ClientID:      "uchiyomi",
+		Scopes:        []string{scopeOpenID},
+		UsernameClaim: "preferred_username",
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
@@ -454,7 +452,7 @@ func TestUpdateWritesTheSecretWhenGiven(t *testing.T) {
 	}
 }
 
-func TestUpdateLeavesTheSecretAloneWhenOmitted(t *testing.T) {
+func TestUpdateNeverTouchesTheSecret(t *testing.T) {
 	t.Parallel()
 
 	var updateSQL string

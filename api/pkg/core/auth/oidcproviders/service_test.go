@@ -71,10 +71,13 @@ func (f *fakeRepository) GetUsers(context.Context, uuid.UUID) ([]oidcproviders.O
 }
 
 type fakeCipher struct {
-	err error
+	err   error
+	seals int
 }
 
 func (f *fakeCipher) Seal(plaintext []byte) ([]byte, error) {
+	f.seals++
+
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -226,11 +229,12 @@ func TestCreatePropagatesADuplicateIssuer(t *testing.T) {
 	}
 }
 
-func TestUpdateLeavesTheSecretUntouchedWhenOmitted(t *testing.T) {
+func TestUpdateNeverSealsASecret(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeRepository{provider: &oidcproviders.OIDCProvider{ID: uuid.New()}}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	cipher := &fakeCipher{}
+	s := newService(t, repo, cipher, &fakeDiscoverer{})
 
 	_, err := s.Update(context.Background(), uuid.New(), oidcproviders.UpdateOpts{
 		DisplayName:   testDisplayName,
@@ -247,33 +251,8 @@ func TestUpdateLeavesTheSecretUntouchedWhenOmitted(t *testing.T) {
 		t.Fatal("the repository was never called")
 	}
 
-	if repo.updated.ClientSecretEnc != nil {
-		t.Errorf("ClientSecretEnc = %q, want nil so the stored secret is kept", repo.updated.ClientSecretEnc)
-	}
-}
-
-func TestUpdateEncryptsTheSecretWhenGiven(t *testing.T) {
-	t.Parallel()
-
-	repo := &fakeRepository{provider: &oidcproviders.OIDCProvider{ID: uuid.New()}}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
-
-	secret := "rotated"
-
-	_, err := s.Update(context.Background(), uuid.New(), oidcproviders.UpdateOpts{
-		DisplayName:   testDisplayName,
-		IssuerURL:     testIssuerURL,
-		ClientID:      testClientID,
-		ClientSecret:  &secret,
-		Scopes:        []string{testScope},
-		UsernameClaim: testUsernameClaim,
-	})
-	if err != nil {
-		t.Fatalf("Update: %v", err)
-	}
-
-	if !bytes.Equal(repo.updated.ClientSecretEnc, []byte("sealed:rotated")) {
-		t.Errorf("ClientSecretEnc = %q, want the sealed secret", repo.updated.ClientSecretEnc)
+	if cipher.seals != 0 {
+		t.Errorf("the cipher was called %d times, want 0: an update must not rotate the secret", cipher.seals)
 	}
 }
 

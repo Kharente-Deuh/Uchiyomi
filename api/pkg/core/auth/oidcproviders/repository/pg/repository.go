@@ -169,10 +169,6 @@ func (r *PGOIDCProvidersRepository) Update(ctx context.Context, id uuid.UUID, op
 		"updated_at":     time.Now(),
 	}
 
-	if opts.ClientSecretEnc != nil {
-		values["client_secret_enc"] = opts.ClientSecretEnc
-	}
-
 	rows, err := r.db(ctx).Where("id = ?", id).Set(clause.Assignments(values)).Update(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
