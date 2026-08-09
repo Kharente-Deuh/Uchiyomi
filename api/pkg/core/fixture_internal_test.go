@@ -18,6 +18,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth"
 	httpauth "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
+	httpoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	sessionshttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	healthhttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
@@ -121,6 +123,35 @@ func (fakeAuthService) LoginWithPwd(context.Context, auth.LoginWithPwdOpts) (*au
 }
 
 func (fakeAuthService) CreateUserWithPwd(context.Context, auth.CreateUserWithPwdOpts) (*users.User, error) {
+	return nil, errors.New(notImplemented)
+}
+
+type fakeOIDCProvidersService struct{}
+
+func (fakeOIDCProvidersService) List(context.Context) ([]oidcproviders.LightOIDCProvider, error) {
+	return nil, nil
+}
+
+//nolint:lll
+func (fakeOIDCProvidersService) GetByID(context.Context, uuid.UUID) (*oidcproviders.OIDCProvider, error) {
+	return nil, errors.New(notImplemented)
+}
+
+//nolint:lll
+func (fakeOIDCProvidersService) Create(context.Context, oidcproviders.CreateOpts) (*oidcproviders.OIDCProvider, error) {
+	return nil, errors.New(notImplemented)
+}
+
+//nolint:lll
+func (fakeOIDCProvidersService) Update(context.Context, uuid.UUID, oidcproviders.UpdateOpts) (*oidcproviders.OIDCProvider, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeOIDCProvidersService) Delete(context.Context, uuid.UUID) error {
+	return errors.New(notImplemented)
+}
+
+func (fakeOIDCProvidersService) Probe(context.Context, string) (*oidcproviders.ProbeResult, error) {
 	return nil, errors.New(notImplemented)
 }
 
@@ -230,19 +261,28 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("healthhttp.New: %v", err)
 	}
 
+	oidcProvidersCtrl, err := httpoidcproviders.New(
+		httpoidcproviders.Config{Endpoint: "/oidc/providers"},
+		httpoidcproviders.Deps{Logger: logger, Service: fakeOIDCProvidersService{}},
+	)
+	if err != nil {
+		t.Fatalf("httpoidcproviders.New: %v", err)
+	}
+
 	app, err := New(
 		Config{ServerPort: port, AllowedOrigins: []string{"*"}},
 		Deps{
-			DB:         db,
-			SetupCtrl:  setupCtrl,
-			AuthCtrl:   authCtrl,
-			UsersCtrl:  usersCtrl,
-			AsuraCtrl:  asuraCtrl,
-			HealthCtrl: healthCtrl,
-			Logger:     logger,
-			Health:     registry,
-			Asura:      asuraApp,
-			Sessions:   sessionsApp,
+			DB:                db,
+			SetupCtrl:         setupCtrl,
+			AuthCtrl:          authCtrl,
+			UsersCtrl:         usersCtrl,
+			AsuraCtrl:         asuraCtrl,
+			HealthCtrl:        healthCtrl,
+			OIDCProvidersCtrl: oidcProvidersCtrl,
+			Logger:            logger,
+			Health:            registry,
+			Asura:             asuraApp,
+			Sessions:          sessionsApp,
 		})
 	if err != nil {
 		t.Fatalf("New: %v", err)

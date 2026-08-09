@@ -6,10 +6,26 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
+
+func TestRouterMountsTheOIDCProvidersRoutes(t *testing.T) {
+	t.Parallel()
+
+	app, _ := newTestApp(t, &fakeDB{}, gatePort)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/oidc/providers", nil)
+	rec := httptest.NewRecorder()
+
+	app.newRouter(nil).ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusNotFound {
+		t.Errorf("GET /api/oidc/providers = 404, want the route to be mounted")
+	}
+}
 
 func TestRunComponentMarksOKBeforeEnteringTheLoop(t *testing.T) {
 	reg := health.NewRegistry(componentAsura)
