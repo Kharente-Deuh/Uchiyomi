@@ -63,9 +63,10 @@ type ProbeRequest struct {
 }
 
 type LightProviderResponse struct {
-	ID          string `json:"id"`
-	DisplayName string `json:"displayName"`
-	IssuerURL   string `json:"issuerUrl"`
+	CreatedAt   time.Time `json:"createdAt"`
+	ID          string    `json:"id"`
+	DisplayName string    `json:"displayName"`
+	UserCount   int64     `json:"userCount"`
 }
 
 type ProviderResponse struct {

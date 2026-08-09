@@ -44,7 +44,8 @@ export function useOidc(): OidcComposable {
         {
           id: res.data.id,
           displayName: res.data.displayName,
-          issuerUrl: res.data.issuerUrl,
+          createdAt: res.data.createdAt,
+          userCount: 0,
         },
         ...providers.value,
       ]

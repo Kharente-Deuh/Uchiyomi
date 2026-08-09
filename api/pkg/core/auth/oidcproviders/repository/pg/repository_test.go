@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
@@ -222,12 +223,13 @@ func TestGetAll(t *testing.T) {
 	r, mock := newRepo(t)
 
 	id1, id2 := uuid.New(), uuid.New()
+	testCreatedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 
-	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" ORDER BY display_name, id`).
+	mock.ExpectQuery(`COUNT\(DISTINCT federated_identities.user_id\).*LEFT JOIN federated_identities`).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", colDisplayName, colClientSecretEnc}).
-				AddRow(id1, testDisplayName, []byte("secret1")).
-				AddRow(id2, "Authentik", []byte("secret2")),
+			sqlmock.NewRows([]string{"id", colDisplayName, "created_at", "user_count"}).
+				AddRow(id1, testDisplayName, testCreatedAt, 2).
+				AddRow(id2, "Authentik", testCreatedAt, 0),
 		)
 
 	got, err := r.GetAll(context.Background())
@@ -236,8 +238,8 @@ func TestGetAll(t *testing.T) {
 	}
 
 	want := []oidcproviders.LightOIDCProvider{
-		{ID: id1, DisplayName: testDisplayName},
-		{ID: id2, DisplayName: "Authentik"},
+		{ID: id1, DisplayName: testDisplayName, CreatedAt: testCreatedAt, UserCount: 2},
+		{ID: id2, DisplayName: "Authentik", CreatedAt: testCreatedAt, UserCount: 0},
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -250,7 +252,7 @@ func TestGetAllEmpty(t *testing.T) {
 
 	r, mock := newRepo(t)
 
-	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).
+	mock.ExpectQuery(`LEFT JOIN federated_identities`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", colDisplayName}))
 
 	got, err := r.GetAll(context.Background())
@@ -269,7 +271,7 @@ func TestGetAllError(t *testing.T) {
 	r, mock := newRepo(t)
 
 	sentinel := errors.New("timeout")
-	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).WillReturnError(sentinel)
+	mock.ExpectQuery(`LEFT JOIN federated_identities`).WillReturnError(sentinel)
 
 	if _, err := r.GetAll(context.Background()); !errors.Is(err, sentinel) {
 		t.Errorf("err = %v", err)

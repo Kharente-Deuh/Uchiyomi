@@ -28,7 +28,8 @@ export interface CreateOidcProviderRequest {
 export interface LightOidcProvider {
   id: string
   displayName: string
-  issuerUrl: string
+  createdAt: Date
+  userCount: number
 }
 
 export type OidcProvider = Omit<CreateOidcProviderRequest, 'clientSecret'> & {
@@ -71,7 +72,10 @@ export function createOidcApi(): OidcApi {
     try {
       const providers = await api<LightOidcProvider[]>('/')
 
-      return { success: true, data: providers }
+      return {
+        success: true,
+        data: providers.map(p => ({ ...p, createdAt: new Date(p.createdAt) })),
+      }
     } catch (error) {
       return { success: false, error: ApiError.fromFetchError(error) }
     }

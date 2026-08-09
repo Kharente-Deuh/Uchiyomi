@@ -83,12 +83,22 @@ func (r *PGOIDCProvidersRepository) GetByIssuerURL(ctx context.Context, issuerUR
 }
 
 func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders.LightOIDCProvider, error) {
-	models, err := r.db(ctx).Order("display_name, id").Find(ctx)
+	var rows []lightProviderRow
+
+	err := pgtx.From(ctx, r.deps.DB).
+		WithContext(ctx).
+		Model(&pgmodels.OIDCProvider{}).
+		Select("oidc_providers.id, oidc_providers.display_name, oidc_providers.created_at, " +
+			"COUNT(DISTINCT federated_identities.user_id) AS user_count").
+		Joins("LEFT JOIN federated_identities ON federated_identities.provider_id = oidc_providers.id").
+		Group("oidc_providers.id").
+		Order("oidc_providers.display_name, oidc_providers.id").
+		Scan(&rows).Error
 	if err != nil {
-		return nil, fmt.Errorf("r.db(ctx).Find: %w", err)
+		return nil, fmt.Errorf("pgtx.From(ctx, r.deps.DB).Scan: %w", err)
 	}
 
-	return utils.MapSlice(models, r.lightModelToDomain), nil
+	return utils.MapSlice(rows, r.lightRowToDomain), nil
 }
 
 //nolint:lll
@@ -173,11 +183,19 @@ func (r *PGOIDCProvidersRepository) DeleteByID(ctx context.Context, id uuid.UUID
 	return nil
 }
 
-func (r *PGOIDCProvidersRepository) lightModelToDomain(model pgmodels.OIDCProvider) oidcproviders.LightOIDCProvider {
+type lightProviderRow struct {
+	CreatedAt   time.Time
+	DisplayName string
+	ID          uuid.UUID
+	UserCount   int64
+}
+
+func (r *PGOIDCProvidersRepository) lightRowToDomain(row lightProviderRow) oidcproviders.LightOIDCProvider {
 	return oidcproviders.LightOIDCProvider{
-		ID:          model.ID,
-		DisplayName: model.DisplayName,
-		IssuerURL:   model.IssuerURL,
+		ID:          row.ID,
+		DisplayName: row.DisplayName,
+		CreatedAt:   row.CreatedAt,
+		UserCount:   row.UserCount,
 	}
 }
 

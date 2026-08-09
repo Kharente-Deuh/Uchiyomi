@@ -68,9 +68,10 @@ type CreateOIDCProviderOpts struct {
 }
 
 type LightOIDCProvider struct {
+	CreatedAt   time.Time
 	DisplayName string
-	IssuerURL   string
 	ID          uuid.UUID
+	UserCount   int64
 }
 
 var ErrIncompleteDiscovery = errors.New("discovery document is incomplete")

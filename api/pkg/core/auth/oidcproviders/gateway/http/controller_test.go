@@ -167,7 +167,7 @@ func TestListReturnsOnlyTheLightFields(t *testing.T) {
 
 	id := uuid.New()
 	svc := &stubService{list: []oidcproviders.LightOIDCProvider{
-		{ID: id, DisplayName: testDisplayName, IssuerURL: testIssuerURL},
+		{ID: id, DisplayName: testDisplayName, CreatedAt: time.Now(), UserCount: 3},
 	}}
 	r := newRouter(t, svc, adminMiddlewares(t, admin()))
 
@@ -186,7 +186,7 @@ func TestListReturnsOnlyTheLightFields(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
 
-	want := map[string]bool{"id": true, "displayName": true, "issuerUrl": true}
+	want := map[string]bool{"id": true, "displayName": true, "createdAt": true, "userCount": true}
 	for key := range got[0] {
 		if !want[key] {
 			t.Errorf("the list exposes %q, which belongs to the detail response", key)
@@ -199,6 +199,10 @@ func TestListReturnsOnlyTheLightFields(t *testing.T) {
 
 	if got[0]["id"] != id.String() {
 		t.Errorf("id = %v, want %s", got[0]["id"], id)
+	}
+
+	if got[0]["userCount"] != float64(3) {
+		t.Errorf("userCount = %v, want 3", got[0]["userCount"])
 	}
 }
 

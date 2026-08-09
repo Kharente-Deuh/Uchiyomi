@@ -118,7 +118,12 @@ func (c *Controller) list(w http.ResponseWriter, r *http.Request) {
 
 	res := make([]LightProviderResponse, 0, len(providers))
 	for _, p := range providers {
-		res = append(res, LightProviderResponse{ID: p.ID.String(), DisplayName: p.DisplayName, IssuerURL: p.IssuerURL})
+		res = append(res, LightProviderResponse{
+			CreatedAt:   p.CreatedAt,
+			ID:          p.ID.String(),
+			DisplayName: p.DisplayName,
+			UserCount:   p.UserCount,
+		})
 	}
 
 	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, res)
