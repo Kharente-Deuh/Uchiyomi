@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// @vitest-environment nuxt
 
 import type { BottomNavigationItemProps } from './Item.vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'

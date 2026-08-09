@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// @vitest-environment nuxt
 
 import type { NavigationDrawerListItemProps } from './Item.vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
@@ -7,8 +8,8 @@ import { h } from 'vue'
 import { VApp } from 'vuetify/components'
 import Item from './Item.vue'
 
-// baseRoute differs from the default test router path ('/') so the link stays
-// present in the default cases.
+// The health middleware has no API to reach here, so the test router always
+// settles on '/status'; baseRoute must differ from it for the link to render.
 const base: NavigationDrawerListItemProps = {
   icon: 'fa6-solid:gear',
   title: 'Settings',
@@ -45,9 +46,7 @@ describe('navigationDrawerListItem', () => {
   })
 
   it('drops the link when baseRoute matches the current route', async () => {
-    // The test router lands at '/login' (Nuxt redirects on app init).
-    // Setting baseRoute to '/login' makes isBaseRoute true, so the link is dropped.
-    const wrapper = await mountSuspended(wrap({ ...base, baseRoute: '/login' }))
+    const wrapper = await mountSuspended(wrap({ ...base, baseRoute: '/status' }))
     expect(wrapper.find('a').exists()).toBe(false)
   })
 })

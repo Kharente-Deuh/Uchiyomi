@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// @vitest-environment nuxt
 
 import type { NavigationDrawerListProps } from './List/index.vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
@@ -17,7 +18,7 @@ const items: NavigationDrawerListProps[] = [
 ]
 
 function wrap(): { render: () => ReturnType<typeof h> } {
-  return { render: () => h(VApp, () => [h(NavigationDrawer, { items })]) }
+  return { render: () => h(VApp, () => [h(NavigationDrawer, { items, logoutLoading: false })]) }
 }
 
 describe('navigationDrawer', () => {
