@@ -75,3 +75,15 @@ type LightOIDCProvider struct {
 	DisplayName string
 	ID          uuid.UUID
 }
+
+type Discoverer interface {
+	Discover(ctx context.Context, issuerURL string) (*Discovery, error)
+}
+
+type Discovery struct {
+	Issuer                string
+	AuthorizationEndpoint string
+	TokenEndpoint         string
+	UserInfoEndpoint      string
+	EndSessionEndpoint    string
+}
