@@ -113,6 +113,10 @@ func (s *stubSessionService) RevokeAllForUser(context.Context, uuid.UUID) error 
 	panic("RevokeAllForUser must not be called by DoSetup")
 }
 
+func (s *stubSessionService) RevokeForProvider(context.Context, uuid.UUID, uuid.UUID) error {
+	panic("RevokeForProvider must not be called by DoSetup")
+}
+
 func defaultSessionStub() *stubSessionService {
 	return &stubSessionService{issued: &sessions.IssuedSession{
 		Session: sessions.Session{ID: uuid.New()},

@@ -307,3 +307,59 @@ func TestUpdateError(t *testing.T) {
 		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }
+
+func TestListDueForRevalidation(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	before := time.Now().Add(-15 * time.Minute)
+	id, userID, providerID := uuid.New(), uuid.New(), uuid.New()
+	lastValidated := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`SELECT DISTINCT "federated_identities"`).
+		WithArgs(before, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "provider_id", "subject", "claims",
+			"refresh_token_enc", "last_validated_at", "created_at", "last_login_at",
+		}).AddRow(
+			id, userID, providerID, testSubject, []byte(`{}`),
+			[]byte("enc"), lastValidated, time.Now(), time.Now(),
+		))
+
+	got, err := r.ListDueForRevalidation(context.Background(), before)
+	if err != nil {
+		t.Fatalf("ListDueForRevalidation: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("len = %d, want 1", len(got))
+	}
+
+	if got[0].ID != id || got[0].UserID != userID || got[0].ProviderID != providerID {
+		t.Errorf("ListDueForRevalidation() = %+v", got[0])
+	}
+
+	if !got[0].LastValidatedAt.Equal(lastValidated) {
+		t.Errorf("LastValidatedAt = %v, want %v", got[0].LastValidatedAt, lastValidated)
+	}
+}
+
+func TestUpdateClearsRefreshToken(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "federated_identities" SET`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := r.Update(context.Background(), federatedidentities.UpdateFederatedIdentityOpts{
+		ID:                uuid.New(),
+		ClearRefreshToken: true,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+}

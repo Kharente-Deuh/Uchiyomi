@@ -100,6 +100,18 @@ func (fakeSessionsRepository) DeleteByTokenHash(context.Context, []byte) error {
 	return errors.New(notImplemented)
 }
 
+type fakeOIDCRevalidationApp struct{}
+
+func (fakeOIDCRevalidationApp) Run(ctx context.Context) error {
+	<-ctx.Done()
+
+	return ctx.Err()
+}
+
+func (fakeSessionsRepository) DeleteByUserAndProvider(context.Context, uuid.UUID, uuid.UUID) error {
+	return errors.New(notImplemented)
+}
+
 func (fakeSessionsRepository) DeleteByUserID(context.Context, uuid.UUID) error {
 	return errors.New(notImplemented)
 }
@@ -307,6 +319,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			Health:            registry,
 			Asura:             asuraApp,
 			Sessions:          sessionsApp,
+			OIDCRevalidation:  fakeOIDCRevalidationApp{},
 		})
 	if err != nil {
 		t.Fatalf("New: %v", err)

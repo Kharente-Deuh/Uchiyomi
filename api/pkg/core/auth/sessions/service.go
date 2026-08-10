@@ -211,3 +211,11 @@ func (s *Service) RevokeAllForUser(ctx context.Context, userID uuid.UUID) error 
 
 	return nil
 }
+
+func (s *Service) RevokeForProvider(ctx context.Context, userID, providerID uuid.UUID) error {
+	if err := s.deps.Repository.DeleteByUserAndProvider(ctx, userID, providerID); err != nil {
+		return fmt.Errorf("s.deps.Repository.DeleteByUserAndProvider: %w", err)
+	}
+
+	return nil
+}

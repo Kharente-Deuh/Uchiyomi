@@ -382,6 +382,24 @@ func TestDeleteByUserID(t *testing.T) {
 	}
 }
 
+func TestDeleteByUserAndProvider(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	userID, providerID := uuid.New(), uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "sessions" WHERE user_id = \$1 AND provider_id = \$2`).
+		WithArgs(userID, providerID).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectCommit()
+
+	if err := r.DeleteByUserAndProvider(context.Background(), userID, providerID); err != nil {
+		t.Fatalf("DeleteByUserAndProvider: %v", err)
+	}
+}
+
 func TestDeleteExpiredReturnsRowCount(t *testing.T) {
 	t.Parallel()
 

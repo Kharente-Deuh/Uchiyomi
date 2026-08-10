@@ -140,7 +140,7 @@ func TestRunReportsEverythingOKOnceMigrationCompletes(t *testing.T) {
 	})
 
 	body := decodeReadyz(t, raw)
-	for _, name := range []string{componentMigrations, componentAsura, componentSessions, componentDB} {
+	for _, name := range []string{componentMigrations, componentAsura, componentSessions, componentOIDCRevalidation, componentDB} {
 		if got := body.Components[name].Status; got != string(health.StatusOK) {
 			t.Errorf("%s = %q, want %q", name, got, health.StatusOK)
 		}

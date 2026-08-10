@@ -270,6 +270,10 @@ func (f *fakeSessionService) RevokeAllForUser(context.Context, uuid.UUID) error 
 	panic("RevokeAllForUser is not used by the auth service")
 }
 
+func (f *fakeSessionService) RevokeForProvider(context.Context, uuid.UUID, uuid.UUID) error {
+	panic("RevokeForProvider is not used by the auth service")
+}
+
 type fakes struct {
 	now   time.Time
 	clock *clock

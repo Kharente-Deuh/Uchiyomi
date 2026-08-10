@@ -126,6 +126,10 @@ func (f *fixedUserSessionsRepository) DeleteByUserID(context.Context, uuid.UUID)
 	return errors.New("not implemented")
 }
 
+func (f *fixedUserSessionsRepository) DeleteByUserAndProvider(context.Context, uuid.UUID, uuid.UUID) error {
+	return errors.New("not implemented")
+}
+
 func (f *fixedUserSessionsRepository) DeleteExpired(context.Context, time.Time) (int64, error) {
 	return 0, nil
 }

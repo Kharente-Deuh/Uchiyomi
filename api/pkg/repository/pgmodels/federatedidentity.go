@@ -12,16 +12,18 @@ import (
 )
 
 type FederatedIdentity struct {
-	LastLoginAt time.Time
-	CreatedAt   time.Time    `gorm:"autoCreateTime"`
-	UpdatedAt   time.Time    `gorm:"autoUpdateTime"`
-	Claims      Claims       `gorm:"type:jsonb;not null;default:'{}'"`
-	Subject     string       `gorm:"type:text;not null;uniqueIndex:idx_fedid_provider_subject,priority:2"`
-	Provider    OIDCProvider `gorm:"foreignKey:ProviderID"`
-	User        User         `gorm:"foreignKey:UserID"`
-	ID          uuid.UUID    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	UserID      uuid.UUID    `gorm:"type:uuid;not null;index"`
-	ProviderID  uuid.UUID    `gorm:"type:uuid;not null;uniqueIndex:idx_fedid_provider_subject,priority:1"`
+	LastValidatedAt time.Time
+	LastLoginAt     time.Time
+	CreatedAt       time.Time    `gorm:"autoCreateTime"`
+	UpdatedAt       time.Time    `gorm:"autoUpdateTime"`
+	RefreshTokenEnc []byte       `gorm:"type:bytea"`
+	Claims          Claims       `gorm:"type:jsonb;not null;default:'{}'"`
+	Subject         string       `gorm:"type:text;not null;uniqueIndex:idx_fedid_provider_subject,priority:2"`
+	Provider        OIDCProvider `gorm:"foreignKey:ProviderID"`
+	User            User         `gorm:"foreignKey:UserID"`
+	ID              uuid.UUID    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	UserID          uuid.UUID    `gorm:"type:uuid;not null;index"`
+	ProviderID      uuid.UUID    `gorm:"type:uuid;not null;uniqueIndex:idx_fedid_provider_subject,priority:1"`
 }
 
 func (FederatedIdentity) TableName() string {

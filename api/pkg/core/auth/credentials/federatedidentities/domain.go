@@ -13,23 +13,28 @@ type FederatedIdentitiesRepository interface {
 	Create(context.Context, CreateFederatedIdentityOpts) (*FederatedIdentity, error)
 	Get(context.Context, GetFederatedIdentityOpts) (*FederatedIdentity, error)
 	Update(context.Context, UpdateFederatedIdentityOpts) error
+	ListDueForRevalidation(context.Context, time.Time) ([]FederatedIdentity, error)
 }
 
 type FederatedIdentity struct {
-	CreatedAt   time.Time
-	LastLoginAt time.Time
-	Claims      map[string]any
-	Subject     string
-	ID          uuid.UUID
-	UserID      uuid.UUID
-	ProviderID  uuid.UUID
+	LastValidatedAt time.Time
+	LastLoginAt     time.Time
+	CreatedAt       time.Time
+	RefreshTokenEnc []byte
+	Claims          map[string]any
+	Subject         string
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	ProviderID      uuid.UUID
 }
 
 type CreateFederatedIdentityOpts struct {
-	Claims     map[string]any
-	Subject    string
-	UserID     uuid.UUID
-	ProviderID uuid.UUID
+	LastValidatedAt time.Time
+	RefreshTokenEnc []byte
+	Claims          map[string]any
+	Subject         string
+	UserID          uuid.UUID
+	ProviderID      uuid.UUID
 }
 
 type GetFederatedIdentityOpts struct {
@@ -38,7 +43,11 @@ type GetFederatedIdentityOpts struct {
 }
 
 type UpdateFederatedIdentityOpts struct {
-	LastLoginAt time.Time
-	Claims      map[string]any
-	ID          uuid.UUID
+	LastValidatedAt   time.Time
+	LastLoginAt       time.Time
+	RefreshTokenEnc   []byte
+	SetRefreshToken   bool
+	ClearRefreshToken bool
+	Claims            map[string]any
+	ID                uuid.UUID
 }
