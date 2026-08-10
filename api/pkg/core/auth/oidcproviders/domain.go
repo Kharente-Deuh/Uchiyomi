@@ -99,3 +99,21 @@ type Discovery struct {
 	UserInfoEndpoint      string
 	EndSessionEndpoint    string
 }
+
+type Client interface {
+	AuthCodeURL(ctx context.Context, provider OIDCProvider, params AuthCodeParams) (string, error)
+	Exchange(ctx context.Context, provider OIDCProvider, code, verifier, nonce, redirectURI string) (*TokenSet, error)
+}
+
+type AuthCodeParams struct {
+	RedirectURI string
+	State       string
+	Nonce       string
+	Verifier    string
+}
+
+type TokenSet struct {
+	Claims  map[string]any
+	Subject string
+	SID     string
+}

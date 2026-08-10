@@ -70,6 +70,14 @@ func (f *fakeAuthService) Logout(context.Context, string) error {
 	panic("Logout ne doit pas être appelée par DoSetup")
 }
 
+func (f *fakeAuthService) StartOIDCLogin(context.Context, auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {
+	panic("StartOIDCLogin ne doit pas être appelée par DoSetup")
+}
+
+func (f *fakeAuthService) FinishOIDCLogin(context.Context, auth.FinishOIDCLoginOpts) (*auth.OIDCLoginResult, error) {
+	panic("FinishOIDCLogin ne doit pas être appelée par DoSetup")
+}
+
 type stubSessionService struct {
 	err     error
 	issued  *sessions.IssuedSession

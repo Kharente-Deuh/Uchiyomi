@@ -19,6 +19,10 @@ type Cipher interface {
 	Seal(plaintext []byte) ([]byte, error)
 }
 
+type CacheEvictor interface {
+	Evict(id uuid.UUID)
+}
+
 type ServiceConfig struct {
 	RedirectURI string
 }
@@ -35,6 +39,7 @@ type ServiceDeps struct {
 	Repository OIDCProvidersRepository
 	Cipher     Cipher
 	Discoverer Discoverer
+	Cache      CacheEvictor
 }
 
 func (deps *ServiceDeps) Validate() error {
@@ -48,6 +53,10 @@ func (deps *ServiceDeps) Validate() error {
 
 	if deps.Discoverer == nil {
 		return errors.New("discoverer is required")
+	}
+
+	if deps.Cache == nil {
+		return errors.New("cache is required")
 	}
 
 	return nil
@@ -183,6 +192,8 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, opts UpdateOpts) (*O
 		return nil, fmt.Errorf("s.deps.Repository.Update: %w", err)
 	}
 
+	s.deps.Cache.Evict(id)
+
 	return withoutSecret(provider), nil
 }
 
@@ -190,6 +201,8 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	if err := s.deps.Repository.DeleteByID(ctx, id); err != nil {
 		return fmt.Errorf("s.deps.Repository.DeleteByID: %w", err)
 	}
+
+	s.deps.Cache.Evict(id)
 
 	return nil
 }

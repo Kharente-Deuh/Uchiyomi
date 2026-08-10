@@ -23,6 +23,7 @@ import (
 const (
 	userNameBob   = "bob"
 	userNameAlice = "alice"
+	colName       = "name"
 )
 
 func duplicateKeyErr() error {
@@ -130,7 +131,7 @@ func TestGetByID(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM "users" WHERE id = \$1 ORDER BY "users"\."id" LIMIT \$2`).
 		WithArgs(id, 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "name", "is_admin", "created_at", "updated_at"}).
+			sqlmock.NewRows([]string{"id", colName, "is_admin", "created_at", "updated_at"}).
 				AddRow(id, userNameBob, true, created, updated),
 		)
 
@@ -151,7 +152,7 @@ func TestGetByIDNotFound(t *testing.T) {
 	r, mock := newRepo(t)
 
 	mock.ExpectQuery(`SELECT \* FROM "users"`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", colName}))
 
 	got, err := r.GetByID(context.Background(), uuid.New())
 	if !errors.Is(err, domain.ErrNotFound) {
@@ -304,5 +305,61 @@ func TestCreateError(t *testing.T) {
 
 	if !errors.Is(err, sentinel) {
 		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id := uuid.New()
+	created := time.Now().Add(-2 * time.Hour).UTC().Truncate(time.Second)
+	updated := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "users" SET "is_admin"=\$1,"updated_at"=\$2 WHERE id = \$3`).
+		WithArgs(true, sqlmock.AnyArg(), id).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	mock.ExpectQuery(`SELECT \* FROM "users" WHERE id = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+		WithArgs(id, 1).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", colName, "is_admin", "created_at", "updated_at"}).
+				AddRow(id, userNameBob, true, created, updated),
+		)
+
+	got, err := r.Update(context.Background(), users.UpdateUserOpts{ID: id, IsAdmin: true})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	want := users.User{ID: id, Name: userNameBob, IsAdmin: true, CreatedAt: created, UpdatedAt: updated}
+	if got == nil || *got != want {
+		t.Errorf("Update() = %+v, want %+v", got, want)
+	}
+}
+
+func TestUpdateNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "users" SET "is_admin"=\$1,"updated_at"=\$2 WHERE id = \$3`).
+		WithArgs(false, sqlmock.AnyArg(), id).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	got, err := r.Update(context.Background(), users.UpdateUserOpts{ID: id, IsAdmin: false})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("Update = %v, want domain.ErrNotFound", err)
+	}
+
+	if got != nil {
+		t.Errorf("Update a renvoyé %+v en plus de l'erreur", got)
 	}
 }

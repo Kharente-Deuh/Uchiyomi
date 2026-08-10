@@ -7,6 +7,7 @@ import nuxt from './.nuxt/eslint.config.mjs'
 
 const customConfig: TypedFlatConfigItem = {
   rules: {
+    'vue/no-multiple-template-root': 'off',
     'pnpm/yaml-enforce-settings': 'off',
     'unicorn/no-null': 'off',
     'ts/explicit-function-return-type': ['error', { allowExpressions: true }],
@@ -91,4 +92,4 @@ const options: OptionsConfig & Omit<TypedFlatConfigItem, 'files' | 'ignores'> = 
   autoRenamePlugins: true,
 }
 
-export default antfu(options, customConfig, unusedPropertiesConfig).append(nuxt())
+export default nuxt(antfu(options, customConfig, unusedPropertiesConfig))

@@ -7,6 +7,12 @@ import { ApiError, initApi } from '~/utils/api'
 export interface AuthApi {
   loginWithPwd: (request: LoginWithPwdRequest) => Promise<LoginWithPwdResult>
   logout: () => Promise<ApiResponse<void>>
+  getProviders: () => Promise<ApiResponse<ProviderSummary[]>>
+}
+
+export interface ProviderSummary {
+  id: string
+  displayName: string
 }
 
 export type LoginWithPwdStatus = 'ok' | 'invalid-credentials' | 'unknown-error'
@@ -50,8 +56,25 @@ export function createAuthApi(): AuthApi {
     }
   }
 
+  async function getProviders(): Promise<ApiResponse<ProviderSummary[]>> {
+    try {
+      const providers = await api<ProviderSummary[]>('/providers')
+
+      return { success: true, data: providers }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
   return {
     loginWithPwd,
     logout,
+    getProviders,
   }
+}
+
+export function oidcStartUrl(providerId: string, redirect: string): string {
+  const params = new URLSearchParams({ redirect })
+
+  return `/api/auth/oidc/${providerId}/start?${params.toString()}`
 }

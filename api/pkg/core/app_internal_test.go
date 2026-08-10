@@ -27,6 +27,26 @@ func TestRouterMountsTheOIDCProvidersRoutes(t *testing.T) {
 	}
 }
 
+func TestRouterMountsTheOIDCCallbackAdvertisedAsRedirectURI(t *testing.T) {
+	t.Parallel()
+
+	app, registry := newTestApp(t, &fakeDB{}, gatePort)
+	registry.Set(componentMigrations, nil)
+
+	req := httptest.NewRequest(http.MethodGet, APIPrefix+"/auth/oidc/callback", nil)
+	rec := httptest.NewRecorder()
+
+	app.newRouter(nil).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("GET %s/auth/oidc/callback = %d, want %d", APIPrefix, rec.Code, http.StatusFound)
+	}
+
+	if loc := rec.Header().Get("Location"); loc != "/login?error=oidcUnavailable" {
+		t.Errorf("Location = %q, want the callback handler's redirect", loc)
+	}
+}
+
 func TestRunComponentMarksOKBeforeEnteringTheLoop(t *testing.T) {
 	reg := health.NewRegistry(componentAsura)
 	a := &App{deps: Deps{Health: reg}}

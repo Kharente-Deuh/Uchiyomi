@@ -21,6 +21,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth"
+	pgfederatedidentities "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/federatedidentities/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/hash/bcrypthash"
 	pgpwd "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/password/repository/pg"
 	httpauth "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/gateway/http"
@@ -114,12 +115,13 @@ func setupApp(cfg *cfg) (*core.App, error) {
 }
 
 type dbRelated struct {
-	PGDB                    *database.PGDB
-	Txor                    *pgtx.PGTransactor
-	UsersRepository         *pgusers.PGUsersRepository
-	SessionsRepository      *pgsessions.PGSessionsRepository
-	PwdRepository           *pgpwd.PGPasswordCredsRepository
-	OIDCProvidersRepository *pgoidcproviders.PGOIDCProvidersRepository
+	PGDB                          *database.PGDB
+	Txor                          *pgtx.PGTransactor
+	UsersRepository               *pgusers.PGUsersRepository
+	SessionsRepository            *pgsessions.PGSessionsRepository
+	PwdRepository                 *pgpwd.PGPasswordCredsRepository
+	OIDCProvidersRepository       *pgoidcproviders.PGOIDCProvidersRepository
+	FederatedIdentitiesRepository *pgfederatedidentities.PGFederatedIdentitiesRepository
 }
 
 func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
@@ -164,13 +166,19 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		return nil, fmt.Errorf("failed to init oidcProvidersRepository: %w", err)
 	}
 
+	federatedIdentitiesRepository, err := pgfederatedidentities.New(pgfederatedidentities.Deps{DB: pgdb.DB})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init federatedIdentitiesRepository: %w", err)
+	}
+
 	dbr := &dbRelated{
-		PGDB:                    pgdb,
-		Txor:                    txor,
-		UsersRepository:         usersRepository,
-		SessionsRepository:      sessionsRepository,
-		PwdRepository:           pwdRepository,
-		OIDCProvidersRepository: oidcProvidersRepository,
+		PGDB:                          pgdb,
+		Txor:                          txor,
+		UsersRepository:               usersRepository,
+		SessionsRepository:            sessionsRepository,
+		PwdRepository:                 pwdRepository,
+		OIDCProvidersRepository:       oidcProvidersRepository,
+		FederatedIdentitiesRepository: federatedIdentitiesRepository,
 	}
 
 	return dbr, nil
@@ -214,13 +222,44 @@ func setupServices(deps servicesDeps) (*services, error) {
 		return nil, fmt.Errorf("failed to init hashSvc: %w", err)
 	}
 
-	authSvc, err := auth.New(auth.Deps{
-		Transactor:      deps.DBr.Txor,
-		UsersRepository: deps.DBr.UsersRepository,
-		PwdRepository:   deps.DBr.PwdRepository,
-		HashService:     hashSvc,
-		SessionService:  sessionsSvc,
-	})
+	cipher, err := crypto.New(crypto.Config{Key: deps.EncryptionKey})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init cipher: %w", err)
+	}
+
+	discoverer, err := oidc.New(
+		oidc.Config{Timeout: 10 * time.Second},
+		oidc.Deps{HTTPClient: &http.Client{Timeout: 10 * time.Second}},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init discoverer: %w", err)
+	}
+
+	oidcClient, err := oidc.NewClient(
+		oidc.ClientConfig{Timeout: 10 * time.Second, CacheTTL: 15 * time.Minute},
+		oidc.ClientDeps{HTTPClient: &http.Client{Timeout: 10 * time.Second}, Cipher: cipher},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init oidcClient: %w", err)
+	}
+
+	redirectURI := deps.PublicURL + oidcCallbackPath
+
+	authSvc, err := auth.New(
+		auth.Config{RedirectURI: redirectURI, StateCookieTTL: 10 * time.Minute},
+		auth.Deps{
+			Transactor:                    deps.DBr.Txor,
+			UsersRepository:               deps.DBr.UsersRepository,
+			PwdRepository:                 deps.DBr.PwdRepository,
+			HashService:                   hashSvc,
+			SessionService:                sessionsSvc,
+			OIDCProvidersRepository:       deps.DBr.OIDCProvidersRepository,
+			FederatedIdentitiesRepository: deps.DBr.FederatedIdentitiesRepository,
+			OIDCClient:                    oidcClient,
+			StateCipher:                   cipher,
+			Logger:                        deps.Logger,
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init authSvc: %w", err)
 	}
@@ -235,25 +274,13 @@ func setupServices(deps servicesDeps) (*services, error) {
 		return nil, fmt.Errorf("failed to init setupSvc: %w", err)
 	}
 
-	cipher, err := crypto.New(crypto.Config{Key: deps.EncryptionKey})
-	if err != nil {
-		return nil, fmt.Errorf("failed to init cipher: %w", err)
-	}
-
-	discoverer, err := oidc.New(
-		oidc.Config{Timeout: 10 * time.Second},
-		oidc.Deps{HTTPClient: &http.Client{Timeout: 10 * time.Second}},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init discoverer: %w", err)
-	}
-
 	oidcProvidersSvc, err := oidcproviders.NewService(
-		oidcproviders.ServiceConfig{RedirectURI: deps.PublicURL + oidcCallbackPath},
+		oidcproviders.ServiceConfig{RedirectURI: redirectURI},
 		oidcproviders.ServiceDeps{
 			Repository: deps.DBr.OIDCProvidersRepository,
 			Cipher:     cipher,
 			Discoverer: discoverer,
+			Cache:      oidcClient,
 		},
 	)
 	if err != nil {
@@ -462,6 +489,15 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init cookiesManager: %w", err)
 	}
 
+	oidcStateCookiesMgr, err := httpsession.NewCookieManager(httpsession.CookieConfig{
+		Name:   "uchiyomi_oidc_state",
+		Path:   "/api/auth/oidc",
+		Secure: false, //TODO: update that at release
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init oidcStateCookiesManager: %w", err)
+	}
+
 	authenticator, err := httpsession.NewAuthenticator(httpsession.AuthenticatorDeps{
 		SessionService: deps.SessionsService,
 		Cookies:        cookiesMgr,
@@ -506,9 +542,11 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 	authCtrl, err := httpauth.New(
 		httpauth.Config{Endpoint: "/auth"},
 		httpauth.Deps{
-			AuthService: deps.AuthService,
-			Cookies:     cookiesMgr,
-			Logger:      deps.Logger,
+			AuthService:      deps.AuthService,
+			Cookies:          cookiesMgr,
+			OIDCStateCookies: oidcStateCookiesMgr,
+			ProvidersLister:  deps.OIDCProvidersService,
+			Logger:           deps.Logger,
 		},
 	)
 	if err != nil {

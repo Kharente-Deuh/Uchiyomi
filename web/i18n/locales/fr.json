@@ -58,13 +58,21 @@
   "login": {
     "error": {
       "invalid-credentials": "Nom d'utilisateur/mot de passe invalide",
-      "unknown-error": "Erreur inconnue. \nVeuillez réessayer."
+      "unknown-error": "Erreur inconnue. \nVeuillez réessayer.",
+      "oidcState": "Votre session de connexion a expiré. Veuillez réessayer.",
+      "oidcDenied": "La connexion a été annulée.",
+      "oidcNotAllowed": "Votre compte n'est pas autorisé à se connecter avec ce fournisseur.",
+      "oidcNoAccount": "Aucun compte n'est lié à cette identité. Demandez à un administrateur de l'activer.",
+      "oidcUnavailable": "Le fournisseur d'identité est actuellement indisponible. Veuillez réessayer plus tard."
     },
     "username": "Nom d'utilisateur",
     "password": "Mot de passe",
     "title": "Bienvenue",
     "subtitle": "Connectez-vous à votre serveur Uchiyomi",
-    "submit": "Se connecter"
+    "submit": "Se connecter",
+    "oidc": {
+      "button": "Se connecter avec {name}"
+    }
   },
   "auth": {
     "signOut": "Se déconnecter"
@@ -191,7 +199,8 @@
     "continue": "Continuer"
   },
   "common": {
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "or": "Ou"
   },
   "role": {
     "admin": "Administrateur",

@@ -123,10 +123,12 @@ func (s *Service) Create(ctx context.Context, opts CreateSessionOpts) (*IssuedSe
 	sum := sha256.Sum256([]byte(token))
 
 	session, err := s.deps.Repository.Insert(ctx, InsertSessionOpts{
-		UserID:     opts.UserID,
-		AuthMethod: opts.AuthMethod,
-		TokenHash:  sum[:],
-		ExpiresAt:  s.deps.Now().Add(ttl.Idle),
+		UserID:      opts.UserID,
+		AuthMethod:  opts.AuthMethod,
+		TokenHash:   sum[:],
+		ExpiresAt:   s.deps.Now().Add(ttl.Idle),
+		ProviderID:  opts.ProviderID,
+		ProviderSID: opts.ProviderSID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("s.deps.Repository.Insert: %w", err)

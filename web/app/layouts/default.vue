@@ -49,17 +49,12 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
   },
 ])
 
-const { bottomLayout, leftLayout } = useLayoutPadding()
+const { mainStyles } = useLayoutPadding()
 </script>
 
 <template>
   <VApp>
-    <VMain
-      :style="{
-        '--v-layout-bottom': bottomLayout,
-        '--v-layout-left': leftLayout,
-      }"
-    >
+    <VMain :style="mainStyles">
       <OrganismNavigationDrawer
         v-if="!mobile"
         :items="navigationDrawerItems"

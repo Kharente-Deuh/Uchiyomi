@@ -14,3 +14,8 @@ type LoginWithPwdResponse struct {
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"isAdmin"`
 }
+
+type ProviderSummaryResponse struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"displayName"`
+}

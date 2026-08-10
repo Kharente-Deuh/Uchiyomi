@@ -36,6 +36,10 @@ func (f *fakeUsersRepository) GetByUsername(context.Context, string) (*users.Use
 	panic("GetByUsername ne doit pas être appelée par le service setup")
 }
 
+func (f *fakeUsersRepository) Update(context.Context, users.UpdateUserOpts) (*users.User, error) {
+	panic("Update ne doit pas être appelée par le service setup")
+}
+
 func depsFor(repo users.UsersRepository) setup.Deps {
 	return setup.Deps{
 		UsersRepository: repo,

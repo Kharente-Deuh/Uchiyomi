@@ -19,29 +19,43 @@ import (
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth"
 	authhttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	sessionshttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 )
 
 const (
-	authEndpoint      = "/auth"
-	loginPath         = "/auth/login"
-	logoutPath        = "/auth/logout"
-	username          = "alice"
-	password          = "hunter2hunter2"
-	token             = "letoken"
-	sessionCookieName = "uchiyomi_session"
+	authEndpoint        = "/auth"
+	loginPath           = "/auth/login"
+	logoutPath          = "/auth/logout"
+	providersPath       = "/auth/providers"
+	oidcCallbackPath    = "/auth/oidc/callback"
+	username            = "alice"
+	password            = "hunter2hunter2"
+	token               = "letoken"
+	sessionCookieName   = "uchiyomi_session"
+	oidcStateCookieName = "uchiyomi_oidc_state"
+	oidcStateCookiePath = "/api/auth/oidc"
+	logLevelWarn        = "WARN"
 )
 
 type stubAuthService struct {
-	err         error
-	logoutErr   error
-	result      *auth.LoginResult
-	gotOpts     auth.LoginWithPwdOpts
-	logoutToken string
-	calls       int
-	logoutCalls int
+	err           error
+	finishErr     error
+	startErr      error
+	logoutErr     error
+	startResult   *auth.OIDCStart
+	result        *auth.LoginResult
+	finishResult  *auth.OIDCLoginResult
+	gotFinishOpts auth.FinishOIDCLoginOpts
+	gotOpts       auth.LoginWithPwdOpts
+	logoutToken   string
+	gotStartOpts  auth.StartOIDCLoginOpts
+	calls         int
+	logoutCalls   int
+	startCalls    int
+	finishCalls   int
 }
 
 func (s *stubAuthService) LoginWithPwd(
@@ -69,6 +83,31 @@ func (s *stubAuthService) Logout(_ context.Context, token string) error {
 	return s.logoutErr
 }
 
+func (s *stubAuthService) StartOIDCLogin(_ context.Context, opts auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {
+	s.startCalls++
+	s.gotStartOpts = opts
+
+	if s.startErr != nil {
+		return nil, s.startErr
+	}
+
+	return s.startResult, nil
+}
+
+func (s *stubAuthService) FinishOIDCLogin(
+	_ context.Context,
+	opts auth.FinishOIDCLoginOpts,
+) (*auth.OIDCLoginResult, error) {
+	s.finishCalls++
+	s.gotFinishOpts = opts
+
+	if s.finishErr != nil {
+		return nil, s.finishErr
+	}
+
+	return s.finishResult, nil
+}
+
 func frozenNow() time.Time {
 	return time.Date(2026, time.August, 3, 12, 0, 0, 0, time.UTC)
 }
@@ -88,6 +127,22 @@ func loggedInStub() *stubAuthService {
 	return &stubAuthService{result: &auth.LoginResult{Session: issuedSession(), User: loggedInUser()}}
 }
 
+type stubProvidersLister struct {
+	err    error
+	result []oidcproviders.LightOIDCProvider
+	calls  int
+}
+
+func (s *stubProvidersLister) List(context.Context) ([]oidcproviders.LightOIDCProvider, error) {
+	s.calls++
+
+	if s.err != nil {
+		return nil, s.err
+	}
+
+	return s.result, nil
+}
+
 func testLogger() (*slog.Logger, *bytes.Buffer) {
 	var buf bytes.Buffer
 
@@ -105,6 +160,20 @@ func newCookies(t *testing.T) *sessionshttp.CookieManager {
 	return m
 }
 
+func newOIDCStateCookies(t *testing.T) *sessionshttp.CookieManager {
+	t.Helper()
+
+	m, err := sessionshttp.NewCookieManager(sessionshttp.CookieConfig{
+		Name: oidcStateCookieName,
+		Path: oidcStateCookiePath,
+	})
+	if err != nil {
+		t.Fatalf("NewCookieManager: %v", err)
+	}
+
+	return m
+}
+
 func loginBody(user, pwd string) string {
 	return fmt.Sprintf(`{"username":%q,"password":%q}`, user, pwd)
 }
@@ -112,13 +181,25 @@ func loginBody(user, pwd string) string {
 func newTestRouter(t *testing.T, svc *stubAuthService) (chi.Router, *bytes.Buffer) {
 	t.Helper()
 
+	return newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+}
+
+func newTestRouterWithProviders(
+	t *testing.T,
+	svc *stubAuthService,
+	providers *stubProvidersLister,
+) (chi.Router, *bytes.Buffer) {
+	t.Helper()
+
 	logger, logs := testLogger()
 
 	c, err := authhttp.New(authhttp.Config{Endpoint: authEndpoint}, authhttp.Deps{
-		AuthService: svc,
-		Cookies:     newCookies(t),
-		Logger:      logger,
-		Now:         frozenNow,
+		AuthService:      svc,
+		Cookies:          newCookies(t),
+		OIDCStateCookies: newOIDCStateCookies(t),
+		ProvidersLister:  providers,
+		Logger:           logger,
+		Now:              frozenNow,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -186,19 +267,58 @@ func TestDepsValidate(t *testing.T) {
 		wantErr string
 	}{
 		"complet": {
-			deps:    authhttp.Deps{AuthService: &stubAuthService{}, Cookies: newCookies(t), Logger: logger},
+			deps: authhttp.Deps{
+				AuthService:      &stubAuthService{},
+				Cookies:          newCookies(t),
+				OIDCStateCookies: newOIDCStateCookies(t),
+				ProvidersLister:  &stubProvidersLister{},
+				Logger:           logger,
+			},
 			wantErr: "",
 		},
 		"sans service": {
-			deps:    authhttp.Deps{Cookies: newCookies(t), Logger: logger},
+			deps: authhttp.Deps{
+				Cookies:          newCookies(t),
+				OIDCStateCookies: newOIDCStateCookies(t),
+				ProvidersLister:  &stubProvidersLister{},
+				Logger:           logger,
+			},
 			wantErr: "authService is required",
 		},
 		"sans cookies": {
-			deps:    authhttp.Deps{AuthService: &stubAuthService{}, Logger: logger},
+			deps: authhttp.Deps{
+				AuthService:      &stubAuthService{},
+				OIDCStateCookies: newOIDCStateCookies(t),
+				ProvidersLister:  &stubProvidersLister{},
+				Logger:           logger,
+			},
 			wantErr: "cookies is required",
 		},
+		"sans oidcStateCookies": {
+			deps: authhttp.Deps{
+				AuthService:     &stubAuthService{},
+				Cookies:         newCookies(t),
+				ProvidersLister: &stubProvidersLister{},
+				Logger:          logger,
+			},
+			wantErr: "oidcStateCookies is required",
+		},
+		"sans providersLister": {
+			deps: authhttp.Deps{
+				AuthService:      &stubAuthService{},
+				Cookies:          newCookies(t),
+				OIDCStateCookies: newOIDCStateCookies(t),
+				Logger:           logger,
+			},
+			wantErr: "providersLister is required",
+		},
 		"sans logger": {
-			deps:    authhttp.Deps{AuthService: &stubAuthService{}, Cookies: newCookies(t)},
+			deps: authhttp.Deps{
+				AuthService:      &stubAuthService{},
+				Cookies:          newCookies(t),
+				OIDCStateCookies: newOIDCStateCookies(t),
+				ProvidersLister:  &stubProvidersLister{},
+			},
 			wantErr: "logger is required",
 		},
 		"tout manquant": {deps: authhttp.Deps{}, wantErr: "cookies is required"},
@@ -288,10 +408,12 @@ func TestInitRouterMountsUnderEndpoint(t *testing.T) {
 
 			logger, _ := testLogger()
 			c, err := authhttp.New(authhttp.Config{Endpoint: tc.endpoint}, authhttp.Deps{
-				AuthService: loggedInStub(),
-				Cookies:     newCookies(t),
-				Logger:      logger,
-				Now:         frozenNow,
+				AuthService:      loggedInStub(),
+				Cookies:          newCookies(t),
+				OIDCStateCookies: newOIDCStateCookies(t),
+				ProvidersLister:  &stubProvidersLister{},
+				Logger:           logger,
+				Now:              frozenNow,
 			})
 			if err != nil {
 				t.Fatalf("New: %v", err)
@@ -614,5 +736,319 @@ func TestLogoutServiceErrorLeavesCookieIntact(t *testing.T) {
 
 	if !strings.Contains(logs.String(), "failed to logout") {
 		t.Errorf("message de log attendu absent: %s", logs.String())
+	}
+}
+
+func getProviders(t *testing.T, r chi.Router) *httptest.ResponseRecorder {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, providersPath, nil))
+
+	return rec
+}
+
+func getOIDCStart(t *testing.T, r chi.Router, id string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/oidc/"+id+"/start", nil))
+
+	return rec
+}
+
+func getOIDCCallback(t *testing.T, r chi.Router, query string, stateCookie *http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, oidcCallbackPath+query, nil)
+
+	if stateCookie != nil {
+		req.AddCookie(stateCookie)
+	}
+
+	r.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func TestListProvidersReturnsMappedShape(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+	providers := &stubProvidersLister{result: []oidcproviders.LightOIDCProvider{
+		{ID: id, DisplayName: "Acme SSO"},
+	}}
+	r, _ := newTestRouterWithProviders(t, &stubAuthService{}, providers)
+
+	rec := getProviders(t, r)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var got []authhttp.ProviderSummaryResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal(%s): %v", rec.Body.String(), err)
+	}
+
+	want := []authhttp.ProviderSummaryResponse{{ID: id.String(), DisplayName: "Acme SSO"}}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Errorf("body = %+v, want %+v", got, want)
+	}
+}
+
+func TestListProvidersServiceError(t *testing.T) {
+	t.Parallel()
+
+	providers := &stubProvidersLister{err: errors.New("database is down")}
+	r, logs := newTestRouterWithProviders(t, &stubAuthService{}, providers)
+
+	rec := getProviders(t, r)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+
+	if strings.Contains(rec.Body.String(), "database is down") {
+		t.Errorf("l'erreur interne a fuité dans la réponse: %s", rec.Body.String())
+	}
+
+	if !strings.Contains(logs.String(), "database is down") {
+		t.Errorf("l'erreur interne est absente des logs: %s", logs.String())
+	}
+}
+
+func TestStartOIDCLoginBadUUIDRedirects(t *testing.T) {
+	t.Parallel()
+
+	r, _ := newTestRouterWithProviders(t, &stubAuthService{}, &stubProvidersLister{})
+
+	rec := getOIDCStart(t, r, "not-a-uuid")
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+
+	if loc := rec.Header().Get("Location"); loc != "/login?error=oidcUnavailable" {
+		t.Errorf("Location = %q, want %q", loc, "/login?error=oidcUnavailable")
+	}
+}
+
+func TestStartOIDCLoginHappyPathRedirectsAndSetsStateCookie(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+	svc := &stubAuthService{startResult: &auth.OIDCStart{
+		AuthCodeURL:      "https://idp.example.com/authorize?state=abc",
+		StateCookieValue: "opaque-state",
+		ExpiresAt:        frozenNow().Add(10 * time.Minute),
+	}}
+	r, _ := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+
+	rec := getOIDCStart(t, r, id.String())
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusFound, rec.Body.String())
+	}
+
+	if loc := rec.Header().Get("Location"); loc != svc.startResult.AuthCodeURL {
+		t.Errorf("Location = %q, want %q", loc, svc.startResult.AuthCodeURL)
+	}
+
+	if svc.gotStartOpts.ProviderID != id {
+		t.Errorf("ProviderID = %v, want %v", svc.gotStartOpts.ProviderID, id)
+	}
+
+	raw := rec.Header().Get("Set-Cookie")
+	if !strings.HasPrefix(raw, "uchiyomi_oidc_state=opaque-state") {
+		t.Errorf("Set-Cookie = %q, want value uchiyomi_oidc_state=opaque-state", raw)
+	}
+
+	for _, attr := range []string{"Path=/api/auth/oidc", "HttpOnly", "SameSite=Lax"} {
+		if !strings.Contains(raw, attr) {
+			t.Errorf("Set-Cookie = %q, want attribute %q", raw, attr)
+		}
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("%d cookies posés, want 1", len(cookies))
+	}
+
+	if want := int(svc.startResult.ExpiresAt.Sub(frozenNow()).Seconds()); cookies[0].MaxAge != want {
+		t.Errorf("MaxAge = %d, want %d", cookies[0].MaxAge, want)
+	}
+}
+
+func TestOIDCCallbackNoStateCookieRedirects(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{finishErr: auth.ErrOIDCState}
+	r, _ := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+
+	rec := getOIDCCallback(t, r, "?code=abc&state=xyz", nil)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusFound, rec.Body.String())
+	}
+
+	if loc := rec.Header().Get("Location"); loc != "/login?error=oidcState" {
+		t.Errorf("Location = %q, want %q", loc, "/login?error=oidcState")
+	}
+
+	if svc.gotFinishOpts.StateCookieValue != "" {
+		t.Errorf("StateCookieValue = %q, want vide", svc.gotFinishOpts.StateCookieValue)
+	}
+}
+
+func TestOIDCCallbackStateMismatchRedirects(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{finishErr: auth.ErrOIDCState}
+	r, _ := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+
+	stateCookie := &http.Cookie{Name: oidcStateCookieName, Value: "stale-state"}
+	rec := getOIDCCallback(t, r, "?code=abc&state=xyz", stateCookie)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+
+	if loc := rec.Header().Get("Location"); loc != "/login?error=oidcState" {
+		t.Errorf("Location = %q, want %q", loc, "/login?error=oidcState")
+	}
+
+	if svc.gotFinishOpts.StateCookieValue != "stale-state" {
+		t.Errorf("StateCookieValue = %q, want %q", svc.gotFinishOpts.StateCookieValue, "stale-state")
+	}
+}
+
+func TestOIDCCallbackAccessDeniedRedirects(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{finishErr: auth.ErrOIDCDenied}
+	r, _ := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+
+	stateCookie := &http.Cookie{Name: oidcStateCookieName, Value: "state-value"}
+	rec := getOIDCCallback(t, r, "?error=access_denied&state=state-value", stateCookie)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+
+	if loc := rec.Header().Get("Location"); loc != "/login?error=oidcDenied" {
+		t.Errorf("Location = %q, want %q", loc, "/login?error=oidcDenied")
+	}
+
+	if svc.gotFinishOpts.ErrorParam != "access_denied" {
+		t.Errorf("ErrorParam = %q, want %q", svc.gotFinishOpts.ErrorParam, "access_denied")
+	}
+}
+
+func TestOIDCCallbackHappyPathRedirectsSetsSessionAndClearsState(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{finishResult: &auth.OIDCLoginResult{
+		Session:  issuedSession(),
+		Redirect: "/library",
+	}}
+	r, _ := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+
+	stateCookie := &http.Cookie{Name: oidcStateCookieName, Value: "good-state"}
+	rec := getOIDCCallback(t, r, "?code=abc&state=good-state", stateCookie)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusFound, rec.Body.String())
+	}
+
+	if loc := rec.Header().Get("Location"); loc != "/library" {
+		t.Errorf("Location = %q, want %q", loc, "/library")
+	}
+
+	if svc.gotFinishOpts.StateCookieValue != "good-state" {
+		t.Errorf("StateCookieValue = %q, want %q", svc.gotFinishOpts.StateCookieValue, "good-state")
+	}
+
+	var session, state *http.Cookie
+
+	for _, c := range rec.Result().Cookies() {
+		switch c.Name {
+		case sessionCookieName:
+			session = c
+		case oidcStateCookieName:
+			state = c
+		}
+	}
+
+	if session == nil {
+		t.Fatalf("cookie de session absent (headers: %v)", rec.Header())
+	}
+
+	if session.Value != token {
+		t.Errorf("session Value = %q, want %q", session.Value, token)
+	}
+
+	if !session.HttpOnly {
+		t.Error("session HttpOnly absent")
+	}
+
+	if want := int(svc.finishResult.Session.ExpiresAt.Sub(frozenNow()).Seconds()); session.MaxAge != want {
+		t.Errorf("session MaxAge = %d, want %d", session.MaxAge, want)
+	}
+
+	if state == nil {
+		t.Fatalf("cookie d'état oidc absent (headers: %v)", rec.Header())
+	}
+
+	if state.MaxAge != -1 {
+		t.Errorf("state MaxAge = %d, want -1", state.MaxAge)
+	}
+}
+
+func TestOIDCCallbackSentinelErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		finishErr error
+		wantCode  string
+		wantLevel string
+	}{
+		"denied":      {finishErr: auth.ErrOIDCDenied, wantCode: "oidcDenied", wantLevel: logLevelWarn},
+		"state":       {finishErr: auth.ErrOIDCState, wantCode: "oidcState", wantLevel: logLevelWarn},
+		"not allowed": {finishErr: auth.ErrOIDCNotAllowed, wantCode: "oidcNotAllowed", wantLevel: logLevelWarn},
+		"no account":  {finishErr: auth.ErrOIDCNoAccount, wantCode: "oidcNoAccount", wantLevel: logLevelWarn},
+		"unavailable": {finishErr: auth.ErrOIDCUnavailable, wantCode: "oidcUnavailable", wantLevel: "ERROR"},
+		"inconnue":    {finishErr: errors.New("boom"), wantCode: "oidcUnavailable", wantLevel: "ERROR"},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			svc := &stubAuthService{finishErr: tc.finishErr}
+			r, logs := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+
+			stateCookie := &http.Cookie{Name: oidcStateCookieName, Value: "state-value"}
+			rec := getOIDCCallback(t, r, "?code=abc&state=state-value", stateCookie)
+
+			if rec.Code != http.StatusFound {
+				t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+			}
+
+			want := "/login?error=" + tc.wantCode
+			if loc := rec.Header().Get("Location"); loc != want {
+				t.Errorf("Location = %q, want %q", loc, want)
+			}
+
+			var entry map[string]any
+			if err := json.Unmarshal(bytes.TrimSpace(logs.Bytes()), &entry); err != nil {
+				t.Fatalf("log non décodable (%q): %v", logs.String(), err)
+			}
+
+			if entry["level"] != tc.wantLevel {
+				t.Errorf("level = %v, want %v", entry["level"], tc.wantLevel)
+			}
+		})
 	}
 }

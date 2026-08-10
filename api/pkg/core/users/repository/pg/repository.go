@@ -110,6 +110,26 @@ func (r *PGUsersRepository) GetByUsername(ctx context.Context, name string) (*us
 	return &ret, nil
 }
 
+func (r *PGUsersRepository) Update(ctx context.Context, opts users.UpdateUserOpts) (*users.User, error) {
+	affected, err := r.db(ctx).Where("id = ?", opts.ID).Update(ctx, "is_admin", opts.IsAdmin)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	if affected == 0 {
+		return nil, domain.ErrNotFound
+	}
+
+	user, err := r.db(ctx).Where("id = ?", opts.ID).First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := r.modelToDomain(user)
+
+	return &ret, nil
+}
+
 func (r *PGUsersRepository) modelToDomain(model pgmodels.User) users.User {
 	return users.User{
 		ID:        model.ID,

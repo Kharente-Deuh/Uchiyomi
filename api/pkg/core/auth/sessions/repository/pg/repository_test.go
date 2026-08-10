@@ -110,6 +110,112 @@ func TestInsertError(t *testing.T) {
 	}
 }
 
+func TestInsertAndGetByTokenHashRoundTripProviderIdentity(t *testing.T) {
+	t.Parallel()
+
+	providerID := uuid.New()
+	providerSID := "provider-subject"
+
+	tests := map[string]struct {
+		providerID  *uuid.UUID
+		providerSID *string
+	}{
+		"provider identity set":            {providerID: &providerID, providerSID: &providerSID},
+		"plain password session (nil/nil)": {providerID: nil, providerSID: nil},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			r, mock := newRepo(t)
+
+			mock.ExpectBegin()
+			mock.ExpectQuery(`INSERT INTO "sessions"`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			mock.ExpectCommit()
+
+			hash := []byte("0123456789abcdef0123456789abcdef")
+
+			inserted, err := r.Insert(context.Background(), sessions.InsertSessionOpts{
+				UserID:      uuid.New(),
+				AuthMethod:  sessions.AuthMethodPassword,
+				TokenHash:   hash,
+				ExpiresAt:   time.Now().Add(time.Hour).UTC().Truncate(time.Second),
+				ProviderID:  tc.providerID,
+				ProviderSID: tc.providerSID,
+			})
+			if err != nil {
+				t.Fatalf("Insert: %v", err)
+			}
+
+			assertProviderIDEqual(t, "Insert", inserted.ProviderID, tc.providerID)
+			assertProviderSIDEqual(t, "Insert", inserted.ProviderSID, tc.providerSID)
+
+			userID := uuid.New()
+			created := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+			expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+
+			var providerIDCol, providerSIDCol any
+			if tc.providerID != nil {
+				providerIDCol = *tc.providerID
+			}
+
+			if tc.providerSID != nil {
+				providerSIDCol = *tc.providerSID
+			}
+
+			mock.ExpectQuery(`SELECT .* FROM "sessions" JOIN "users" "User" ON`).
+				WithArgs(hash, 1).
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"id", "user_id", "token_hash", "auth_method", "created_at", "expires_at",
+						"provider_id", "provider_sid",
+						"User__id", "User__name", "User__is_admin", "User__created_at", "User__updated_at",
+					}).AddRow(
+						uuid.New(), userID, hash, "password", created, expires,
+						providerIDCol, providerSIDCol,
+						userID, "alice", true, created, created,
+					),
+				)
+
+			got, _, err := r.GetByTokenHash(context.Background(), hash)
+			if err != nil {
+				t.Fatalf("GetByTokenHash: %v", err)
+			}
+
+			assertProviderIDEqual(t, "GetByTokenHash", got.ProviderID, tc.providerID)
+			assertProviderSIDEqual(t, "GetByTokenHash", got.ProviderSID, tc.providerSID)
+		})
+	}
+}
+
+func assertProviderIDEqual(t *testing.T, op string, got, want *uuid.UUID) {
+	t.Helper()
+
+	switch {
+	case want == nil:
+		if got != nil {
+			t.Errorf("%s: ProviderID = %v, want nil", op, *got)
+		}
+	case got == nil || *got != *want:
+		t.Errorf("%s: ProviderID = %v, want %v", op, got, *want)
+	}
+}
+
+func assertProviderSIDEqual(t *testing.T, op string, got, want *string) {
+	t.Helper()
+
+	switch {
+	case want == nil:
+		if got != nil {
+			t.Errorf("%s: ProviderSID = %v, want nil", op, *got)
+		}
+	case got == nil || *got != *want:
+		t.Errorf("%s: ProviderSID = %v, want %v", op, got, *want)
+	}
+}
+
 func TestGetByTokenHashJoinsUserInOneQuery(t *testing.T) {
 	t.Parallel()
 

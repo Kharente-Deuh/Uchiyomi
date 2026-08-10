@@ -58,13 +58,21 @@
   "login": {
     "error": {
       "invalid-credentials": "Invalid username/password",
-      "unknown-error": "Unknown error. Please try again."
+      "unknown-error": "Unknown error. Please try again.",
+      "oidcState": "Your sign-in session expired. Please try again.",
+      "oidcDenied": "Sign-in was cancelled.",
+      "oidcNotAllowed": "Your account is not allowed to sign in with this provider.",
+      "oidcNoAccount": "No account is linked to this identity yet. Ask an administrator to enable it.",
+      "oidcUnavailable": "The identity provider is currently unavailable. Please try again later."
     },
     "username": "Username",
     "password": "Password",
     "title": "Welcome back",
     "subtitle": "Sign in to your Uchiyomi server",
-    "submit": "Sign in"
+    "submit": "Sign in",
+    "oidc": {
+      "button": "Sign in with {name}"
+    }
   },
   "auth": {
     "signOut": "Sign out"
@@ -191,7 +199,8 @@
     "continue": "Continue"
   },
   "common": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "or": "Or"
   },
   "role": {
     "admin": "Admin",

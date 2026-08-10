@@ -6,9 +6,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/federatedidentities"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/hash"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/password"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
@@ -17,12 +21,25 @@ import (
 
 var _ AuthService = (*Service)(nil)
 
+const defaultStateCookieTTL = 10 * time.Minute
+
+type stateCipher interface {
+	Seal(plaintext []byte) ([]byte, error)
+	Open(ciphertext []byte) ([]byte, error)
+}
+
 type Deps struct {
-	HashService     hash.HashService
-	UsersRepository users.UsersRepository
-	PwdRepository   password.PasswordCredsRepository
-	Transactor      transaction.Transactor
-	SessionService  sessions.SessionService
+	HashService                   hash.HashService
+	UsersRepository               users.UsersRepository
+	PwdRepository                 password.PasswordCredsRepository
+	Transactor                    transaction.Transactor
+	SessionService                sessions.SessionService
+	OIDCProvidersRepository       oidcproviders.OIDCProvidersRepository
+	FederatedIdentitiesRepository federatedidentities.FederatedIdentitiesRepository
+	OIDCClient                    oidcproviders.Client
+	StateCipher                   stateCipher
+	Logger                        *slog.Logger
+	Now                           func() time.Time
 }
 
 func (deps *Deps) Validate() error {
@@ -46,19 +63,67 @@ func (deps *Deps) Validate() error {
 		return errors.New("sessionService is required")
 	}
 
+	if deps.OIDCProvidersRepository == nil {
+		return errors.New("oidcProvidersRepository is required")
+	}
+
+	if deps.FederatedIdentitiesRepository == nil {
+		return errors.New("federatedIdentitiesRepository is required")
+	}
+
+	if deps.OIDCClient == nil {
+		return errors.New("oidcClient is required")
+	}
+
+	if deps.StateCipher == nil {
+		return errors.New("stateCipher is required")
+	}
+
+	if deps.Logger == nil {
+		return errors.New("logger is required")
+	}
+
+	return nil
+}
+
+type Config struct {
+	RedirectURI    string
+	StateCookieTTL time.Duration
+}
+
+func (cfg *Config) Validate() error {
+	if cfg.RedirectURI == "" {
+		return errors.New("redirectURI is required")
+	}
+
+	if cfg.StateCookieTTL == 0 {
+		cfg.StateCookieTTL = defaultStateCookieTTL
+	}
+
 	return nil
 }
 
 type Service struct {
 	deps Deps
+	cfg  Config
 }
 
-func New(deps Deps) (*Service, error) {
+func New(cfg Config, deps Deps) (*Service, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("cfg.Validate: %w", err)
+	}
+
 	if err := deps.Validate(); err != nil {
 		return nil, fmt.Errorf("deps.Validate: %w", err)
 	}
 
-	return &Service{deps: deps}, nil
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
+
+	deps.Logger = deps.Logger.With("component", "auth.service")
+
+	return &Service{deps: deps, cfg: cfg}, nil
 }
 
 func (s *Service) CreateUserWithPwd(ctx context.Context, opts CreateUserWithPwdOpts) (*users.User, error) {
