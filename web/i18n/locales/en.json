@@ -121,6 +121,11 @@
         },
         "allowedValues": {
           "label": "Regular user role values"
+        },
+        "users": {
+          "username": "Username",
+          "role": "Role",
+          "linkedAt": "Link date"
         }
       },
       "category": {
@@ -129,6 +134,10 @@
         },
         "claims": {
           "title": "Claims"
+        },
+        "users": {
+          "title": "Users ({count})",
+          "noUsers": "No users are linked to this provider"
         }
       },
       "errors": {
@@ -183,5 +192,9 @@
   },
   "common": {
     "loading": "Loading..."
+  },
+  "role": {
+    "admin": "Admin",
+    "user": "User"
   }
 }

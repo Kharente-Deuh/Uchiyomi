@@ -39,6 +39,7 @@ const backRoutes = computed((): PageLayoutBackRoute[] => [
     <div class="d-flex flex-column ga-6" :class="{ 'px-6': smAndDown }">
       <OidcCardCategoryInformations :loading="fetchLoading" />
       <OidcCardCategoryClaims :loading="fetchLoading" />
+      <OidcCardCategoryUsers :loading="fetchLoading" />
     </div>
 
     <OidcModalDelete v-if="provider" v-model="showDeleteModal" />

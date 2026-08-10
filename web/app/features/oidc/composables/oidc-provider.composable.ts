@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 export interface OidcProviderComposable {
-  provider: Ref<OidcProvider | undefined>
+  provider: Ref<OidcProviderDetails | undefined>
 
   fetchProvider: (id: string) => Promise<void>
   fetchLoading: Ref<boolean>
@@ -54,6 +54,10 @@ export function useOidcProvider(): OidcProviderComposable {
   }
 
   async function update(p: OidcProvider): Promise<void> {
+    if (!provider.value) {
+      return
+    }
+
     updateLoading.value = true
     const { id, createdAt: _createdAt, updatedAt: _updatedAt, ...data } = p
     const res = await api.updateById(id, data)
@@ -61,7 +65,7 @@ export function useOidcProvider(): OidcProviderComposable {
 
     if (res.success) {
       toast.success(t('settings.oidc.update.success'))
-      store.setProvider(res.data)
+      store.setProvider({ ...res.data, users: provider.value.users })
 
       return
     }

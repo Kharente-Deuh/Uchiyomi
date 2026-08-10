@@ -5,7 +5,7 @@ import { ApiError, initApi } from '~/utils/api'
 
 export interface OidcApi {
   getAll: () => Promise<ApiResponse<LightOidcProvider[]>>
-  getById: (id: string) => Promise<ApiResponse<OidcProvider>>
+  getById: (id: string) => Promise<ApiResponse<OidcProviderDetails>>
   testByIssuerUrl: (url: string) => Promise<ApiResponse<TestResponse>>
   create: (request: CreateOidcProviderRequest) => Promise<ApiResponse<OidcProvider>>
   updateById: (id: string, request: UpdateOidcProviderRequest) => Promise<ApiResponse<OidcProvider>>
@@ -40,6 +40,15 @@ export type OidcProvider = Omit<CreateOidcProviderRequest, 'clientSecret'> & {
   createdAt: Date
 }
 
+export type OidcProviderDetails = OidcProvider & {
+  users: {
+    id: string
+    linkedAt: Date
+    username: string
+    isAdmin: boolean
+  }[]
+}
+
 export interface TestResponse {
   issuer: string
   authorizationEndpoint: string
@@ -50,20 +59,17 @@ export interface TestResponse {
   supportsRpInitiatedLogout: boolean
 }
 
-function createOidcProvider(data: OidcProvider): OidcProvider {
+function createOidcProvider(p: OidcProvider): OidcProvider {
+  const { adminValues, allowedValues, createdAt, updatedAt, roleClaim, ...data } = p
+
   return {
-    id: data.id,
-    displayName: data.displayName,
-    issuerUrl: data.issuerUrl,
-    clientId: data.clientId,
-    usernameClaim: data.usernameClaim,
-    scopes: data.scopes,
-    roleClaim: data.roleClaim ?? undefined,
-    adminValues: data.adminValues?.length ? data.adminValues : undefined,
-    allowedValues: data.allowedValues?.length ? data.allowedValues : undefined,
-    autoProvision: data.autoProvision,
-    updatedAt: new Date(data.updatedAt),
-    createdAt: new Date(data.createdAt),
+    ...data,
+    roleClaim: p.roleClaim ?? undefined,
+    adminValues: p.adminValues?.length ? p.adminValues : undefined,
+    allowedValues: p.allowedValues?.length ? p.allowedValues : undefined,
+    autoProvision: p.autoProvision,
+    updatedAt: new Date(p.updatedAt),
+    createdAt: new Date(p.createdAt),
   }
 }
 
@@ -83,11 +89,25 @@ export function createOidcApi(): OidcApi {
     }
   }
 
-  async function getById(id: string): Promise<ApiResponse<OidcProvider>> {
+  async function getById(id: string): Promise<ApiResponse<OidcProviderDetails>> {
     try {
-      const provider = await api<OidcProvider>(`/${id}`)
+      const provider = await api<OidcProviderDetails>(`/${id}`)
 
-      return { success: true, data: createOidcProvider(provider) }
+      const { adminValues, allowedValues, createdAt, updatedAt, roleClaim, users, ...data } = provider
+
+      return {
+        success: true,
+        data: {
+          ...data,
+          roleClaim: provider.roleClaim ?? undefined,
+          adminValues: provider.adminValues?.length ? provider.adminValues : undefined,
+          allowedValues: provider.allowedValues?.length ? provider.allowedValues : undefined,
+          autoProvision: provider.autoProvision,
+          updatedAt: new Date(provider.updatedAt),
+          createdAt: new Date(provider.createdAt),
+          users: users?.map(({ linkedAt, ...u }) => ({ ...u, linkedAt: new Date(linkedAt) })),
+        },
+      }
     } catch (error) {
       return { success: false, error: ApiError.fromFetchError(error) }
     }

@@ -20,7 +20,7 @@ interface SettingsModule {
 }
 
 const settingsModules = computed((): SettingsModule[] => [
-  ...(isAdmin
+  ...(isAdmin.value
     ? [
       {
         title: t('settings.oidc.titleShort'),

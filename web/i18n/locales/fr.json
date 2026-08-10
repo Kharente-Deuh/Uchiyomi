@@ -120,6 +120,10 @@
         },
         "autoProvision": {
           "hint": "Crée le compte lors de la première connexion. \nSinon, l'utilisateur doit déjà exister."
+        },
+        "users": {
+          "role": "Rôle",
+          "linkedAt": "Date du lien"
         }
       },
       "category": {
@@ -128,6 +132,10 @@
         },
         "claims": {
           "title": "Claims"
+        },
+        "users": {
+          "title": "Utilisateurs ({count})",
+          "noUsers": "Aucun utilisateur n'est lié à ce fournisseur"
         }
       },
       "test": {
@@ -182,5 +190,8 @@
   },
   "common": {
     "loading": "Chargement..."
+  },
+  "role": {
+    "admin": "Administrateur"
   }
 }

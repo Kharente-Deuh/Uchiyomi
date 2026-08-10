@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 export interface OidcProviderStore {
-  provider: Ref<OidcProvider | undefined>
-  setProvider: (value: OidcProvider) => void
+  provider: Ref<OidcProviderDetails | undefined>
+  setProvider: (value: OidcProviderDetails) => void
 
   providers: Ref<LightOidcProvider[]>
   setProviders: (value: LightOidcProvider[]) => void
@@ -11,9 +11,9 @@ export interface OidcProviderStore {
 }
 
 export const useOidcProviderStore = defineStore('oidc-provider', (): OidcProviderStore => {
-  const provider = ref<OidcProvider>()
+  const provider = ref<OidcProviderDetails>()
 
-  function setProvider(value: OidcProvider): void {
+  function setProvider(value: OidcProviderDetails): void {
     provider.value = value
   }
 
