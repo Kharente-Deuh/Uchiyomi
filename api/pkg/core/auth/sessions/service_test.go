@@ -277,7 +277,7 @@ func TestCreateAppliesTTLOfAuthMethod(t *testing.T) {
 		want   time.Duration
 	}{
 		"password": {method: sessions.AuthMethodPassword, want: idlePwd},
-		"oidc":         {method: sessions.AuthMethodOIDC, want: idleOIDC},
+		"oidc":     {method: sessions.AuthMethodOIDC, want: idleOIDC},
 	}
 
 	for name, tc := range tests {
@@ -442,8 +442,8 @@ func TestAuthenticateRejectsExpiredSession(t *testing.T) {
 	now := time.Date(2026, time.August, 3, 12, 0, 0, 0, time.UTC)
 
 	tests := map[string]time.Duration{
-		"expired one second ago": -time.Second,
-		"expired at the second boundary":  0,
+		"expired one second ago":         -time.Second,
+		"expired at the second boundary": 0,
 	}
 
 	for name, left := range tests {

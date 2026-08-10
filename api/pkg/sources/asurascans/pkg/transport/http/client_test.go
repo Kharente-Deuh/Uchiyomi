@@ -36,7 +36,7 @@ func TestConfigValidate(t *testing.T) {
 		wantErr string
 	}{
 		"valide":       {cfg: asurahttp.Config{AsuraURL: "https://api.example.com"}},
-		"empty URL":     {cfg: asurahttp.Config{}, wantErr: "asuraURL is not a valid URL"},
+		"empty URL":    {cfg: asurahttp.Config{}, wantErr: "asuraURL is not a valid URL"},
 		"URL relative": {cfg: asurahttp.Config{AsuraURL: "example.com"}, wantErr: "asuraURL is not a valid URL"},
 	}
 
@@ -189,7 +189,7 @@ func TestSearchDefaultOrderFollowsSort(t *testing.T) {
 	}{
 		"tri par titre => ascendant":       {sort: domain.SortTypeTitle, wantOrder: "asc"},
 		"sort by popularity => descending": {sort: domain.SortTypePopular, wantOrder: "desc"},
-		"default sort => descending":     {sort: "", wantOrder: "desc"},
+		"default sort => descending":       {sort: "", wantOrder: "desc"},
 	}
 
 	for name, tc := range tests {

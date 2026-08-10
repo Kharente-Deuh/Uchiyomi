@@ -35,7 +35,7 @@ func TestNewCookieManagerValidatesConfig(t *testing.T) {
 		wantErr string
 		cfg     sessionshttp.CookieConfig
 	}{
-		"empty name":    {cfg: sessionshttp.CookieConfig{Path: "/"}, wantErr: "cfg.Validate: name is required"},
+		"empty name": {cfg: sessionshttp.CookieConfig{Path: "/"}, wantErr: "cfg.Validate: name is required"},
 		"empty path": {cfg: sessionshttp.CookieConfig{Name: "s"}, wantErr: "cfg.Validate: path is required"},
 		"path without slash": {
 			cfg:     sessionshttp.CookieConfig{Name: "s", Path: "x"},

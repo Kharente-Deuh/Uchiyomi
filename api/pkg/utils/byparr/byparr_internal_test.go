@@ -225,9 +225,9 @@ func TestExtractMessage(t *testing.T) {
 		"error key":        {body: `{"error":"nope"}`, want: "nope"},
 		"message prime":    {body: `{"detail":"d","message":"m"}`, want: "m"},
 		"texte brut":       {body: "  502 Bad Gateway  ", want: "502 Bad Gateway"},
-		"json without key":    {body: `{"other":1}`, want: `{"other":1}`},
+		"json without key": {body: `{"other":1}`, want: `{"other":1}`},
 		"empty body":       {body: "", want: ""},
-		"numeric value": {body: `{"message":42}`, want: "42"},
+		"numeric value":    {body: `{"message":42}`, want: "42"},
 	}
 
 	for name, tc := range tests {

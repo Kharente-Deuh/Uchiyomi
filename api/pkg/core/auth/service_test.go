@@ -610,8 +610,8 @@ func TestLoginWithPwdRejectsBadCredentials(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]func(*fakes){
-		"unknown user": func(f *fakes) { f.ur.byNameErr = domain.ErrNotFound },
-		"no password":       func(f *fakes) { f.pr.getErr = domain.ErrNotFound },
+		"unknown user":   func(f *fakes) { f.ur.byNameErr = domain.ErrNotFound },
+		"no password":    func(f *fakes) { f.pr.getErr = domain.ErrNotFound },
 		"wrong password": func(f *fakes) { f.hs.match = false },
 	}
 
@@ -646,7 +646,7 @@ func TestLoginWithPwdBurnsHashTimeOnUnknownAccount(t *testing.T) {
 
 	tests := map[string]func(*fakes){
 		"unknown user": func(f *fakes) { f.ur.byNameErr = domain.ErrNotFound },
-		"no password":       func(f *fakes) { f.pr.getErr = domain.ErrNotFound },
+		"no password":  func(f *fakes) { f.pr.getErr = domain.ErrNotFound },
 	}
 
 	for name, setup := range tests {
@@ -695,10 +695,10 @@ func TestLoginWithPwdPropagatesInfrastructureErrors(t *testing.T) {
 	sentinel := errors.New("connection refused")
 
 	tests := map[string]func(*fakes){
-		"user lookup": func(f *fakes) { f.ur.byNameErr = sentinel },
-		"credentials lookup": func(f *fakes) { f.pr.getErr = sentinel },
+		"user lookup":         func(f *fakes) { f.ur.byNameErr = sentinel },
+		"credentials lookup":  func(f *fakes) { f.pr.getErr = sentinel },
 		"comparaison de hash": func(f *fakes) { f.hs.matchErr = sentinel },
-		"session issuance": func(f *fakes) { f.ss.err = sentinel },
+		"session issuance":    func(f *fakes) { f.ss.err = sentinel },
 	}
 
 	for name, setup := range tests {

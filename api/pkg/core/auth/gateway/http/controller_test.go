@@ -309,12 +309,12 @@ func TestConfigValidate(t *testing.T) {
 		endpoint string
 		wantErr  string
 	}{
-		"endpoint valide":    {endpoint: authEndpoint, wantErr: ""},
-		"nested endpoint":  {endpoint: "/api/v1/auth", wantErr: ""},
-		"racine":             {endpoint: "/", wantErr: ""},
-		"empty":               {endpoint: "", wantErr: "endpoint is required"},
+		"endpoint valide":       {endpoint: authEndpoint, wantErr: ""},
+		"nested endpoint":       {endpoint: "/api/v1/auth", wantErr: ""},
+		"racine":                {endpoint: "/", wantErr: ""},
+		"empty":                 {endpoint: "", wantErr: "endpoint is required"},
 		"without leading slash": {endpoint: "auth", wantErr: `endpoint must start with '/', got "auth"`},
-		"full URL":       {endpoint: "http://x/auth", wantErr: `endpoint must start with '/', got "http://x/auth"`},
+		"full URL":              {endpoint: "http://x/auth", wantErr: `endpoint must start with '/', got "http://x/auth"`},
 	}
 
 	for name, tc := range tests {
@@ -478,10 +478,10 @@ func TestInitRouterMountsUnderEndpoint(t *testing.T) {
 		path       string
 		wantStatus int
 	}{
-		"mounted route":      {endpoint: authEndpoint, path: loginPath, wantStatus: http.StatusOK},
+		"mounted route":   {endpoint: authEndpoint, path: loginPath, wantStatus: http.StatusOK},
 		"nested endpoint": {endpoint: "/api/v1/auth", path: "/api/v1/auth/login", wantStatus: http.StatusOK},
-		"hors endpoint":     {endpoint: authEndpoint, path: "/login", wantStatus: http.StatusNotFound},
-		"subpath":           {endpoint: authEndpoint, path: "/auth/login/extra", wantStatus: http.StatusNotFound},
+		"hors endpoint":   {endpoint: authEndpoint, path: "/login", wantStatus: http.StatusNotFound},
+		"subpath":         {endpoint: authEndpoint, path: "/auth/login/extra", wantStatus: http.StatusNotFound},
 	}
 
 	for name, tc := range tests {
@@ -651,9 +651,9 @@ func TestLoginRejectsBadRequests(t *testing.T) {
 
 	tests := map[string]string{
 		"corps illisible":       `{`,
-		"empty name":              loginBody("", password),
+		"empty name":            loginBody("", password),
 		"whitespace name":       loginBody("   ", password),
-		"empty password":     loginBody(username, ""),
+		"empty password":        loginBody(username, ""),
 		"unknown field":         `{"username":"alice","password":"x","admin":true}`,
 		"mauvais type de champ": `{"username":1,"password":"x"}`,
 	}
@@ -1176,7 +1176,7 @@ func TestOIDCCallbackSentinelErrors(t *testing.T) {
 		"not allowed": {finishErr: auth.ErrOIDCNotAllowed, wantCode: "oidcNotAllowed", wantLevel: logLevelWarn},
 		"no account":  {finishErr: auth.ErrOIDCNoAccount, wantCode: "oidcNoAccount", wantLevel: logLevelWarn},
 		"unavailable": {finishErr: auth.ErrOIDCUnavailable, wantCode: "oidcUnavailable", wantLevel: "ERROR"},
-		"unknown":    {finishErr: errors.New("boom"), wantCode: "oidcUnavailable", wantLevel: "ERROR"},
+		"unknown":     {finishErr: errors.New("boom"), wantCode: "oidcUnavailable", wantLevel: "ERROR"},
 	}
 
 	for name, tc := range tests {

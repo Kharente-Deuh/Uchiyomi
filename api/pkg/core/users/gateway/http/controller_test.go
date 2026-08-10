@@ -116,11 +116,11 @@ func TestConfigValidate(t *testing.T) {
 		wantErr string
 		cfg     usershttp.Config
 	}{
-		"endpoint valide":   {cfg: usershttp.Config{Endpoint: usersEndpoint}},
+		"endpoint valide": {cfg: usershttp.Config{Endpoint: usersEndpoint}},
 		"nested endpoint": {cfg: usershttp.Config{Endpoint: "/api/v1/users"}},
-		"racine":            {cfg: usershttp.Config{Endpoint: "/"}},
+		"racine":          {cfg: usershttp.Config{Endpoint: "/"}},
 		"middlewares set": {cfg: usershttp.Config{Endpoint: usersEndpoint, Middlewares: chi.Middlewares{passthrough}}},
-		"empty":              {cfg: usershttp.Config{}, wantErr: "endpoint is required"},
+		"empty":           {cfg: usershttp.Config{}, wantErr: "endpoint is required"},
 		"without leading slash": {
 			cfg:     usershttp.Config{Endpoint: "users"},
 			wantErr: `endpoint must start with '/', got "users"`,
@@ -166,7 +166,7 @@ func TestDepsValidate(t *testing.T) {
 		deps    usershttp.Deps
 		wantErr string
 	}{
-		"complet":     {deps: usershttp.Deps{Logger: logger}},
+		"complet":        {deps: usershttp.Deps{Logger: logger}},
 		"without logger": {deps: usershttp.Deps{}, wantErr: "logger is required"},
 	}
 
@@ -239,7 +239,7 @@ func TestGetMeReturnsAuthenticatedUser(t *testing.T) {
 
 	tests := map[string]bool{
 		"administrateur": true,
-		"user":    false,
+		"user":           false,
 	}
 
 	for name, isAdmin := range tests {
@@ -361,11 +361,11 @@ func TestInitRouterMountsUnderEndpoint(t *testing.T) {
 		path       string
 		wantStatus int
 	}{
-		"mounted route":           {endpoint: usersEndpoint, path: mePath, wantStatus: http.StatusOK},
+		"mounted route":        {endpoint: usersEndpoint, path: mePath, wantStatus: http.StatusOK},
 		"nested endpoint":      {endpoint: "/api/v1/users", path: "/api/v1/users/me", wantStatus: http.StatusOK},
-		"unknown path":           {endpoint: usersEndpoint, path: "/me", wantStatus: http.StatusNotFound},
-		"missing subpath":        {endpoint: usersEndpoint, path: "/users/me/extra", wantStatus: http.StatusNotFound},
-		"racine de l'endpoint":   {endpoint: usersEndpoint, path: usersEndpoint, wantStatus: http.StatusNotFound},
+		"unknown path":         {endpoint: usersEndpoint, path: "/me", wantStatus: http.StatusNotFound},
+		"missing subpath":      {endpoint: usersEndpoint, path: "/users/me/extra", wantStatus: http.StatusNotFound},
+		"racine de l'endpoint": {endpoint: usersEndpoint, path: usersEndpoint, wantStatus: http.StatusNotFound},
 	}
 
 	for name, tc := range tests {

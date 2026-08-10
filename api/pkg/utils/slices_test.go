@@ -67,10 +67,10 @@ func TestFilterSlice(t *testing.T) {
 		want []int
 	}{
 		"keeps evens": {in: []int{1, 2, 3, 4}, keep: func(i int) bool { return i%2 == 0 }, want: []int{2, 4}},
-		"tout garder":     {in: []int{1, 2}, keep: func(int) bool { return true }, want: []int{1, 2}},
-		"tout jeter":      {in: []int{1, 2}, keep: func(int) bool { return false }, want: []int{}},
-		"empty slice":      {in: []int{}, keep: func(int) bool { return true }, want: []int{}},
-		"slice nil":       {in: nil, keep: func(int) bool { return true }, want: []int{}},
+		"tout garder": {in: []int{1, 2}, keep: func(int) bool { return true }, want: []int{1, 2}},
+		"tout jeter":  {in: []int{1, 2}, keep: func(int) bool { return false }, want: []int{}},
+		"empty slice": {in: []int{}, keep: func(int) bool { return true }, want: []int{}},
+		"slice nil":   {in: nil, keep: func(int) bool { return true }, want: []int{}},
 	}
 
 	for name, tc := range tests {

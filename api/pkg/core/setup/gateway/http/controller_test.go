@@ -107,10 +107,10 @@ func TestConfigValidate(t *testing.T) {
 		wantErr  string
 	}{
 		"endpoint valide":       {endpoint: setupEndpoint, wantErr: ""},
-		"nested endpoint":     {endpoint: "/api/v1/setup", wantErr: ""},
+		"nested endpoint":       {endpoint: "/api/v1/setup", wantErr: ""},
 		"racine":                {endpoint: "/", wantErr: ""},
-		"empty":                  {endpoint: "", wantErr: "endpoint is required"},
-		"without leading slash":    {endpoint: "setup", wantErr: `endpoint must start with '/', got "setup"`},
+		"empty":                 {endpoint: "", wantErr: "endpoint is required"},
+		"without leading slash": {endpoint: "setup", wantErr: `endpoint must start with '/', got "setup"`},
 		"URL absolute":          {endpoint: "http://x/setup", wantErr: `endpoint must start with '/', got "http://x/setup"`},
 		"espace avant le slash": {endpoint: " /setup", wantErr: `endpoint must start with '/', got " /setup"`},
 	}
@@ -345,10 +345,10 @@ func TestInitRouterMountsUnderEndpoint(t *testing.T) {
 		path       string
 		wantStatus int
 	}{
-		"mounted route":           {endpoint: setupEndpoint, path: "/setup/status", wantStatus: http.StatusOK},
-		"nested endpoint":      {endpoint: "/api/v1/setup", path: "/api/v1/setup/status", wantStatus: http.StatusOK},
-		"unknown path":           {endpoint: setupEndpoint, path: "/status", wantStatus: http.StatusNotFound},
-		"missing subpath":        {endpoint: setupEndpoint, path: "/setup/status/extra", wantStatus: http.StatusNotFound},
+		"mounted route":   {endpoint: setupEndpoint, path: "/setup/status", wantStatus: http.StatusOK},
+		"nested endpoint": {endpoint: "/api/v1/setup", path: "/api/v1/setup/status", wantStatus: http.StatusOK},
+		"unknown path":    {endpoint: setupEndpoint, path: "/status", wantStatus: http.StatusNotFound},
+		"missing subpath": {endpoint: setupEndpoint, path: "/setup/status/extra", wantStatus: http.StatusNotFound},
 	}
 
 	for name, tc := range tests {
@@ -483,8 +483,8 @@ func TestDoSetupRejectsBadRequests(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]string{
-		"corps illisible":         `{`,
-		"empty name":                setupRequestBody("", adminPassword),
+		"corps illisible":    `{`,
+		"empty name":         setupRequestBody("", adminPassword),
 		"password too short": setupRequestBody(adminUsername, "court"),
 	}
 

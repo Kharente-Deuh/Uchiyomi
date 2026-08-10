@@ -970,7 +970,7 @@ func TestFinishOIDCLoginNeverDemotesWhenTheProviderMapsNoAdminRole(t *testing.T)
 	role := roleClaimKey
 
 	tests := map[string]func(*fakes){
-		"no RoleClaim":  func(*fakes) {},
+		"no RoleClaim":      func(*fakes) {},
 		"AdminValues empty": func(f *fakes) { f.opr.provider.RoleClaim = &role },
 	}
 

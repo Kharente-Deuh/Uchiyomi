@@ -408,22 +408,22 @@ func TestSafeKey(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		"simple path":           {in: testImageName, want: testImageName},
-		"sous-dossiers":         {in: testNestedImage, want: testNestedImage},
-		"slash initial":         {in: "/serie/001.jpg", want: "serie/001.jpg"},
-		"simple traversal":       {in: "../001.jpg", want: testImageName},
-		"multiple traversal":     {in: "../../../etc/passwd", want: testEscapedPath},
-		"traversal in the middle":    {in: "serie/../../etc/passwd", want: testEscapedPath},
-		"antislashs windows":    {in: `serie\ch1\001.jpg`, want: testNestedImage},
-		"backslash traversal": {in: `..\..\etc\passwd`, want: testEscapedPath},
-		"point courant":         {in: "./001.jpg", want: testImageName},
-		"double slash":          {in: "serie//001.jpg", want: "serie/001.jpg"},
-		"empty":                  {in: "", wantErr: true},
-		"octet nul":             {in: "a\x00b.jpg", wantErr: true},
-		"racine":                {in: "/", wantErr: true},
-		"point":                 {in: ".", wantErr: true},
-		"double point":          {in: "..", wantErr: true},
-		"traversal only":        {in: "../..", wantErr: true},
+		"simple path":             {in: testImageName, want: testImageName},
+		"sous-dossiers":           {in: testNestedImage, want: testNestedImage},
+		"slash initial":           {in: "/serie/001.jpg", want: "serie/001.jpg"},
+		"simple traversal":        {in: "../001.jpg", want: testImageName},
+		"multiple traversal":      {in: "../../../etc/passwd", want: testEscapedPath},
+		"traversal in the middle": {in: "serie/../../etc/passwd", want: testEscapedPath},
+		"antislashs windows":      {in: `serie\ch1\001.jpg`, want: testNestedImage},
+		"backslash traversal":     {in: `..\..\etc\passwd`, want: testEscapedPath},
+		"point courant":           {in: "./001.jpg", want: testImageName},
+		"double slash":            {in: "serie//001.jpg", want: "serie/001.jpg"},
+		"empty":                   {in: "", wantErr: true},
+		"octet nul":               {in: "a\x00b.jpg", wantErr: true},
+		"racine":                  {in: "/", wantErr: true},
+		"point":                   {in: ".", wantErr: true},
+		"double point":            {in: "..", wantErr: true},
+		"traversal only":          {in: "../..", wantErr: true},
 	}
 
 	for name, tc := range tests {

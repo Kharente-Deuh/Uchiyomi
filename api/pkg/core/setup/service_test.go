@@ -86,8 +86,8 @@ func TestIsSetupRequired(t *testing.T) {
 		count int
 		want  bool
 	}{
-		"no admin => setup required":    {count: 0, want: true},
-		"one admin => setup not required":   {count: 1, want: false},
+		"no admin => setup required":      {count: 0, want: true},
+		"one admin => setup not required": {count: 1, want: false},
 		"multiple admins => not required": {count: 12, want: false},
 	}
 
