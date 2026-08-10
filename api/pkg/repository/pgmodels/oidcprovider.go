@@ -23,7 +23,7 @@ type OIDCProvider struct {
 	AllowedValues       pq.StringArray      `gorm:"type:text[]"`
 	FederatedIdentities []FederatedIdentity `gorm:"foreignKey:ProviderID;constraint:OnDelete:CASCADE"`
 	ID                  uuid.UUID           `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AutoProvision       bool                `gorm:"not null;default:true"`
+	AutoProvision       bool                `gorm:"not null;default:false"`
 }
 
 func (OIDCProvider) TableName() string {

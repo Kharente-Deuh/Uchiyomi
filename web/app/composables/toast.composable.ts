@@ -14,10 +14,6 @@ export interface ToastComposable {
   error: (text: string) => void
 }
 
-// Module-level queue shared across the app, bound to a single <VSnackbarQueue>
-// in the default layout. Any component or composable can push a toast via
-// success()/error(); VSnackbarQueue displays them one at a time and removes
-// each from the queue as it is dismissed.
 const messages = ref<ToastMessage[]>([])
 
 export function useToast(): ToastComposable {

@@ -82,7 +82,7 @@
     "oidc": {
       "title": "Fournisseurs OIDC",
       "create": {
-        "success": "Fournisseur {nom} créé !",
+        "success": "Fournisseur {name} créé !",
         "error": "Le fournisseur existe déjà",
         "title": "Nouveau fournisseur OIDC"
       },
@@ -119,11 +119,13 @@
           "label": "Valeurs du rôle d'utilisateur normal"
         },
         "autoProvision": {
-          "hint": "Crée le compte lors de la première connexion. \nSinon, l'utilisateur doit déjà exister."
+          "hint": "Crée le compte lors de la première connexion. \nSinon, l'utilisateur doit déjà exister.",
+          "label": "Auto provision"
         },
         "users": {
           "role": "Rôle",
-          "linkedAt": "Date du lien"
+          "linkedAt": "Date du lien",
+          "username": "Nom d'utilisateur"
         }
       },
       "category": {
@@ -192,6 +194,7 @@
     "loading": "Chargement..."
   },
   "role": {
-    "admin": "Administrateur"
+    "admin": "Administrateur",
+    "user": "Utilisateur"
   }
 }

@@ -32,7 +32,7 @@ const backRoutes = computed((): PageLayoutBackRoute[] => [
 
 <template>
   <OrganismPageLayout
-    :title="provider?.displayName ?? $t('common.loading')"
+    :title="provider?.displayName ?? ''"
     :back-routes
     :loading="fetchLoading"
     global-loader

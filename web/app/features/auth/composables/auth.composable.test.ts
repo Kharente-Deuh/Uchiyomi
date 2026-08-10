@@ -2,7 +2,7 @@
 
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAuthStore } from '~/features/auth/store/auth.store'
+import { useAuthStore } from '~/features/auth/stores/auth.store'
 import { useAuth } from './auth.composable'
 
 const loginWithPwd = vi.fn()

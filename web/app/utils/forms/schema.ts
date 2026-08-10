@@ -24,8 +24,6 @@ function describeAtPath(schema: AnyObjectSchema, path: string): SchemaDescriptio
 
 const emptyValues: Record<string, unknown> = { string: '', array: [] }
 
-// yup describes `defined()` and `required()` identically on everything but strings,
-// so the only way to tell them apart is to check whether the empty value validates.
 function requiresNonEmptyValue(schema: AnyObjectSchema, path: string, type: string): boolean {
   try {
     return !(reach(schema, path) as Schema).isValidSync(emptyValues[type])

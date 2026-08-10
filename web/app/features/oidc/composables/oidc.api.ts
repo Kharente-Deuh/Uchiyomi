@@ -143,9 +143,19 @@ export function createOidcApi(): OidcApi {
     }
   }
 
-  async function updateById(id: string, body: UpdateOidcProviderRequest): Promise<ApiResponse<OidcProvider>> {
+  async function updateById(id: string, { roleClaim, adminValues, allowedValues, ...body }: UpdateOidcProviderRequest): Promise<ApiResponse<OidcProvider>> {
     try {
-      const provider = await api<OidcProvider>(`/${id}`, { method: 'PUT', body })
+      const provider = await api<OidcProvider>(`/${id}`, {
+        method: 'PUT',
+        body: {
+          ...body,
+          ...(roleClaim && {
+            roleClaim,
+            ...(!!adminValues?.length && { adminValues }),
+            ...(!!allowedValues?.length && { allowedValues }),
+          }),
+        },
+      })
 
       return { success: true, data: createOidcProvider(provider) }
     } catch (error) {
