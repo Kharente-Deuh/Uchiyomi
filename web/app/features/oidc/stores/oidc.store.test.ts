@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { OidcProvider } from '~/features/oidc/composables/oidc.api'
+import type { OidcProviderDetails } from '~/features/oidc/composables/oidc.api'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useOidcProviderStore } from './oidc.store'
@@ -15,7 +15,8 @@ const provider = {
   autoProvision: false,
   createdAt: new Date('2026-01-02T03:04:05.000Z'),
   updatedAt: new Date('2026-02-03T04:05:06.000Z'),
-} satisfies OidcProvider
+  users: [],
+} satisfies OidcProviderDetails
 
 describe('useOidcProviderStore', () => {
   beforeEach(() => {
