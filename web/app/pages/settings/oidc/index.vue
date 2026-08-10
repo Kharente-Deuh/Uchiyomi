@@ -68,7 +68,7 @@ const backRoutes = computed((): PageLayoutBackRoute[] | undefined => {
       class="d-flex flex-column ga-4"
       :class="{ 'px-6': smAndDown }"
     >
-      <span class="mx-auto">{{ $t('settings.oidc.no-providers') }}</span>
+      <span class="mx-auto">{{ $t('settings.oidc.errors.noProviders') }}</span>
       <VBtn
         color="primary"
         variant="tonal"
