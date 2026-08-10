@@ -87,7 +87,8 @@
         "title": "New OIDC Provider"
       },
       "delete": {
-        "success": "Provider deleted !"
+        "success": "Provider deleted !",
+        "confirmation": "Do you really want to delete {name} ?"
       },
       "fields": {
         "displayName": {
@@ -176,7 +177,9 @@
   "actions": {
     "cancel": "Cancel",
     "save": "Save",
-    "create": "Create"
+    "create": "Create",
+    "delete": "Delete",
+    "continue": "Continue"
   },
   "common": {
     "loading": "Loading..."

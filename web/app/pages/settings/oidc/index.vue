@@ -63,7 +63,11 @@ const backRoutes = computed((): PageLayoutBackRoute[] | undefined => {
 
     <OidcModalCreate v-if="!globalLoading" v-model="showCreateModal" />
 
-    <div v-if="providers.length === 0 && !globalLoading" class="d-flex flex-column ga-4">
+    <div
+      v-if="providers.length === 0 && !globalLoading"
+      class="d-flex flex-column ga-4"
+      :class="{ 'px-6': smAndDown }"
+    >
       <span class="mx-auto">{{ $t('settings.oidc.no-providers') }}</span>
       <VBtn
         color="primary"
@@ -76,7 +80,11 @@ const backRoutes = computed((): PageLayoutBackRoute[] | undefined => {
       />
     </div>
 
-    <div v-if="providers.length > 0" class="providers-grid">
+    <div
+      v-if="providers.length > 0"
+      class="providers-grid"
+      :class="{ 'px-6': smAndDown }"
+    >
       <OidcCardProvider
         v-for="(p, i) of providers"
         :key="i"
@@ -90,5 +98,18 @@ const backRoutes = computed((): PageLayoutBackRoute[] | undefined => {
 .providers-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media screen and (max-width: 800px) {
+  .providers-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .providers-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

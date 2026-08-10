@@ -11,15 +11,15 @@ export interface OidcComposable {
   getAll: () => Promise<void>
   create: (request: CreateOidcProviderRequest) => Promise<void>
   test: (issuerUrl: string) => Promise<TestResponse | undefined>
-  deleteById: (id: string) => Promise<void>
 }
 
 export function useOidc(): OidcComposable {
   const { t } = useI18n()
   const toast = useToast()
   const api = createOidcApi()
+  const store = useOidcProviderStore()
 
-  const providers = ref<LightOidcProvider[]>([])
+  const providers = computed(() => store.providers)
   const loading = ref(false)
   const testLoading = ref(false)
 
@@ -27,7 +27,7 @@ export function useOidc(): OidcComposable {
     loading.value = true
     const res = await api.getAll()
     if (res.success) {
-      providers.value = res.data
+      store.setProviders(res.data)
     } else {
       console.error(res.error)
       toast.error(t('error.unknown'))
@@ -40,7 +40,7 @@ export function useOidc(): OidcComposable {
     loading.value = true
     const res = await api.create(request)
     if (res.success) {
-      providers.value = [
+      store.setProviders([
         {
           id: res.data.id,
           displayName: res.data.displayName,
@@ -48,8 +48,7 @@ export function useOidc(): OidcComposable {
           userCount: 0,
         },
         ...providers.value,
-      ]
-
+      ])
       toast.success(t('settings.oidc.create.success', { name: res.data.displayName }))
     } else {
       switch (res.error.status) {
@@ -88,20 +87,6 @@ export function useOidc(): OidcComposable {
     testLoading.value = false
   }
 
-  async function deleteById(id: string): Promise<void> {
-    loading.value = true
-    const res = await api.deleteById(id)
-    if (res.success || res.error.status === 404) {
-      toast.success(t('settings.oidc.delete.success'))
-      providers.value = providers.value.filter(p => p.id !== id)
-    } else {
-      console.error('api.deleteById', res.error)
-      toast.error(t('error.unknown'))
-    }
-
-    loading.value = false
-  }
-
   return {
     providers,
     loading,
@@ -110,6 +95,5 @@ export function useOidc(): OidcComposable {
     getAll,
     create,
     test,
-    deleteById,
   }
 }

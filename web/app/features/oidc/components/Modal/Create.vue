@@ -22,7 +22,7 @@ const { field, handleSubmit, reset, isValid } = useForm({
     clientSecret: string().required().label(t('settings.oidc.fields.clientSecret.label')),
     autoProvision: boolean().required().label(t('settings.oidc.fields.autoProvision.label')),
     scopes: array().of(string().required()).required().min(1).label(t('settings.oidc.fields.scopes.label')),
-    usernameClaim: string ().required().label(t('settings.oidc.fields.usernameClame.label')),
+    usernameClaim: string().required().label(t('settings.oidc.fields.usernameClame.label')),
     roleClaim: string().defined().label(t('settings.oidc.fields.roleClaim.label')),
     adminValues: array().of(string().required()).defined().label(t('settings.oidc.fields.adminValues.label')),
     allowedValues: array().of(string().required()).defined().label(t('settings.oidc.fields.allowedValues.label')),

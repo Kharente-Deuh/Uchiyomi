@@ -11,11 +11,15 @@ definePageMeta({
 const route = useRoute('settings-oidc-id')
 const { t } = useI18n()
 const { smAndDown } = useDisplay()
-const { fetchProvider, fetchLoading, provider } = useOidcProvider()
+const { fetchProvider, fetchLoading, provider, invalidate } = useOidcProvider()
+
+const showDeleteModal = ref(false)
 
 onMounted(() => {
   fetchProvider(route.params.id)
 })
+
+onBeforeRouteLeave(invalidate)
 
 const backRoutes = computed((): PageLayoutBackRoute[] => [
   ...(smAndDown.value ? [{ to: '/settings', name: t('settings.title') }] : []),
@@ -35,6 +39,19 @@ const backRoutes = computed((): PageLayoutBackRoute[] => [
     <div class="d-flex flex-column ga-6" :class="{ 'px-6': smAndDown }">
       <OidcCardCategoryInformations :loading="fetchLoading" />
       <OidcCardCategoryClaims :loading="fetchLoading" />
+    </div>
+
+    <OidcModalDelete v-if="provider" v-model="showDeleteModal" />
+
+    <div class="d-flex justify-center w-100 pt-6" :class="{ 'px-6': smAndDown }">
+      <VBtn
+        :text="$t('actions.delete')"
+        color="error"
+        prepend-icon="fa6-regular:trash-can"
+        class="border-thin-error"
+        :disabled="!provider"
+        @click="showDeleteModal = true"
+      />
     </div>
   </OrganismPageLayout>
 </template>

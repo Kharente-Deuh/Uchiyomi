@@ -11,6 +11,11 @@ export interface OidcProviderComposable {
 
   test: () => Promise<TestResponse | undefined>
   testLoading: Ref<boolean>
+
+  deleteProvider: () => Promise<void>
+  deleteLoading: Ref<boolean>
+
+  invalidate: () => void
 }
 
 export function useOidcProvider(): OidcProviderComposable {
@@ -24,6 +29,7 @@ export function useOidcProvider(): OidcProviderComposable {
 
   const fetchLoading = ref(false)
   const updateLoading = ref(false)
+  const deleteLoading = ref(false)
 
   async function fetchProvider(id: string): Promise<void> {
     fetchLoading.value = true
@@ -77,9 +83,24 @@ export function useOidcProvider(): OidcProviderComposable {
     return composable.test(provider.value.issuerUrl)
   }
 
-  onBeforeRouteLeave(() => {
-    store.invalidate()
-  })
+  async function deleteProvider(): Promise<void> {
+    if (!provider.value) {
+      return
+    }
+
+    deleteLoading.value = true
+    const res = await api.deleteById(provider.value.id)
+    if (res.success || res.error.status === 404) {
+      toast.success(t('settings.oidc.delete.success'))
+      store.invalidate()
+      await navigateTo('/settings/oidc')
+    } else {
+      console.error('api.deleteById', res.error)
+      toast.error(t('error.unknown'))
+    }
+
+    deleteLoading.value = false
+  }
 
   return {
     provider,
@@ -92,5 +113,10 @@ export function useOidcProvider(): OidcProviderComposable {
 
     test,
     testLoading: composable.testLoading,
+
+    deleteProvider,
+    deleteLoading,
+
+    invalidate: store.invalidate,
   }
 }

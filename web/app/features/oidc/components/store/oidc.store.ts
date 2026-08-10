@@ -3,6 +3,10 @@
 export interface OidcProviderStore {
   provider: Ref<OidcProvider | undefined>
   setProvider: (value: OidcProvider) => void
+
+  providers: Ref<LightOidcProvider[]>
+  setProviders: (value: LightOidcProvider[]) => void
+
   invalidate: () => void
 }
 
@@ -13,14 +17,24 @@ export const useOidcProviderStore = defineStore('oidc-provider', (): OidcProvide
     provider.value = value
   }
 
+  const providers = ref<LightOidcProvider[]>([])
+
+  function setProviders(value: LightOidcProvider[]): void {
+    providers.value = value
+  }
+
   function invalidate(): void {
+    providers.value = []
     provider.value = undefined
   }
 
   return {
     provider,
+    providers,
 
     setProvider,
+    setProviders,
+
     invalidate,
   }
 })

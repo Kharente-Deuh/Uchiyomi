@@ -87,7 +87,8 @@
         "title": "Nouveau fournisseur OIDC"
       },
       "delete": {
-        "success": "Fournisseur supprimé !"
+        "success": "Fournisseur supprimé !",
+        "confirmation": "Voulez-vous vraiment supprimer {name} ?"
       },
       "fields": {
         "displayName": {
@@ -175,7 +176,9 @@
   "actions": {
     "cancel": "Annuler",
     "save": "Sauvegarder",
-    "create": "Créer"
+    "create": "Créer",
+    "delete": "Supprimer",
+    "continue": "Continuer"
   },
   "common": {
     "loading": "Chargement..."

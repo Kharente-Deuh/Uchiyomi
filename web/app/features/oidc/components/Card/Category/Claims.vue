@@ -23,7 +23,7 @@ async function onSubmit(values: Form): Promise<void> {
 const { field, handleSubmit, reset, isValid } = useForm({
   schema: object({
     scopes: array().of(string().required()).required().min(1).label(t('settings.oidc.fields.scopes.label')),
-    usernameClaim: string ().required().label(t('settings.oidc.fields.usernameClame.label')),
+    usernameClaim: string().required().label(t('settings.oidc.fields.usernameClame.label')),
     roleClaim: string().defined().label(t('settings.oidc.fields.roleClaim.label')),
     adminValues: array().of(string().required()).defined().label(t('settings.oidc.fields.adminValues.label')),
     allowedValues: array().of(string().required()).defined().label(t('settings.oidc.fields.allowedValues.label')),
@@ -87,7 +87,7 @@ const isFormValid = computed(() => isValid.value && hasChanged.value)
     :title="$t('settings.oidc.category.claims.title')"
     icon="fa6-solid:key"
   >
-    <div class="provider-informations-grid">
+    <div class="provider-claims-grid">
       <VCombobox v-bind="field('scopes').props" />
       <VTextField v-bind="field('usernameClaim').props" />
       <VTextField
@@ -119,14 +119,14 @@ const isFormValid = computed(() => isValid.value && hasChanged.value)
 </template>
 
 <style lang="scss">
-.provider-informations-grid {
+.provider-claims-grid {
   display: grid;
   gap: 1.5rem;
   grid-template-columns: repeat(2, 1fr);
 }
 
 @media (max-width: 800px) {
-  .provider-informations-grid {
+  .provider-claims-grid {
     grid-template-columns: 1fr;
   }
 }

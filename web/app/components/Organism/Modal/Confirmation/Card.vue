@@ -3,9 +3,13 @@
 defineProps<{
   text: string
   loading?: boolean
+  confirmText?: string
 }>()
 
-defineEmits<{ confirm: [], cancel: [] }>()
+defineEmits<{
+  confirm: []
+  cancel: []
+}>()
 
 const { mobile } = useDisplay()
 </script>
@@ -33,7 +37,7 @@ const { mobile } = useDisplay()
         :loading
         density="comfortable"
         class="border-thin-primary text-body-medium px-2"
-        :text="$t('actions.continue')"
+        :text="confirmText ?? $t('actions.continue')"
         @click="$emit('confirm')"
       />
     </div>

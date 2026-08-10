@@ -3,6 +3,7 @@
 defineProps<{
   text: string
   loading?: boolean
+  confirmText?: string
 }>()
 
 defineEmits<{ confirm: [] }>()
@@ -22,6 +23,7 @@ const { mobile } = useDisplay()
     <OrganismModalConfirmationCard
       :text
       :loading
+      :confirm-text
       @confirm="$emit('confirm')"
       @cancel="show = false"
     >
@@ -36,6 +38,7 @@ const { mobile } = useDisplay()
   >
     <OrganismModalConfirmationCard
       :text
+      :confirm-text
       :loading
       @confirm="$emit('confirm')"
       @cancel="show = false"
