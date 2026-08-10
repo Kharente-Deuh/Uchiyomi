@@ -34,7 +34,8 @@ const backRoutes = computed((): PageLayoutBackRoute[] => [
   <OrganismPageLayout
     :title="provider?.displayName ?? $t('common.loading')"
     :back-routes
-    :loading="true"
+    :loading="fetchLoading"
+    global-loader
   >
     <div class="d-flex flex-column ga-6" :class="{ 'px-6': smAndDown }">
       <OidcCardCategoryInformations :loading="fetchLoading" />
