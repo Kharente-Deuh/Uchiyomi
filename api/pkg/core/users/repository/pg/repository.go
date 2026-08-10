@@ -111,16 +111,12 @@ func (r *PGUsersRepository) GetByUsername(ctx context.Context, name string) (*us
 }
 
 func (r *PGUsersRepository) Update(ctx context.Context, opts users.UpdateUserOpts) (*users.User, error) {
-	db := pgtx.From(ctx, r.deps.DB)
-	result := db.Model(&pgmodels.User{}).Where("id = ?", opts.ID).Updates(map[string]interface{}{
-		"is_admin": opts.IsAdmin,
-	})
-
-	if result.Error != nil {
-		return nil, fmt.Errorf("db.Model: %w", result.Error)
+	affected, err := r.db(ctx).Where("id = ?", opts.ID).Update(ctx, "is_admin", opts.IsAdmin)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	if result.RowsAffected == 0 {
+	if affected == 0 {
 		return nil, domain.ErrNotFound
 	}
 
