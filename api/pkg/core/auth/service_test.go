@@ -134,6 +134,10 @@ func (f *fakeUsersRepository) GetByID(context.Context, uuid.UUID) (*users.User, 
 	panic("GetByID n'est pas utilisée par le service auth")
 }
 
+func (f *fakeUsersRepository) Update(context.Context, users.UpdateUserOpts) (*users.User, error) {
+	panic("Update n'est pas utilisée par le service auth")
+}
+
 type fakePwdRepository struct {
 	err       error
 	getErr    error

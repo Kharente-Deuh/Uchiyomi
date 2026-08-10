@@ -22,9 +22,15 @@ type UsersRepository interface {
 	GetByID(context.Context, uuid.UUID) (*User, error)
 	GetByUsername(context.Context, string) (*User, error)
 	Create(context.Context, CreateUserOpts) (*User, error)
+	Update(context.Context, UpdateUserOpts) (*User, error)
 }
 
 type CreateUserOpts struct {
 	Name    string
+	IsAdmin bool
+}
+
+type UpdateUserOpts struct {
+	ID      uuid.UUID
 	IsAdmin bool
 }
