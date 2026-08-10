@@ -9,13 +9,15 @@ import (
 )
 
 type Session struct {
-	CreatedAt  time.Time `gorm:"autoCreateTime"`
-	ExpiresAt  time.Time `gorm:"not null;index"`
-	AuthMethod string    `gorm:"type:text;not null"`
-	TokenHash  []byte    `gorm:"type:bytea;not null;uniqueIndex"`
-	User       User      `gorm:"foreignKey:UserID"`
-	ID         uuid.UUID `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	UserID     uuid.UUID `gorm:"type:uuid;not null;index"`
+	CreatedAt   time.Time `gorm:"autoCreateTime"`
+	ExpiresAt   time.Time `gorm:"not null;index"`
+	ProviderSID *string
+	ProviderID  *uuid.UUID `gorm:"type:uuid;index"`
+	AuthMethod  string     `gorm:"type:text;not null"`
+	TokenHash   []byte     `gorm:"type:bytea;not null;uniqueIndex"`
+	User        User       `gorm:"foreignKey:UserID"`
+	ID          uuid.UUID  `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
+	UserID      uuid.UUID  `gorm:"type:uuid;not null;index"`
 }
 
 func (Session) TableName() string {

@@ -21,11 +21,13 @@ const (
 var ErrInvalidSession = errors.New("invalid session")
 
 type Session struct {
-	CreatedAt  time.Time
-	ExpiresAt  time.Time
-	AuthMethod AuthMethod
-	ID         uuid.UUID
-	UserID     uuid.UUID
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+	ProviderSID *string
+	ProviderID  *uuid.UUID
+	AuthMethod  AuthMethod
+	ID          uuid.UUID
+	UserID      uuid.UUID
 }
 
 type IssuedSession struct {
@@ -47,8 +49,10 @@ type SessionService interface {
 }
 
 type CreateSessionOpts struct {
-	AuthMethod AuthMethod
-	UserID     uuid.UUID
+	ProviderSID *string
+	ProviderID  *uuid.UUID
+	AuthMethod  AuthMethod
+	UserID      uuid.UUID
 }
 
 type SessionsRepository interface {
@@ -61,8 +65,10 @@ type SessionsRepository interface {
 }
 
 type InsertSessionOpts struct {
-	ExpiresAt  time.Time
-	AuthMethod AuthMethod
-	TokenHash  []byte
-	UserID     uuid.UUID
+	ExpiresAt   time.Time
+	ProviderSID *string
+	ProviderID  *uuid.UUID
+	AuthMethod  AuthMethod
+	TokenHash   []byte
+	UserID      uuid.UUID
 }

@@ -50,12 +50,14 @@ func (r *PGSessionsRepository) db(ctx context.Context) gorm.Interface[pgmodels.S
 
 func (r *PGSessionsRepository) Insert(ctx context.Context, opts sessions.InsertSessionOpts) (*sessions.Session, error) {
 	model := &pgmodels.Session{
-		ID:         uuid.New(),
-		UserID:     opts.UserID,
-		TokenHash:  opts.TokenHash,
-		AuthMethod: string(opts.AuthMethod),
-		ExpiresAt:  opts.ExpiresAt,
-		CreatedAt:  time.Now(),
+		ID:          uuid.New(),
+		UserID:      opts.UserID,
+		TokenHash:   opts.TokenHash,
+		AuthMethod:  string(opts.AuthMethod),
+		ExpiresAt:   opts.ExpiresAt,
+		CreatedAt:   time.Now(),
+		ProviderID:  opts.ProviderID,
+		ProviderSID: opts.ProviderSID,
 	}
 
 	if err := r.db(ctx).Create(ctx, model); err != nil {
@@ -132,10 +134,12 @@ func (r *PGSessionsRepository) DeleteExpired(ctx context.Context, now time.Time)
 
 func (r *PGSessionsRepository) modelToDomain(model pgmodels.Session) sessions.Session {
 	return sessions.Session{
-		ID:         model.ID,
-		UserID:     model.UserID,
-		AuthMethod: sessions.AuthMethod(model.AuthMethod),
-		CreatedAt:  model.CreatedAt,
-		ExpiresAt:  model.ExpiresAt,
+		ID:          model.ID,
+		UserID:      model.UserID,
+		AuthMethod:  sessions.AuthMethod(model.AuthMethod),
+		CreatedAt:   model.CreatedAt,
+		ExpiresAt:   model.ExpiresAt,
+		ProviderID:  model.ProviderID,
+		ProviderSID: model.ProviderSID,
 	}
 }

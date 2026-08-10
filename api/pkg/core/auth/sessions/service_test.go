@@ -35,14 +35,14 @@ func validConfig() sessions.ServiceConfig {
 }
 
 type fakeRepository struct {
-	session      *sessions.Session
-	user         *users.User
-	gotHash      []byte
 	gotExpiry    time.Time
 	insertErr    error
 	getErr       error
 	updateErr    error
 	deleteErr    error
+	user         *users.User
+	session      *sessions.Session
+	gotHash      []byte
 	gotInsert    sessions.InsertSessionOpts
 	inserts      int
 	gets         int
@@ -306,6 +306,31 @@ func TestCreateAppliesTTLOfAuthMethod(t *testing.T) {
 				t.Errorf("AuthMethod = %v, want %v", repo.gotInsert.AuthMethod, tc.method)
 			}
 		})
+	}
+}
+
+func TestCreateForwardsProviderIdentity(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeRepository{}
+	providerID := uuid.New()
+	providerSID := "provider-subject"
+
+	if _, err := frozenSvc(t, repo, time.Now()).Create(context.Background(), sessions.CreateSessionOpts{
+		UserID:      uuid.New(),
+		AuthMethod:  sessions.AuthMethodOIDC,
+		ProviderID:  &providerID,
+		ProviderSID: &providerSID,
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if repo.gotInsert.ProviderID == nil || *repo.gotInsert.ProviderID != providerID {
+		t.Errorf("ProviderID = %v, want %v", repo.gotInsert.ProviderID, providerID)
+	}
+
+	if repo.gotInsert.ProviderSID == nil || *repo.gotInsert.ProviderSID != providerSID {
+		t.Errorf("ProviderSID = %v, want %v", repo.gotInsert.ProviderSID, providerSID)
 	}
 }
 
