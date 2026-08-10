@@ -64,7 +64,7 @@ func TestRunComponentMarksOKBeforeEnteringTheLoop(t *testing.T) {
 	}
 
 	if seen != health.StatusOK {
-		t.Fatalf("statut vu depuis la boucle = %q, attendu %q", seen, health.StatusOK)
+		t.Fatalf("status seen from loop = %q, want %q", seen, health.StatusOK)
 	}
 }
 
@@ -78,20 +78,20 @@ func TestRunComponentMarksFailedWhenLoopReturnsError(t *testing.T) {
 
 	err := a.runComponent(context.Background(), componentSessions, run)()
 	if err == nil {
-		t.Fatal("runComponent: erreur attendue")
+		t.Fatal("runComponent: error expected")
 	}
 
 	if !errors.Is(err, wantErr) {
-		t.Errorf("erreur %v, attendu qu'elle encapsule %v", err, wantErr)
+		t.Errorf("error %v, want it to wrap %v", err, wantErr)
 	}
 
 	c := reg.Snapshot(context.Background()).Components[componentSessions]
 	if c.Status != health.StatusFailed {
-		t.Errorf("statut = %q, attendu %q", c.Status, health.StatusFailed)
+		t.Errorf("status = %q, want %q", c.Status, health.StatusFailed)
 	}
 
 	if c.Reason != wantErr.Error() {
-		t.Errorf("raison = %q, attendu %q", c.Reason, wantErr.Error())
+		t.Errorf("reason = %q, want %q", c.Reason, wantErr.Error())
 	}
 }
 
@@ -106,7 +106,7 @@ func TestRunComponentStaysOKOnCleanReturn(t *testing.T) {
 	}
 
 	if got := reg.Snapshot(context.Background()).Components[componentAsura].Status; got != health.StatusOK {
-		t.Fatalf("statut = %q, attendu %q", got, health.StatusOK)
+		t.Fatalf("status = %q, want %q", got, health.StatusOK)
 	}
 }
 
@@ -116,12 +116,12 @@ func TestRunServesReadyzWhileMigrationIsRunning(t *testing.T) {
 
 	code, raw := app.get(t, "/readyz")
 	if code != http.StatusServiceUnavailable {
-		t.Fatalf("code = %d, attendu %d", code, http.StatusServiceUnavailable)
+		t.Fatalf("code = %d, want %d", code, http.StatusServiceUnavailable)
 	}
 
 	body := decodeReadyz(t, raw)
 	if got := body.Components[componentMigrations].Status; got != string(health.StatusStarting) {
-		t.Errorf("migrations = %q, attendu %q", got, health.StatusStarting)
+		t.Errorf("migrations = %q, want %q", got, health.StatusStarting)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestRunReportsEverythingOKOnceMigrationCompletes(t *testing.T) {
 
 	var raw []byte
 
-	app.waitFor(t, "/readyz n'est jamais passé à 200 après la migration", func() bool {
+	app.waitFor(t, "/readyz never reached 200 after migration", func() bool {
 		code, body := app.get(t, "/readyz")
 		raw = body
 
@@ -142,21 +142,21 @@ func TestRunReportsEverythingOKOnceMigrationCompletes(t *testing.T) {
 	body := decodeReadyz(t, raw)
 	for _, name := range []string{componentMigrations, componentAsura, componentSessions, componentDB} {
 		if got := body.Components[name].Status; got != string(health.StatusOK) {
-			t.Errorf("%s = %q, attendu %q", name, got, health.StatusOK)
+			t.Errorf("%s = %q, want %q", name, got, health.StatusOK)
 		}
 	}
 }
 
 func TestRunReturnsMigrationErrorAndNotContextCanceled(t *testing.T) {
-	boom := errors.New("colonne inconnue")
+	boom := errors.New("unknown column")
 	db := &fakeDB{migrate: func() error { return boom }}
 
 	err := startApp(t, db).wait(t)
 	if !errors.Is(err, boom) {
-		t.Fatalf("erreur = %v, attendu qu'elle encapsule %v", err, boom)
+		t.Fatalf("error = %v, want it to wrap %v", err, boom)
 	}
 
 	if errors.Is(err, context.Canceled) {
-		t.Errorf("erreur = %v : main la prendrait pour un arrêt propre et sortirait en 0", err)
+		t.Errorf("error = %v: main would treat it as clean shutdown and exit 0", err)
 	}
 }

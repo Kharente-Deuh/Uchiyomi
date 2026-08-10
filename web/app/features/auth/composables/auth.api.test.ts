@@ -76,6 +76,44 @@ describe('createAuthApi().getProviders', () => {
   })
 })
 
+describe('createAuthApi().logout', () => {
+  beforeEach(() => {
+    call.mockReset()
+  })
+
+  it('returns the parsed response on success', async () => {
+    const data = { endSessionUrl: 'https://id.example.org/logout' }
+    call.mockResolvedValue(data)
+
+    await expect(createAuthApi().logout()).resolves.toEqual({
+      success: true,
+      data,
+    })
+    expect(call).toHaveBeenCalledWith('/logout', { method: 'POST' })
+  })
+
+  it('returns an empty response when no endSessionUrl is provided', async () => {
+    call.mockResolvedValue({})
+
+    await expect(createAuthApi().logout()).resolves.toEqual({
+      success: true,
+      data: {},
+    })
+  })
+
+  it('returns an ApiError on failure', async () => {
+    call.mockRejectedValue({ statusCode: 500, data: {} })
+
+    const result = await createAuthApi().logout()
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBeInstanceOf(ApiError)
+      expect(result.error.status).toBe(500)
+    }
+  })
+})
+
 describe('oidcStartUrl', () => {
   it('builds the start URL with an encoded redirect', () => {
     expect(oidcStartUrl('google', '/library')).toBe('/api/auth/oidc/google/start?redirect=%2Flibrary')

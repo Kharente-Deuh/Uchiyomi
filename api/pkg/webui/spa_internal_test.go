@@ -31,25 +31,25 @@ func serve(t *testing.T, fsys fstest.MapFS, method, target string) *http.Respons
 func TestSPAServesIndexAtRoot(t *testing.T) {
 	res := serve(t, testFS(), http.MethodGet, "/")
 	if res.StatusCode != http.StatusOK {
-		t.Fatalf("code = %d, attendu %d", res.StatusCode, http.StatusOK)
+		t.Fatalf("code = %d, want %d", res.StatusCode, http.StatusOK)
 	}
 }
 
 func TestSPAServesExistingAsset(t *testing.T) {
 	res := serve(t, testFS(), http.MethodGet, "/_nuxt/app.abc123.js")
 	if res.StatusCode != http.StatusOK {
-		t.Fatalf("code = %d, attendu %d", res.StatusCode, http.StatusOK)
+		t.Fatalf("code = %d, want %d", res.StatusCode, http.StatusOK)
 	}
 
 	if got := res.Header.Get("Cache-Control"); got != immutableCache {
-		t.Errorf("Cache-Control = %q, attendu %q", got, immutableCache)
+		t.Errorf("Cache-Control = %q, want %q", got, immutableCache)
 	}
 }
 
 func TestSPADoesNotCacheIndex(t *testing.T) {
 	res := serve(t, testFS(), http.MethodGet, "/")
 	if got := res.Header.Get("Cache-Control"); got != "no-cache" {
-		t.Errorf("Cache-Control = %q, attendu %q", got, "no-cache")
+		t.Errorf("Cache-Control = %q, want %q", got, "no-cache")
 	}
 }
 
@@ -57,7 +57,7 @@ func TestSPAFallsBackToIndexForClientRoutes(t *testing.T) {
 	for _, target := range []string{"/library", "/settings/sources", "/status"} {
 		res := serve(t, testFS(), http.MethodGet, target)
 		if res.StatusCode != http.StatusOK {
-			t.Errorf("%s: code = %d, attendu %d", target, res.StatusCode, http.StatusOK)
+			t.Errorf("%s: code = %d, want %d", target, res.StatusCode, http.StatusOK)
 		}
 	}
 }
@@ -66,7 +66,7 @@ func TestSPAReturns404ForMissingAsset(t *testing.T) {
 	for _, target := range []string{"/_nuxt/disparu.js", "/logo.png", "/manifest.webmanifest"} {
 		res := serve(t, testFS(), http.MethodGet, target)
 		if res.StatusCode != http.StatusNotFound {
-			t.Errorf("%s: code = %d, attendu %d", target, res.StatusCode, http.StatusNotFound)
+			t.Errorf("%s: code = %d, want %d", target, res.StatusCode, http.StatusNotFound)
 		}
 	}
 }
@@ -76,7 +76,7 @@ func TestSPAReturns404WhenIndexIsMissing(t *testing.T) {
 
 	res := serve(t, fsys, http.MethodGet, "/library")
 	if res.StatusCode != http.StatusNotFound {
-		t.Errorf("code = %d, attendu %d", res.StatusCode, http.StatusNotFound)
+		t.Errorf("code = %d, want %d", res.StatusCode, http.StatusNotFound)
 	}
 }
 
@@ -87,16 +87,16 @@ func TestSPARejectsPathTraversal(t *testing.T) {
 	for _, target := range []string{"/_nuxt/../secret.txt", "/../../../etc/passwd"} {
 		res := serve(t, fsys, http.MethodGet, target)
 		if res.StatusCode == http.StatusOK {
-			t.Errorf("%s: code = %d, une remontée ne doit jamais aboutir", target, res.StatusCode)
+			t.Errorf("%s: code = %d, path traversal must never succeed", target, res.StatusCode)
 		}
 
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
-			t.Fatalf("%s: lecture du corps: %v", target, err)
+			t.Fatalf("%s: body read: %v", target, err)
 		}
 
 		if strings.Contains(string(body), "secret") {
-			t.Errorf("%s: le corps livre le fichier visé", target)
+			t.Errorf("%s: body serves targeted file", target)
 		}
 	}
 }
@@ -104,6 +104,6 @@ func TestSPARejectsPathTraversal(t *testing.T) {
 func TestSPARejectsNonReadMethods(t *testing.T) {
 	res := serve(t, testFS(), http.MethodPost, "/")
 	if res.StatusCode != http.StatusMethodNotAllowed {
-		t.Errorf("code = %d, attendu %d", res.StatusCode, http.StatusMethodNotAllowed)
+		t.Errorf("code = %d, want %d", res.StatusCode, http.StatusMethodNotAllowed)
 	}
 }

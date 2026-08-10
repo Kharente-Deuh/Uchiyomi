@@ -103,6 +103,7 @@ type Discovery struct {
 type Client interface {
 	AuthCodeURL(ctx context.Context, provider OIDCProvider, params AuthCodeParams) (string, error)
 	Exchange(ctx context.Context, provider OIDCProvider, code, verifier, nonce, redirectURI string) (*TokenSet, error)
+	EndSessionURL(ctx context.Context, provider OIDCProvider, postLogoutRedirectURI string) (string, bool, error)
 }
 
 type AuthCodeParams struct {

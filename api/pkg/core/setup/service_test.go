@@ -25,19 +25,19 @@ func (f *fakeUsersRepository) CountAdmins(context.Context) (int, error) {
 }
 
 func (f *fakeUsersRepository) GetByID(context.Context, uuid.UUID) (*users.User, error) {
-	panic("GetByID ne doit pas être appelée par le service setup")
+	panic("GetByID must not be called by the setup service")
 }
 
 func (f *fakeUsersRepository) Create(context.Context, users.CreateUserOpts) (*users.User, error) {
-	panic("Create ne doit pas être appelée par le service setup")
+	panic("Create must not be called by the setup service")
 }
 
 func (f *fakeUsersRepository) GetByUsername(context.Context, string) (*users.User, error) {
-	panic("GetByUsername ne doit pas être appelée par le service setup")
+	panic("GetByUsername must not be called by the setup service")
 }
 
 func (f *fakeUsersRepository) Update(context.Context, users.UpdateUserOpts) (*users.User, error) {
-	panic("Update ne doit pas être appelée par le service setup")
+	panic("Update must not be called by the setup service")
 }
 
 func depsFor(repo users.UsersRepository) setup.Deps {
@@ -54,11 +54,11 @@ func TestNewRejectsMissingRepository(t *testing.T) {
 
 	svc, err := setup.New(setup.Deps{})
 	if err == nil {
-		t.Fatal("New sans repository doit échouer")
+		t.Fatal("New without repository must fail")
 	}
 
 	if svc != nil {
-		t.Errorf("New a renvoyé un service (%v) en plus de l'erreur", svc)
+		t.Errorf("New returned a service (%v) in addition to the error", svc)
 	}
 
 	if got := err.Error(); got != "deps.Validate: authService is required" {
@@ -75,7 +75,7 @@ func TestNewSucceeds(t *testing.T) {
 	}
 
 	if svc == nil {
-		t.Fatal("New a renvoyé un service nil sans erreur")
+		t.Fatal("New returned nil service without error")
 	}
 }
 
@@ -86,9 +86,9 @@ func TestIsSetupRequired(t *testing.T) {
 		count int
 		want  bool
 	}{
-		"aucun admin => setup requis":    {count: 0, want: true},
-		"un admin => setup non requis":   {count: 1, want: false},
-		"plusieurs admins => non requis": {count: 12, want: false},
+		"no admin => setup required":      {count: 0, want: true},
+		"one admin => setup not required": {count: 1, want: false},
+		"multiple admins => not required": {count: 12, want: false},
 	}
 
 	for name, tc := range tests {
@@ -111,7 +111,7 @@ func TestIsSetupRequired(t *testing.T) {
 			}
 
 			if repo.countCalls != 1 {
-				t.Errorf("CountAdmins appelée %d fois, want 1", repo.countCalls)
+				t.Errorf("CountAdmins called %d times, want 1", repo.countCalls)
 			}
 		})
 	}
@@ -128,11 +128,11 @@ func TestIsSetupRequiredPropagatesRepositoryError(t *testing.T) {
 
 	got, err := svc.IsSetupRequired(context.Background())
 	if err == nil {
-		t.Fatal("IsSetupRequired doit remonter l'erreur du repository")
+		t.Fatal("IsSetupRequired must propagate repository error")
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable via errors.Is", err)
+		t.Errorf("err = %v, original error no longer reachable via errors.Is", err)
 	}
 
 	if want := "s.deps.UsersRepository.CountAdmins: connection refused"; err.Error() != want {
@@ -140,7 +140,7 @@ func TestIsSetupRequiredPropagatesRepositoryError(t *testing.T) {
 	}
 
 	if got {
-		t.Error("IsSetupRequired = true alors que le repository a échoué")
+		t.Error("IsSetupRequired = true although repository failed")
 	}
 }
 
@@ -165,11 +165,11 @@ func TestIsSetupRequiredPassesContext(t *testing.T) {
 	}
 
 	if seen == nil {
-		t.Fatal("le repository n'a reçu aucun contexte")
+		t.Fatal("repository received no context")
 	}
 
 	if got := seen.Value(key); got != "abc123" {
-		t.Errorf("contexte perdu en chemin: value = %v, want %q", got, "abc123")
+		t.Errorf("context lost along the way: value = %v, want %q", got, "abc123")
 	}
 }
 

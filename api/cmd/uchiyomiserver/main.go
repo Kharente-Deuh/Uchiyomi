@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	isHealthcheck := flag.Bool("healthcheck", false, "interroge /readyz en local et sort 0 si le serveur est prêt")
+	isHealthcheck := flag.Bool("healthcheck", false, "probe /readyz locally and exit 0 when the server is ready")
 	flag.Parse()
 
 	if *isHealthcheck {

@@ -39,7 +39,7 @@ const (
 
 	pollInterval = 2 * time.Millisecond
 
-	notImplemented = "non implémenté"
+	notImplemented = "not implemented"
 )
 
 type fakeDB struct {
@@ -126,8 +126,8 @@ func (fakeAuthService) CreateUserWithPwd(context.Context, auth.CreateUserWithPwd
 	return nil, errors.New(notImplemented)
 }
 
-func (fakeAuthService) Logout(context.Context, string) error {
-	return errors.New(notImplemented)
+func (fakeAuthService) Logout(context.Context, auth.LogoutOpts) (*auth.LogoutResult, error) {
+	return nil, errors.New(notImplemented)
 }
 
 func (fakeAuthService) StartOIDCLogin(context.Context, auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {
@@ -386,7 +386,7 @@ func (r *runningApp) wait(t *testing.T) error {
 	case <-r.done:
 		return r.runErr
 	case <-time.After(runDeadline):
-		t.Fatal("Run n'a pas rendu la main après annulation du contexte")
+		t.Fatal("Run did not return after context cancellation")
 
 		return nil
 	}
@@ -395,7 +395,7 @@ func (r *runningApp) wait(t *testing.T) error {
 func (r *runningApp) waitListening(t *testing.T) {
 	t.Helper()
 
-	r.waitFor(t, "le serveur n'écoute pas", func() bool {
+	r.waitFor(t, "server is not listening", func() bool {
 		code, _ := r.get(t, "/healthz")
 
 		return code == http.StatusOK
@@ -458,7 +458,7 @@ func decodeReadyz(t *testing.T, raw []byte) readyzBody {
 
 	var body readyzBody
 	if err := json.Unmarshal(raw, &body); err != nil {
-		t.Fatalf("décodage de %q: %v", raw, err)
+		t.Fatalf("decode of %q: %v", raw, err)
 	}
 
 	return body

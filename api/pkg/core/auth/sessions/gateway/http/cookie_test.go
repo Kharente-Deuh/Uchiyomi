@@ -35,9 +35,9 @@ func TestNewCookieManagerValidatesConfig(t *testing.T) {
 		wantErr string
 		cfg     sessionshttp.CookieConfig
 	}{
-		"nom vide":    {cfg: sessionshttp.CookieConfig{Path: "/"}, wantErr: "cfg.Validate: name is required"},
-		"chemin vide": {cfg: sessionshttp.CookieConfig{Name: "s"}, wantErr: "cfg.Validate: path is required"},
-		"chemin sans slash": {
+		"empty name": {cfg: sessionshttp.CookieConfig{Path: "/"}, wantErr: "cfg.Validate: name is required"},
+		"empty path": {cfg: sessionshttp.CookieConfig{Name: "s"}, wantErr: "cfg.Validate: path is required"},
+		"path without slash": {
 			cfg:     sessionshttp.CookieConfig{Name: "s", Path: "x"},
 			wantErr: `cfg.Validate: path must start with '/', got "x"`,
 		},
@@ -53,7 +53,7 @@ func TestNewCookieManagerValidatesConfig(t *testing.T) {
 			}
 
 			if m != nil {
-				t.Error("NewCookieManager a renvoyé un manager en plus de l'erreur")
+				t.Error("NewCookieManager returned a manager in addition to the error")
 			}
 
 			if err.Error() != tc.wantErr {
@@ -73,7 +73,7 @@ func TestSetProducesHardenedCookie(t *testing.T) {
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1", len(cookies))
+		t.Fatalf("%d cookies set, want 1", len(cookies))
 	}
 
 	got := cookies[0]
@@ -87,11 +87,11 @@ func TestSetProducesHardenedCookie(t *testing.T) {
 	}
 
 	if !got.HttpOnly {
-		t.Error("HttpOnly absent : un XSS pourrait lire le token")
+		t.Error("HttpOnly missing: XSS could read the token")
 	}
 
 	if !got.Secure {
-		t.Error("Secure absent alors que la config le demande")
+		t.Error("Secure missing although config requires it")
 	}
 
 	if got.SameSite != http.SameSiteLaxMode {
@@ -118,11 +118,11 @@ func TestSetAllowsInsecureForLocalDevelopment(t *testing.T) {
 	got := rec.Result().Cookies()[0]
 
 	if got.Secure {
-		t.Error("Secure posé alors que la config ne le demande pas")
+		t.Error("Secure set although config does not require it")
 	}
 
 	if !got.HttpOnly {
-		t.Error("HttpOnly perdu quand Secure est faux : il ne doit pas suivre la config")
+		t.Error("HttpOnly lost when Secure is false: it must not follow config")
 	}
 }
 
@@ -152,14 +152,14 @@ func TestReadReturnsTokenOrEmpty(t *testing.T) {
 	}
 
 	if got := m.Read(httptest.NewRequest(http.MethodGet, "/", nil)); got != "" {
-		t.Errorf("Read() = %q, want \"\" sans cookie", got)
+		t.Errorf("Read() = %q, want \"\" without cookie", got)
 	}
 
 	wrongName := httptest.NewRequest(http.MethodGet, "/", nil)
 	wrongName.AddCookie(&http.Cookie{Name: "autre", Value: testToken})
 
 	if got := m.Read(wrongName); got != "" {
-		t.Errorf("Read() = %q, want \"\" pour un autre cookie", got)
+		t.Errorf("Read() = %q, want \"\" for another cookie", got)
 	}
 }
 
@@ -177,7 +177,7 @@ func TestClearExpiresTheCookie(t *testing.T) {
 	}
 
 	if got.Value != "" {
-		t.Errorf("Value = %q, want vide", got.Value)
+		t.Errorf("Value = %q, want empty", got.Value)
 	}
 
 	if got.MaxAge != -1 {

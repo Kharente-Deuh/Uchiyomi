@@ -42,7 +42,7 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
       OIDC_ENCRYPTION_KEY: "${OIDC_ENCRYPTION_KEY:?set OIDC_ENCRYPTION_KEY, e.g. openssl rand -base64 32}"
     healthcheck:
-      test: ["CMD", "/uichiyomiserver", "-healthcheck"]
+      test: ["CMD", "/uchiyomiserver", "-healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 3

@@ -47,14 +47,14 @@ func (f *fakeOIDCProvidersRepo) GetByID(_ context.Context, id uuid.UUID) (*oidcp
 }
 
 func (f *fakeOIDCProvidersRepo) GetByIssuerURL(context.Context, string) (*oidcproviders.OIDCProvider, error) {
-	panic("GetByIssuerURL n'est pas utilisée par le service auth")
+	panic("GetByIssuerURL is not used by the auth service")
 }
 
 func (f *fakeOIDCProvidersRepo) Create(
 	context.Context,
 	oidcproviders.CreateOIDCProviderOpts,
 ) (*oidcproviders.OIDCProvider, error) {
-	panic("Create n'est pas utilisée par le service auth")
+	panic("Create is not used by the auth service")
 }
 
 func (f *fakeOIDCProvidersRepo) Update(
@@ -62,19 +62,19 @@ func (f *fakeOIDCProvidersRepo) Update(
 	uuid.UUID,
 	oidcproviders.UpdateOIDCProviderOpts,
 ) (*oidcproviders.OIDCProvider, error) {
-	panic("Update n'est pas utilisée par le service auth")
+	panic("Update is not used by the auth service")
 }
 
 func (f *fakeOIDCProvidersRepo) DeleteByID(context.Context, uuid.UUID) error {
-	panic("DeleteByID n'est pas utilisée par le service auth")
+	panic("DeleteByID is not used by the auth service")
 }
 
 func (f *fakeOIDCProvidersRepo) GetAll(context.Context) ([]oidcproviders.LightOIDCProvider, error) {
-	panic("GetAll n'est pas utilisée par le service auth")
+	panic("GetAll is not used by the auth service")
 }
 
 func (f *fakeOIDCProvidersRepo) GetUsers(context.Context, uuid.UUID) ([]oidcproviders.OIDCProviderUser, error) {
-	panic("GetUsers n'est pas utilisée par le service auth")
+	panic("GetUsers is not used by the auth service")
 }
 
 type fakeFederatedIdentitiesRepo struct {
@@ -140,18 +140,23 @@ func (f *fakeFederatedIdentitiesRepo) Update(
 }
 
 type fakeOIDCClient struct {
-	authCodeErr    error
-	exchangeErr    error
-	tokenSet       *oidcproviders.TokenSet
-	authCodeURL    string
-	gotCode        string
-	gotVerifier    string
-	gotNonce       string
-	gotRedirectURI string
-	gotAuthParams  oidcproviders.AuthCodeParams
-	gotProvider    oidcproviders.OIDCProvider
-	authCodeCalls  int
-	exchangeCalls  int
+	authCodeErr           error
+	exchangeErr           error
+	endSessionErr         error
+	tokenSet              *oidcproviders.TokenSet
+	authCodeURL           string
+	endSessionURL         string
+	gotCode               string
+	gotVerifier           string
+	gotNonce              string
+	gotRedirectURI        string
+	gotPostLogoutRedirect string
+	gotAuthParams         oidcproviders.AuthCodeParams
+	gotProvider           oidcproviders.OIDCProvider
+	authCodeCalls         int
+	exchangeCalls         int
+	endSessionCalls       int
+	endSessionSupported   bool
 }
 
 func (f *fakeOIDCClient) AuthCodeURL(
@@ -189,6 +194,22 @@ func (f *fakeOIDCClient) Exchange(
 	return f.tokenSet, nil
 }
 
+func (f *fakeOIDCClient) EndSessionURL(
+	_ context.Context,
+	provider oidcproviders.OIDCProvider,
+	postLogoutRedirectURI string,
+) (string, bool, error) {
+	f.endSessionCalls++
+	f.gotProvider = provider
+	f.gotPostLogoutRedirect = postLogoutRedirectURI
+
+	if f.endSessionErr != nil {
+		return "", false, f.endSessionErr
+	}
+
+	return f.endSessionURL, f.endSessionSupported, nil
+}
+
 func TestStartOIDCLoginBuildsAuthCodeURLAndCookie(t *testing.T) {
 	t.Parallel()
 
@@ -207,7 +228,7 @@ func TestStartOIDCLoginBuildsAuthCodeURLAndCookie(t *testing.T) {
 	}
 
 	if got.StateCookieValue == "" {
-		t.Fatal("StateCookieValue vide")
+		t.Fatal("StateCookieValue empty")
 	}
 
 	if !got.ExpiresAt.Equal(f.now.Add(f.cfg.StateCookieTTL)) {
@@ -251,15 +272,15 @@ func TestStartOIDCLoginCookieRoundTripsThroughFinish(t *testing.T) {
 	}
 
 	if f.oc.gotVerifier != f.oc.gotAuthParams.Verifier {
-		t.Errorf("Exchange a reçu verifier %q, want %q", f.oc.gotVerifier, f.oc.gotAuthParams.Verifier)
+		t.Errorf("Exchange received verifier %q, want %q", f.oc.gotVerifier, f.oc.gotAuthParams.Verifier)
 	}
 
 	if f.oc.gotNonce != f.oc.gotAuthParams.Nonce {
-		t.Errorf("Exchange a reçu nonce %q, want %q", f.oc.gotNonce, f.oc.gotAuthParams.Nonce)
+		t.Errorf("Exchange received nonce %q, want %q", f.oc.gotNonce, f.oc.gotAuthParams.Nonce)
 	}
 
 	if f.oc.gotRedirectURI != oidcRedirectURI {
-		t.Errorf("Exchange a reçu redirectURI %q, want %q", f.oc.gotRedirectURI, oidcRedirectURI)
+		t.Errorf("Exchange received redirectURI %q, want %q", f.oc.gotRedirectURI, oidcRedirectURI)
 	}
 }
 
@@ -520,7 +541,7 @@ func TestFinishOIDCLoginHappyPathIssuesOIDCSession(t *testing.T) {
 	}
 
 	if f.ur.updateCalls != 0 {
-		t.Errorf("UsersRepository.Update appelée %d fois sans RoleClaim configuré, want 0", f.ur.updateCalls)
+		t.Errorf("UsersRepository.Update called %d times without RoleClaim configured, want 0", f.ur.updateCalls)
 	}
 }
 
@@ -587,21 +608,21 @@ func TestMapClaims(t *testing.T) {
 		wantIsAdmin  bool
 		wantAllowed  bool
 	}{
-		"RoleClaim nil => jamais admin, toujours autorisé": {
+		"RoleClaim nil => never admin, always allowed": {
 			provider:     oidcproviders.OIDCProvider{UsernameClaim: usernameClaimKey},
 			claims:       map[string]any{usernameClaimKey: userName},
 			wantUsername: userName,
 			wantIsAdmin:  false,
 			wantAllowed:  true,
 		},
-		"AllowedValues vide => autorisé sans restriction": {
+		"AllowedValues empty => allowed without restriction": {
 			provider:     oidcproviders.OIDCProvider{UsernameClaim: usernameClaimKey, RoleClaim: &role},
 			claims:       map[string]any{usernameClaimKey: userName, roleClaimKey: guestRole},
 			wantUsername: userName,
 			wantIsAdmin:  false,
 			wantAllowed:  true,
 		},
-		"AllowedValues non vide et intersecte => autorisé": {
+		"AllowedValues non-empty and intersects => allowed": {
 			provider: oidcproviders.OIDCProvider{
 				UsernameClaim: usernameClaimKey,
 				RoleClaim:     &role,
@@ -612,7 +633,7 @@ func TestMapClaims(t *testing.T) {
 			wantIsAdmin:  false,
 			wantAllowed:  true,
 		},
-		"AllowedValues non vide et disjoint => refusé": {
+		"AllowedValues non-empty and disjoint => denied": {
 			provider: oidcproviders.OIDCProvider{
 				UsernameClaim: usernameClaimKey,
 				RoleClaim:     &role,
@@ -623,7 +644,7 @@ func TestMapClaims(t *testing.T) {
 			wantIsAdmin:  false,
 			wantAllowed:  false,
 		},
-		"AdminValues vide => jamais admin": {
+		"AdminValues empty => never admin": {
 			provider: oidcproviders.OIDCProvider{
 				UsernameClaim: usernameClaimKey,
 				RoleClaim:     &role,
@@ -644,7 +665,7 @@ func TestMapClaims(t *testing.T) {
 			wantIsAdmin:  true,
 			wantAllowed:  true,
 		},
-		"AdminValues disjoint => pas admin": {
+		"AdminValues disjoint => not admin": {
 			provider: oidcproviders.OIDCProvider{
 				UsernameClaim: usernameClaimKey,
 				RoleClaim:     &role,
@@ -677,14 +698,14 @@ func TestMapClaims(t *testing.T) {
 			wantIsAdmin:  true,
 			wantAllowed:  true,
 		},
-		"UsernameClaim manquant => non autorisé": {
+		"UsernameClaim missing => not allowed": {
 			provider:     oidcproviders.OIDCProvider{UsernameClaim: usernameClaimKey},
 			claims:       map[string]any{},
 			wantUsername: "",
 			wantIsAdmin:  false,
 			wantAllowed:  false,
 		},
-		"UsernameClaim de mauvais type => non autorisé": {
+		"UsernameClaim wrong type => not allowed": {
 			provider:     oidcproviders.OIDCProvider{UsernameClaim: usernameClaimKey},
 			claims:       map[string]any{usernameClaimKey: 42},
 			wantUsername: "",
@@ -728,7 +749,7 @@ func TestMapClaims(t *testing.T) {
 			}
 
 			if f.ur.gotName != tc.wantUsername {
-				t.Errorf("username utilisé = %q, want %q", f.ur.gotName, tc.wantUsername)
+				t.Errorf("username used = %q, want %q", f.ur.gotName, tc.wantUsername)
 			}
 		})
 	}
@@ -771,7 +792,7 @@ func TestResolveIdentityReusesExistingFederatedIdentity(t *testing.T) {
 	}
 
 	if f.ur.gotID != linkedUser.ID {
-		t.Errorf("UsersRepository.GetByID a reçu %v, want %v (fi.UserID)", f.ur.gotID, linkedUser.ID)
+		t.Errorf("UsersRepository.GetByID received %v, want %v (fi.UserID)", f.ur.gotID, linkedUser.ID)
 	}
 
 	if f.ss.gotOpts.UserID != linkedUser.ID {
@@ -779,19 +800,19 @@ func TestResolveIdentityReusesExistingFederatedIdentity(t *testing.T) {
 	}
 
 	if f.ur.byIDCalls != 1 {
-		t.Errorf("UsersRepository.GetByID appelée %d fois, want 1", f.ur.byIDCalls)
+		t.Errorf("UsersRepository.GetByID called %d times, want 1", f.ur.byIDCalls)
 	}
 
 	if f.fir.updateCalls != 1 {
-		t.Errorf("FederatedIdentitiesRepository.Update appelée %d fois, want 1", f.fir.updateCalls)
+		t.Errorf("FederatedIdentitiesRepository.Update called %d times, want 1", f.fir.updateCalls)
 	}
 
 	if f.fir.createCalls != 0 {
-		t.Errorf("FederatedIdentitiesRepository.Create appelée %d fois, want 0", f.fir.createCalls)
+		t.Errorf("FederatedIdentitiesRepository.Create called %d times, want 0", f.fir.createCalls)
 	}
 
 	if f.tr.calls != 0 {
-		t.Errorf("WithinTx appelée %d fois, want 0 (pas de provisioning)", f.tr.calls)
+		t.Errorf("WithinTx called %d times, want 0 (no provisioning)", f.tr.calls)
 	}
 }
 
@@ -817,7 +838,7 @@ func TestResolveIdentityLinksLocalUsernameMatch(t *testing.T) {
 	}
 
 	if f.fir.createCalls != 1 {
-		t.Errorf("FederatedIdentitiesRepository.Create appelée %d fois, want 1", f.fir.createCalls)
+		t.Errorf("FederatedIdentitiesRepository.Create called %d times, want 1", f.fir.createCalls)
 	}
 
 	if f.fir.gotCreateOpts.UserID != f.ur.user.ID || f.fir.gotCreateOpts.Subject != f.oc.tokenSet.Subject {
@@ -825,7 +846,7 @@ func TestResolveIdentityLinksLocalUsernameMatch(t *testing.T) {
 	}
 
 	if f.tr.calls != 0 {
-		t.Errorf("WithinTx appelée %d fois, want 0 (pas de provisioning)", f.tr.calls)
+		t.Errorf("WithinTx called %d times, want 0 (no provisioning)", f.tr.calls)
 	}
 }
 
@@ -854,15 +875,15 @@ func TestResolveIdentityAutoProvisionsNewUser(t *testing.T) {
 	}
 
 	if f.tr.calls != 1 {
-		t.Errorf("WithinTx appelée %d fois, want 1", f.tr.calls)
+		t.Errorf("WithinTx called %d times, want 1", f.tr.calls)
 	}
 
 	if !f.ur.inTx {
-		t.Error("UsersRepository.Create n'a pas reçu le ctx transactionnel")
+		t.Error("UsersRepository.Create did not receive transactional ctx")
 	}
 
 	if f.fir.createCalls != 1 {
-		t.Errorf("FederatedIdentitiesRepository.Create appelée %d fois, want 1", f.fir.createCalls)
+		t.Errorf("FederatedIdentitiesRepository.Create called %d times, want 1", f.fir.createCalls)
 	}
 }
 
@@ -887,7 +908,7 @@ func TestResolveIdentityNoMatchWithoutAutoProvisionRefuses(t *testing.T) {
 	}
 
 	if f.tr.calls != 0 {
-		t.Errorf("WithinTx appelée %d fois, want 0", f.tr.calls)
+		t.Errorf("WithinTx called %d times, want 0", f.tr.calls)
 	}
 }
 
@@ -897,7 +918,7 @@ func TestFinishOIDCLoginRecomputesIsAdminOnEveryBranch(t *testing.T) {
 	role := roleClaimKey
 
 	tests := map[string]func(*fakes){
-		"identité existante": func(f *fakes) {
+		"existing identity": func(f *fakes) {
 			f.fir.fi = &federatedidentities.FederatedIdentity{
 				ID: uuid.New(), Subject: testSubject, ProviderID: f.opr.provider.ID, UserID: f.ur.user.ID,
 			}
@@ -933,11 +954,11 @@ func TestFinishOIDCLoginRecomputesIsAdminOnEveryBranch(t *testing.T) {
 			}
 
 			if f.ur.updateCalls != 1 {
-				t.Fatalf("UsersRepository.Update appelée %d fois, want 1", f.ur.updateCalls)
+				t.Fatalf("UsersRepository.Update called %d times, want 1", f.ur.updateCalls)
 			}
 
 			if !f.ur.gotUpdate.IsAdmin {
-				t.Error("IsAdmin non recalculé à true")
+				t.Error("IsAdmin not recalculated to true")
 			}
 		})
 	}
@@ -949,8 +970,8 @@ func TestFinishOIDCLoginNeverDemotesWhenTheProviderMapsNoAdminRole(t *testing.T)
 	role := roleClaimKey
 
 	tests := map[string]func(*fakes){
-		"aucun RoleClaim":  func(*fakes) {},
-		"AdminValues vide": func(f *fakes) { f.opr.provider.RoleClaim = &role },
+		"no RoleClaim":      func(*fakes) {},
+		"AdminValues empty": func(f *fakes) { f.opr.provider.RoleClaim = &role },
 	}
 
 	for name, setup := range tests {
@@ -980,7 +1001,7 @@ func TestFinishOIDCLoginNeverDemotesWhenTheProviderMapsNoAdminRole(t *testing.T)
 			}
 
 			if f.ur.updateCalls != 0 {
-				t.Errorf("UsersRepository.Update appelée %d fois, want 0 (%+v)", f.ur.updateCalls, f.ur.gotUpdate)
+				t.Errorf("UsersRepository.Update called %d times, want 0 (%+v)", f.ur.updateCalls, f.ur.gotUpdate)
 			}
 		})
 	}
@@ -1030,18 +1051,18 @@ func TestFinishOIDCLoginKeepsTheLastAdminWhenTheProviderDemotesThem(t *testing.T
 
 			if tc.wantUpdate {
 				if f.ur.updateCalls != 1 {
-					t.Fatalf("UsersRepository.Update appelée %d fois, want 1", f.ur.updateCalls)
+					t.Fatalf("UsersRepository.Update called %d times, want 1", f.ur.updateCalls)
 				}
 
 				if f.ur.gotUpdate.IsAdmin {
-					t.Error("IsAdmin = true, want false : la rétrogradation doit s'appliquer")
+					t.Error("IsAdmin = true, want false: demotion must apply")
 				}
 			} else if f.ur.updateCalls != 0 {
-				t.Errorf("le dernier admin a été rétrogradé (%+v)", f.ur.gotUpdate)
+				t.Errorf("last admin was demoted (%+v)", f.ur.gotUpdate)
 			}
 
 			if got := strings.Contains(f.logs.String(), "kept the last admin"); got != tc.wantWarnLogged {
-				t.Errorf("log d'avertissement présent = %v, want %v (logs: %s)", got, tc.wantWarnLogged, f.logs)
+				t.Errorf("warning log present = %v, want %v (logs: %s)", got, tc.wantWarnLogged, f.logs)
 			}
 		})
 	}

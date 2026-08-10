@@ -39,7 +39,7 @@ func callWithTimeout(t *testing.T, what string, fn func()) {
 	select {
 	case <-done:
 	case <-time.After(callTimeout):
-		t.Fatalf("%s n'est jamais revenue après %v : interblocage", what, callTimeout)
+		t.Fatalf("%s never returned after %v: deadlock", what, callTimeout)
 	}
 }
 
@@ -92,22 +92,22 @@ func TestFnCacheConfigValidate(t *testing.T) {
 		cfg     fncache.Config[string, int]
 	}{
 		"valide": {cfg: valid},
-		"TTL d'une seconde pile": {
+		"TTL exactly one second": {
 			cfg: without(func(c *fncache.Config[string, int]) { c.TTL = time.Second }),
 		},
-		"sans Fn": {
+		"without Fn": {
 			cfg:     without(func(c *fncache.Config[string, int]) { c.Fn = nil }),
 			wantErr: "fn is required",
 		},
-		"sans Key": {
+		"without Key": {
 			cfg:     without(func(c *fncache.Config[string, int]) { c.Key = nil }),
 			wantErr: "key is required",
 		},
-		"TTL nulle": {
+		"zero TTL": {
 			cfg:     without(func(c *fncache.Config[string, int]) { c.TTL = 0 }),
 			wantErr: "ttl must be at least 1 second",
 		},
-		"ErrorTTL nulle": {
+		"zero ErrorTTL": {
 			cfg:     without(func(c *fncache.Config[string, int]) { c.ErrorTTL = 0 }),
 			wantErr: "errorTTL must be at least 1 second",
 		},
@@ -115,7 +115,7 @@ func TestFnCacheConfigValidate(t *testing.T) {
 			cfg:     without(func(c *fncache.Config[string, int]) { c.FetchTimeout = 0 }),
 			wantErr: "fetchTimeout must be at least 1 second",
 		},
-		"CleanInterval nulle": {
+		"zero CleanInterval": {
 			cfg:     without(func(c *fncache.Config[string, int]) { c.CleanInterval = 0 }),
 			wantErr: "cleanInterval must be at least 1 second",
 		},
@@ -152,11 +152,11 @@ func TestNewFnCacheRejectsInvalidConfig(t *testing.T) {
 
 	c, err := fncache.New(fncache.Config[string, int]{}, fncache.Deps{Logger: discardLogger()})
 	if err == nil {
-		t.Fatal("New doit refuser une config vide")
+		t.Fatal("New must reject empty config")
 	}
 
 	if c != nil {
-		t.Error("New a renvoyé un cache en plus de l'erreur")
+		t.Error("New returned a cache in addition to the error")
 	}
 }
 
@@ -199,13 +199,13 @@ func TestFnCacheGetCachesResult(t *testing.T) {
 	for i := range 3 {
 		callWithTimeout(t, "Cache.Get", func() {
 			if _, err := c.Get(context.Background(), "same-key"); err != nil {
-				t.Errorf("Get appel %d: %v", i+1, err)
+				t.Errorf("Get call %d: %v", i+1, err)
 			}
 		})
 	}
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("Fn appelée %d fois pour 3 Get sur la même clé (TTL = 1h), want 1", got)
+		t.Errorf("Fn called %d times for 3 Get on same key (TTL = 1h), want 1", got)
 	}
 }
 
@@ -237,7 +237,7 @@ func TestFnCacheGetDistinctKeys(t *testing.T) {
 	}
 
 	if got := calls.Load(); got != 2 {
-		t.Errorf("Fn appelée %d fois pour 2 clés distinctes, want 2", got)
+		t.Errorf("Fn called %d times for 2 distinct keys, want 2", got)
 	}
 }
 
@@ -265,7 +265,7 @@ func waitForCalls(t *testing.T, calls *atomic.Int32, want int32) {
 
 	for calls.Load() < want {
 		if time.Now().After(deadline) {
-			t.Fatalf("Fn appelée %d fois après 2s, want %d", calls.Load(), want)
+			t.Fatalf("Fn called %d times after 2s, want %d", calls.Load(), want)
 		}
 
 		time.Sleep(time.Millisecond)
@@ -308,7 +308,7 @@ func TestFnCacheGetDedupesConcurrentCalls(t *testing.T) {
 	wg.Wait()
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("Fn appelée %d fois pour %d Get concurrents sur la même clé, want 1", got, goroutines)
+		t.Errorf("Fn called %d times for %d concurrent Get on same key, want 1", got, goroutines)
 	}
 }
 
@@ -342,11 +342,11 @@ func TestFnCacheGetDetachesFnFromCallerContext(t *testing.T) {
 	})
 
 	if !errors.Is(err, context.Canceled) {
-		t.Errorf("Get() = %v, want context.Canceled (l'appelant doit pouvoir abandonner)", err)
+		t.Errorf("Get() = %v, want context.Canceled (caller must be able to abandon)", err)
 	}
 
 	if got := <-fnCtxErr; got != nil {
-		t.Errorf("ctx.Err() dans Fn = %v, want nil (Fn doit survivre à l'abandon de l'appelant)", got)
+		t.Errorf("ctx.Err() in Fn = %v, want nil (Fn must survive caller abandonment)", got)
 	}
 }
 
@@ -362,7 +362,7 @@ func TestFnCacheGetConvertsPanicToError(t *testing.T) {
 	})
 
 	if err == nil || !strings.Contains(err.Error(), "boom") {
-		t.Errorf("Get() = %v, want une erreur mentionnant le panic", err)
+		t.Errorf("Get() = %v, want error mentioning panic", err)
 	}
 }
 
@@ -401,7 +401,7 @@ func TestFnCacheGetBoundsFnByFetchTimeout(t *testing.T) {
 	}
 
 	if fnErr := <-fnCtxErr; !errors.Is(fnErr, context.DeadlineExceeded) {
-		t.Errorf("ctx.Err() dans Fn = %v, want context.DeadlineExceeded (FetchTimeout doit borner Fn)", fnErr)
+		t.Errorf("ctx.Err() in Fn = %v, want context.DeadlineExceeded (FetchTimeout must bound Fn)", fnErr)
 	}
 }
 

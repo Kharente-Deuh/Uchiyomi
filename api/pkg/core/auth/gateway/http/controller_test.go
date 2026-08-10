@@ -45,6 +45,7 @@ type stubAuthService struct {
 	finishErr     error
 	startErr      error
 	logoutErr     error
+	logoutResult  *auth.LogoutResult
 	startResult   *auth.OIDCStart
 	result        *auth.LoginResult
 	finishResult  *auth.OIDCLoginResult
@@ -52,6 +53,7 @@ type stubAuthService struct {
 	gotOpts       auth.LoginWithPwdOpts
 	logoutToken   string
 	gotStartOpts  auth.StartOIDCLoginOpts
+	logoutSession sessions.Session
 	calls         int
 	logoutCalls   int
 	startCalls    int
@@ -73,14 +75,23 @@ func (s *stubAuthService) LoginWithPwd(
 }
 
 func (s *stubAuthService) CreateUserWithPwd(context.Context, auth.CreateUserWithPwdOpts) (*users.User, error) {
-	panic("CreateUserWithPwd n'est pas exposée par ce controller")
+	panic("CreateUserWithPwd is not exposed by this controller")
 }
 
-func (s *stubAuthService) Logout(_ context.Context, token string) error {
+func (s *stubAuthService) Logout(_ context.Context, opts auth.LogoutOpts) (*auth.LogoutResult, error) {
 	s.logoutCalls++
-	s.logoutToken = token
+	s.logoutToken = opts.Token
+	s.logoutSession = opts.Session
 
-	return s.logoutErr
+	if s.logoutErr != nil {
+		return nil, s.logoutErr
+	}
+
+	if s.logoutResult != nil {
+		return s.logoutResult, nil
+	}
+
+	return &auth.LogoutResult{}, nil
 }
 
 func (s *stubAuthService) StartOIDCLogin(_ context.Context, opts auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {
@@ -181,7 +192,17 @@ func loginBody(user, pwd string) string {
 func newTestRouter(t *testing.T, svc *stubAuthService) (chi.Router, *bytes.Buffer) {
 	t.Helper()
 
-	return newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+	return newTestRouterWithLogoutMiddlewares(t, svc, nil)
+}
+
+func newTestRouterWithLogoutMiddlewares(
+	t *testing.T,
+	svc *stubAuthService,
+	logoutMiddlewares chi.Middlewares,
+) (chi.Router, *bytes.Buffer) {
+	t.Helper()
+
+	return newTestRouterWithProvidersAndLogoutMiddlewares(t, svc, &stubProvidersLister{}, logoutMiddlewares)
 }
 
 func newTestRouterWithProviders(
@@ -191,9 +212,23 @@ func newTestRouterWithProviders(
 ) (chi.Router, *bytes.Buffer) {
 	t.Helper()
 
+	return newTestRouterWithProvidersAndLogoutMiddlewares(t, svc, providers, nil)
+}
+
+func newTestRouterWithProvidersAndLogoutMiddlewares(
+	t *testing.T,
+	svc *stubAuthService,
+	providers *stubProvidersLister,
+	logoutMiddlewares chi.Middlewares,
+) (chi.Router, *bytes.Buffer) {
+	t.Helper()
+
 	logger, logs := testLogger()
 
-	c, err := authhttp.New(authhttp.Config{Endpoint: authEndpoint}, authhttp.Deps{
+	c, err := authhttp.New(authhttp.Config{
+		Endpoint:          authEndpoint,
+		LogoutMiddlewares: logoutMiddlewares,
+	}, authhttp.Deps{
 		AuthService:      svc,
 		Cookies:          newCookies(t),
 		OIDCStateCookies: newOIDCStateCookies(t),
@@ -209,6 +244,53 @@ func newTestRouterWithProviders(
 	c.InitRouter(r)
 
 	return r, logs
+}
+
+type stubSessionService struct {
+	err      error
+	result   *sessions.AuthenticatedSession
+	gotToken string
+	calls    int
+}
+
+func (s *stubSessionService) Authenticate(
+	_ context.Context,
+	token string,
+) (*sessions.AuthenticatedSession, error) {
+	s.calls++
+	s.gotToken = token
+
+	if s.err != nil {
+		return nil, s.err
+	}
+
+	return s.result, nil
+}
+
+func logoutMiddlewaresFor(t *testing.T, svc *stubSessionService) chi.Middlewares {
+	t.Helper()
+
+	logger, _ := testLogger()
+
+	a, err := sessionshttp.NewAuthenticator(sessionshttp.AuthenticatorDeps{
+		SessionService: svc,
+		Cookies:        newCookies(t),
+		Logger:         logger,
+		Now:            frozenNow,
+	})
+	if err != nil {
+		t.Fatalf("NewAuthenticator: %v", err)
+	}
+
+	return chi.Middlewares{a.RequireSession}
+}
+
+func injectSessionMiddleware(user *users.User, session sessions.Session) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(sessionshttp.WithAuth(r.Context(), user, session)))
+		})
+	}
 }
 
 func postLogin(t *testing.T, r chi.Router, body string) *httptest.ResponseRecorder {
@@ -227,12 +309,12 @@ func TestConfigValidate(t *testing.T) {
 		endpoint string
 		wantErr  string
 	}{
-		"endpoint valide":    {endpoint: authEndpoint, wantErr: ""},
-		"endpoint imbriqué":  {endpoint: "/api/v1/auth", wantErr: ""},
-		"racine":             {endpoint: "/", wantErr: ""},
-		"vide":               {endpoint: "", wantErr: "endpoint is required"},
-		"sans slash initial": {endpoint: "auth", wantErr: `endpoint must start with '/', got "auth"`},
-		"URL complète":       {endpoint: "http://x/auth", wantErr: `endpoint must start with '/', got "http://x/auth"`},
+		"endpoint valide":       {endpoint: authEndpoint, wantErr: ""},
+		"nested endpoint":       {endpoint: "/api/v1/auth", wantErr: ""},
+		"racine":                {endpoint: "/", wantErr: ""},
+		"empty":                 {endpoint: "", wantErr: "endpoint is required"},
+		"without leading slash": {endpoint: "auth", wantErr: `endpoint must start with '/', got "auth"`},
+		"full URL":              {endpoint: "http://x/auth", wantErr: `endpoint must start with '/', got "http://x/auth"`},
 	}
 
 	for name, tc := range tests {
@@ -276,7 +358,7 @@ func TestDepsValidate(t *testing.T) {
 			},
 			wantErr: "",
 		},
-		"sans service": {
+		"without service": {
 			deps: authhttp.Deps{
 				Cookies:          newCookies(t),
 				OIDCStateCookies: newOIDCStateCookies(t),
@@ -285,7 +367,7 @@ func TestDepsValidate(t *testing.T) {
 			},
 			wantErr: "authService is required",
 		},
-		"sans cookies": {
+		"without cookies": {
 			deps: authhttp.Deps{
 				AuthService:      &stubAuthService{},
 				OIDCStateCookies: newOIDCStateCookies(t),
@@ -294,7 +376,7 @@ func TestDepsValidate(t *testing.T) {
 			},
 			wantErr: "cookies is required",
 		},
-		"sans oidcStateCookies": {
+		"without oidcStateCookies": {
 			deps: authhttp.Deps{
 				AuthService:     &stubAuthService{},
 				Cookies:         newCookies(t),
@@ -303,7 +385,7 @@ func TestDepsValidate(t *testing.T) {
 			},
 			wantErr: "oidcStateCookies is required",
 		},
-		"sans providersLister": {
+		"without providersLister": {
 			deps: authhttp.Deps{
 				AuthService:      &stubAuthService{},
 				Cookies:          newCookies(t),
@@ -312,7 +394,7 @@ func TestDepsValidate(t *testing.T) {
 			},
 			wantErr: "providersLister is required",
 		},
-		"sans logger": {
+		"without logger": {
 			deps: authhttp.Deps{
 				AuthService:      &stubAuthService{},
 				Cookies:          newCookies(t),
@@ -352,16 +434,16 @@ func TestNewFailsFast(t *testing.T) {
 	logger, _ := testLogger()
 
 	tests := map[string]struct {
-		cfg     authhttp.Config
 		deps    authhttp.Deps
 		wantErr string
+		cfg     authhttp.Config
 	}{
-		"config invalide": {
+		"invalid config": {
 			cfg:     authhttp.Config{Endpoint: "auth"},
 			deps:    authhttp.Deps{AuthService: &stubAuthService{}, Cookies: newCookies(t), Logger: logger},
 			wantErr: `cfg.Validate: endpoint must start with '/', got "auth"`,
 		},
-		"deps invalides": {
+		"invalid deps": {
 			cfg:     authhttp.Config{Endpoint: authEndpoint},
 			deps:    authhttp.Deps{Logger: logger},
 			wantErr: "deps.Validate: cookies is required",
@@ -378,7 +460,7 @@ func TestNewFailsFast(t *testing.T) {
 			}
 
 			if c != nil {
-				t.Error("New a renvoyé un controller en plus de l'erreur")
+				t.Error("New returned a controller in addition to the error")
 			}
 
 			if err.Error() != tc.wantErr {
@@ -396,10 +478,10 @@ func TestInitRouterMountsUnderEndpoint(t *testing.T) {
 		path       string
 		wantStatus int
 	}{
-		"route montée":      {endpoint: authEndpoint, path: loginPath, wantStatus: http.StatusOK},
-		"endpoint imbriqué": {endpoint: "/api/v1/auth", path: "/api/v1/auth/login", wantStatus: http.StatusOK},
-		"hors endpoint":     {endpoint: authEndpoint, path: "/login", wantStatus: http.StatusNotFound},
-		"sous-chemin":       {endpoint: authEndpoint, path: "/auth/login/extra", wantStatus: http.StatusNotFound},
+		"mounted route":   {endpoint: authEndpoint, path: loginPath, wantStatus: http.StatusOK},
+		"nested endpoint": {endpoint: "/api/v1/auth", path: "/api/v1/auth/login", wantStatus: http.StatusOK},
+		"hors endpoint":   {endpoint: authEndpoint, path: "/login", wantStatus: http.StatusNotFound},
+		"subpath":         {endpoint: authEndpoint, path: "/auth/login/extra", wantStatus: http.StatusNotFound},
 	}
 
 	for name, tc := range tests {
@@ -466,7 +548,7 @@ func TestLoginSetsSessionCookie(t *testing.T) {
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1", len(cookies))
+		t.Fatalf("%d cookies set, want 1", len(cookies))
 	}
 
 	if cookies[0].Value != token {
@@ -474,7 +556,7 @@ func TestLoginSetsSessionCookie(t *testing.T) {
 	}
 
 	if !cookies[0].HttpOnly {
-		t.Error("HttpOnly absent : le token deviendrait lisible en JS")
+		t.Error("HttpOnly missing: token would be readable from JS")
 	}
 
 	if want := int(time.Hour.Seconds()); cookies[0].MaxAge != want {
@@ -482,7 +564,7 @@ func TestLoginSetsSessionCookie(t *testing.T) {
 	}
 
 	if logs.Len() != 0 {
-		t.Errorf("aucun log attendu sur le chemin nominal: %s", logs.String())
+		t.Errorf("no logs expected on happy path: %s", logs.String())
 	}
 }
 
@@ -544,7 +626,7 @@ func TestLoginRejectsBadCredentials(t *testing.T) {
 	}
 
 	if n := len(rec.Result().Cookies()); n != 0 {
-		t.Errorf("%d cookies posés sur un login refusé", n)
+		t.Errorf("%d cookies set on denied login", n)
 	}
 
 	var got struct {
@@ -552,7 +634,7 @@ func TestLoginRejectsBadCredentials(t *testing.T) {
 	}
 
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 	}
 
 	if got.Message != "invalid login/password" {
@@ -560,7 +642,7 @@ func TestLoginRejectsBadCredentials(t *testing.T) {
 	}
 
 	if logs.Len() != 0 {
-		t.Errorf("un login refusé n'est pas une erreur serveur: %s", logs.String())
+		t.Errorf("a denied login is not a server error: %s", logs.String())
 	}
 }
 
@@ -569,10 +651,10 @@ func TestLoginRejectsBadRequests(t *testing.T) {
 
 	tests := map[string]string{
 		"corps illisible":       `{`,
-		"nom vide":              loginBody("", password),
-		"nom en espaces":        loginBody("   ", password),
-		"mot de passe vide":     loginBody(username, ""),
-		"champ inconnu":         `{"username":"alice","password":"x","admin":true}`,
+		"empty name":            loginBody("", password),
+		"whitespace name":       loginBody("   ", password),
+		"empty password":        loginBody(username, ""),
+		"unknown field":         `{"username":"alice","password":"x","admin":true}`,
 		"mauvais type de champ": `{"username":1,"password":"x"}`,
 	}
 
@@ -590,7 +672,7 @@ func TestLoginRejectsBadRequests(t *testing.T) {
 			}
 
 			if svc.calls != 0 {
-				t.Errorf("service appelé %d fois sur une requête invalide", svc.calls)
+				t.Errorf("service called %d times on invalid request", svc.calls)
 			}
 		})
 	}
@@ -609,19 +691,19 @@ func TestLoginServiceError(t *testing.T) {
 	}
 
 	if n := len(rec.Result().Cookies()); n != 0 {
-		t.Errorf("%d cookies posés alors que le login a échoué", n)
+		t.Errorf("%d cookies set although login failed", n)
 	}
 
 	if strings.Contains(rec.Body.String(), "database is down") {
-		t.Errorf("l'erreur interne a fuité dans la réponse: %s", rec.Body.String())
+		t.Errorf("internal error leaked into response: %s", rec.Body.String())
 	}
 
 	if !strings.Contains(logs.String(), "database is down") {
-		t.Errorf("l'erreur interne est absente des logs: %s", logs.String())
+		t.Errorf("internal error missing from logs: %s", logs.String())
 	}
 
 	if !strings.Contains(logs.String(), "failed to login") {
-		t.Errorf("message de log attendu absent: %s", logs.String())
+		t.Errorf("expected log message missing: %s", logs.String())
 	}
 }
 
@@ -635,7 +717,7 @@ func TestLoggerCarriesComponentAttribute(t *testing.T) {
 
 	var entry map[string]any
 	if err := json.Unmarshal(bytes.TrimSpace(logs.Bytes()), &entry); err != nil {
-		t.Fatalf("log non décodable (%q): %v", logs.String(), err)
+		t.Fatalf("log not decodable (%q): %v", logs.String(), err)
 	}
 
 	if entry["component"] != "auth.gateway.http" {
@@ -658,29 +740,37 @@ func postLogout(t *testing.T, r chi.Router, cookie *http.Cookie) *httptest.Respo
 	return rec
 }
 
-func TestLogoutRevokesSessionAndClearsCookie(t *testing.T) {
+func TestLogoutRevokesSessionClearsCookieReturns200(t *testing.T) {
 	t.Parallel()
 
+	user := loggedInUser()
+	session := sessions.Session{ID: uuid.New(), UserID: user.ID, ExpiresAt: frozenNow().Add(time.Hour)}
 	svc := &stubAuthService{}
-	r, _ := newTestRouter(t, svc)
+	r, _ := newTestRouterWithLogoutMiddlewares(t, svc, chi.Middlewares{
+		injectSessionMiddleware(user, session),
+	})
 
 	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
 
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusNoContent, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
 	if svc.logoutCalls != 1 {
-		t.Errorf("Logout appelé %d fois, want 1", svc.logoutCalls)
+		t.Errorf("Logout called %d times, want 1", svc.logoutCalls)
 	}
 
 	if svc.logoutToken != token {
-		t.Errorf("token reçu = %q, want %q", svc.logoutToken, token)
+		t.Errorf("token received = %q, want %q", svc.logoutToken, token)
+	}
+
+	if svc.logoutSession.ID != session.ID {
+		t.Errorf("session received = %v, want %v", svc.logoutSession.ID, session.ID)
 	}
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1", len(cookies))
+		t.Fatalf("%d cookies set, want 1", len(cookies))
 	}
 
 	if cookies[0].MaxAge != -1 {
@@ -688,29 +778,65 @@ func TestLogoutRevokesSessionAndClearsCookie(t *testing.T) {
 	}
 
 	if cookies[0].Value != "" {
-		t.Errorf("Value = %q, want vide", cookies[0].Value)
+		t.Errorf("Value = %q, want empty", cookies[0].Value)
 	}
 }
 
-func TestLogoutWithoutCookieClearsCookieAndSkipsService(t *testing.T) {
+func TestLogoutWithoutCookieReturns401AndClearsCookie(t *testing.T) {
 	t.Parallel()
 
 	svc := &stubAuthService{}
-	r, _ := newTestRouter(t, svc)
+	sessionSvc := &stubSessionService{}
+	r, _ := newTestRouterWithLogoutMiddlewares(t, svc, logoutMiddlewaresFor(t, sessionSvc))
 
 	rec := postLogout(t, r, nil)
 
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusNoContent, rec.Body.String())
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusUnauthorized, rec.Body.String())
 	}
 
 	if svc.logoutCalls != 0 {
-		t.Errorf("Logout appelé %d fois, want 0", svc.logoutCalls)
+		t.Errorf("Logout called %d times, want 0", svc.logoutCalls)
+	}
+
+	if sessionSvc.calls != 0 {
+		t.Errorf("Authenticate called %d times without cookie", sessionSvc.calls)
 	}
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1", len(cookies))
+		t.Fatalf("%d cookies set, want 1", len(cookies))
+	}
+
+	if cookies[0].MaxAge != -1 {
+		t.Errorf("MaxAge = %d, want -1", cookies[0].MaxAge)
+	}
+}
+
+func TestLogoutInvalidSession401ClearsCookie(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{}
+	sessionSvc := &stubSessionService{err: sessions.ErrInvalidSession}
+	r, _ := newTestRouterWithLogoutMiddlewares(t, svc, logoutMiddlewaresFor(t, sessionSvc))
+
+	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+
+	if svc.logoutCalls != 0 {
+		t.Errorf("Logout called %d times, want 0", svc.logoutCalls)
+	}
+
+	if sessionSvc.calls != 1 {
+		t.Errorf("Authenticate called %d times, want 1", sessionSvc.calls)
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("%d cookies set, want 1", len(cookies))
 	}
 
 	if cookies[0].MaxAge != -1 {
@@ -721,8 +847,12 @@ func TestLogoutWithoutCookieClearsCookieAndSkipsService(t *testing.T) {
 func TestLogoutServiceErrorLeavesCookieIntact(t *testing.T) {
 	t.Parallel()
 
+	user := loggedInUser()
+	session := sessions.Session{ID: uuid.New(), UserID: user.ID, ExpiresAt: frozenNow().Add(time.Hour)}
 	svc := &stubAuthService{logoutErr: errors.New("database is down")}
-	r, logs := newTestRouter(t, svc)
+	r, logs := newTestRouterWithLogoutMiddlewares(t, svc, chi.Middlewares{
+		injectSessionMiddleware(user, session),
+	})
 
 	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
 
@@ -731,11 +861,38 @@ func TestLogoutServiceErrorLeavesCookieIntact(t *testing.T) {
 	}
 
 	if n := len(rec.Result().Cookies()); n != 0 {
-		t.Errorf("%d cookies posés alors que le logout a échoué", n)
+		t.Errorf("%d cookies set although logout failed", n)
 	}
 
 	if !strings.Contains(logs.String(), "failed to logout") {
-		t.Errorf("message de log attendu absent: %s", logs.String())
+		t.Errorf("expected log message missing: %s", logs.String())
+	}
+}
+
+func TestLogoutReturnsEndSessionURL(t *testing.T) {
+	t.Parallel()
+
+	const endSessionURL = "https://idp.example.com/logout?client_id=app"
+	user := loggedInUser()
+	session := sessions.Session{ID: uuid.New(), UserID: user.ID, ExpiresAt: frozenNow().Add(time.Hour)}
+	svc := &stubAuthService{logoutResult: &auth.LogoutResult{EndSessionURL: endSessionURL}}
+	r, _ := newTestRouterWithLogoutMiddlewares(t, svc, chi.Middlewares{
+		injectSessionMiddleware(user, session),
+	})
+
+	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var got authhttp.LogoutResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal(%s): %v", rec.Body.String(), err)
+	}
+
+	if got.EndSessionURL != endSessionURL {
+		t.Errorf("endSessionUrl = %q, want %q", got.EndSessionURL, endSessionURL)
 	}
 }
 
@@ -811,11 +968,11 @@ func TestListProvidersServiceError(t *testing.T) {
 	}
 
 	if strings.Contains(rec.Body.String(), "database is down") {
-		t.Errorf("l'erreur interne a fuité dans la réponse: %s", rec.Body.String())
+		t.Errorf("internal error leaked into response: %s", rec.Body.String())
 	}
 
 	if !strings.Contains(logs.String(), "database is down") {
-		t.Errorf("l'erreur interne est absente des logs: %s", logs.String())
+		t.Errorf("internal error missing from logs: %s", logs.String())
 	}
 }
 
@@ -873,7 +1030,7 @@ func TestStartOIDCLoginHappyPathRedirectsAndSetsStateCookie(t *testing.T) {
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1", len(cookies))
+		t.Fatalf("%d cookies set, want 1", len(cookies))
 	}
 
 	if want := int(svc.startResult.ExpiresAt.Sub(frozenNow()).Seconds()); cookies[0].MaxAge != want {
@@ -898,7 +1055,7 @@ func TestOIDCCallbackNoStateCookieRedirects(t *testing.T) {
 	}
 
 	if svc.gotFinishOpts.StateCookieValue != "" {
-		t.Errorf("StateCookieValue = %q, want vide", svc.gotFinishOpts.StateCookieValue)
+		t.Errorf("StateCookieValue = %q, want empty", svc.gotFinishOpts.StateCookieValue)
 	}
 }
 
@@ -982,7 +1139,7 @@ func TestOIDCCallbackHappyPathRedirectsSetsSessionAndClearsState(t *testing.T) {
 	}
 
 	if session == nil {
-		t.Fatalf("cookie de session absent (headers: %v)", rec.Header())
+		t.Fatalf("session cookie missing (headers: %v)", rec.Header())
 	}
 
 	if session.Value != token {
@@ -990,7 +1147,7 @@ func TestOIDCCallbackHappyPathRedirectsSetsSessionAndClearsState(t *testing.T) {
 	}
 
 	if !session.HttpOnly {
-		t.Error("session HttpOnly absent")
+		t.Error("session HttpOnly missing")
 	}
 
 	if want := int(svc.finishResult.Session.ExpiresAt.Sub(frozenNow()).Seconds()); session.MaxAge != want {
@@ -998,7 +1155,7 @@ func TestOIDCCallbackHappyPathRedirectsSetsSessionAndClearsState(t *testing.T) {
 	}
 
 	if state == nil {
-		t.Fatalf("cookie d'état oidc absent (headers: %v)", rec.Header())
+		t.Fatalf("oidc state cookie missing (headers: %v)", rec.Header())
 	}
 
 	if state.MaxAge != -1 {
@@ -1019,7 +1176,7 @@ func TestOIDCCallbackSentinelErrors(t *testing.T) {
 		"not allowed": {finishErr: auth.ErrOIDCNotAllowed, wantCode: "oidcNotAllowed", wantLevel: logLevelWarn},
 		"no account":  {finishErr: auth.ErrOIDCNoAccount, wantCode: "oidcNoAccount", wantLevel: logLevelWarn},
 		"unavailable": {finishErr: auth.ErrOIDCUnavailable, wantCode: "oidcUnavailable", wantLevel: "ERROR"},
-		"inconnue":    {finishErr: errors.New("boom"), wantCode: "oidcUnavailable", wantLevel: "ERROR"},
+		"unknown":     {finishErr: errors.New("boom"), wantCode: "oidcUnavailable", wantLevel: "ERROR"},
 	}
 
 	for name, tc := range tests {
@@ -1043,7 +1200,7 @@ func TestOIDCCallbackSentinelErrors(t *testing.T) {
 
 			var entry map[string]any
 			if err := json.Unmarshal(bytes.TrimSpace(logs.Bytes()), &entry); err != nil {
-				t.Fatalf("log non décodable (%q): %v", logs.String(), err)
+				t.Fatalf("log not decodable (%q): %v", logs.String(), err)
 			}
 
 			if entry["level"] != tc.wantLevel {

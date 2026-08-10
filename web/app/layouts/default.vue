@@ -11,8 +11,13 @@ const { logout, loading, isAdmin } = useAuth()
 const { messages } = useToast()
 
 async function onLogout(): Promise<void> {
-  await logout()
-  await navigateTo('/login')
+  const endSessionUrl = await logout()
+
+  if (endSessionUrl) {
+    window.location.assign(endSessionUrl)
+  } else {
+    await navigateTo('/login')
+  }
 }
 
 const { t } = useI18n()

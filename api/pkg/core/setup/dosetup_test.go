@@ -63,19 +63,19 @@ func (f *fakeAuthService) CreateUserWithPwd(
 }
 
 func (f *fakeAuthService) LoginWithPwd(context.Context, auth.LoginWithPwdOpts) (*auth.LoginResult, error) {
-	panic("LoginWithPwd ne doit pas être appelée par DoSetup")
+	panic("LoginWithPwd must not be called by DoSetup")
 }
 
-func (f *fakeAuthService) Logout(context.Context, string) error {
-	panic("Logout ne doit pas être appelée par DoSetup")
+func (f *fakeAuthService) Logout(context.Context, auth.LogoutOpts) (*auth.LogoutResult, error) {
+	panic("Logout must not be called by DoSetup")
 }
 
 func (f *fakeAuthService) StartOIDCLogin(context.Context, auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {
-	panic("StartOIDCLogin ne doit pas être appelée par DoSetup")
+	panic("StartOIDCLogin must not be called by DoSetup")
 }
 
 func (f *fakeAuthService) FinishOIDCLogin(context.Context, auth.FinishOIDCLoginOpts) (*auth.OIDCLoginResult, error) {
-	panic("FinishOIDCLogin ne doit pas être appelée par DoSetup")
+	panic("FinishOIDCLogin must not be called by DoSetup")
 }
 
 type stubSessionService struct {
@@ -102,15 +102,15 @@ func (s *stubSessionService) Create(
 }
 
 func (s *stubSessionService) Authenticate(context.Context, string) (*sessions.AuthenticatedSession, error) {
-	panic("Authenticate ne doit pas être appelée par DoSetup")
+	panic("Authenticate must not be called by DoSetup")
 }
 
 func (s *stubSessionService) Revoke(context.Context, string) error {
-	panic("Revoke ne doit pas être appelée par DoSetup")
+	panic("Revoke must not be called by DoSetup")
 }
 
 func (s *stubSessionService) RevokeAllForUser(context.Context, uuid.UUID) error {
-	panic("RevokeAllForUser ne doit pas être appelée par DoSetup")
+	panic("RevokeAllForUser must not be called by DoSetup")
 }
 
 func defaultSessionStub() *stubSessionService {
@@ -152,19 +152,19 @@ func TestDoSetupCreatesAdminInsideTransaction(t *testing.T) {
 	}
 
 	if as.gotOpts.Name != adminName || !as.gotOpts.IsAdmin {
-		t.Errorf("CreateUserWithPwd reçoit %+v, want un admin nommé %q", as.gotOpts, adminName)
+		t.Errorf("CreateUserWithPwd receives %+v, want admin named %q", as.gotOpts, adminName)
 	}
 
 	if tr.calls != 1 {
-		t.Errorf("WithinTx appelée %d fois, want 1", tr.calls)
+		t.Errorf("WithinTx called %d times, want 1", tr.calls)
 	}
 
 	if !as.gotInTx {
-		t.Error("CreateUserWithPwd n'a pas reçu le ctx transactionnel")
+		t.Error("CreateUserWithPwd did not receive transactional ctx")
 	}
 
 	if !as.gotOpts.IsAdmin {
-		t.Error("le premier utilisateur doit être créé admin")
+		t.Error("the first user must be created as admin")
 	}
 
 	if as.gotOpts.Name != adminName || as.gotOpts.Password != adminPassword {
@@ -199,11 +199,11 @@ func TestDoSetupRefusesWhenAdminExists(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("DoSetup a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("DoSetup returned %+v in addition to the error", got)
 	}
 
 	if as.calls != 0 {
-		t.Errorf("CreateUserWithPwd appelée %d fois alors qu'un admin existe", as.calls)
+		t.Errorf("CreateUserWithPwd called %d times although admin exists", as.calls)
 	}
 }
 
@@ -220,7 +220,7 @@ func TestDoSetupReadsGuardInsideTransaction(t *testing.T) {
 	}
 
 	if !seenTx {
-		t.Error("CountAdmins a été appelée hors de la transaction")
+		t.Error("CountAdmins was called outside transaction")
 	}
 }
 
@@ -238,21 +238,21 @@ func (c *ctxProbeRepository) CountAdmins(ctx context.Context) (int, error) {
 func TestDoSetupPropagatesAuthError(t *testing.T) {
 	t.Parallel()
 
-	sentinel := errors.New("mot de passe trop long")
+	sentinel := errors.New("password too long")
 	as := &fakeAuthService{err: sentinel}
 	svc := newSvc(t, &fakeUsersRepository{count: 0}, as, &fakeTransactor{}, defaultSessionStub())
 
 	got, err := svc.DoSetup(context.Background(), setup.DoSetupOpts{Username: "a", Password: "b"})
 	if err == nil {
-		t.Fatal("DoSetup doit remonter l'erreur de l'auth service")
+		t.Fatal("DoSetup must propagate auth service error")
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable via errors.Is", err)
+		t.Errorf("err = %v, original error no longer reachable via errors.Is", err)
 	}
 
 	if got != nil {
-		t.Errorf("DoSetup a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("DoSetup returned %+v in addition to the error", got)
 	}
 }
 
@@ -265,29 +265,29 @@ func TestDoSetupPropagatesRepositoryError(t *testing.T) {
 
 	_, err := svc.DoSetup(context.Background(), setup.DoSetupOpts{Username: "a", Password: "b"})
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, want l'erreur du repository", err)
+		t.Errorf("err = %v, want repository error", err)
 	}
 
 	if as.calls != 0 {
-		t.Errorf("CreateUserWithPwd appelée %d fois alors que la garde a échoué", as.calls)
+		t.Errorf("CreateUserWithPwd called %d times although guard failed", as.calls)
 	}
 }
 
 func TestDoSetupReturnsNoUserWhenCommitFails(t *testing.T) {
 	t.Parallel()
 
-	sentinel := errors.New("commit refusé")
+	sentinel := errors.New("commit refused")
 	tr := &fakeTransactor{commitErr: sentinel}
 	as := &fakeAuthService{user: &users.User{ID: uuid.New(), Name: adminName}}
 	svc := newSvc(t, &fakeUsersRepository{count: 0}, as, tr, defaultSessionStub())
 
 	got, err := svc.DoSetup(context.Background(), setup.DoSetupOpts{Username: "a", Password: "b"})
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, want l'erreur de la transaction", err)
+		t.Errorf("err = %v, want transaction error", err)
 	}
 
 	if got != nil {
-		t.Errorf("DoSetup a renvoyé %+v alors que la transaction a échoué", got)
+		t.Errorf("DoSetup returned %+v although transaction failed", got)
 	}
 }
 
@@ -304,7 +304,7 @@ func TestDoSetupIssuesPasswordSession(t *testing.T) {
 	}
 
 	if got == nil {
-		t.Fatal("DoSetup n'a pas émis de session")
+		t.Fatal("DoSetup did not issue session")
 	}
 
 	if ss.gotOpts.AuthMethod != sessions.AuthMethodPassword {
@@ -327,7 +327,7 @@ func TestDoSetupIssuesSessionOutsideTransaction(t *testing.T) {
 	}
 
 	if ss.inTx {
-		t.Error("Create a reçu le ctx transactionnel")
+		t.Error("Create received transactional ctx")
 	}
 }
 
@@ -346,7 +346,7 @@ func TestDoSetupSignalsSessionFailureWithoutSession(t *testing.T) {
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, la cause d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original cause no longer reachable", err)
 	}
 
 	if got != nil {
@@ -354,7 +354,7 @@ func TestDoSetupSignalsSessionFailureWithoutSession(t *testing.T) {
 	}
 
 	if as.calls != 1 {
-		t.Errorf("CreateUserWithPwd appelée %d fois : le compte doit rester créé", as.calls)
+		t.Errorf("CreateUserWithPwd called %d times: account must remain created", as.calls)
 	}
 }
 
@@ -362,19 +362,19 @@ func TestDoSetupSkipsSessionWhenTransactionFails(t *testing.T) {
 	t.Parallel()
 
 	ss := defaultSessionStub()
-	tr := &fakeTransactor{commitErr: errors.New("commit refusé")}
+	tr := &fakeTransactor{commitErr: errors.New("commit refused")}
 	svc := newSvc(t, &fakeUsersRepository{count: 0}, &fakeAuthService{user: &users.User{}}, tr, ss)
 
 	got, err := svc.DoSetup(context.Background(), setup.DoSetupOpts{Username: adminName, Password: adminPassword})
 	if err == nil {
-		t.Fatal("DoSetup doit échouer")
+		t.Fatal("DoSetup must fail")
 	}
 
 	if got != nil {
-		t.Errorf("DoSetup a renvoyé %+v alors que la transaction a échoué", got)
+		t.Errorf("DoSetup returned %+v although transaction failed", got)
 	}
 
 	if ss.calls != 0 {
-		t.Errorf("Create appelée %d fois alors qu'aucun administrateur n'existe", ss.calls)
+		t.Errorf("Create called %d times although no administrator exists", ss.calls)
 	}
 }

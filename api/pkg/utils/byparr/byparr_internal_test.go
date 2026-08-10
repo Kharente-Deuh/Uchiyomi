@@ -55,7 +55,7 @@ func TestNewDefaults(t *testing.T) {
 	}
 
 	if c.httpc == nil {
-		t.Error("httpc = nil, want un client par défaut")
+		t.Error("httpc = nil, want default client")
 	}
 
 	if c.retries != 0 {
@@ -74,22 +74,22 @@ func TestOptionsIgnoreInvalidValues(t *testing.T) {
 	)
 
 	if c.maxTimeout != DefaultMaxTimeout {
-		t.Errorf("maxTimeout = %v, un timeout <= 0 doit être ignoré", c.maxTimeout)
+		t.Errorf("maxTimeout = %v, timeout <= 0 must be ignored", c.maxTimeout)
 	}
 
 	if c.retries != 0 {
-		t.Errorf("retries = %d, une valeur négative doit être ignorée", c.retries)
+		t.Errorf("retries = %d, negative value must be ignored", c.retries)
 	}
 
 	if c.httpc == nil {
-		t.Error("httpc = nil, WithHTTPClient(nil) doit être ignoré")
+		t.Error("httpc = nil, WithHTTPClient(nil) must be ignored")
 	}
 }
 
 func TestCookieAsHTTP(t *testing.T) {
 	t.Parallel()
 
-	t.Run("path par défaut", func(t *testing.T) {
+	t.Run("default path", func(t *testing.T) {
 		t.Parallel()
 
 		got := Cookie{Name: "a", Value: "b"}.AsHTTP()
@@ -98,7 +98,7 @@ func TestCookieAsHTTP(t *testing.T) {
 		}
 
 		if !got.Expires.IsZero() {
-			t.Errorf("Expires = %v, want zéro pour un cookie de session", got.Expires)
+			t.Errorf("Expires = %v, want zero for session cookie", got.Expires)
 		}
 	})
 
@@ -116,12 +116,12 @@ func TestCookieAsHTTP(t *testing.T) {
 		}
 	})
 
-	t.Run("cookie de session", func(t *testing.T) {
+	t.Run("session cookie", func(t *testing.T) {
 		t.Parallel()
 
 		got := Cookie{Name: "a", Value: "b", Expires: -1}.AsHTTP()
 		if !got.Expires.IsZero() {
-			t.Errorf("Expires = %v, want zéro quand Expires vaut -1", got.Expires)
+			t.Errorf("Expires = %v, want zero when Expires is -1", got.Expires)
 		}
 	})
 }
@@ -145,11 +145,11 @@ func TestSolutionCookieHelpers(t *testing.T) {
 
 	empty := &Solution{}
 	if got := empty.CookieHeader(); got != "" {
-		t.Errorf("CookieHeader() sans cookie = %q, want vide", got)
+		t.Errorf("CookieHeader() without cookie = %q, want empty", got)
 	}
 
 	if got := empty.CookieMap(); len(got) != 0 {
-		t.Errorf("CookieMap() sans cookie = %v, want vide", got)
+		t.Errorf("CookieMap() without cookie = %v, want empty", got)
 	}
 }
 
@@ -170,7 +170,7 @@ func TestSolutionApplyTo(t *testing.T) {
 
 	cookies := jar.Cookies(u)
 	if len(cookies) != 1 || cookies[0].Name != cfClearanceCookie || cookies[0].Value != testCookieValue {
-		t.Errorf("cookies dans le jar = %v", cookies)
+		t.Errorf("cookies in jar = %v", cookies)
 	}
 }
 
@@ -180,8 +180,8 @@ func TestSolutionApplyToInvalidURL(t *testing.T) {
 	jar, _ := cookiejar.New(nil)
 
 	sol := &Solution{Cookies: []Cookie{{Name: "a", Value: "b"}}}
-	if err := sol.ApplyTo(jar, "://pas-une-url"); err == nil {
-		t.Error("ApplyTo sur une URL invalide = nil, want une erreur")
+	if err := sol.ApplyTo(jar, "://not-a-url"); err == nil {
+		t.Error("ApplyTo on invalid URL = nil, want error")
 	}
 }
 
@@ -192,13 +192,13 @@ func TestErrorMessage(t *testing.T) {
 		err  *Error
 		want string
 	}{
-		"message présent": {
+		"message present": {
 			err:  &Error{HTTPStatus: 500, Status: "error", Message: "challenge failed"},
 			want: `byparr: challenge failed (http 500, status "error")`,
 		},
-		"message absent": {
+		"message missing": {
 			err:  &Error{HTTPStatus: 502},
-			want: `byparr: réponse inattendue (http 502, status "")`,
+			want: `byparr: unexpected response (http 502, status "")`,
 		},
 	}
 
@@ -220,14 +220,14 @@ func TestExtractMessage(t *testing.T) {
 		body string
 		want string
 	}{
-		"clé message":      {body: `{"message":"boom"}`, want: "boom"},
-		"clé detail":       {body: `{"detail":"not found"}`, want: "not found"},
-		"clé error":        {body: `{"error":"nope"}`, want: "nope"},
+		"message key":      {body: `{"message":"boom"}`, want: "boom"},
+		"detail key":       {body: `{"detail":"not found"}`, want: "not found"},
+		"error key":        {body: `{"error":"nope"}`, want: "nope"},
 		"message prime":    {body: `{"detail":"d","message":"m"}`, want: "m"},
 		"texte brut":       {body: "  502 Bad Gateway  ", want: "502 Bad Gateway"},
-		"json sans clé":    {body: `{"other":1}`, want: `{"other":1}`},
-		"corps vide":       {body: "", want: ""},
-		"valeur numérique": {body: `{"message":42}`, want: "42"},
+		"json without key": {body: `{"other":1}`, want: `{"other":1}`},
+		"empty body":       {body: "", want: ""},
+		"numeric value":    {body: `{"message":42}`, want: "42"},
 	}
 
 	for name, tc := range tests {
@@ -247,7 +247,7 @@ func TestExtractMessageTruncatesLongBodies(t *testing.T) {
 	got := extractMessage([]byte(strings.Repeat("x", 400)))
 
 	if !strings.HasSuffix(got, "…") {
-		t.Errorf("un corps long doit être tronqué, longueur = %d", len(got))
+		t.Errorf("long body must be truncated, length = %d", len(got))
 	}
 
 	if want := 300 + len("…"); len(got) != want {
@@ -315,7 +315,7 @@ func TestHealthInvalidJSON(t *testing.T) {
 	defer srv.Close()
 
 	if _, err := New(srv.URL).Health(context.Background()); err == nil {
-		t.Error("Health sur un JSON invalide = nil, want une erreur")
+		t.Error("Health on invalid JSON = nil, want error")
 	}
 }
 
@@ -323,7 +323,7 @@ func TestDoRejectsEmptyURL(t *testing.T) {
 	t.Parallel()
 
 	if _, err := New("http://x").Do(context.Background(), Request{}); err == nil {
-		t.Error("Do sans URL = nil, want une erreur")
+		t.Error("Do without URL = nil, want error")
 	}
 }
 
@@ -338,7 +338,7 @@ func TestDoPayload(t *testing.T) {
 		}
 
 		if r.Method != http.MethodPost {
-			t.Errorf("méthode = %q, want POST", r.Method)
+			t.Errorf("method = %q, want POST", r.Method)
 		}
 
 		if ct := r.Header.Get("Content-Type"); ct != "application/json" {
@@ -346,11 +346,11 @@ func TestDoPayload(t *testing.T) {
 		}
 
 		if v := r.Header.Get("X-Auth"); v != "secret" {
-			t.Errorf("X-Auth = %q, want %q (en-tête client)", v, "secret")
+			t.Errorf("X-Auth = %q, want %q (client header)", v, "secret")
 		}
 
 		if v := r.Header.Get("X-Req"); v != "per-request" {
-			t.Errorf("X-Req = %q, want %q (en-tête de requête)", v, "per-request")
+			t.Errorf("X-Req = %q, want %q (request header)", v, "per-request")
 		}
 
 		_ = json.NewDecoder(r.Body).Decode(&got)
@@ -393,7 +393,7 @@ func TestDoPayload(t *testing.T) {
 	}
 
 	if _, ok := got["max_timeout"]; ok {
-		t.Error("max_timeout ne doit pas être envoyé sans WithSecondsTimeout")
+		t.Error("max_timeout must not be sent without WithSecondsTimeout")
 	}
 }
 
@@ -419,7 +419,7 @@ func TestDoSecondsTimeout(t *testing.T) {
 	}
 
 	if _, ok := got["maxTimeout"]; ok {
-		t.Error("maxTimeout ne doit pas être envoyé avec WithSecondsTimeout")
+		t.Error("maxTimeout must not be sent with WithSecondsTimeout")
 	}
 }
 
@@ -478,7 +478,7 @@ func TestDoStatusNotOK(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"status":"error","message":"challenge non résolu"}`))
+		_, _ = w.Write([]byte(`{"status":"error","message":"challenge not solved"}`))
 	}))
 	defer srv.Close()
 
@@ -489,12 +489,12 @@ func TestDoStatusNotOK(t *testing.T) {
 		t.Fatalf("Get() = %v, want *byparr.Error", err)
 	}
 
-	if apiErr.Status != "error" || apiErr.Message != "challenge non résolu" {
+	if apiErr.Status != "error" || apiErr.Message != "challenge not solved" {
 		t.Errorf("err = %+v", apiErr)
 	}
 
 	if apiErr.HTTPStatus != http.StatusOK {
-		t.Errorf("HTTPStatus = %d, want 200 (Byparr répond 200 avec status error)", apiErr.HTTPStatus)
+		t.Errorf("HTTPStatus = %d, want 200 (Byparr responds 200 with status error)", apiErr.HTTPStatus)
 	}
 }
 
@@ -506,17 +506,17 @@ func TestDoDoesNotRetryOn4xx(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"detail":"cmd inconnu"}`))
+		_, _ = w.Write([]byte(`{"detail":"unknown cmd"}`))
 	}))
 	defer srv.Close()
 
 	_, err := New(srv.URL, WithRetries(3)).Get(context.Background(), "https://t/")
 	if err == nil {
-		t.Fatal("Get sur un 400 = nil, want une erreur")
+		t.Fatal("Get on 400 = nil, want error")
 	}
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("%d appels pour un 400, want 1 (pas de retry sur une erreur cliente)", got)
+		t.Errorf("%d calls for 400, want 1 (no retry on client error)", got)
 	}
 }
 
@@ -543,11 +543,11 @@ func TestDoRetriesOn5xx(t *testing.T) {
 	}
 
 	if sol == nil {
-		t.Fatal("solution nil après un retry réussi")
+		t.Fatal("solution nil after successful retry")
 	}
 
 	if got := calls.Load(); got != 2 {
-		t.Errorf("%d appels, want 2 (un échec puis une réussite)", got)
+		t.Errorf("%d calls, want 2 (one failure then one success)", got)
 	}
 }
 
@@ -563,7 +563,7 @@ func TestDoStopsOnCancelledContext(t *testing.T) {
 	cancel()
 
 	if _, err := New(srv.URL, WithRetries(5)).Get(ctx, "https://t/"); err == nil {
-		t.Error("Get sur un contexte annulé = nil, want une erreur")
+		t.Error("Get on canceled context = nil, want error")
 	}
 }
 
@@ -571,7 +571,7 @@ func TestSolutionHTTPClientRequiresURL(t *testing.T) {
 	t.Parallel()
 
 	if _, err := (&Solution{}).HTTPClient(nil); err == nil {
-		t.Error("HTTPClient sans URL = nil, want une erreur")
+		t.Error("HTTPClient without URL = nil, want error")
 	}
 }
 
@@ -615,17 +615,17 @@ func TestSessionCarriesCookiesAndUserAgent(t *testing.T) {
 
 	resp, err := hc.Get(target.URL + "/api")
 	if err != nil {
-		t.Fatalf("requête directe: %v", err)
+		t.Fatalf("direct request: %v", err)
 	}
 
 	defer resp.Body.Close()
 
 	if gotUA != "Mozilla/5.0 (test)" {
-		t.Errorf("User-Agent envoyé = %q, want celui de la solution", gotUA)
+		t.Errorf("User-Agent sent = %q, want solution value", gotUA)
 	}
 
 	if gotCookie != "abc123" {
-		t.Errorf("cookie cf_clearance envoyé = %q, want %q", gotCookie, "abc123")
+		t.Errorf("cf_clearance cookie sent = %q, want %q", gotCookie, "abc123")
 	}
 }
 
@@ -646,11 +646,11 @@ func TestSessionOverrideRequestKeepsWarmupURL(t *testing.T) {
 	}
 
 	if got["url"] != "https://t/" {
-		t.Errorf("url = %v, want l'URL de warmup quand la Request n'en porte pas", got["url"])
+		t.Errorf("url = %v, want warmup URL when Request carries none", got["url"])
 	}
 
 	if got["proxy"] != "http://p:1" {
-		t.Errorf("proxy = %v, l'option de la Request doit être conservée", got["proxy"])
+		t.Errorf("proxy = %v, Request option must be preserved", got["proxy"])
 	}
 }
 
@@ -681,7 +681,7 @@ func TestUATransportForcesUserAgent(t *testing.T) {
 	}
 
 	if req.Header.Get("User-Agent") != "original" {
-		t.Errorf("la requête appelante a été mutée: %q", req.Header.Get("User-Agent"))
+		t.Errorf("calling request was mutated: %q", req.Header.Get("User-Agent"))
 	}
 }
 
@@ -743,7 +743,7 @@ func TestTransportDefaultsStatusTo200(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("StatusCode = %d, want 200 quand la solution n'en porte pas", resp.StatusCode)
+		t.Errorf("StatusCode = %d, want 200 when solution carries none", resp.StatusCode)
 	}
 }
 
@@ -755,18 +755,18 @@ func TestTransportErrors(t *testing.T) {
 
 		req, _ := http.NewRequest(http.MethodGet, "https://t/", nil)
 		if _, err := (&Transport{}).RoundTrip(req); err == nil {
-			t.Error("RoundTrip sans Client = nil, want une erreur")
+			t.Error("RoundTrip without Client = nil, want error")
 		}
 	})
 
-	t.Run("méthode non supportée", func(t *testing.T) {
+	t.Run("unsupported method", func(t *testing.T) {
 		t.Parallel()
 
 		tr := &Transport{Client: New("http://x")}
 
 		req, _ := http.NewRequest(http.MethodDelete, "https://t/", nil)
 		if _, err := tr.RoundTrip(req); err == nil {
-			t.Error("RoundTrip en DELETE = nil, want une erreur")
+			t.Error("RoundTrip on DELETE = nil, want error")
 		}
 	})
 }

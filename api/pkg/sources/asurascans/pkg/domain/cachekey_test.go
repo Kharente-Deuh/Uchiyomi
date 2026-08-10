@@ -22,29 +22,29 @@ func TestSearchOptsCacheKeyIsInjective(t *testing.T) {
 		b    domain.SearchOpts
 		same bool
 	}{
-		"genres découpés différemment": {
+		"genres split differently": {
 			a: domain.SearchOpts{Genres: []domain.SeriesGenre{"Slice", "of", "Life"}},
 			b: domain.SearchOpts{Genres: []domain.SeriesGenre{"Slice of Life"}},
 		},
-		"champs texte adjacents décalés": {
+		"adjacent text fields offset": {
 			a: domain.SearchOpts{Status: "ongoing", Type: "manga"},
 			b: domain.SearchOpts{Status: "ongoing manga"},
 		},
-		"search vide contre genre homonyme": {
+		"empty search vs homonym genre": {
 			a: domain.SearchOpts{Search: testGenreAction},
 			b: domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreAction}},
 		},
-		"ordre des genres indifférent": {
+		"genre order irrelevant": {
 			a:    domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreAction, testGenreDrama}},
 			b:    domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreDrama, testGenreAction}},
 			same: true,
 		},
-		"genre répété indifférent": {
+		"repeated genre irrelevant": {
 			a:    domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreAction, testGenreAction}},
 			b:    domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreAction}},
 			same: true,
 		},
-		"nil et slice vide équivalents": {
+		"nil and empty slice equivalent": {
 			a:    domain.SearchOpts{Genres: nil},
 			b:    domain.SearchOpts{Genres: []domain.SeriesGenre{}},
 			same: true,
@@ -62,7 +62,7 @@ func TestSearchOptsCacheKeyIsInjective(t *testing.T) {
 			}
 
 			if !tc.same && keyA == keyB {
-				t.Errorf("CacheKey() = %q pour deux options différentes, want distinctes", keyA)
+				t.Errorf("CacheKey() = %q for two different options, want distinct", keyA)
 			}
 		})
 	}
@@ -77,7 +77,7 @@ func TestSearchOptsCacheKeyDoesNotMutateGenres(t *testing.T) {
 	_ = opts.CacheKey()
 
 	if genres[0] != testGenreDrama || genres[1] != testGenreAction {
-		t.Errorf("Genres = %v après CacheKey(), want [drama action] (la slice appartient à l'appelant)", genres)
+		t.Errorf("Genres = %v after CacheKey(), want [drama action] (slice belongs to caller)", genres)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestSearchOptsCacheKeyDistinguishesEveryField(t *testing.T) {
 			}
 
 			if got := opts.CacheKey(); got == baseKey {
-				t.Errorf("changer %s ne change pas la clé (%q)", field, got)
+				t.Errorf("changing %s does not change key (%q)", field, got)
 			}
 		})
 	}
@@ -145,6 +145,6 @@ func TestGetImageURLsByChapterOptsCacheKeyIsInjective(t *testing.T) {
 	b := domain.GetImageURLsByChapterOpts{SeriesSlug: "one piece"}
 
 	if a.CacheKey() == b.CacheKey() {
-		t.Errorf("CacheKey() = %q pour deux options différentes, want distinctes", a.CacheKey())
+		t.Errorf("CacheKey() = %q for two different options, want distinct", a.CacheKey())
 	}
 }

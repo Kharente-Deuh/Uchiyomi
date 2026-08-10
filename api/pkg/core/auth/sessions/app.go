@@ -60,7 +60,7 @@ func New(cfg Config, deps Deps) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	//nolint:wrapcheck // Run délègue tel quel à utils.Loop, comme le reste du dépôt (voir fncache.Run).
+	//nolint:wrapcheck // Run delegates unchanged to utils.Loop, like the rest of the repo (see fncache.Run).
 	return utils.Loop(ctx, utils.LoopOpts{
 		Interval: a.cfg.RemoveExpiredSessionsInterval,
 		Fn:       a.removeExpiredSessions,

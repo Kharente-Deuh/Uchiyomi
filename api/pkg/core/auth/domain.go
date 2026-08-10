@@ -15,7 +15,7 @@ import (
 type AuthService interface {
 	LoginWithPwd(context.Context, LoginWithPwdOpts) (*LoginResult, error)
 	CreateUserWithPwd(context.Context, CreateUserWithPwdOpts) (*users.User, error)
-	Logout(context.Context, string) error
+	Logout(context.Context, LogoutOpts) (*LogoutResult, error)
 	StartOIDCLogin(context.Context, StartOIDCLoginOpts) (*OIDCStart, error)
 	FinishOIDCLogin(context.Context, FinishOIDCLoginOpts) (*OIDCLoginResult, error)
 }
@@ -34,6 +34,15 @@ type CreateUserWithPwdOpts struct {
 type LoginWithPwdOpts struct {
 	Username string
 	Password string
+}
+
+type LogoutOpts struct {
+	Token   string
+	Session sessions.Session
+}
+
+type LogoutResult struct {
+	EndSessionURL string
 }
 
 type StartOIDCLoginOpts struct {

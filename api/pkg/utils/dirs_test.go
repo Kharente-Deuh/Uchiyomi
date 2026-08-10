@@ -25,11 +25,11 @@ func TestEnsureDirCreatesUsableDirectory(t *testing.T) {
 	}
 
 	if !info.IsDir() {
-		t.Fatalf("%s n'est pas un répertoire", dir)
+		t.Fatalf("%s is not a directory", dir)
 	}
 
 	if err := os.WriteFile(filepath.Join(dir, "probe.txt"), []byte("ok"), 0o600); err != nil {
-		t.Fatalf("répertoire créé mais inutilisable (mode %v): %v", info.Mode().Perm(), err)
+		t.Fatalf("directory created but unusable (mode %v): %v", info.Mode().Perm(), err)
 	}
 }
 
@@ -40,7 +40,7 @@ func TestEnsureDirIsIdempotent(t *testing.T) {
 
 	for i := range 3 {
 		if err := utils.EnsureDir(dir); err != nil {
-			t.Fatalf("EnsureDir appel %d: %v", i+1, err)
+			t.Fatalf("EnsureDir call %d: %v", i+1, err)
 		}
 	}
 }
@@ -54,6 +54,6 @@ func TestEnsureDirFailsOnExistingFile(t *testing.T) {
 	}
 
 	if err := utils.EnsureDir(path); err == nil {
-		t.Error("EnsureDir doit échouer quand le chemin est un fichier")
+		t.Error("EnsureDir must fail when path is a file")
 	}
 }

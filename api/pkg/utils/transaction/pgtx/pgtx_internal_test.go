@@ -16,11 +16,11 @@ func TestTxOptions(t *testing.T) {
 		opts transaction.TxOpts
 		want sql.IsolationLevel
 	}{
-		"par défaut, on laisse le niveau du serveur": {
+		"by default, keep server level": {
 			opts: transaction.TxOpts{},
 			want: sql.LevelDefault,
 		},
-		"serializable est traduit explicitement": {
+		"serializable is translated explicitly": {
 			opts: transaction.TxOpts{Isolation: transaction.IsolationSerializable},
 			want: sql.LevelSerializable,
 		},

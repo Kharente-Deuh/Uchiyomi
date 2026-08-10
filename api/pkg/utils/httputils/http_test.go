@@ -52,7 +52,7 @@ func TestWriteJSONSuccess(t *testing.T) {
 
 	var got map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 	}
 
 	if got["name"] != "one piece" {
@@ -60,7 +60,7 @@ func TestWriteJSONSuccess(t *testing.T) {
 	}
 
 	if logs.Len() != 0 {
-		t.Errorf("aucun log attendu sur le chemin nominal, obtenu: %s", logs.String())
+		t.Errorf("no logs expected on happy path, got: %s", logs.String())
 	}
 }
 
@@ -99,7 +99,7 @@ func TestWriteJSONEncodeFailureFallsBackTo500(t *testing.T) {
 
 	var got errorBody
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("corps de secours non décodable (%q): %v", rec.Body.String(), err)
+		t.Fatalf("fallback body not decodable (%q): %v", rec.Body.String(), err)
 	}
 
 	if got.Message != http.StatusText(http.StatusInternalServerError) {
@@ -107,7 +107,7 @@ func TestWriteJSONEncodeFailureFallsBackTo500(t *testing.T) {
 	}
 
 	if !strings.Contains(logs.String(), "failed to encode response body") {
-		t.Errorf("échec d'encodage non loggé, logs: %s", logs.String())
+		t.Errorf("encoding failure not logged, logs: %s", logs.String())
 	}
 }
 
@@ -125,7 +125,7 @@ func TestWriteJSONNoPartialBodyOnEncodeFailure(t *testing.T) {
 	httputils.WriteJSON(rec, logger, http.StatusOK, partial{Good: "visible", Bad: make(chan int)})
 
 	if strings.Contains(rec.Body.String(), "visible") {
-		t.Errorf("fragment de la réponse échouée écrit au client: %q", rec.Body.String())
+		t.Errorf("fragment of failed response written to client: %q", rec.Body.String())
 	}
 
 	if rec.Code != http.StatusInternalServerError {
@@ -159,11 +159,11 @@ func TestWriteJSONLogsWriteFailure(t *testing.T) {
 	httputils.WriteJSON(w, logger, http.StatusOK, map[string]string{"a": "b"})
 
 	if !strings.Contains(logs.String(), "failed to write response body") {
-		t.Errorf("échec d'écriture non loggé, logs: %s", logs.String())
+		t.Errorf("write failure not logged, logs: %s", logs.String())
 	}
 
 	if !strings.Contains(logs.String(), "connection reset") {
-		t.Errorf("cause de l'échec absente des logs: %s", logs.String())
+		t.Errorf("failure cause missing from logs: %s", logs.String())
 	}
 }
 
@@ -175,17 +175,17 @@ func TestWriteError(t *testing.T) {
 		wantMessage string
 		status      int
 	}{
-		"message vide reprend le texte du statut": {
+		"empty message falls back to status text": {
 			status:      http.StatusInternalServerError,
 			msg:         "",
 			wantMessage: "Internal Server Error",
 		},
-		"404 sans message": {
+		"404 without message": {
 			status:      http.StatusNotFound,
 			msg:         "",
 			wantMessage: "Not Found",
 		},
-		"message explicite conservé": {
+		"explicit message preserved": {
 			status:      http.StatusBadRequest,
 			msg:         "slug is required",
 			wantMessage: "slug is required",
@@ -211,7 +211,7 @@ func TestWriteError(t *testing.T) {
 
 			var got errorBody
 			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+				t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 			}
 
 			if got.Message != tc.wantMessage {
@@ -231,10 +231,10 @@ func TestWriteErrorUnknownStatusHasEmptyStatusText(t *testing.T) {
 
 	var got errorBody
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 	}
 
 	if got.Message != "" {
-		t.Errorf("message = %q, want %q pour un statut inconnu", got.Message, "")
+		t.Errorf("message = %q, want %q for unknown status", got.Message, "")
 	}
 }

@@ -178,7 +178,7 @@ func TestGetByIDError(t *testing.T) {
 	}
 
 	if errors.Is(err, domain.ErrNotFound) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrNotFound")
+		t.Error("SQL failure must not be translated to ErrNotFound")
 	}
 }
 
@@ -261,7 +261,7 @@ func TestGetAllEmpty(t *testing.T) {
 	}
 
 	if len(got) != 0 {
-		t.Errorf("GetAll() = %+v, want vide", got)
+		t.Errorf("GetAll() = %+v, want empty", got)
 	}
 }
 
@@ -322,7 +322,7 @@ func TestGetUsersEmpty(t *testing.T) {
 	}
 
 	if len(got) != 0 {
-		t.Errorf("GetUsers() = %+v, want vide", got)
+		t.Errorf("GetUsers() = %+v, want empty", got)
 	}
 }
 
@@ -367,7 +367,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	if got.ID == uuid.Nil {
-		t.Error("Create n'a pas généré d'ID")
+		t.Error("Create did not generate ID")
 	}
 
 	if got.DisplayName != testDisplayName || got.IssuerURL != testIssuerURL {
@@ -379,7 +379,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	if got.CreatedAt.IsZero() || got.UpdatedAt.IsZero() {
-		t.Errorf("horodatages non renseignés: created=%v updated=%v", got.CreatedAt, got.UpdatedAt)
+		t.Errorf("timestamps not set: created=%v updated=%v", got.CreatedAt, got.UpdatedAt)
 	}
 }
 
@@ -398,7 +398,7 @@ func TestCreateDuplicate(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("Create a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Create returned %+v in addition to the error", got)
 	}
 }
 
@@ -418,7 +418,7 @@ func TestCreateError(t *testing.T) {
 	}
 
 	if errors.Is(err, domain.ErrAlreadyExists) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrAlreadyExists")
+		t.Error("SQL failure must not be translated to ErrAlreadyExists")
 	}
 }
 

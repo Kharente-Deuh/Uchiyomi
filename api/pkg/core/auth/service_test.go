@@ -14,6 +14,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/hash"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/password"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidc"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
@@ -26,6 +27,7 @@ const (
 	userName         = "alice"
 	pwd              = "hunter2hunter2"
 	token            = "letoken"
+	publicURL        = "https://app.example.com"
 	oidcRedirectURI  = "https://app.example.com/callback"
 	testCipherKey    = "abcdefghijklmnopqrstuvwxyz012345"
 	usernameClaimKey = "preferred_username"
@@ -222,7 +224,7 @@ func (f *fakePwdRepository) GetByUserID(_ context.Context, userID uuid.UUID) (*p
 }
 
 func (f *fakePwdRepository) UpdateByUserID(context.Context, password.UpsertPasswordCredsOpts) error {
-	panic("UpdateByUserID n'est pas utilisée par le service auth")
+	panic("UpdateByUserID is not used by the auth service")
 }
 
 type fakeSessionService struct {
@@ -250,7 +252,7 @@ func (f *fakeSessionService) Create(
 }
 
 func (f *fakeSessionService) Authenticate(context.Context, string) (*sessions.AuthenticatedSession, error) {
-	panic("Authenticate n'est pas utilisée par le service auth")
+	panic("Authenticate is not used by the auth service")
 }
 
 func (f *fakeSessionService) Revoke(_ context.Context, token string) error {
@@ -265,7 +267,7 @@ func (f *fakeSessionService) Revoke(_ context.Context, token string) error {
 }
 
 func (f *fakeSessionService) RevokeAllForUser(context.Context, uuid.UUID) error {
-	panic("RevokeAllForUser n'est pas utilisée par le service auth")
+	panic("RevokeAllForUser is not used by the auth service")
 }
 
 type fakes struct {
@@ -302,7 +304,7 @@ func newFakes() *fakes {
 
 	return &fakes{
 		clock: c,
-		cfg:   auth.Config{RedirectURI: oidcRedirectURI, StateCookieTTL: 10 * time.Minute},
+		cfg:   auth.Config{PublicURL: publicURL, RedirectURI: oidcRedirectURI, StateCookieTTL: 10 * time.Minute},
 		now:   time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC),
 		hs:    &fakeHashService{clock: c, match: true},
 		ur:    &fakeUsersRepository{user: user, byID: map[uuid.UUID]*users.User{user.ID: user}},
@@ -358,15 +360,15 @@ func TestNewRequiresTransactor(t *testing.T) {
 	f := newFakes()
 
 	svc, err := auth.New(
-		auth.Config{RedirectURI: oidcRedirectURI},
+		auth.Config{PublicURL: publicURL, RedirectURI: oidcRedirectURI},
 		auth.Deps{HashService: f.hs, UsersRepository: f.ur, PwdRepository: f.pr},
 	)
 	if err == nil {
-		t.Fatal("New sans transactor doit échouer")
+		t.Fatal("New without transactor must fail")
 	}
 
 	if svc != nil {
-		t.Error("New a renvoyé un service en plus de l'erreur")
+		t.Error("New returned a service in addition to the error")
 	}
 
 	if want := "deps.Validate: transactor is required"; err.Error() != want {
@@ -393,15 +395,15 @@ func TestCreateUserWithPwdWrapsBothWritesInOneTransaction(t *testing.T) {
 	}
 
 	if f.tr.calls != 1 {
-		t.Errorf("WithinTx appelée %d fois, want 1", f.tr.calls)
+		t.Errorf("WithinTx called %d times, want 1", f.tr.calls)
 	}
 
 	if !f.ur.inTx {
-		t.Error("UsersRepository.Create n'a pas reçu le ctx transactionnel")
+		t.Error("UsersRepository.Create did not receive transactional ctx")
 	}
 
 	if !f.pr.inTx {
-		t.Error("PwdRepository.Create n'a pas reçu le ctx transactionnel")
+		t.Error("PwdRepository.Create did not receive transactional ctx")
 	}
 }
 
@@ -418,11 +420,11 @@ func TestCreateUserWithPwdHashesBeforeOpeningTransaction(t *testing.T) {
 	}
 
 	if f.hs.hashedAt == 0 || f.tr.beganAt == 0 {
-		t.Fatalf("appels non observés: hashedAt=%d beganAt=%d", f.hs.hashedAt, f.tr.beganAt)
+		t.Fatalf("calls not observed: hashedAt=%d beganAt=%d", f.hs.hashedAt, f.tr.beganAt)
 	}
 
 	if f.hs.hashedAt > f.tr.beganAt {
-		t.Errorf("hash effectué dans la transaction (hashedAt=%d > beganAt=%d)", f.hs.hashedAt, f.tr.beganAt)
+		t.Errorf("hash performed inside transaction (hashedAt=%d > beganAt=%d)", f.hs.hashedAt, f.tr.beganAt)
 	}
 }
 
@@ -453,15 +455,15 @@ func TestCreateUserWithPwdPassesHashToPwdRepository(t *testing.T) {
 	}
 
 	if string(f.hs.got) != pwd {
-		t.Errorf("Hash a reçu %q", f.hs.got)
+		t.Errorf("Hash received %q", f.hs.got)
 	}
 
 	if f.pr.gotOpts.Hash != "hashed:"+pwd {
-		t.Errorf("PwdRepository a reçu le hash %q", f.pr.gotOpts.Hash)
+		t.Errorf("PwdRepository received hash %q", f.pr.gotOpts.Hash)
 	}
 
 	if f.pr.gotOpts.UserID != f.ur.user.ID {
-		t.Errorf("PwdRepository a reçu UserID %v, want %v", f.pr.gotOpts.UserID, f.ur.user.ID)
+		t.Errorf("PwdRepository received UserID %v, want %v", f.pr.gotOpts.UserID, f.ur.user.ID)
 	}
 }
 
@@ -473,11 +475,11 @@ func TestCreateUserWithPwdReturnsNoUserWhenPwdWriteFails(t *testing.T) {
 
 	got, err := f.svc(t).CreateUserWithPwd(context.Background(), auth.CreateUserWithPwdOpts{Name: userName})
 	if !errors.Is(err, f.pr.err) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 
 	if got != nil {
-		t.Errorf("CreateUserWithPwd a renvoyé %+v alors que la transaction a échoué", got)
+		t.Errorf("CreateUserWithPwd returned %+v although transaction failed", got)
 	}
 }
 
@@ -485,15 +487,15 @@ func TestCreateUserWithPwdReturnsNoUserWhenCommitFails(t *testing.T) {
 	t.Parallel()
 
 	f := newFakes()
-	f.tr.commitErr = errors.New("commit refusé")
+	f.tr.commitErr = errors.New("commit refused")
 
 	got, err := f.svc(t).CreateUserWithPwd(context.Background(), auth.CreateUserWithPwdOpts{Name: userName})
 	if !errors.Is(err, f.tr.commitErr) {
-		t.Errorf("err = %v, want l'erreur de commit", err)
+		t.Errorf("err = %v, want commit error", err)
 	}
 
 	if got != nil {
-		t.Errorf("CreateUserWithPwd a renvoyé %+v alors que le commit a échoué", got)
+		t.Errorf("CreateUserWithPwd returned %+v although commit failed", got)
 	}
 }
 
@@ -504,11 +506,11 @@ func TestCreateUserWithPwdPropagatesSentinels(t *testing.T) {
 		setup func(*fakes)
 		want  error
 	}{
-		"mot de passe trop long": {
+		"password too long": {
 			setup: func(f *fakes) { f.hs.err = hash.ErrStringTooLong },
 			want:  hash.ErrStringTooLong,
 		},
-		"nom déjà pris": {
+		"name already taken": {
 			setup: func(f *fakes) { f.ur.err = domain.ErrAlreadyExists },
 			want:  domain.ErrAlreadyExists,
 		},
@@ -527,7 +529,7 @@ func TestCreateUserWithPwdPropagatesSentinels(t *testing.T) {
 			}
 
 			if got != nil {
-				t.Errorf("CreateUserWithPwd a renvoyé %+v en plus de l'erreur", got)
+				t.Errorf("CreateUserWithPwd returned %+v in addition to the error", got)
 			}
 		})
 	}
@@ -540,15 +542,15 @@ func TestCreateUserWithPwdSkipsTransactionWhenHashFails(t *testing.T) {
 	f.hs.err = hash.ErrStringTooLong
 
 	if _, err := f.svc(t).CreateUserWithPwd(context.Background(), auth.CreateUserWithPwdOpts{Name: "a"}); err == nil {
-		t.Fatal("CreateUserWithPwd doit échouer")
+		t.Fatal("CreateUserWithPwd must fail")
 	}
 
 	if f.tr.calls != 0 {
-		t.Errorf("WithinTx appelée %d fois alors que le hash a échoué", f.tr.calls)
+		t.Errorf("WithinTx called %d times although hash failed", f.tr.calls)
 	}
 
 	if f.pr.calls != 0 {
-		t.Errorf("PwdRepository.Create appelée %d fois alors que le hash a échoué", f.pr.calls)
+		t.Errorf("PwdRepository.Create called %d times although hash failed", f.pr.calls)
 	}
 }
 
@@ -571,15 +573,15 @@ func TestLoginWithPwdIssuesPasswordSession(t *testing.T) {
 	}
 
 	if f.ur.gotName != userName {
-		t.Errorf("GetByUsername a reçu %q, want %q", f.ur.gotName, userName)
+		t.Errorf("GetByUsername received %q, want %q", f.ur.gotName, userName)
 	}
 
 	if f.pr.gotUserID != f.ur.user.ID {
-		t.Errorf("GetByUserID a reçu %v, want %v", f.pr.gotUserID, f.ur.user.ID)
+		t.Errorf("GetByUserID received %v, want %v", f.pr.gotUserID, f.ur.user.ID)
 	}
 
 	if string(f.hs.gotHashed) != f.pr.creds.Hash || string(f.hs.gotCompare) != pwd {
-		t.Errorf("Match a reçu (%q, %q)", f.hs.gotHashed, f.hs.gotCompare)
+		t.Errorf("Match received (%q, %q)", f.hs.gotHashed, f.hs.gotCompare)
 	}
 
 	if f.ss.gotOpts.UserID != f.ur.user.ID || f.ss.gotOpts.AuthMethod != sessions.AuthMethodPassword {
@@ -600,7 +602,7 @@ func TestLoginWithPwdOpensNoTransaction(t *testing.T) {
 	}
 
 	if f.tr.calls != 0 {
-		t.Errorf("WithinTx appelée %d fois par LoginWithPwd", f.tr.calls)
+		t.Errorf("WithinTx called %d times by LoginWithPwd", f.tr.calls)
 	}
 }
 
@@ -608,9 +610,9 @@ func TestLoginWithPwdRejectsBadCredentials(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]func(*fakes){
-		"utilisateur inconnu": func(f *fakes) { f.ur.byNameErr = domain.ErrNotFound },
-		"aucun mot de passe":  func(f *fakes) { f.pr.getErr = domain.ErrNotFound },
-		"mot de passe erroné": func(f *fakes) { f.hs.match = false },
+		"unknown user":   func(f *fakes) { f.ur.byNameErr = domain.ErrNotFound },
+		"no password":    func(f *fakes) { f.pr.getErr = domain.ErrNotFound },
+		"wrong password": func(f *fakes) { f.hs.match = false },
 	}
 
 	for name, setup := range tests {
@@ -629,11 +631,11 @@ func TestLoginWithPwdRejectsBadCredentials(t *testing.T) {
 			}
 
 			if got != nil {
-				t.Errorf("LoginWithPwd a renvoyé %+v en plus de l'erreur", got)
+				t.Errorf("LoginWithPwd returned %+v in addition to the error", got)
 			}
 
 			if f.ss.calls != 0 {
-				t.Errorf("Create appelée %d fois alors que le login a échoué", f.ss.calls)
+				t.Errorf("Create called %d times although login failed", f.ss.calls)
 			}
 		})
 	}
@@ -643,8 +645,8 @@ func TestLoginWithPwdBurnsHashTimeOnUnknownAccount(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]func(*fakes){
-		"utilisateur inconnu": func(f *fakes) { f.ur.byNameErr = domain.ErrNotFound },
-		"aucun mot de passe":  func(f *fakes) { f.pr.getErr = domain.ErrNotFound },
+		"unknown user": func(f *fakes) { f.ur.byNameErr = domain.ErrNotFound },
+		"no password":  func(f *fakes) { f.pr.getErr = domain.ErrNotFound },
 	}
 
 	for name, setup := range tests {
@@ -662,11 +664,11 @@ func TestLoginWithPwdBurnsHashTimeOnUnknownAccount(t *testing.T) {
 			}
 
 			if f.hs.hashCalls != 1 {
-				t.Errorf("Hash appelée %d fois, want 1", f.hs.hashCalls)
+				t.Errorf("Hash called %d times, want 1", f.hs.hashCalls)
 			}
 
 			if string(f.hs.got) != pwd {
-				t.Errorf("Hash a reçu %q, want le mot de passe fourni", f.hs.got)
+				t.Errorf("Hash received %q, want provided password", f.hs.got)
 			}
 		})
 	}
@@ -693,10 +695,10 @@ func TestLoginWithPwdPropagatesInfrastructureErrors(t *testing.T) {
 	sentinel := errors.New("connection refused")
 
 	tests := map[string]func(*fakes){
-		"lecture utilisateur": func(f *fakes) { f.ur.byNameErr = sentinel },
-		"lecture credentials": func(f *fakes) { f.pr.getErr = sentinel },
+		"user lookup":         func(f *fakes) { f.ur.byNameErr = sentinel },
+		"credentials lookup":  func(f *fakes) { f.pr.getErr = sentinel },
 		"comparaison de hash": func(f *fakes) { f.hs.matchErr = sentinel },
-		"émission de session": func(f *fakes) { f.ss.err = sentinel },
+		"session issuance":    func(f *fakes) { f.ss.err = sentinel },
 	}
 
 	for name, setup := range tests {
@@ -711,56 +713,155 @@ func TestLoginWithPwdPropagatesInfrastructureErrors(t *testing.T) {
 				Password: pwd,
 			})
 			if !errors.Is(err, sentinel) {
-				t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+				t.Errorf("err = %v, original error no longer reachable", err)
 			}
 
 			if errors.Is(err, auth.ErrInvalidLoginPwd) {
-				t.Errorf("err = %v, une panne ne doit pas se présenter comme un mauvais mot de passe", err)
+				t.Errorf("err = %v, infrastructure failure must not present as wrong password", err)
 			}
 
 			if got != nil {
-				t.Errorf("LoginWithPwd a renvoyé %+v en plus de l'erreur", got)
+				t.Errorf("LoginWithPwd returned %+v in addition to the error", got)
 			}
 		})
 	}
 }
 
-func TestLogoutForwardsTokenToRevoke(t *testing.T) {
+func TestLogout(t *testing.T) {
 	t.Parallel()
 
-	f := newFakes()
+	providerID := uuid.New()
+	endSessionURL := "https://idp.example.com/logout?client_id=client-id&" +
+		"post_logout_redirect_uri=https%3A%2F%2Fapp.example.com%2Flogin"
 
-	if err := f.svc(t).Logout(context.Background(), token); err != nil {
-		t.Fatalf("Logout: %v", err)
+	tests := map[string]struct {
+		wantErr    error
+		setup      func(*fakes)
+		wantURL    string
+		session    sessions.Session
+		wantRevoke bool
+	}{
+		"password session → empty EndSessionURL": {
+			session:    sessions.Session{AuthMethod: sessions.AuthMethodPassword},
+			wantRevoke: true,
+		},
+		"oidc + EndSessionURL supported → URL returned": {
+			session: sessions.Session{
+				AuthMethod: sessions.AuthMethodOIDC,
+				ProviderID: &providerID,
+			},
+			setup: func(f *fakes) {
+				f.opr.provider.ID = providerID
+				f.oc.endSessionURL = endSessionURL
+				f.oc.endSessionSupported = true
+			},
+			wantURL:    endSessionURL,
+			wantRevoke: true,
+		},
+		"oidc + EndSessionURL not supported → empty": {
+			session: sessions.Session{
+				AuthMethod: sessions.AuthMethodOIDC,
+				ProviderID: &providerID,
+			},
+			setup: func(f *fakes) {
+				f.opr.provider.ID = providerID
+				f.oc.endSessionSupported = false
+			},
+			wantRevoke: true,
+		},
+		"oidc + provider not found → empty": {
+			session: sessions.Session{
+				AuthMethod: sessions.AuthMethodOIDC,
+				ProviderID: ptrUUID(uuid.New()),
+			},
+			setup: func(f *fakes) {
+				f.opr.err = domain.ErrNotFound
+			},
+			wantRevoke: true,
+		},
+		"oidc + EndSessionURL error → empty (logout succeeds)": {
+			session: sessions.Session{
+				AuthMethod: sessions.AuthMethodOIDC,
+				ProviderID: &providerID,
+			},
+			setup: func(f *fakes) {
+				f.opr.provider.ID = providerID
+				f.oc.endSessionErr = oidc.ErrClientUnavailable
+			},
+			wantRevoke: true,
+		},
+		"revoke error": {
+			session: sessions.Session{AuthMethod: sessions.AuthMethodPassword},
+			setup: func(f *fakes) {
+				f.ss.revokeErr = sessions.ErrInvalidSession
+			},
+			wantErr: sessions.ErrInvalidSession,
+		},
 	}
 
-	if f.ss.revokeCalls != 1 {
-		t.Errorf("Revoke appelée %d fois, want 1", f.ss.revokeCalls)
-	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-	if f.ss.gotToken != token {
-		t.Errorf("Revoke a reçu %q, want %q", f.ss.gotToken, token)
+			f := newFakes()
+			if tc.setup != nil {
+				tc.setup(f)
+			}
+
+			got, err := f.svc(t).Logout(context.Background(), auth.LogoutOpts{
+				Token:   token,
+				Session: tc.session,
+			})
+
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("Logout = %v, want %v", err, tc.wantErr)
+				}
+
+				if got != nil {
+					t.Fatalf("Logout = %+v, want nil result on error", got)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Logout: %v", err)
+			}
+
+			if got == nil {
+				t.Fatal("Logout returned nil result")
+			}
+
+			if got.EndSessionURL != tc.wantURL {
+				t.Errorf("EndSessionURL = %q, want %q", got.EndSessionURL, tc.wantURL)
+			}
+
+			if tc.wantRevoke && f.ss.revokeCalls != 1 {
+				t.Errorf("Revoke called %d times, want 1", f.ss.revokeCalls)
+			}
+
+			if f.ss.gotToken != token {
+				t.Errorf("Revoke received %q, want %q", f.ss.gotToken, token)
+			}
+
+			if tc.wantURL != "" {
+				if f.oc.endSessionCalls != 1 {
+					t.Errorf("EndSessionURL called %d times, want 1", f.oc.endSessionCalls)
+				}
+
+				if f.oc.gotPostLogoutRedirect != publicURL+"/login" {
+					t.Errorf(
+						"post_logout_redirect_uri = %q, want %q",
+						f.oc.gotPostLogoutRedirect,
+						publicURL+"/login",
+					)
+				}
+			}
+		})
 	}
 }
 
-func TestLogoutPropagatesRevokeError(t *testing.T) {
-	t.Parallel()
-
-	f := newFakes()
-	f.ss.revokeErr = sessions.ErrInvalidSession
-
-	err := f.svc(t).Logout(context.Background(), token)
-	if !errors.Is(err, sessions.ErrInvalidSession) {
-		t.Errorf("err = %v, want ErrInvalidSession", err)
-	}
-}
-
-func TestLogoutReturnsNilOnSuccess(t *testing.T) {
-	t.Parallel()
-
-	f := newFakes()
-
-	if err := f.svc(t).Logout(context.Background(), token); err != nil {
-		t.Errorf("Logout() = %v, want nil", err)
-	}
+func ptrUUID(id uuid.UUID) *uuid.UUID {
+	return &id
 }

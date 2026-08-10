@@ -88,7 +88,7 @@ func (s *Solution) CookieMap() map[string]string {
 func (s *Solution) ApplyTo(jar http.CookieJar, rawURL string) error {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("byparr: url invalide %q: %w", rawURL, err)
+		return fmt.Errorf("byparr: invalid url %q: %w", rawURL, err)
 	}
 	cookies := make([]*http.Cookie, 0, len(s.Cookies))
 	for _, c := range s.Cookies {
@@ -123,7 +123,7 @@ type Error struct {
 func (e *Error) Error() string {
 	msg := e.Message
 	if msg == "" {
-		msg = "réponse inattendue"
+		msg = "unexpected response"
 	}
 
 	return fmt.Sprintf("byparr: %s (http %d, status %q)", msg, e.HTTPStatus, e.Status)
@@ -224,7 +224,7 @@ func (c *Client) Health(ctx context.Context) (*Health, error) {
 	}
 	var h Health
 	if err := json.Unmarshal(body, &h); err != nil {
-		return nil, fmt.Errorf("byparr: /health json invalide: %w", err)
+		return nil, fmt.Errorf("byparr: /health invalid json: %w", err)
 	}
 
 	return &h, nil
@@ -272,7 +272,7 @@ func (c *Client) Do(ctx context.Context, r Request) (*Solution, error) {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
-				return nil, fmt.Errorf("byparr: contexte annulé pendant le backoff: %w", ctx.Err())
+				return nil, fmt.Errorf("byparr: context canceled during backoff: %w", ctx.Err())
 			case <-time.After(time.Duration(attempt) * 2 * time.Second):
 			}
 		}
@@ -329,7 +329,7 @@ func (c *Client) solveOnce(
 		return nil, &Error{HTTPStatus: resp.StatusCode, Status: lr.Status, Message: msg}
 	}
 	if jsonErr != nil {
-		return nil, fmt.Errorf("byparr: /v1 json invalide: %w", jsonErr)
+		return nil, fmt.Errorf("byparr: /v1 invalid json: %w", jsonErr)
 	}
 	sol := lr.Solution
 
@@ -373,7 +373,7 @@ func (s *Solution) HTTPClient(base http.RoundTripper) (*http.Client, error) {
 	}
 	target := s.URL
 	if target == "" {
-		return nil, errors.New("byparr: solution sans URL")
+		return nil, errors.New("byparr: solution without URL")
 	}
 	if err := s.ApplyTo(jar, target); err != nil {
 		return nil, err
@@ -396,13 +396,13 @@ type uaTransport struct {
 
 func (t *uaTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.ua == "" || req.Header.Get("User-Agent") == t.ua {
-		//nolint:wrapcheck // passe-plat RoundTripper : l'appelant attend l'erreur de transport telle quelle.
+		//nolint:wrapcheck // passthrough RoundTripper: callers expect the transport error unchanged.
 		return t.base.RoundTrip(req)
 	}
 	clone := req.Clone(req.Context())
 	clone.Header.Set("User-Agent", t.ua)
 
-	//nolint:wrapcheck // passe-plat RoundTripper : l'appelant attend l'erreur de transport telle quelle.
+	//nolint:wrapcheck // passthrough RoundTripper: callers expect the transport error unchanged.
 	return t.base.RoundTrip(clone)
 }
 
@@ -412,7 +412,7 @@ type Transport struct {
 
 func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.Client == nil {
-		return nil, errors.New("byparr: Transport.Client est nil")
+		return nil, errors.New("byparr: Transport.Client is nil")
 	}
 	r := Request{URL: req.URL.String()}
 	switch req.Method {
@@ -429,7 +429,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 			r.PostData = string(b)
 		}
 	default:
-		return nil, fmt.Errorf("byparr: méthode %s non supportée", req.Method)
+		return nil, fmt.Errorf("byparr: method %s not supported", req.Method)
 	}
 
 	sol, err := t.Client.Do(req.Context(), r)
