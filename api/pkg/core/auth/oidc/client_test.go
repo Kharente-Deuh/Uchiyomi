@@ -109,6 +109,43 @@ func jsonTokenResponse(rawIDToken string) func(w http.ResponseWriter, r *http.Re
 	}
 }
 
+// assertingTokenResponse wraps jsonTokenResponse with assertions on the actual
+// token request, so a regression like a missing redirect_uri (which real IdPs
+// reject with invalid_grant) fails a test instead of only ever being caught
+// against a live provider.
+func assertingTokenResponse(
+	t *testing.T,
+	wantCode, wantVerifier, wantRedirectURI, rawIDToken string,
+) func(w http.ResponseWriter, r *http.Request) {
+	t.Helper()
+
+	inner := jsonTokenResponse(rawIDToken)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("r.ParseForm: %v", err)
+		}
+
+		if got := r.PostFormValue("code"); got != wantCode {
+			t.Errorf("token request code = %q, want %q", got, wantCode)
+		}
+
+		if got := r.PostFormValue("code_verifier"); got != wantVerifier {
+			t.Errorf("token request code_verifier = %q, want %q", got, wantVerifier)
+		}
+
+		if got := r.PostFormValue("redirect_uri"); got != wantRedirectURI {
+			t.Errorf("token request redirect_uri = %q, want %q", got, wantRedirectURI)
+		}
+
+		if got := r.PostFormValue("grant_type"); got != "authorization_code" {
+			t.Errorf("token request grant_type = %q, want %q", got, "authorization_code")
+		}
+
+		inner(w, r)
+	}
+}
+
 func invalidGrantResponse() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -265,11 +302,11 @@ func TestExchangeVerifiesTheIDToken(t *testing.T) {
 	provider := testProvider(idp.srv.URL)
 
 	rawIDToken := signClaims(t, idp.key, idp.keyID, baseClaims(idp.srv.URL, provider.ClientID, testNonce))
-	idp.setTokenHandler(jsonTokenResponse(rawIDToken))
+	idp.setTokenHandler(assertingTokenResponse(t, "test-code", "test-verifier", testRedirectURI, rawIDToken))
 
 	c := newTestClient(t)
 
-	ts, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce)
+	ts, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce, testRedirectURI)
 	if err != nil {
 		t.Fatalf("Exchange: %v", err)
 	}
@@ -294,9 +331,41 @@ func TestExchangeRejectsANonceMismatch(t *testing.T) {
 
 	c := newTestClient(t)
 
-	_, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", "wrong-nonce")
+	_, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", "wrong-nonce", testRedirectURI)
 	if !errors.Is(err, oidc.ErrNonceMismatch) {
 		t.Errorf("Exchange = %v, want ErrNonceMismatch", err)
+	}
+}
+
+func TestExchangeRejectsAnEmptyNonce(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+
+	// The IdP token happens to omit the nonce claim too: an empty argument must
+	// still be rejected up front, rather than comparing "" == "" and passing.
+	rawIDToken := signClaims(t, idp.key, idp.keyID, baseClaims(idp.srv.URL, provider.ClientID, ""))
+	idp.setTokenHandler(jsonTokenResponse(rawIDToken))
+
+	c := newTestClient(t)
+
+	_, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", "", testRedirectURI)
+	if !errors.Is(err, oidc.ErrNonceMismatch) {
+		t.Errorf("Exchange = %v, want ErrNonceMismatch", err)
+	}
+}
+
+func TestExchangeRejectsAnEmptyVerifier(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	_, err := c.Exchange(context.Background(), provider, "test-code", "", testNonce, testRedirectURI)
+	if !errors.Is(err, oidc.ErrExchangeFailed) {
+		t.Errorf("Exchange = %v, want ErrExchangeFailed", err)
 	}
 }
 
@@ -313,7 +382,7 @@ func TestExchangeRejectsAnExpiredIDToken(t *testing.T) {
 
 	c := newTestClient(t)
 
-	_, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce)
+	_, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce, testRedirectURI)
 	if !errors.Is(err, oidc.ErrIDTokenInvalid) {
 		t.Errorf("Exchange = %v, want ErrIDTokenInvalid", err)
 	}
@@ -336,7 +405,7 @@ func TestExchangeRejectsABadSignature(t *testing.T) {
 
 	c := newTestClient(t)
 
-	_, err = c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce)
+	_, err = c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce, testRedirectURI)
 	if !errors.Is(err, oidc.ErrIDTokenInvalid) {
 		t.Errorf("Exchange = %v, want ErrIDTokenInvalid", err)
 	}
@@ -351,7 +420,7 @@ func TestExchangeSurfacesATokenEndpointError(t *testing.T) {
 
 	c := newTestClient(t)
 
-	_, err := c.Exchange(context.Background(), provider, "bad-code", "test-verifier", testNonce)
+	_, err := c.Exchange(context.Background(), provider, "bad-code", "test-verifier", testNonce, testRedirectURI)
 	if !errors.Is(err, oidc.ErrExchangeFailed) {
 		t.Errorf("Exchange = %v, want ErrExchangeFailed", err)
 	}
@@ -369,7 +438,7 @@ func TestExchangeReadsTheSIDClaim(t *testing.T) {
 		claims["sid"] = "session-abc"
 		idp.setTokenHandler(jsonTokenResponse(signClaims(t, idp.key, idp.keyID, claims)))
 
-		ts, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce)
+		ts, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce, testRedirectURI)
 		if err != nil {
 			t.Fatalf("Exchange: %v", err)
 		}
@@ -383,7 +452,7 @@ func TestExchangeReadsTheSIDClaim(t *testing.T) {
 		claims := baseClaims(idp.srv.URL, provider.ClientID, testNonce)
 		idp.setTokenHandler(jsonTokenResponse(signClaims(t, idp.key, idp.keyID, claims)))
 
-		ts, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce)
+		ts, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce, testRedirectURI)
 		if err != nil {
 			t.Fatalf("Exchange: %v", err)
 		}

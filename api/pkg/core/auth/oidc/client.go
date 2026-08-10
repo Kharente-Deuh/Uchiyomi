@@ -133,8 +133,16 @@ func (c *Client) AuthCodeURL(
 func (c *Client) Exchange(
 	ctx context.Context,
 	provider oidcproviders.OIDCProvider,
-	code, verifier, nonce string,
+	code, verifier, nonce, redirectURI string,
 ) (*oidcproviders.TokenSet, error) {
+	if nonce == "" {
+		return nil, fmt.Errorf("%w: nonce must not be empty", ErrNonceMismatch)
+	}
+
+	if verifier == "" {
+		return nil, fmt.Errorf("%w: verifier must not be empty", ErrExchangeFailed)
+	}
+
 	p, err := c.providerFor(ctx, provider)
 	if err != nil {
 		return nil, fmt.Errorf("client.providerFor: %w", err)
@@ -152,7 +160,8 @@ func (c *Client) Exchange(
 			AuthURL:  p.Endpoint().AuthURL,
 			TokenURL: p.Endpoint().TokenURL,
 		},
-		Scopes: dedup(provider.Scopes, offlineAccessScope),
+		RedirectURL: redirectURI,
+		Scopes:      dedup(provider.Scopes, offlineAccessScope),
 	}
 
 	exchangeCtx := gooidc.ClientContext(ctx, c.deps.HTTPClient)
