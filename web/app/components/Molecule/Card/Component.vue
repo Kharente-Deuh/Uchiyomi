@@ -10,7 +10,7 @@ defineProps<{
 
 <template>
   <VCard
-    style="border-radius: 12px;"
+    style="border-radius: 16px;"
     class="pa-4 border-thin"
     :disabled
     :loading
