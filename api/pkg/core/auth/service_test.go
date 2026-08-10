@@ -735,11 +735,11 @@ func TestLogout(t *testing.T) {
 		"post_logout_redirect_uri=https%3A%2F%2Fapp.example.com%2Flogin"
 
 	tests := map[string]struct {
-		session    sessions.Session
+		wantErr    error
 		setup      func(*fakes)
 		wantURL    string
+		session    sessions.Session
 		wantRevoke bool
-		wantErr    error
 	}{
 		"password session → empty EndSessionURL": {
 			session:    sessions.Session{AuthMethod: sessions.AuthMethodPassword},

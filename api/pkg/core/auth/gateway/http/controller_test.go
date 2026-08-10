@@ -52,8 +52,8 @@ type stubAuthService struct {
 	gotFinishOpts auth.FinishOIDCLoginOpts
 	gotOpts       auth.LoginWithPwdOpts
 	logoutToken   string
-	logoutSession sessions.Session
 	gotStartOpts  auth.StartOIDCLoginOpts
+	logoutSession sessions.Session
 	calls         int
 	logoutCalls   int
 	startCalls    int
@@ -434,9 +434,9 @@ func TestNewFailsFast(t *testing.T) {
 	logger, _ := testLogger()
 
 	tests := map[string]struct {
-		cfg     authhttp.Config
 		deps    authhttp.Deps
 		wantErr string
+		cfg     authhttp.Config
 	}{
 		"invalid config": {
 			cfg:     authhttp.Config{Endpoint: "auth"},
