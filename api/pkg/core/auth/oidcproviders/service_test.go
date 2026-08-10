@@ -109,17 +109,26 @@ func (f *fakeDiscoverer) Discover(_ context.Context, issuerURL string) (*oidcpro
 	}, nil
 }
 
+type fakeCacheEvictor struct {
+	evicted []uuid.UUID
+}
+
+func (f *fakeCacheEvictor) Evict(id uuid.UUID) {
+	f.evicted = append(f.evicted, id)
+}
+
 func newService(
 	t *testing.T,
 	repo *fakeRepository,
 	cipher *fakeCipher,
 	disco *fakeDiscoverer,
+	cache *fakeCacheEvictor,
 ) *oidcproviders.Service {
 	t.Helper()
 
 	s, err := oidcproviders.NewService(
 		oidcproviders.ServiceConfig{RedirectURI: testRedirect},
-		oidcproviders.ServiceDeps{Repository: repo, Cipher: cipher, Discoverer: disco},
+		oidcproviders.ServiceDeps{Repository: repo, Cipher: cipher, Discoverer: disco, Cache: cache},
 	)
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
@@ -143,7 +152,7 @@ func TestCreateEncryptsTheClientSecret(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeRepository{provider: &oidcproviders.OIDCProvider{ID: uuid.New()}}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	if _, err := s.Create(context.Background(), createOpts()); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -170,7 +179,7 @@ func TestCreateNeverReturnsTheSecret(t *testing.T) {
 		ID:              uuid.New(),
 		ClientSecretEnc: []byte("sealed:s3cr3t"),
 	}}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	got, err := s.Create(context.Background(), createOpts())
 	if err != nil {
@@ -186,7 +195,7 @@ func TestCreateRejectsAnIssuerThatFailsDiscovery(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeRepository{}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{err: errors.New("connection refused")})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{err: errors.New("connection refused")}, &fakeCacheEvictor{})
 
 	_, err := s.Create(context.Background(), createOpts())
 	if !errors.Is(err, oidcproviders.ErrUnreachableIssuer) {
@@ -202,7 +211,8 @@ func TestCreateRejectsAnIncompleteDiscoveryDocument(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeRepository{}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{err: oidcproviders.ErrIncompleteDiscovery})
+	disco := &fakeDiscoverer{err: oidcproviders.ErrIncompleteDiscovery}
+	s := newService(t, repo, &fakeCipher{}, disco, &fakeCacheEvictor{})
 
 	_, err := s.Create(context.Background(), createOpts())
 	if !errors.Is(err, oidcproviders.ErrIncompleteIssuer) {
@@ -222,7 +232,7 @@ func TestCreatePropagatesADuplicateIssuer(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeRepository{err: domain.ErrAlreadyExists}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	if _, err := s.Create(context.Background(), createOpts()); !errors.Is(err, domain.ErrAlreadyExists) {
 		t.Errorf("Create = %v, want domain.ErrAlreadyExists", err)
@@ -234,7 +244,7 @@ func TestUpdateNeverSealsASecret(t *testing.T) {
 
 	repo := &fakeRepository{provider: &oidcproviders.OIDCProvider{ID: uuid.New()}}
 	cipher := &fakeCipher{}
-	s := newService(t, repo, cipher, &fakeDiscoverer{})
+	s := newService(t, repo, cipher, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	_, err := s.Update(context.Background(), uuid.New(), oidcproviders.UpdateOpts{
 		DisplayName:   testDisplayName,
@@ -260,7 +270,7 @@ func TestUpdateRejectsAnIssuerThatFailsDiscovery(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeRepository{}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{err: errors.New("no such host")})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{err: errors.New("no such host")}, &fakeCacheEvictor{})
 
 	_, err := s.Update(context.Background(), uuid.New(), oidcproviders.UpdateOpts{IssuerURL: testIssuerURL})
 	if !errors.Is(err, oidcproviders.ErrUnreachableIssuer) {
@@ -272,6 +282,23 @@ func TestUpdateRejectsAnIssuerThatFailsDiscovery(t *testing.T) {
 	}
 }
 
+func TestUpdateEvictsTheCache(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeRepository{provider: &oidcproviders.OIDCProvider{ID: uuid.New()}}
+	cache := &fakeCacheEvictor{}
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{}, cache)
+
+	id := uuid.New()
+	if _, err := s.Update(context.Background(), id, oidcproviders.UpdateOpts{IssuerURL: testIssuerURL}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	if len(cache.evicted) != 1 || cache.evicted[0] != id {
+		t.Errorf("evicted = %v, want [%s]", cache.evicted, id)
+	}
+}
+
 func TestListReturnsTheLightShape(t *testing.T) {
 	t.Parallel()
 
@@ -280,7 +307,7 @@ func TestListReturnsTheLightShape(t *testing.T) {
 		{ID: id1, DisplayName: "Authentik"},
 		{ID: id2, DisplayName: testDisplayName},
 	}}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	got, err := s.List(context.Background())
 	if err != nil {
@@ -300,7 +327,7 @@ func TestGetByIDNeverReturnsTheSecret(t *testing.T) {
 		DisplayName:     testDisplayName,
 		ClientSecretEnc: []byte("sealed:s3cr3t"),
 	}}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	got, err := s.GetByID(context.Background(), uuid.New())
 	if err != nil {
@@ -327,7 +354,7 @@ func TestGetByIDReturnsTheLinkedUsers(t *testing.T) {
 			{ID: userID, Username: "alice", LinkedAt: linkedAt, IsAdmin: true},
 		},
 	}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	got, err := s.GetByID(context.Background(), uuid.New())
 	if err != nil {
@@ -347,7 +374,7 @@ func TestGetByIDReturnsTheLinkedUsers(t *testing.T) {
 func TestGetByIDPropagatesNotFound(t *testing.T) {
 	t.Parallel()
 
-	s := newService(t, &fakeRepository{err: domain.ErrNotFound}, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, &fakeRepository{err: domain.ErrNotFound}, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	if _, err := s.GetByID(context.Background(), uuid.New()); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByID = %v, want domain.ErrNotFound", err)
@@ -358,7 +385,7 @@ func TestDeleteForwardsTheID(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeRepository{}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	id := uuid.New()
 	if err := s.Delete(context.Background(), id); err != nil {
@@ -370,10 +397,26 @@ func TestDeleteForwardsTheID(t *testing.T) {
 	}
 }
 
+func TestDeleteEvictsTheCache(t *testing.T) {
+	t.Parallel()
+
+	cache := &fakeCacheEvictor{}
+	s := newService(t, &fakeRepository{}, &fakeCipher{}, &fakeDiscoverer{}, cache)
+
+	id := uuid.New()
+	if err := s.Delete(context.Background(), id); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	if len(cache.evicted) != 1 || cache.evicted[0] != id {
+		t.Errorf("evicted = %v, want [%s]", cache.evicted, id)
+	}
+}
+
 func TestDeletePropagatesNotFound(t *testing.T) {
 	t.Parallel()
 
-	s := newService(t, &fakeRepository{err: domain.ErrNotFound}, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, &fakeRepository{err: domain.ErrNotFound}, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	if err := s.Delete(context.Background(), uuid.New()); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Delete = %v, want domain.ErrNotFound", err)
@@ -390,7 +433,7 @@ func TestProbeReportsTheEndpointsAndTheRedirectURI(t *testing.T) {
 		UserInfoEndpoint:      testIssuerURL + "/userinfo",
 		EndSessionEndpoint:    testIssuerURL + "/logout",
 	}}
-	s := newService(t, &fakeRepository{}, &fakeCipher{}, disco)
+	s := newService(t, &fakeRepository{}, &fakeCipher{}, disco, &fakeCacheEvictor{})
 
 	got, err := s.Probe(context.Background(), testIssuerURL)
 	if err != nil {
@@ -413,7 +456,7 @@ func TestProbeReportsTheEndpointsAndTheRedirectURI(t *testing.T) {
 func TestProbeReportsAProviderWithoutEndSession(t *testing.T) {
 	t.Parallel()
 
-	s := newService(t, &fakeRepository{}, &fakeCipher{}, &fakeDiscoverer{})
+	s := newService(t, &fakeRepository{}, &fakeCipher{}, &fakeDiscoverer{}, &fakeCacheEvictor{})
 
 	got, err := s.Probe(context.Background(), testIssuerURL)
 	if err != nil {
@@ -428,7 +471,7 @@ func TestProbeReportsAProviderWithoutEndSession(t *testing.T) {
 func TestProbeRejectsAnUnreachableIssuer(t *testing.T) {
 	t.Parallel()
 
-	s := newService(t, &fakeRepository{}, &fakeCipher{}, &fakeDiscoverer{err: errors.New("timeout")})
+	s := newService(t, &fakeRepository{}, &fakeCipher{}, &fakeDiscoverer{err: errors.New("timeout")}, &fakeCacheEvictor{})
 
 	if _, err := s.Probe(context.Background(), testIssuerURL); !errors.Is(err, oidcproviders.ErrUnreachableIssuer) {
 		t.Errorf("Probe = %v, want ErrUnreachableIssuer", err)
@@ -438,7 +481,8 @@ func TestProbeRejectsAnUnreachableIssuer(t *testing.T) {
 func TestProbeRejectsAnIncompleteDiscoveryDocument(t *testing.T) {
 	t.Parallel()
 
-	s := newService(t, &fakeRepository{}, &fakeCipher{}, &fakeDiscoverer{err: oidcproviders.ErrIncompleteDiscovery})
+	disco := &fakeDiscoverer{err: oidcproviders.ErrIncompleteDiscovery}
+	s := newService(t, &fakeRepository{}, &fakeCipher{}, disco, &fakeCacheEvictor{})
 
 	if _, err := s.Probe(context.Background(), testIssuerURL); !errors.Is(err, oidcproviders.ErrIncompleteIssuer) {
 		t.Errorf("Probe = %v, want ErrIncompleteIssuer", err)
@@ -474,6 +518,13 @@ func TestNewServiceValidates(t *testing.T) {
 			cfg:     oidcproviders.ServiceConfig{RedirectURI: testRedirect},
 			deps:    oidcproviders.ServiceDeps{Repository: &fakeRepository{}, Cipher: &fakeCipher{}},
 			wantErr: "deps.Validate: discoverer is required",
+		},
+		"no cache": {
+			cfg: oidcproviders.ServiceConfig{RedirectURI: testRedirect},
+			deps: oidcproviders.ServiceDeps{
+				Repository: &fakeRepository{}, Cipher: &fakeCipher{}, Discoverer: &fakeDiscoverer{},
+			},
+			wantErr: "deps.Validate: cache is required",
 		},
 	}
 

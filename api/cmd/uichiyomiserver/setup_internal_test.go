@@ -69,6 +69,10 @@ func (noopDiscoverer) Discover(context.Context, string) (*oidcproviders.Discover
 	return nil, errors.New("not implemented")
 }
 
+type noopCacheEvictor struct{}
+
+func (noopCacheEvictor) Evict(uuid.UUID) {}
+
 func newTestOIDCProvidersService(t *testing.T) *oidcproviders.Service {
 	t.Helper()
 
@@ -78,6 +82,7 @@ func newTestOIDCProvidersService(t *testing.T) *oidcproviders.Service {
 			Repository: emptyOIDCProvidersRepository{},
 			Cipher:     noopCipher{},
 			Discoverer: noopDiscoverer{},
+			Cache:      noopCacheEvictor{},
 		},
 	)
 	if err != nil {
