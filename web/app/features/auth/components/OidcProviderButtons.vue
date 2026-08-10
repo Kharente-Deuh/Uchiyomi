@@ -13,7 +13,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div v-if="providers.length" class="d-flex flex-column ga-2">
+  <div v-if="providers.length" class="d-flex flex-column ga-2 px-4">
     <VBtn
       v-for="provider in providers"
       :key="provider.id"

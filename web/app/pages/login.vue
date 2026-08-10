@@ -77,9 +77,14 @@ const { field, handleSubmit } = useForm({
       v-bind="field('password').props"
       data-test="login-password"
     />
-
-    <template #footer>
-      <AuthOidcProviderButtons :providers :redirect="redirect" />
-    </template>
   </AuthCard>
+
+  <template v-if="providers.length">
+    <div class="d-flex ga-4 align-center">
+      <VDivider />
+      <span class="text-uppercase text-medium-emphasis">{{ $t('common.or') }}</span>
+      <VDivider />
+    </div>
+    <AuthOidcProviderButtons :providers :redirect="redirect" />
+  </template>
 </template>

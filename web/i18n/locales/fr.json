@@ -199,7 +199,8 @@
     "continue": "Continuer"
   },
   "common": {
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "or": "Ou"
   },
   "role": {
     "admin": "Administrateur",

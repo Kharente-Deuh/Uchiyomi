@@ -199,7 +199,8 @@
     "continue": "Continue"
   },
   "common": {
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "or": "Or"
   },
   "role": {
     "admin": "Admin",
