@@ -135,7 +135,7 @@ export default defineNuxtConfig({
   },
 
   pinia: {
-    storesDirs: ['features/**/store', 'stores/**'],
+    storesDirs: ['features/**/stores', 'stores/**'],
   },
 
   pwa,
