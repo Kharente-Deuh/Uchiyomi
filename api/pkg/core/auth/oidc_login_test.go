@@ -15,6 +15,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 )
 
 const (
@@ -736,12 +737,16 @@ func TestResolveIdentityReusesExistingFederatedIdentity(t *testing.T) {
 	t.Parallel()
 
 	f := newFakes()
+
+	linkedUser := &users.User{ID: uuid.New(), Name: "bob"}
+	f.ur.byID[linkedUser.ID] = linkedUser
+
 	f.fir.getErr = nil
 	f.fir.fi = &federatedidentities.FederatedIdentity{
 		ID:         uuid.New(),
 		Subject:    testSubject,
 		ProviderID: f.opr.provider.ID,
-		UserID:     f.ur.user.ID,
+		UserID:     linkedUser.ID,
 	}
 
 	svc := f.svc(t)
@@ -756,8 +761,20 @@ func TestResolveIdentityReusesExistingFederatedIdentity(t *testing.T) {
 		t.Fatalf("FinishOIDCLogin: %v", err)
 	}
 
-	if f.ss.gotOpts.UserID != f.ur.user.ID {
-		t.Errorf("UserID = %v, want %v", f.ss.gotOpts.UserID, f.ur.user.ID)
+	wantGetOpts := federatedidentities.GetFederatedIdentityOpts{
+		Subject:    testSubject,
+		ProviderID: f.opr.provider.ID,
+	}
+	if f.fir.gotGetOpts != wantGetOpts {
+		t.Errorf("GetFederatedIdentityOpts = %+v, want %+v", f.fir.gotGetOpts, wantGetOpts)
+	}
+
+	if f.ur.gotID != linkedUser.ID {
+		t.Errorf("UsersRepository.GetByID a reçu %v, want %v (fi.UserID)", f.ur.gotID, linkedUser.ID)
+	}
+
+	if f.ss.gotOpts.UserID != linkedUser.ID {
+		t.Errorf("UserID de la session = %v, want %v", f.ss.gotOpts.UserID, linkedUser.ID)
 	}
 
 	if f.ur.byIDCalls != 1 {

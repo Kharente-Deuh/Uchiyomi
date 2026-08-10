@@ -107,6 +107,7 @@ type fakeUsersRepository struct {
 	updateErr   error
 	err         error
 	user        *users.User
+	byID        map[uuid.UUID]*users.User
 	gotName     string
 	gotOpts     users.CreateUserOpts
 	nameCalls   int
@@ -151,7 +152,11 @@ func (f *fakeUsersRepository) GetByID(_ context.Context, id uuid.UUID) (*users.U
 		return nil, f.byIDErr
 	}
 
-	return f.user, nil
+	if u, ok := f.byID[id]; ok {
+		return u, nil
+	}
+
+	return nil, domain.ErrNotFound
 }
 
 func (f *fakeUsersRepository) Update(_ context.Context, opts users.UpdateUserOpts) (*users.User, error) {
@@ -288,7 +293,7 @@ func newFakes() *fakes {
 		cfg:   auth.Config{RedirectURI: oidcRedirectURI, StateCookieTTL: 10 * time.Minute},
 		now:   time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC),
 		hs:    &fakeHashService{clock: c, match: true},
-		ur:    &fakeUsersRepository{user: user},
+		ur:    &fakeUsersRepository{user: user, byID: map[uuid.UUID]*users.User{user.ID: user}},
 		pr:    &fakePwdRepository{creds: &password.PasswordCreds{UserID: user.ID, Hash: "hashed:" + pwd}},
 		tr:    &fakeTransactor{clock: c},
 		ss: &fakeSessionService{issued: &sessions.IssuedSession{
