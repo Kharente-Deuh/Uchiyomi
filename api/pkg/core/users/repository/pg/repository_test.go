@@ -23,6 +23,7 @@ import (
 const (
 	userNameBob   = "bob"
 	userNameAlice = "alice"
+	colName       = "name"
 )
 
 func duplicateKeyErr() error {
@@ -130,7 +131,7 @@ func TestGetByID(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM "users" WHERE id = \$1 ORDER BY "users"\."id" LIMIT \$2`).
 		WithArgs(id, 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "name", "is_admin", "created_at", "updated_at"}).
+			sqlmock.NewRows([]string{"id", colName, "is_admin", "created_at", "updated_at"}).
 				AddRow(id, userNameBob, true, created, updated),
 		)
 
@@ -151,7 +152,7 @@ func TestGetByIDNotFound(t *testing.T) {
 	r, mock := newRepo(t)
 
 	mock.ExpectQuery(`SELECT \* FROM "users"`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", colName}))
 
 	got, err := r.GetByID(context.Background(), uuid.New())
 	if !errors.Is(err, domain.ErrNotFound) {
@@ -325,7 +326,7 @@ func TestUpdate(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM "users" WHERE id = \$1 ORDER BY "users"\."id" LIMIT \$2`).
 		WithArgs(id, 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "name", "is_admin", "created_at", "updated_at"}).
+			sqlmock.NewRows([]string{"id", colName, "is_admin", "created_at", "updated_at"}).
 				AddRow(id, userNameBob, true, created, updated),
 		)
 

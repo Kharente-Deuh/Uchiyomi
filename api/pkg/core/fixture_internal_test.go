@@ -130,6 +130,15 @@ func (fakeAuthService) Logout(context.Context, string) error {
 	return errors.New(notImplemented)
 }
 
+func (fakeAuthService) StartOIDCLogin(context.Context, auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {
+	return nil, errors.New(notImplemented)
+}
+
+//nolint:lll
+func (fakeAuthService) FinishOIDCLogin(context.Context, auth.FinishOIDCLoginOpts) (*auth.OIDCLoginResult, error) {
+	return nil, errors.New(notImplemented)
+}
+
 type fakeOIDCProvidersService struct{}
 
 func (fakeOIDCProvidersService) List(context.Context) ([]oidcproviders.LightOIDCProvider, error) {
@@ -225,6 +234,11 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("NewCookieManager: %v", err)
 	}
 
+	oidcStateCookies, err := sessionshttp.NewCookieManager(sessionshttp.CookieConfig{Name: "oidc_state", Path: "/"})
+	if err != nil {
+		t.Fatalf("NewCookieManager: %v", err)
+	}
+
 	setupCtrl, err := httpsetup.New(
 		httpsetup.Config{Endpoint: "/setup"},
 		httpsetup.Deps{Logger: logger, SetupService: fakeSetupService{}, Cookies: cookies},
@@ -235,7 +249,13 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 
 	authCtrl, err := httpauth.New(
 		httpauth.Config{Endpoint: "/auth"},
-		httpauth.Deps{Logger: logger, AuthService: fakeAuthService{}, Cookies: cookies},
+		httpauth.Deps{
+			Logger:           logger,
+			AuthService:      fakeAuthService{},
+			Cookies:          cookies,
+			OIDCStateCookies: oidcStateCookies,
+			ProvidersLister:  fakeOIDCProvidersService{},
+		},
 	)
 	if err != nil {
 		t.Fatalf("httpauth.New: %v", err)
