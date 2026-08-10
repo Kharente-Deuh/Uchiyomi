@@ -17,7 +17,9 @@ async function onSubmit(values: Form): Promise<void> {
     return
   }
 
-  await update({ ...provider.value, ...values })
+  const { users: _, ...data } = provider.value
+
+  await update({ ...data, ...values })
 }
 
 const { field, handleSubmit, reset, isValid } = useForm({

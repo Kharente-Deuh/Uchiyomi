@@ -78,4 +78,39 @@ describe('useLayoutPadding', () => {
       expect(leftLayout.value).toBe('var(--navigation-drawer-width)')
     })
   })
+
+  describe('mainStyles', () => {
+    it('omits undefined layout variables so Vuetify defaults stay intact', () => {
+      displayStub.mobile.value = false
+      const store = useLayoutStore()
+      store.setPaginationEnabled(false)
+      store.setNavigationDrawerCompact(false)
+      const { mainStyles } = useLayoutPadding()
+      expect(mainStyles.value).toEqual({
+        '--v-layout-left': 'var(--navigation-drawer-width)',
+      })
+      expect(mainStyles.value).not.toHaveProperty('--v-layout-bottom')
+    })
+
+    it('includes both variables when both apply', () => {
+      displayStub.mobile.value = false
+      const store = useLayoutStore()
+      store.setPaginationEnabled(true)
+      store.setNavigationDrawerCompact(true)
+      const { mainStyles } = useLayoutPadding()
+      expect(mainStyles.value).toEqual({
+        '--v-layout-bottom': 'var(--bottom-pagination-height)',
+        '--v-layout-left': 'var(--navigation-drawer-compact-width)',
+      })
+    })
+
+    it('includes only bottom on mobile', () => {
+      displayStub.mobile.value = true
+      const { mainStyles } = useLayoutPadding()
+      expect(mainStyles.value).toEqual({
+        '--v-layout-bottom': 'var(--bottom-navigation-height)',
+      })
+      expect(mainStyles.value).not.toHaveProperty('--v-layout-left')
+    })
+  })
 })
