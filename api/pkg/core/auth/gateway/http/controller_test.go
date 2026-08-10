@@ -869,6 +869,15 @@ func TestStartOIDCLoginHappyPathRedirectsAndSetsStateCookie(t *testing.T) {
 			t.Errorf("Set-Cookie = %q, want attribute %q", raw, attr)
 		}
 	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("%d cookies posés, want 1", len(cookies))
+	}
+
+	if want := int(svc.startResult.ExpiresAt.Sub(frozenNow()).Seconds()); cookies[0].MaxAge != want {
+		t.Errorf("MaxAge = %d, want %d", cookies[0].MaxAge, want)
+	}
 }
 
 func TestOIDCCallbackNoStateCookieRedirects(t *testing.T) {
@@ -981,6 +990,10 @@ func TestOIDCCallbackHappyPathRedirectsSetsSessionAndClearsState(t *testing.T) {
 
 	if !session.HttpOnly {
 		t.Error("session HttpOnly absent")
+	}
+
+	if want := int(svc.finishResult.Session.ExpiresAt.Sub(frozenNow()).Seconds()); session.MaxAge != want {
+		t.Errorf("session MaxAge = %d, want %d", session.MaxAge, want)
 	}
 
 	if state == nil {
