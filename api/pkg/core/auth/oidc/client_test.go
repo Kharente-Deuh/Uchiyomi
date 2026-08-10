@@ -109,10 +109,6 @@ func jsonTokenResponse(rawIDToken string) func(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// assertingTokenResponse wraps jsonTokenResponse with assertions on the actual
-// token request, so a regression like a missing redirect_uri (which real IdPs
-// reject with invalid_grant) fails a test instead of only ever being caught
-// against a live provider.
 func assertingTokenResponse(
 	t *testing.T,
 	wantCode, wantVerifier, wantRedirectURI, rawIDToken string,
@@ -391,8 +387,6 @@ func TestExchangeRejectsAnEmptyNonce(t *testing.T) {
 	idp := newTestIdP(t)
 	provider := testProvider(idp.srv.URL)
 
-	// The IdP token happens to omit the nonce claim too: an empty argument must
-	// still be rejected up front, rather than comparing "" == "" and passing.
 	rawIDToken := signClaims(t, idp.key, idp.keyID, baseClaims(idp.srv.URL, provider.ClientID, ""))
 	idp.setTokenHandler(jsonTokenResponse(rawIDToken))
 
@@ -447,7 +441,6 @@ func TestExchangeRejectsABadSignature(t *testing.T) {
 		t.Fatalf("rsa.GenerateKey: %v", err)
 	}
 
-	// Signed with a key that isn't the one published under this kid in the JWKS.
 	rawIDToken := signClaims(t, otherKey, idp.keyID, baseClaims(idp.srv.URL, provider.ClientID, testNonce))
 	idp.setTokenHandler(jsonTokenResponse(rawIDToken))
 
