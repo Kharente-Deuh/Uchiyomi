@@ -37,4 +37,6 @@ docs/design
 .claude
 .conductor
 **/dist
+
 **/CLAUDE.md
+**/cursor.md
