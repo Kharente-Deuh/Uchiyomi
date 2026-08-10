@@ -34,6 +34,9 @@ const (
 	openIDScope        = "openid"
 	offlineAccessScope = "offline_access"
 	sidClaim           = "sid"
+
+	logoutTokenEvent   = "http://schemas.openid.net/event/backchannel-logout"
+	logoutTokenIATSkew = 5 * time.Minute
 )
 
 type Decrypter interface {
@@ -309,6 +312,61 @@ func (c *Client) EndSessionURL(
 	u.RawQuery = q.Encode()
 
 	return u.String(), true, nil
+}
+
+func (c *Client) VerifyLogoutToken(
+	ctx context.Context,
+	provider oidcproviders.OIDCProvider,
+	raw string,
+) (*oidcproviders.LogoutToken, error) {
+	p, err := c.providerFor(ctx, provider)
+	if err != nil {
+		return nil, fmt.Errorf("client.providerFor: %w", err)
+	}
+
+	verifier := p.Verifier(&gooidc.Config{
+		ClientID:        provider.ClientID,
+		SkipExpiryCheck: true,
+	})
+
+	token, err := verifier.Verify(ctx, raw)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", oidcproviders.ErrLogoutTokenInvalid, err)
+	}
+
+	var claims map[string]any
+	if err := token.Claims(&claims); err != nil {
+		return nil, fmt.Errorf("%w: %w", oidcproviders.ErrLogoutTokenInvalid, err)
+	}
+
+	if _, hasNonce := claims["nonce"]; hasNonce {
+		return nil, fmt.Errorf("%w: nonce must not be present", oidcproviders.ErrLogoutTokenInvalid)
+	}
+
+	events, _ := claims["events"].(map[string]any)
+	if events == nil {
+		return nil, fmt.Errorf("%w: events claim is missing", oidcproviders.ErrLogoutTokenInvalid)
+	}
+
+	if _, ok := events[logoutTokenEvent]; !ok {
+		return nil, fmt.Errorf("%w: backchannel-logout event is missing", oidcproviders.ErrLogoutTokenInvalid)
+	}
+
+	iat, ok := claims["iat"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("%w: iat is missing or invalid", oidcproviders.ErrLogoutTokenInvalid)
+	}
+
+	iatTime := time.Unix(int64(iat), 0)
+	now := time.Now()
+	if iatTime.Before(now.Add(-logoutTokenIATSkew)) || iatTime.After(now.Add(logoutTokenIATSkew)) {
+		return nil, fmt.Errorf("%w: iat is outside acceptable skew", oidcproviders.ErrLogoutTokenInvalid)
+	}
+
+	sid, _ := claims["sid"].(string)
+	sub, _ := claims["sub"].(string)
+
+	return &oidcproviders.LogoutToken{Subject: sub, SID: sid}, nil
 }
 
 func (c *Client) Evict(id uuid.UUID) {

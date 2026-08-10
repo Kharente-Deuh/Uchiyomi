@@ -35,22 +35,25 @@ func validConfig() sessions.ServiceConfig {
 }
 
 type fakeRepository struct {
-	gotExpiry    time.Time
-	insertErr    error
-	getErr       error
-	updateErr    error
-	deleteErr    error
-	user         *users.User
-	session      *sessions.Session
-	gotHash      []byte
-	gotInsert    sessions.InsertSessionOpts
-	inserts      int
-	gets         int
-	updates      int
-	deleteHashes int
-	deleteUsers  int
-	gotUserID    uuid.UUID
-	gotID        uuid.UUID
+	gotExpiry     time.Time
+	insertErr     error
+	getErr        error
+	updateErr     error
+	deleteErr     error
+	session       *sessions.Session
+	user          *users.User
+	gotSID        string
+	gotHash       []byte
+	gotInsert     sessions.InsertSessionOpts
+	inserts       int
+	gets          int
+	updates       int
+	deleteHashes  int
+	deleteUsers   int
+	deleteBySID   int
+	gotProviderID uuid.UUID
+	gotUserID     uuid.UUID
+	gotID         uuid.UUID
 }
 
 func (f *fakeRepository) Insert(_ context.Context, opts sessions.InsertSessionOpts) (*sessions.Session, error) {
@@ -106,6 +109,15 @@ func (f *fakeRepository) DeleteByUserID(_ context.Context, id uuid.UUID) error {
 func (f *fakeRepository) DeleteByUserAndProvider(_ context.Context, userID, providerID uuid.UUID) error {
 	f.deleteUsers++
 	f.gotUserID = userID
+	f.gotProviderID = providerID
+
+	return f.deleteErr
+}
+
+func (f *fakeRepository) DeleteByProviderAndSID(_ context.Context, providerID uuid.UUID, sid string) error {
+	f.deleteBySID++
+	f.gotProviderID = providerID
+	f.gotSID = sid
 
 	return f.deleteErr
 }
@@ -770,5 +782,41 @@ func TestRevokeForProviderDeletesByUserAndProvider(t *testing.T) {
 
 	if repo.gotUserID != userID {
 		t.Errorf("DeleteByUserAndProvider user = %v, want %v", repo.gotUserID, userID)
+	}
+}
+
+func TestRevokeByProviderAndSIDDeletesByProviderAndSID(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeRepository{}
+	providerID := uuid.New()
+	sid := "session-abc"
+
+	if err := frozenSvc(t, repo, time.Now()).RevokeByProviderAndSID(
+		context.Background(), providerID, sid,
+	); err != nil {
+		t.Fatalf("RevokeByProviderAndSID: %v", err)
+	}
+
+	if repo.gotProviderID != providerID {
+		t.Errorf("DeleteByProviderAndSID provider = %v, want %v", repo.gotProviderID, providerID)
+	}
+
+	if repo.gotSID != sid {
+		t.Errorf("DeleteByProviderAndSID sid = %q, want %q", repo.gotSID, sid)
+	}
+}
+
+func TestRevokeByProviderAndSIDPropagatesRepositoryError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("connection reset")
+	repo := &fakeRepository{deleteErr: sentinel}
+
+	err := frozenSvc(t, repo, time.Now()).RevokeByProviderAndSID(
+		context.Background(), uuid.New(), "session-abc",
+	)
+	if !errors.Is(err, sentinel) {
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }

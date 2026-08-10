@@ -26,38 +26,42 @@ import (
 )
 
 const (
-	authEndpoint        = "/auth"
-	loginPath           = "/auth/login"
-	logoutPath          = "/auth/logout"
-	providersPath       = "/auth/providers"
-	oidcCallbackPath    = "/auth/oidc/callback"
-	username            = "alice"
-	password            = "hunter2hunter2"
-	token               = "letoken"
-	sessionCookieName   = "uchiyomi_session"
-	oidcStateCookieName = "uchiyomi_oidc_state"
-	oidcStateCookiePath = "/api/auth/oidc"
-	logLevelWarn        = "WARN"
+	authEndpoint          = "/auth"
+	loginPath             = "/auth/login"
+	logoutPath            = "/auth/logout"
+	providersPath         = "/auth/providers"
+	oidcCallbackPath      = "/auth/oidc/callback"
+	backchannelLogoutPath = "/auth/oidc/backchannel-logout"
+	username              = "alice"
+	password              = "hunter2hunter2"
+	token                 = "letoken"
+	sessionCookieName     = "uchiyomi_session"
+	oidcStateCookieName   = "uchiyomi_oidc_state"
+	oidcStateCookiePath   = "/api/auth/oidc"
+	logLevelWarn          = "WARN"
 )
 
 type stubAuthService struct {
-	err           error
-	finishErr     error
-	startErr      error
-	logoutErr     error
-	logoutResult  *auth.LogoutResult
-	startResult   *auth.OIDCStart
-	result        *auth.LoginResult
-	finishResult  *auth.OIDCLoginResult
-	gotFinishOpts auth.FinishOIDCLoginOpts
-	gotOpts       auth.LoginWithPwdOpts
-	logoutToken   string
-	gotStartOpts  auth.StartOIDCLoginOpts
-	logoutSession sessions.Session
-	calls         int
-	logoutCalls   int
-	startCalls    int
-	finishCalls   int
+	err                       error
+	finishErr                 error
+	startErr                  error
+	logoutErr                 error
+	backchannelLogoutErr      error
+	logoutResult              *auth.LogoutResult
+	startResult               *auth.OIDCStart
+	result                    *auth.LoginResult
+	finishResult              *auth.OIDCLoginResult
+	gotFinishOpts             auth.FinishOIDCLoginOpts
+	gotOpts                   auth.LoginWithPwdOpts
+	logoutToken               string
+	gotBackchannelLogoutToken string
+	gotStartOpts              auth.StartOIDCLoginOpts
+	logoutSession             sessions.Session
+	calls                     int
+	logoutCalls               int
+	startCalls                int
+	finishCalls               int
+	backchannelLogoutCalls    int
 }
 
 func (s *stubAuthService) LoginWithPwd(
@@ -117,6 +121,13 @@ func (s *stubAuthService) FinishOIDCLogin(
 	}
 
 	return s.finishResult, nil
+}
+
+func (s *stubAuthService) BackchannelLogout(_ context.Context, logoutToken string) error {
+	s.backchannelLogoutCalls++
+	s.gotBackchannelLogoutToken = logoutToken
+
+	return s.backchannelLogoutErr
 }
 
 func frozenNow() time.Time {
@@ -1160,6 +1171,102 @@ func TestOIDCCallbackHappyPathRedirectsSetsSessionAndClearsState(t *testing.T) {
 
 	if state.MaxAge != -1 {
 		t.Errorf("state MaxAge = %d, want -1", state.MaxAge)
+	}
+}
+
+func postBackchannelLogout(t *testing.T, r chi.Router, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, backchannelLogoutPath, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func TestBackchannelLogoutReturns200WithNoStore(t *testing.T) {
+	t.Parallel()
+
+	const logoutToken = "eyJhbGciOiJSUzI1NiJ9.valid"
+	svc := &stubAuthService{}
+	r, _ := newTestRouter(t, svc)
+
+	rec := postBackchannelLogout(t, r, "logout_token="+logoutToken)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q, want %q", got, "no-store")
+	}
+
+	if svc.backchannelLogoutCalls != 1 {
+		t.Errorf("BackchannelLogout called %d times, want 1", svc.backchannelLogoutCalls)
+	}
+
+	if svc.gotBackchannelLogoutToken != logoutToken {
+		t.Errorf("logout_token = %q, want %q", svc.gotBackchannelLogoutToken, logoutToken)
+	}
+}
+
+func TestBackchannelLogoutReturns400OnMissingToken(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{}
+	r, _ := newTestRouter(t, svc)
+
+	rec := postBackchannelLogout(t, r, "")
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	if rec.Body.Len() != 0 {
+		t.Errorf("body = %q, want empty", rec.Body.String())
+	}
+
+	if svc.backchannelLogoutCalls != 0 {
+		t.Errorf("BackchannelLogout called %d times, want 0", svc.backchannelLogoutCalls)
+	}
+}
+
+func TestBackchannelLogoutReturns400OnInvalidToken(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{backchannelLogoutErr: auth.ErrLogoutTokenInvalid}
+	r, _ := newTestRouter(t, svc)
+
+	rec := postBackchannelLogout(t, r, "logout_token=invalid")
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	if rec.Body.Len() != 0 {
+		t.Errorf("body = %q, want empty", rec.Body.String())
+	}
+
+	if svc.backchannelLogoutCalls != 1 {
+		t.Errorf("BackchannelLogout called %d times, want 1", svc.backchannelLogoutCalls)
+	}
+}
+
+func TestBackchannelLogoutDoesNotRequireSession(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{}
+	r, _ := newTestRouter(t, svc)
+
+	rec := postBackchannelLogout(t, r, "logout_token=valid")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	if svc.backchannelLogoutCalls != 1 {
+		t.Errorf("BackchannelLogout called %d times, want 1", svc.backchannelLogoutCalls)
 	}
 }
 

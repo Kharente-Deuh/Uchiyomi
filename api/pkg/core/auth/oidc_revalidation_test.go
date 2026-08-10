@@ -50,6 +50,10 @@ func (s *revalidationSessionService) RevokeForProvider(_ context.Context, userID
 	return s.err
 }
 
+func (s *revalidationSessionService) RevokeByProviderAndSID(context.Context, uuid.UUID, string) error {
+	panic("RevokeByProviderAndSID is not used by revalidation")
+}
+
 type revalidationOIDCClient struct {
 	tokenSet *oidcproviders.TokenSet
 	err      error
@@ -85,6 +89,14 @@ func (c *revalidationOIDCClient) EndSessionURL(
 	string,
 ) (string, bool, error) {
 	panic("EndSessionURL is not used by revalidation")
+}
+
+func (c *revalidationOIDCClient) VerifyLogoutToken(
+	context.Context,
+	oidcproviders.OIDCProvider,
+	string,
+) (*oidcproviders.LogoutToken, error) {
+	panic("VerifyLogoutToken is not used by revalidation")
 }
 
 func newRevalidationAuth(t *testing.T, f *fakes, ss sessions.SessionService, oc oidcproviders.Client) *auth.Service {
@@ -125,8 +137,11 @@ func TestRevalidateFederatedIdentityInvalidGrantRevokesProviderSessions(t *testi
 		ID:              uuid.New(),
 		UserID:          f.ur.user.ID,
 		ProviderID:      f.opr.provider.ID,
+		Subject:         testSubject,
 		RefreshTokenEnc: sealed,
 	}
+	f.fir.getErr = nil
+	f.fir.fi = &fi
 
 	s := newRevalidationAuth(t, f, ss, &revalidationOIDCClient{err: oidcproviders.ErrInvalidGrant})
 
