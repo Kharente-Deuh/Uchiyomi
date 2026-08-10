@@ -3,6 +3,7 @@
 
 import type { LightOidcProvider } from './oidc.api'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useToast } from '~/composables/toast.composable'
 import { useOidc } from './oidc.composable'
@@ -46,6 +47,7 @@ function apiError(status: number, message = 'boom'): { success: false, error: { 
 }
 
 beforeEach(() => {
+  setActivePinia(createPinia())
   useToast().messages.value.length = 0
   vi.spyOn(console, 'error').mockImplementation(() => {})
   getAll.mockReset()
@@ -73,6 +75,17 @@ describe('useOidc().getAll', () => {
     expect(oidc.loading.value).toBe(false)
   })
 
+  it('replaces a previously loaded list', async () => {
+    getAll.mockResolvedValue({ success: true, data: [provider] })
+    const oidc = useOidc()
+
+    await oidc.getAll()
+    getAll.mockResolvedValue({ success: true, data: [] })
+    await oidc.getAll()
+
+    expect(oidc.providers.value).toEqual([])
+  })
+
   it('toasts an unknown error on failure', async () => {
     getAll.mockResolvedValue(apiError(500))
     const oidc = useOidc()
@@ -81,6 +94,17 @@ describe('useOidc().getAll', () => {
 
     expect(useToast().messages.value).toEqual([{ text: 'error.unknown', color: 'error' }])
     expect(oidc.providers.value).toEqual([])
+  })
+
+  it('keeps the previous list on failure', async () => {
+    getAll.mockResolvedValue({ success: true, data: [provider] })
+    const oidc = useOidc()
+
+    await oidc.getAll()
+    getAll.mockResolvedValue(apiError(500))
+    await oidc.getAll()
+
+    expect(oidc.providers.value).toEqual([provider])
   })
 })
 

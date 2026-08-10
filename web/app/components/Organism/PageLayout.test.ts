@@ -34,26 +34,37 @@ describe('organismPageLayout', () => {
     expect(wrapper.text()).toContain('OIDC provider')
   })
 
-  it('renders no back link without a back route', async () => {
-    const wrapper = await mountSuspended(wrap({ title: 'PocketID', showBackRoute: true }))
+  it('renders no back link without back routes', async () => {
+    const wrapper = await mountSuspended(wrap({ title: 'PocketID' }))
     expect(wrapper.find('a').exists()).toBe(false)
   })
 
-  it('hides the back link when showBackRoute is false on desktop', async () => {
-    const wrapper = await mountSuspended(wrap({ title: 'PocketID', backRoute: '/settings/oidc' }))
+  it('renders no back link for an empty back route list', async () => {
+    const wrapper = await mountSuspended(wrap({ title: 'PocketID', backRoutes: [] }))
     expect(wrapper.find('a').exists()).toBe(false)
   })
 
   it('renders the back link with its name', async () => {
     const wrapper = await mountSuspended(wrap({
       title: 'PocketID',
-      backRoute: '/settings/oidc',
-      showBackRoute: true,
-      backRouteName: 'SSO',
+      backRoutes: [{ to: '/settings/oidc', name: 'SSO' }],
     }))
 
     expect(wrapper.find('a').attributes('href')).toBe('/settings/oidc')
     expect(wrapper.text()).toContain('SSO')
+  })
+
+  it('renders every back route in order', async () => {
+    const wrapper = await mountSuspended(wrap({
+      title: 'PocketID',
+      backRoutes: [
+        { to: '/settings', name: 'Settings' },
+        { to: '/settings/oidc', name: 'SSO' },
+      ],
+    }))
+
+    expect(wrapper.findAll('a').map(a => a.attributes('href'))).toEqual(['/settings', '/settings/oidc'])
+    expect(wrapper.findAll('a').map(a => a.text())).toEqual(['Settings', 'SSO'])
   })
 
   it('shows a progress bar while loading', async () => {

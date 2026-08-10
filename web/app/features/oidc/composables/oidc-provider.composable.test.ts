@@ -8,15 +8,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useToast } from '~/composables/toast.composable'
 import { useOidcProvider } from './oidc-provider.composable'
 
-const { getById, updateById, testByIssuerUrl, navigateTo } = vi.hoisted(() => ({
+const { getById, updateById, testByIssuerUrl, deleteById, navigateTo } = vi.hoisted(() => ({
   getById: vi.fn(),
   updateById: vi.fn(),
   testByIssuerUrl: vi.fn(),
+  deleteById: vi.fn(),
   navigateTo: vi.fn(),
 }))
 
 vi.mock('./oidc.api', () => ({
-  createOidcApi: () => ({ getById, updateById, testByIssuerUrl }),
+  createOidcApi: () => ({ getById, updateById, testByIssuerUrl, deleteById }),
 }))
 
 vi.mock('vue-router', async importOriginal => ({
@@ -54,8 +55,18 @@ beforeEach(() => {
   getById.mockReset()
   updateById.mockReset()
   testByIssuerUrl.mockReset()
+  deleteById.mockReset()
   navigateTo.mockReset()
 })
+
+async function withProvider(): Promise<ReturnType<typeof useOidcProvider>> {
+  getById.mockResolvedValue({ success: true, data: provider })
+  const composable = useOidcProvider()
+  await composable.fetchProvider('p1')
+  useToast().messages.value.length = 0
+
+  return composable
+}
 
 describe('useOidcProvider().fetchProvider', () => {
   it('exposes the fetched provider', async () => {
@@ -172,5 +183,76 @@ describe('useOidcProvider().test', () => {
 
     await expect(composable.test()).resolves.toEqual({ issuer: provider.issuerUrl })
     expect(testByIssuerUrl).toHaveBeenCalledWith(provider.issuerUrl)
+  })
+
+  it('leaves testLoading false once the probe settled', async () => {
+    testByIssuerUrl.mockResolvedValue({ success: true, data: { issuer: provider.issuerUrl } })
+    const composable = await withProvider()
+
+    await composable.test()
+
+    expect(composable.testLoading.value).toBe(false)
+  })
+})
+
+describe('useOidcProvider().deleteProvider', () => {
+  it('does nothing while no provider is held', async () => {
+    await useOidcProvider().deleteProvider()
+
+    expect(deleteById).not.toHaveBeenCalled()
+    expect(navigateTo).not.toHaveBeenCalled()
+  })
+
+  it('drops the held provider and leaves the page on success', async () => {
+    deleteById.mockResolvedValue({ success: true, data: undefined })
+    const composable = await withProvider()
+
+    await composable.deleteProvider()
+
+    expect(deleteById).toHaveBeenCalledWith('p1')
+    expect(composable.provider.value).toBeUndefined()
+    expect(useToast().messages.value).toEqual([{ text: 'settings.oidc.delete.success', color: 'success' }])
+    expect(navigateTo).toHaveBeenCalledWith('/settings/oidc')
+  })
+
+  it('treats a 404 as a successful deletion', async () => {
+    deleteById.mockResolvedValue(apiError(404))
+    const composable = await withProvider()
+
+    await composable.deleteProvider()
+
+    expect(composable.provider.value).toBeUndefined()
+    expect(useToast().messages.value).toEqual([{ text: 'settings.oidc.delete.success', color: 'success' }])
+    expect(navigateTo).toHaveBeenCalledWith('/settings/oidc')
+  })
+
+  it('keeps the provider and stays on the page on any other failure', async () => {
+    deleteById.mockResolvedValue(apiError(500))
+    const composable = await withProvider()
+
+    await composable.deleteProvider()
+
+    expect(composable.provider.value).toEqual(provider)
+    expect(useToast().messages.value).toEqual([{ text: 'error.unknown', color: 'error' }])
+    expect(navigateTo).not.toHaveBeenCalled()
+  })
+
+  it('leaves deleteLoading false once settled', async () => {
+    deleteById.mockResolvedValue(apiError(500))
+    const composable = await withProvider()
+
+    await composable.deleteProvider()
+
+    expect(composable.deleteLoading.value).toBe(false)
+  })
+})
+
+describe('useOidcProvider().invalidate', () => {
+  it('drops the held provider', async () => {
+    const composable = await withProvider()
+
+    composable.invalidate()
+
+    expect(composable.provider.value).toBeUndefined()
   })
 })
