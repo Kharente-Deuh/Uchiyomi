@@ -17,8 +17,8 @@ vi.mock('~/features/oidc/composables/oidc.composable', () => ({
 const ModalStub = defineComponent({
   name: 'OrganismModal',
   props: { modelValue: { type: Boolean, default: false }, isFormComplete: { type: Boolean, default: true } },
-  emits: ['submit'],
-  template: '<div><slot /><button data-test="submit" @click="$emit(\'submit\')" /></div>',
+  emits: ['submit', 'cancel'],
+  template: '<div><slot /><button data-test="submit" @click="$emit(\'submit\')" /><button data-test="cancel" @click="$emit(\'cancel\')" /></div>',
 })
 
 const TestBtnStub = defineComponent({
@@ -190,6 +190,16 @@ describe('oidcModalCreate', () => {
       expect(wrapper.text()).not.toContain('admins')
       expect(wrapper.text()).not.toContain('users')
     })
+  })
+
+  it('closes without creating on cancel', async () => {
+    const { wrapper, show } = await mount()
+
+    await fill(wrapper)
+    await wrapper.find('[data-test="cancel"]').trigger('click')
+
+    expect(show.value).toBe(false)
+    expect(create).not.toHaveBeenCalled()
   })
 
   it('resets the form when reopened', async () => {

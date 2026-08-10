@@ -116,10 +116,17 @@ describe('useOidcProvider().fetchProvider', () => {
 })
 
 describe('useOidcProvider().update', () => {
+  it('does nothing while no provider is held', async () => {
+    await useOidcProvider().update(provider)
+
+    expect(updateById).not.toHaveBeenCalled()
+  })
+
   it('strips id and timestamps from the payload', async () => {
     updateById.mockResolvedValue({ success: true, data: provider })
+    const composable = await withProvider()
 
-    await useOidcProvider().update({ ...provider, displayName: 'Renamed' })
+    await composable.update({ ...provider, displayName: 'Renamed' })
 
     expect(updateById).toHaveBeenCalledWith('p1', {
       displayName: 'Renamed',
@@ -133,7 +140,7 @@ describe('useOidcProvider().update', () => {
 
   it('refreshes the held provider with the server response', async () => {
     updateById.mockResolvedValue({ success: true, data: { ...provider, displayName: 'Renamed' } })
-    const composable = useOidcProvider()
+    const composable = await withProvider()
 
     await composable.update(provider)
 
@@ -143,8 +150,9 @@ describe('useOidcProvider().update', () => {
 
   it('toasts a not-found message on a 404 without navigating away', async () => {
     updateById.mockResolvedValue(apiError(404))
+    const composable = await withProvider()
 
-    await useOidcProvider().update(provider)
+    await composable.update(provider)
 
     expect(useToast().messages.value).toEqual([{ text: 'settings.oidc.errors.notFound', color: 'error' }])
     expect(navigateTo).not.toHaveBeenCalled()
@@ -152,15 +160,16 @@ describe('useOidcProvider().update', () => {
 
   it('toasts an unknown error on any other failure', async () => {
     updateById.mockResolvedValue(apiError(500))
+    const composable = await withProvider()
 
-    await useOidcProvider().update(provider)
+    await composable.update(provider)
 
     expect(useToast().messages.value).toEqual([{ text: 'error.unknown', color: 'error' }])
   })
 
   it('leaves updateLoading false once settled', async () => {
     updateById.mockResolvedValue(apiError(500))
-    const composable = useOidcProvider()
+    const composable = await withProvider()
 
     await composable.update(provider)
 

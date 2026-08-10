@@ -39,6 +39,7 @@ function cardStub(name: string): ReturnType<typeof defineComponent> {
 
 const InformationsStub = cardStub('OidcCardCategoryInformations')
 const ClaimsStub = cardStub('OidcCardCategoryClaims')
+const UsersStub = cardStub('OidcCardCategoryUsers')
 
 const DeleteModalStub = defineComponent({
   name: 'OidcModalDelete',
@@ -66,6 +67,7 @@ async function mount(): Promise<VueWrapper> {
         stubs: {
           OidcCardCategoryInformations: InformationsStub,
           OidcCardCategoryClaims: ClaimsStub,
+          OidcCardCategoryUsers: UsersStub,
           OidcModalDelete: DeleteModalStub,
         },
       },
@@ -95,11 +97,12 @@ describe('settings/oidc/[id]', () => {
     expect(onBeforeRouteLeave).toHaveBeenCalledWith(invalidate)
   })
 
-  it('renders both category cards', async () => {
+  it('renders every category card', async () => {
     const wrapper = await mount()
 
     expect(wrapper.find('[data-test="OidcCardCategoryInformations"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="OidcCardCategoryClaims"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="OidcCardCategoryUsers"]').exists()).toBe(true)
   })
 
   it('titles the page with the provider name', async () => {

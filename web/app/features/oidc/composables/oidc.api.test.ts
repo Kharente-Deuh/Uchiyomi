@@ -93,6 +93,27 @@ describe('createOidcApi().getById', () => {
 
     expect(res.success === false && res.error.status).toBe(404)
   })
+
+  it('maps linkedAt into a Date for every linked user', async () => {
+    call.mockResolvedValue({
+      ...payload,
+      users: [{ id: 'u1', username: 'alice', isAdmin: true, linkedAt: CREATED_AT }],
+    })
+
+    const res = await createOidcApi().getById('p1')
+
+    expect(res.success === true && res.data.users).toEqual([
+      { id: 'u1', username: 'alice', isAdmin: true, linkedAt: new Date(CREATED_AT) },
+    ])
+  })
+
+  it('leaves users undefined when the provider has none', async () => {
+    call.mockResolvedValue(payload)
+
+    const res = await createOidcApi().getById('p1')
+
+    expect(res.success === true && res.data.users).toBeUndefined()
+  })
 })
 
 describe('createOidcApi().create', () => {

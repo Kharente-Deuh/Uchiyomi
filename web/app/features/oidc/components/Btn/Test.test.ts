@@ -112,4 +112,19 @@ describe('oidcBtnTest', () => {
 
     expect(test).not.toHaveBeenCalled()
   })
+
+  it('clears the probe result once the modal is closed', async () => {
+    test.mockResolvedValue({ issuer: 'https://id.example.org' })
+    const { wrapper, setIssuerUrl } = await mount()
+
+    setIssuerUrl('https://id.example.org')
+    await vi.waitFor(() => expectDisabled(wrapper, false))
+    await wrapper.find('button').trigger('click')
+
+    await vi.waitFor(() => expect(wrapper.findComponent(ModalStub).props('data')).toEqual({ issuer: 'https://id.example.org' }))
+
+    await wrapper.findComponent(ModalStub).vm.$emit('update:modelValue', false)
+
+    await vi.waitFor(() => expect(wrapper.findComponent(ModalStub).props('data')).toBeUndefined())
+  })
 })
