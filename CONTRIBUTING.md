@@ -22,14 +22,14 @@ commit messages and run lint/build/test before a push.
 
 ```bash
 docker compose up -d uchiyomi-db          # Postgres on :5432
-cd api && go run ./cmd/uichiyomiserver    # API on :3000
+cd api && go run ./cmd/uchiyomiserver    # API on :3000
 cd web && pnpm dev                        # SPA on :3001
 ```
 
 The Go binary is configured through environment variables only — no config file,
 no flags besides `-healthcheck`. `DB_HOST`, `DB_USER`, `DB_PWD`, `DB_NAME`,
 `PUBLIC_URL` and `OIDC_ENCRYPTION_KEY` are required; see
-`api/cmd/uichiyomiserver/config.go` for the full list.
+`api/cmd/uchiyomiserver/config.go` for the full list.
 
 `OIDC_ENCRYPTION_KEY` is 32 bytes in base64 — `openssl rand -base64 32`. It
 encrypts the OIDC client secrets stored in the database, so changing it makes

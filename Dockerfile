@@ -42,14 +42,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -mod=readonly -trimpath \
     -tags="$([ "${WITH_WEB}" = on ] && echo webui)" \
     -ldflags='-s -w' \
-    -o /out/uichiyomiserver ./cmd/uichiyomiserver
+    -o /out/uchiyomiserver ./cmd/uchiyomiserver
 
 FROM gcr.io/distroless/static-debian13:nonroot
 
-COPY --from=build /out/uichiyomiserver /uichiyomiserver
+COPY --from=build /out/uchiyomiserver /uchiyomiserver
 
 EXPOSE 3000
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/uichiyomiserver"]
+ENTRYPOINT ["/uchiyomiserver"]
