@@ -6,21 +6,28 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/hash"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/password"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/crypto"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
 )
 
 const (
-	userName = "alice"
-	pwd      = "hunter2hunter2"
-	token    = "letoken"
+	userName         = "alice"
+	pwd              = "hunter2hunter2"
+	token            = "letoken"
+	oidcRedirectURI  = "https://app.example.com/callback"
+	testCipherKey    = "abcdefghijklmnopqrstuvwxyz012345"
+	usernameClaimKey = "preferred_username"
+	testSubject      = "sub-123"
 )
 
 type txCtxKey struct{}
@@ -95,13 +102,19 @@ func (f *fakeHashService) Match(hashed []byte, toCompare []byte) (bool, error) {
 }
 
 type fakeUsersRepository struct {
-	err       error
-	byNameErr error
-	user      *users.User
-	gotName   string
-	gotOpts   users.CreateUserOpts
-	nameCalls int
-	inTx      bool
+	byNameErr   error
+	byIDErr     error
+	updateErr   error
+	err         error
+	user        *users.User
+	gotName     string
+	gotOpts     users.CreateUserOpts
+	nameCalls   int
+	byIDCalls   int
+	updateCalls int
+	gotUpdate   users.UpdateUserOpts
+	gotID       uuid.UUID
+	inTx        bool
 }
 
 func (f *fakeUsersRepository) Create(ctx context.Context, opts users.CreateUserOpts) (*users.User, error) {
@@ -130,12 +143,29 @@ func (f *fakeUsersRepository) CountAdmins(context.Context) (int, error) {
 	panic("CountAdmins n'est pas utilisée par le service auth")
 }
 
-func (f *fakeUsersRepository) GetByID(context.Context, uuid.UUID) (*users.User, error) {
-	panic("GetByID n'est pas utilisée par le service auth")
+func (f *fakeUsersRepository) GetByID(_ context.Context, id uuid.UUID) (*users.User, error) {
+	f.byIDCalls++
+	f.gotID = id
+
+	if f.byIDErr != nil {
+		return nil, f.byIDErr
+	}
+
+	return f.user, nil
 }
 
-func (f *fakeUsersRepository) Update(context.Context, users.UpdateUserOpts) (*users.User, error) {
-	panic("Update n'est pas utilisée par le service auth")
+func (f *fakeUsersRepository) Update(_ context.Context, opts users.UpdateUserOpts) (*users.User, error) {
+	f.updateCalls++
+	f.gotUpdate = opts
+
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+
+	updated := *f.user
+	updated.IsAdmin = opts.IsAdmin
+
+	return &updated, nil
 }
 
 type fakePwdRepository struct {
@@ -223,20 +253,40 @@ func (f *fakeSessionService) RevokeAllForUser(context.Context, uuid.UUID) error 
 }
 
 type fakes struct {
+	now   time.Time
 	clock *clock
 	hs    *fakeHashService
 	ur    *fakeUsersRepository
 	pr    *fakePwdRepository
 	tr    *fakeTransactor
 	ss    *fakeSessionService
+	opr   *fakeOIDCProvidersRepo
+	fir   *fakeFederatedIdentitiesRepo
+	oc    *fakeOIDCClient
+	sc    *crypto.Cipher
+	cfg   auth.Config
 }
 
 func newFakes() *fakes {
 	c := &clock{}
 	user := &users.User{ID: uuid.New(), Name: userName}
+	provider := &oidcproviders.OIDCProvider{
+		ID:            uuid.New(),
+		DisplayName:   "Example IdP",
+		IssuerURL:     "https://idp.example.com",
+		ClientID:      "client-id",
+		UsernameClaim: usernameClaimKey,
+	}
+
+	sc, err := crypto.New(crypto.Config{Key: []byte(testCipherKey)})
+	if err != nil {
+		panic(err)
+	}
 
 	return &fakes{
 		clock: c,
+		cfg:   auth.Config{RedirectURI: oidcRedirectURI, StateCookieTTL: 10 * time.Minute},
+		now:   time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC),
 		hs:    &fakeHashService{clock: c, match: true},
 		ur:    &fakeUsersRepository{user: user},
 		pr:    &fakePwdRepository{creds: &password.PasswordCreds{UserID: user.ID, Hash: "hashed:" + pwd}},
@@ -245,18 +295,34 @@ func newFakes() *fakes {
 			Session: sessions.Session{ID: uuid.New(), UserID: user.ID},
 			Token:   token,
 		}},
+		opr: &fakeOIDCProvidersRepo{provider: provider},
+		fir: &fakeFederatedIdentitiesRepo{getErr: domain.ErrNotFound},
+		oc: &fakeOIDCClient{
+			authCodeURL: "https://idp.example.com/authorize?state=letstate",
+			tokenSet: &oidcproviders.TokenSet{
+				Subject: testSubject,
+				SID:     "sid-123",
+				Claims:  map[string]any{usernameClaimKey: userName},
+			},
+		},
+		sc: sc,
 	}
 }
 
 func (f *fakes) svc(t *testing.T) *auth.Service {
 	t.Helper()
 
-	svc, err := auth.New(auth.Deps{
-		HashService:     f.hs,
-		UsersRepository: f.ur,
-		PwdRepository:   f.pr,
-		Transactor:      f.tr,
-		SessionService:  f.ss,
+	svc, err := auth.New(f.cfg, auth.Deps{
+		HashService:                   f.hs,
+		UsersRepository:               f.ur,
+		PwdRepository:                 f.pr,
+		Transactor:                    f.tr,
+		SessionService:                f.ss,
+		OIDCProvidersRepository:       f.opr,
+		FederatedIdentitiesRepository: f.fir,
+		OIDCClient:                    f.oc,
+		StateCipher:                   f.sc,
+		Now:                           func() time.Time { return f.now },
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -270,7 +336,10 @@ func TestNewRequiresTransactor(t *testing.T) {
 
 	f := newFakes()
 
-	svc, err := auth.New(auth.Deps{HashService: f.hs, UsersRepository: f.ur, PwdRepository: f.pr})
+	svc, err := auth.New(
+		auth.Config{RedirectURI: oidcRedirectURI},
+		auth.Deps{HashService: f.hs, UsersRepository: f.ur, PwdRepository: f.pr},
+	)
 	if err == nil {
 		t.Fatal("New sans transactor doit échouer")
 	}

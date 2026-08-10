@@ -69,6 +69,14 @@ func (s *stubAuthService) Logout(_ context.Context, token string) error {
 	return s.logoutErr
 }
 
+func (s *stubAuthService) StartOIDCLogin(context.Context, auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {
+	panic("StartOIDCLogin n'est pas exposée par ce controller")
+}
+
+func (s *stubAuthService) FinishOIDCLogin(context.Context, auth.FinishOIDCLoginOpts) (*auth.OIDCLoginResult, error) {
+	panic("FinishOIDCLogin n'est pas exposée par ce controller")
+}
+
 func frozenNow() time.Time {
 	return time.Date(2026, time.August, 3, 12, 0, 0, 0, time.UTC)
 }
