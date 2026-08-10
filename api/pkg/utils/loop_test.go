@@ -21,7 +21,7 @@ func TestLoopStopsOnContextCancel(t *testing.T) {
 	err := utils.Loop(ctx, utils.LoopOpts{
 		Interval: time.Hour,
 		Fn: func(context.Context) error {
-			t.Error("fn ne doit pas être appelée quand le contexte est déjà annulé")
+			t.Error("fn must not be called when context is already canceled")
 
 			return nil
 		},
@@ -73,7 +73,7 @@ func TestLoopRunsFnBeforeFirstWait(t *testing.T) {
 	}
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("fn appelée %d fois, want 1 avant la première attente", got)
+		t.Errorf("fn called %d times, want 1 before first wait", got)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestLoopCallsFnRepeatedly(t *testing.T) {
 	})
 
 	if got := calls.Load(); got < 2 {
-		t.Errorf("fn appelée %d fois en 120ms avec un intervalle de 10ms, want >= 2", got)
+		t.Errorf("fn called %d times in 120ms with 10ms interval, want >= 2", got)
 	}
 }
 
@@ -118,7 +118,7 @@ func TestLoopWaitsIntervalAfterFnReturns(t *testing.T) {
 	})
 
 	if got := calls.Load(); got > 2 {
-		t.Errorf("fn appelée %d fois en 120ms, want <= 2 : l'attente ne repart pas de la fin de fn", got)
+		t.Errorf("fn called %d times in 120ms, want <= 2: wait does not restart from end of fn", got)
 	}
 }
 
@@ -146,6 +146,6 @@ func TestLoopReturnsFnError(t *testing.T) {
 	}
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("fn appelée %d fois, want 1 (la boucle doit s'arrêter à la première erreur)", got)
+		t.Errorf("fn called %d times, want 1 (loop must stop on first error)", got)
 	}
 }

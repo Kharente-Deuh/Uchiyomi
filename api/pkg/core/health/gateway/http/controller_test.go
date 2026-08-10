@@ -67,7 +67,7 @@ func get(t *testing.T, r chi.Router, path string) (int, readyzBody) {
 
 	var body readyzBody
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
-		t.Fatalf("décodage de la réponse: %v", err)
+		t.Fatalf("response decode: %v", err)
 	}
 
 	return rec.Code, body
@@ -79,7 +79,7 @@ func TestNewRejectsMissingRegistry(t *testing.T) {
 		healthhttp.Deps{Logger: slog.New(slog.DiscardHandler)},
 	)
 	if err == nil {
-		t.Fatal("New: erreur attendue quand Registry est nil")
+		t.Fatal("New: error expected when Registry is nil")
 	}
 }
 
@@ -89,7 +89,7 @@ func TestNewRejectsNonPositiveProbeTimeout(t *testing.T) {
 		healthhttp.Deps{Registry: health.NewRegistry(), Logger: slog.New(slog.DiscardHandler)},
 	)
 	if err == nil {
-		t.Fatal("New: erreur attendue quand ProbeTimeout est nul")
+		t.Fatal("New: error expected when ProbeTimeout is zero")
 	}
 }
 
@@ -100,11 +100,11 @@ func TestHealthzIs200EvenWhenNotReady(t *testing.T) {
 	code, body := get(t, newRouter(t, reg), "/healthz")
 
 	if code != http.StatusOK {
-		t.Fatalf("code = %d, attendu %d", code, http.StatusOK)
+		t.Fatalf("code = %d, want %d", code, http.StatusOK)
 	}
 
 	if body.Status != "ok" {
-		t.Errorf("status = %q, attendu %q", body.Status, "ok")
+		t.Errorf("status = %q, want %q", body.Status, "ok")
 	}
 }
 
@@ -116,15 +116,15 @@ func TestReadyzIs200WhenEverythingIsOK(t *testing.T) {
 	code, body := get(t, newRouter(t, reg), "/readyz")
 
 	if code != http.StatusOK {
-		t.Fatalf("code = %d, attendu %d", code, http.StatusOK)
+		t.Fatalf("code = %d, want %d", code, http.StatusOK)
 	}
 
 	if body.Status != "ok" {
-		t.Errorf("status = %q, attendu %q", body.Status, "ok")
+		t.Errorf("status = %q, want %q", body.Status, "ok")
 	}
 
 	if got := body.Components["db"].Status; got != "ok" {
-		t.Errorf("db = %q, attendu %q", got, "ok")
+		t.Errorf("db = %q, want %q", got, "ok")
 	}
 }
 
@@ -135,38 +135,38 @@ func TestReadyzIs503WhileStartingAndNamesWhatIsMissing(t *testing.T) {
 	code, body := get(t, newRouter(t, reg), "/readyz")
 
 	if code != http.StatusServiceUnavailable {
-		t.Fatalf("code = %d, attendu %d", code, http.StatusServiceUnavailable)
+		t.Fatalf("code = %d, want %d", code, http.StatusServiceUnavailable)
 	}
 
 	if body.Status != "starting" {
-		t.Errorf("status = %q, attendu %q", body.Status, "starting")
+		t.Errorf("status = %q, want %q", body.Status, "starting")
 	}
 
 	if got := body.Components["migrations"].Status; got != "starting" {
-		t.Errorf("migrations = %q, attendu %q", got, "starting")
+		t.Errorf("migrations = %q, want %q", got, "starting")
 	}
 
 	if got := body.Components["asura"].Status; got != "ok" {
-		t.Errorf("asura = %q, attendu %q", got, "ok")
+		t.Errorf("asura = %q, want %q", got, "ok")
 	}
 }
 
 func TestReadyzIs503WithLatchReasonVerbatim(t *testing.T) {
 	reg := health.NewRegistry("migrations")
-	reg.Set("migrations", errors.New("colonne inconnue"))
+	reg.Set("migrations", errors.New("unknown column"))
 
 	code, body := get(t, newRouter(t, reg), "/readyz")
 
 	if code != http.StatusServiceUnavailable {
-		t.Fatalf("code = %d, attendu %d", code, http.StatusServiceUnavailable)
+		t.Fatalf("code = %d, want %d", code, http.StatusServiceUnavailable)
 	}
 
 	if body.Status != "failed" {
-		t.Errorf("status = %q, attendu %q", body.Status, "failed")
+		t.Errorf("status = %q, want %q", body.Status, "failed")
 	}
 
-	if got := body.Components["migrations"].Reason; got != "colonne inconnue" {
-		t.Errorf("raison = %q, attendu %q", got, "colonne inconnue")
+	if got := body.Components["migrations"].Reason; got != "unknown column" {
+		t.Errorf("reason = %q, want %q", got, "unknown column")
 	}
 }
 
@@ -180,16 +180,16 @@ func TestReadyzReplacesProbeReasonWithStableLabel(t *testing.T) {
 	newRouter(t, reg).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("code = %d, attendu %d", rec.Code, http.StatusServiceUnavailable)
+		t.Fatalf("code = %d, want %d", rec.Code, http.StatusServiceUnavailable)
 	}
 
 	var body readyzBody
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("décodage: %v", err)
+		t.Fatalf("decode: %v", err)
 	}
 
 	if got := body.Components["db"].Reason; got != "unreachable" {
-		t.Errorf("raison = %q, attendu %q", got, "unreachable")
+		t.Errorf("reason = %q, want %q", got, "unreachable")
 	}
 
 	for _, secret := range []string{"uchiyomi", "172.18.0.2", "PingContext"} {
@@ -209,23 +209,23 @@ func TestReadyzLogsFullProbeReason(t *testing.T) {
 	get(t, r, "/readyz")
 
 	if !strings.Contains(logs.String(), driverMsg) {
-		t.Errorf("raison complète absente des logs: %s", logs.String())
+		t.Errorf("full reason missing from logs: %s", logs.String())
 	}
 
 	if !strings.Contains(logs.String(), `"probe":"db"`) {
-		t.Errorf("nom de la sonde absent des logs: %s", logs.String())
+		t.Errorf("probe name missing from logs: %s", logs.String())
 	}
 }
 
 func TestReadyzDoesNotLogLatchFailures(t *testing.T) {
 	reg := health.NewRegistry("migrations")
-	reg.Set("migrations", errors.New("colonne inconnue"))
+	reg.Set("migrations", errors.New("unknown column"))
 
 	r, logs := newRouterWithLogs(t, reg)
 	get(t, r, "/readyz")
 
 	if logs.Len() != 0 {
-		t.Errorf("aucun log attendu, obtenu: %s", logs.String())
+		t.Errorf("no logs expected, got: %s", logs.String())
 	}
 }
 
@@ -252,11 +252,11 @@ func TestReadyzAppliesProbeTimeout(t *testing.T) {
 	code, body := get(t, r, "/readyz")
 
 	if code != http.StatusServiceUnavailable {
-		t.Fatalf("code = %d, attendu %d", code, http.StatusServiceUnavailable)
+		t.Fatalf("code = %d, want %d", code, http.StatusServiceUnavailable)
 	}
 
 	if got := body.Components["db"].Status; got != "failed" {
-		t.Errorf("db = %q, attendu %q", got, "failed")
+		t.Errorf("db = %q, want %q", got, "failed")
 	}
 }
 
@@ -272,10 +272,10 @@ func TestReadyzOmitsEmptyReason(t *testing.T) {
 	}
 
 	if err := json.NewDecoder(rec.Body).Decode(&raw); err != nil {
-		t.Fatalf("décodage: %v", err)
+		t.Fatalf("decode: %v", err)
 	}
 
 	if _, ok := raw.Components["migrations"]["reason"]; ok {
-		t.Error("reason présent sur un composant sain")
+		t.Error("reason present on healthy component")
 	}
 }

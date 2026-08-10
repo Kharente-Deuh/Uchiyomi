@@ -104,7 +104,7 @@ func (f *fakeRepository) DeleteByUserID(_ context.Context, id uuid.UUID) error {
 }
 
 func (f *fakeRepository) DeleteExpired(context.Context, time.Time) (int64, error) {
-	panic("DeleteExpired ne doit pas être appelée par le service")
+	panic("DeleteExpired must not be called by the service")
 }
 
 func TestNewRejectsInvalidConfig(t *testing.T) {
@@ -114,19 +114,19 @@ func TestNewRejectsInvalidConfig(t *testing.T) {
 		mutate  func(*sessions.ServiceConfig)
 		wantErr string
 	}{
-		"idle mot de passe nul": {
+		"nil password idle": {
 			mutate:  func(c *sessions.ServiceConfig) { c.Password.Idle = 0 },
 			wantErr: "cfg.Validate: password ttl: idle must be positive",
 		},
-		"absolu inférieur à idle": {
+		"absolute below idle": {
 			mutate:  func(c *sessions.ServiceConfig) { c.OIDC.Absolute = time.Minute },
 			wantErr: "cfg.Validate: oidc ttl: absolute must not be lower than idle",
 		},
-		"seuil de prolongation nul": {
+		"nil extension threshold": {
 			mutate:  func(c *sessions.ServiceConfig) { c.RenewThreshold = 0 },
 			wantErr: "cfg.Validate: renewThreshold must be positive",
 		},
-		"seuil au-delà du plus petit idle": {
+		"threshold beyond smallest idle": {
 			mutate:  func(c *sessions.ServiceConfig) { c.RenewThreshold = 2 * day },
 			wantErr: "cfg.Validate: renewThreshold must be lower than the shortest idle ttl",
 		},
@@ -145,7 +145,7 @@ func TestNewRejectsInvalidConfig(t *testing.T) {
 			}
 
 			if svc != nil {
-				t.Error("New a renvoyé un service en plus de l'erreur")
+				t.Error("New returned a service in addition to the error")
 			}
 
 			if err.Error() != tc.wantErr {
@@ -160,11 +160,11 @@ func TestNewRequiresRepository(t *testing.T) {
 
 	svc, err := sessions.NewService(validConfig(), sessions.ServiceDeps{})
 	if err == nil {
-		t.Fatal("New sans repository doit échouer")
+		t.Fatal("New without repository must fail")
 	}
 
 	if svc != nil {
-		t.Error("New a renvoyé un service en plus de l'erreur")
+		t.Error("New returned a service in addition to the error")
 	}
 
 	if want := "deps.Validate: repository is required"; err.Error() != want {
@@ -181,7 +181,7 @@ func TestNewAcceptsValidConfig(t *testing.T) {
 	}
 
 	if svc == nil {
-		t.Error("New a renvoyé un service nil sans erreur")
+		t.Error("New returned nil service without error")
 	}
 }
 
@@ -214,16 +214,16 @@ func TestCreateIssuesA256BitToken(t *testing.T) {
 	}
 
 	if len(first.Token) != 43 {
-		t.Errorf("len(Token) = %d, want 43 (32 octets en base64url sans padding)", len(first.Token))
+		t.Errorf("len(Token) = %d, want 43 (32 bytes in base64url without padding)", len(first.Token))
 	}
 
 	raw, err := base64.RawURLEncoding.DecodeString(first.Token)
 	if err != nil {
-		t.Fatalf("le token n'est pas du base64url: %v", err)
+		t.Fatalf("token is not base64url: %v", err)
 	}
 
 	if len(raw) != 32 {
-		t.Errorf("le token décode %d octets, want 32", len(raw))
+		t.Errorf("token decodes %d bytes, want 32", len(raw))
 	}
 
 	second, err := svc.Create(context.Background(), sessions.CreateSessionOpts{
@@ -235,7 +235,7 @@ func TestCreateIssuesA256BitToken(t *testing.T) {
 	}
 
 	if first.Token == second.Token {
-		t.Error("deux appels ont produit le même token")
+		t.Error("two calls produced the same token")
 	}
 }
 
@@ -263,7 +263,7 @@ func TestCreateStoresHashNeverToken(t *testing.T) {
 	}
 
 	if string(repo.gotInsert.TokenHash) == issued.Token {
-		t.Error("le token en clair est parti au repository")
+		t.Error("plaintext token sent to repository")
 	}
 }
 
@@ -276,7 +276,7 @@ func TestCreateAppliesTTLOfAuthMethod(t *testing.T) {
 		method sessions.AuthMethod
 		want   time.Duration
 	}{
-		"mot de passe": {method: sessions.AuthMethodPassword, want: idlePwd},
+		"password": {method: sessions.AuthMethodPassword, want: idlePwd},
 		"oidc":         {method: sessions.AuthMethodOIDC, want: idleOIDC},
 	}
 
@@ -344,15 +344,15 @@ func TestCreateRejectsUnknownAuthMethod(t *testing.T) {
 		AuthMethod: sessions.AuthMethod("sms"),
 	})
 	if err == nil {
-		t.Fatal("Create doit refuser une méthode inconnue")
+		t.Fatal("Create must reject unknown method")
 	}
 
 	if got != nil {
-		t.Errorf("Create a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Create returned %+v in addition to the error", got)
 	}
 
 	if repo.inserts != 0 {
-		t.Errorf("Insert appelée %d fois pour une méthode inconnue", repo.inserts)
+		t.Errorf("Insert called %d times for unknown method", repo.inserts)
 	}
 }
 
@@ -367,11 +367,11 @@ func TestCreatePropagatesRepositoryError(t *testing.T) {
 		AuthMethod: sessions.AuthMethodPassword,
 	})
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 
 	if got != nil {
-		t.Errorf("Create a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Create returned %+v in addition to the error", got)
 	}
 }
 
@@ -395,7 +395,7 @@ func TestNewDefaultsNowToTimeNow(t *testing.T) {
 	}
 
 	if repo.gotInsert.ExpiresAt.Before(before.Add(idlePwd)) {
-		t.Errorf("ExpiresAt = %v, l'horloge par défaut n'est pas time.Now", repo.gotInsert.ExpiresAt)
+		t.Errorf("ExpiresAt = %v, default clock is not time.Now", repo.gotInsert.ExpiresAt)
 	}
 }
 
@@ -432,7 +432,7 @@ func TestAuthenticateReturnsUserAndSession(t *testing.T) {
 
 	want := sha256.Sum256([]byte("letoken"))
 	if !bytes.Equal(repo.gotHash, want[:]) {
-		t.Errorf("GetByTokenHash a reçu %x, want %x", repo.gotHash, want)
+		t.Errorf("GetByTokenHash received %x, want %x", repo.gotHash, want)
 	}
 }
 
@@ -442,8 +442,8 @@ func TestAuthenticateRejectsExpiredSession(t *testing.T) {
 	now := time.Date(2026, time.August, 3, 12, 0, 0, 0, time.UTC)
 
 	tests := map[string]time.Duration{
-		"expirée depuis une seconde": -time.Second,
-		"expirée à la seconde près":  0,
+		"expired one second ago": -time.Second,
+		"expired at the second boundary":  0,
 	}
 
 	for name, left := range tests {
@@ -461,7 +461,7 @@ func TestAuthenticateRejectsExpiredSession(t *testing.T) {
 			}
 
 			if got != nil {
-				t.Errorf("Authenticate a renvoyé %+v en plus de l'erreur", got)
+				t.Errorf("Authenticate returned %+v in addition to the error", got)
 			}
 		})
 	}
@@ -482,11 +482,11 @@ func TestAuthenticateRejectsUnknownAuthMethodFromDatabase(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("Authenticate a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Authenticate returned %+v in addition to the error", got)
 	}
 
 	if repo.updates != 0 {
-		t.Errorf("UpdateExpiry appelée %d fois pour une session rejetée", repo.updates)
+		t.Errorf("UpdateExpiry called %d times for rejected session", repo.updates)
 	}
 }
 
@@ -501,7 +501,7 @@ func TestAuthenticateRejectsUnknownToken(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("Authenticate a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Authenticate returned %+v in addition to the error", got)
 	}
 }
 
@@ -517,7 +517,7 @@ func TestAuthenticateRejectsEmptyTokenWithoutTouchingRepository(t *testing.T) {
 	}
 
 	if repo.gets != 0 {
-		t.Errorf("GetByTokenHash appelée %d fois pour un token vide", repo.gets)
+		t.Errorf("GetByTokenHash called %d times for empty token", repo.gets)
 	}
 }
 
@@ -529,11 +529,11 @@ func TestAuthenticateDoesNotMaskInfrastructureErrors(t *testing.T) {
 
 	_, err := frozenSvc(t, repo, time.Now()).Authenticate(context.Background(), "letoken")
 	if errors.Is(err, sessions.ErrInvalidSession) {
-		t.Error("une panne SQL a été traduite en ErrInvalidSession")
+		t.Error("SQL failure was translated to ErrInvalidSession")
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }
 
@@ -552,11 +552,11 @@ func TestAuthenticateSkipsRenewalBelowThreshold(t *testing.T) {
 	}
 
 	if repo.updates != 0 {
-		t.Errorf("UpdateExpiry appelée %d fois en deçà du seuil", repo.updates)
+		t.Errorf("UpdateExpiry called %d times below threshold", repo.updates)
 	}
 
 	if !got.Session.ExpiresAt.Equal(now.Add(idlePwd - renew/2)) {
-		t.Errorf("ExpiresAt = %v, want inchangée", got.Session.ExpiresAt)
+		t.Errorf("ExpiresAt = %v, want unchanged", got.Session.ExpiresAt)
 	}
 }
 
@@ -573,20 +573,20 @@ func TestAuthenticateRenewsBeyondThreshold(t *testing.T) {
 	}
 
 	if repo.updates != 1 {
-		t.Fatalf("UpdateExpiry appelée %d fois, want 1", repo.updates)
+		t.Fatalf("UpdateExpiry called %d times, want 1", repo.updates)
 	}
 
 	want := now.Add(idlePwd)
 	if !repo.gotExpiry.Equal(want) {
-		t.Errorf("UpdateExpiry a reçu %v, want %v", repo.gotExpiry, want)
+		t.Errorf("UpdateExpiry received %v, want %v", repo.gotExpiry, want)
 	}
 
 	if repo.gotID != session.ID {
-		t.Errorf("UpdateExpiry a reçu l'ID %v, want %v", repo.gotID, session.ID)
+		t.Errorf("UpdateExpiry received ID %v, want %v", repo.gotID, session.ID)
 	}
 
 	if !got.Session.ExpiresAt.Equal(want) {
-		t.Errorf("ExpiresAt renvoyée = %v, want %v", got.Session.ExpiresAt, want)
+		t.Errorf("ExpiresAt returned = %v, want %v", got.Session.ExpiresAt, want)
 	}
 }
 
@@ -609,7 +609,7 @@ func TestAuthenticateClampsRenewalToAbsoluteLimit(t *testing.T) {
 
 	want := session.CreatedAt.Add(absPwd)
 	if !repo.gotExpiry.Equal(want) {
-		t.Errorf("UpdateExpiry a reçu %v, want le plafond %v", repo.gotExpiry, want)
+		t.Errorf("UpdateExpiry received %v, want ceiling %v", repo.gotExpiry, want)
 	}
 }
 
@@ -632,7 +632,7 @@ func TestAuthenticateSkipsRenewalWhenClampDoesNotAdvance(t *testing.T) {
 	}
 
 	if repo.updates != 0 {
-		t.Errorf("UpdateExpiry appelée %d fois alors que le plafond ne fait rien avancer", repo.updates)
+		t.Errorf("UpdateExpiry called %d times although ceiling does not advance", repo.updates)
 	}
 }
 
@@ -674,7 +674,7 @@ func TestAuthenticateRenewsWithTTLOfAuthMethod(t *testing.T) {
 	}
 
 	if want := now.Add(idleOIDC); !repo.gotExpiry.Equal(want) {
-		t.Errorf("UpdateExpiry a reçu %v, want %v — le TTL oidc n'a pas été appliqué", repo.gotExpiry, want)
+		t.Errorf("UpdateExpiry received %v, want %v — oidc TTL was not applied", repo.gotExpiry, want)
 	}
 }
 
@@ -689,7 +689,7 @@ func TestRevokeDeletesByHash(t *testing.T) {
 
 	want := sha256.Sum256([]byte("letoken"))
 	if !bytes.Equal(repo.gotHash, want[:]) {
-		t.Errorf("DeleteByTokenHash a reçu %x, want %x", repo.gotHash, want)
+		t.Errorf("DeleteByTokenHash received %x, want %x", repo.gotHash, want)
 	}
 }
 
@@ -705,7 +705,7 @@ func TestRevokeRejectsEmptyTokenWithoutTouchingRepository(t *testing.T) {
 	}
 
 	if repo.deleteHashes != 0 {
-		t.Errorf("DeleteByTokenHash appelée %d fois pour un token vide", repo.deleteHashes)
+		t.Errorf("DeleteByTokenHash called %d times for empty token", repo.deleteHashes)
 	}
 }
 
@@ -717,7 +717,7 @@ func TestRevokePropagatesRepositoryError(t *testing.T) {
 
 	err := frozenSvc(t, repo, time.Now()).Revoke(context.Background(), "letoken")
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }
 
@@ -732,7 +732,7 @@ func TestRevokeAllForUserDeletesByUserID(t *testing.T) {
 	}
 
 	if repo.gotUserID != userID {
-		t.Errorf("DeleteByUserID a reçu %v, want %v", repo.gotUserID, userID)
+		t.Errorf("DeleteByUserID received %v, want %v", repo.gotUserID, userID)
 	}
 }
 
@@ -744,6 +744,6 @@ func TestRevokeAllForUserPropagatesRepositoryError(t *testing.T) {
 
 	err := frozenSvc(t, repo, time.Now()).RevokeAllForUser(context.Background(), uuid.New())
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }

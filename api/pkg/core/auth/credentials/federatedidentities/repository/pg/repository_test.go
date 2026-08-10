@@ -122,7 +122,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	if got.ID == uuid.Nil {
-		t.Error("Create n'a pas généré d'ID")
+		t.Error("Create did not generate ID")
 	}
 
 	if !reflect.DeepEqual(got.Claims, map[string]any{claimsEmail: testEmail}) {
@@ -130,7 +130,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	if got.CreatedAt.Before(before) || got.LastLoginAt.Before(before) {
-		t.Errorf("horodatages non renseignés: created=%v lastLogin=%v", got.CreatedAt, got.LastLoginAt)
+		t.Errorf("timestamps not set: created=%v lastLogin=%v", got.CreatedAt, got.LastLoginAt)
 	}
 }
 
@@ -153,7 +153,7 @@ func TestCreateDuplicate(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("Create a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Create returned %+v in addition to the error", got)
 	}
 }
 
@@ -173,7 +173,7 @@ func TestCreateError(t *testing.T) {
 	}
 
 	if errors.Is(err, domain.ErrAlreadyExists) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrAlreadyExists")
+		t.Error("SQL failure must not be translated to ErrAlreadyExists")
 	}
 }
 
@@ -245,7 +245,7 @@ func TestGetError(t *testing.T) {
 	}
 
 	if errors.Is(err, domain.ErrNotFound) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrNotFound")
+		t.Error("SQL failure must not be translated to ErrNotFound")
 	}
 }
 
@@ -304,6 +304,6 @@ func TestUpdateError(t *testing.T) {
 		LastLoginAt: time.Now(),
 	})
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }

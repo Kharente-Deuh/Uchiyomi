@@ -11,12 +11,12 @@ func TestSafeRedirectPath(t *testing.T) {
 		in   string
 		want string
 	}{
-		"vide":                             {in: "", want: "/"},
-		"pas de slash initial":             {in: "foo", want: "/"},
-		"chemin local valide":              {in: "/ok", want: "/ok"},
+		"empty":                             {in: "", want: "/"},
+		"no leading slash":             {in: "foo", want: "/"},
+		"valid local path":                 {in: "/ok", want: "/ok"},
 		"double slash protocol-relative":   {in: "//x", want: "/"},
-		"antislash":                        {in: "/a\\b", want: "/"},
-		"URL avec schéma et hôte":          {in: "https://x", want: "/"},
+		"backslash":                        {in: "/a\\b", want: "/"},
+		"URL with scheme and host":          {in: "https://x", want: "/"},
 		"tabulation avant un double slash": {in: "/\t/evil.example.com", want: "/"},
 	}
 

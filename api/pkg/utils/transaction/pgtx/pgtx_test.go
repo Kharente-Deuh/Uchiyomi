@@ -39,11 +39,11 @@ func TestNewValidatesDeps(t *testing.T) {
 
 	tr, err := pgtx.New(pgtx.Deps{})
 	if err == nil {
-		t.Fatal("New sans DB doit échouer")
+		t.Fatal("New without DB must fail")
 	}
 
 	if tr != nil {
-		t.Error("New a renvoyé un transactor en plus de l'erreur")
+		t.Error("New returned a transactor in addition to the error")
 	}
 
 	if want := "deps.Validate: db is required"; err.Error() != want {
@@ -85,17 +85,17 @@ func TestWithinTxRollsBackAndPropagatesError(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectRollback()
 
-	sentinel := errors.New("règle métier violée")
+	sentinel := errors.New("business rule violated")
 
 	err := tr.WithinTx(context.Background(), transaction.TxOpts{}, func(context.Context) error {
 		return sentinel
 	})
 	if err == nil {
-		t.Fatal("WithinTx doit remonter l'erreur du callback")
+		t.Fatal("WithinTx must propagate callback error")
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable via errors.Is", err)
+		t.Errorf("err = %v, original error no longer reachable via errors.Is", err)
 	}
 }
 
@@ -112,7 +112,7 @@ func TestWithinTxPutsTransactionInContext(t *testing.T) {
 	err := tr.WithinTx(context.Background(), transaction.TxOpts{}, func(ctx context.Context) error {
 		inTx := pgtx.From(ctx, db)
 		if inTx == db {
-			t.Error("le ctx du callback ne porte pas la transaction")
+			t.Error("callback ctx does not carry transaction")
 		}
 
 		if _, err := gorm.G[pgmodels.User](inTx).Count(ctx, "*"); err != nil {
@@ -155,7 +155,7 @@ func TestWithinTxRetriesOnSerializationFailure(t *testing.T) {
 	}
 
 	if calls != 3 {
-		t.Errorf("callback appelé %d fois, want 3", calls)
+		t.Errorf("callback called %d times, want 3", calls)
 	}
 }
 
@@ -178,11 +178,11 @@ func TestWithinTxGivesUpAfterMaxAttempts(t *testing.T) {
 			return serializationFailure()
 		})
 	if err == nil {
-		t.Fatal("WithinTx doit abandonner et remonter l'échec de sérialisation")
+		t.Fatal("WithinTx must give up and propagate serialization failure")
 	}
 
 	if calls != pgtx.MaxAttempts {
-		t.Errorf("callback appelé %d fois, want %d", calls, pgtx.MaxAttempts)
+		t.Errorf("callback called %d times, want %d", calls, pgtx.MaxAttempts)
 	}
 }
 
@@ -203,10 +203,10 @@ func TestWithinTxDoesNotRetryOtherErrors(t *testing.T) {
 			return &pgconn.PgError{Code: "23505", Message: "duplicate key"}
 		})
 	if err == nil {
-		t.Fatal("WithinTx doit remonter l'erreur")
+		t.Fatal("WithinTx must propagate error")
 	}
 
 	if calls != 1 {
-		t.Errorf("callback appelé %d fois, want 1 (pas de retry hors 40001)", calls)
+		t.Errorf("callback called %d times, want 1 (no retry outside 40001)", calls)
 	}
 }

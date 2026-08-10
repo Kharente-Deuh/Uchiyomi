@@ -47,69 +47,69 @@ describe('safeRedirect', () => {
     resolve.fn = () => ({ matched: [{}] })
   })
 
-  it('accepte un chemin interne résolu par le router', () => {
+  it('accepts an internal path resolved by the router', () => {
     expect(safeRedirect('/library')).toBe('/library')
   })
 
-  it('conserve la query string du chemin cible', () => {
+  it('preserves the target path query string', () => {
     expect(safeRedirect('/library?page=2')).toBe('/library?page=2')
   })
 
-  it('retombe sur / quand le paramètre est absent', () => {
+  it('falls back to / when the parameter is absent', () => {
     expect(safeRedirect(undefined)).toBe('/')
   })
 
-  it('retombe sur / quand la clé est répétée et vue-router rend un tableau', () => {
+  it('falls back to / when the key is repeated and vue-router returns an array', () => {
     expect(safeRedirect(['/a', '/b'])).toBe('/')
   })
 
-  it('rejette une URL absolue', () => {
+  it('rejects an absolute URL', () => {
     expect(safeRedirect('https://evil.com')).toBe('/')
   })
 
-  it('rejette une URL protocol-relative', () => {
+  it('rejects a protocol-relative URL', () => {
     expect(safeRedirect('//evil.com')).toBe('/')
   })
 
-  it('rejette un antislash, que certains navigateurs normalisent en /', () => {
+  it('rejects a backslash, which some browsers normalize to /', () => {
     expect(safeRedirect(String.raw`/\evil.com`)).toBe('/')
   })
 
-  it('rejette un chemin relatif sans / initial', () => {
+  it('rejects a relative path without a leading /', () => {
     expect(safeRedirect('library')).toBe('/')
   })
 
-  it('rejette un chemin qui ne résout aucune route', () => {
+  it('rejects a path that matches no route', () => {
     resolve.fn = () => ({ matched: [] })
 
     expect(safeRedirect('/nope')).toBe('/')
   })
 
-  it('rejette /status, qui se renverrait sur lui-même', () => {
+  it('rejects /status, which would redirect to itself', () => {
     expect(safeRedirect(STATUS_PATH)).toBe('/')
   })
 
-  it("rejette /status même porteur d'une query string", () => {
+  it('rejects /status even when it carries a query string', () => {
     expect(safeRedirect('/status?redirect=%2Flibrary')).toBe('/')
   })
 
-  it("rejette /status même porteur d'un fragment", () => {
+  it('rejects /status even when it carries a fragment', () => {
     expect(safeRedirect('/status#bas')).toBe('/')
   })
 
-  it('accepte un chemin seulement préfixé par /status', () => {
+  it('accepts a path only prefixed by /status', () => {
     expect(safeRedirect('/statustique')).toBe('/statustique')
   })
 
-  it('rejette /status avec un slash final', () => {
+  it('rejects /status with a trailing slash', () => {
     expect(safeRedirect('/status/')).toBe('/')
   })
 
-  it('rejette /status quelle que soit la casse', () => {
+  it('rejects /status regardless of case', () => {
     expect(safeRedirect('/Status')).toBe('/')
   })
 
-  it("rejette /status porteur à la fois d'une query et d'un fragment", () => {
+  it('rejects /status carrying both a query and a fragment', () => {
     expect(safeRedirect('/status?redirect=%2Fa#bas')).toBe('/')
     expect(safeRedirect('/status#bas?redirect=%2Fa')).toBe('/')
   })
@@ -125,29 +125,29 @@ const router = createRouter({
   ],
 })
 
-describe('safeRedirect adossé au router', () => {
+describe('safeRedirect with router', () => {
   beforeEach(() => {
     resolve.fn = to => router.resolve(to)
   })
 
-  it('accepte une route à paramètre', () => {
+  it('accepts a parameterized route', () => {
     expect(safeRedirect('/source/one-piece')).toBe('/source/one-piece')
   })
 
-  it('accepte une route à paramètres imbriqués', () => {
+  it('accepts a route with nested parameters', () => {
     expect(safeRedirect('/source/one-piece/chapter/42'))
       .toBe('/source/one-piece/chapter/42')
   })
 
-  it("accepte une route à paramètre porteuse d'une query string", () => {
+  it('accepts a parameterized route carrying a query string', () => {
     expect(safeRedirect('/source/one-piece?page=2')).toBe('/source/one-piece?page=2')
   })
 
-  it('rejette un segment de paramètre manquant', () => {
+  it('rejects a missing parameter segment', () => {
     expect(safeRedirect('/source')).toBe('/')
   })
 
-  it('rejette une URL absolue sans même interroger le router', () => {
+  it('rejects an absolute URL without even consulting the router', () => {
     expect(safeRedirect('https://evil.com/x')).toBe('/')
   })
 })

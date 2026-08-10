@@ -51,14 +51,14 @@ func startCache(t *testing.T, cfg Config) *Cache {
 		select {
 		case <-runErr:
 		case <-time.After(2 * time.Second):
-			t.Error("Run n'a pas rendu la main 2s après l'annulation du contexte")
+			t.Error("Run did not return 2s after context cancellation")
 		}
 	})
 
 	deadline := time.Now().Add(2 * time.Second)
 	for !ic.IsReady() {
 		if time.Now().After(deadline) {
-			t.Fatal("le cache n'est jamais devenu prêt")
+			t.Fatal("cache never became ready")
 		}
 
 		time.Sleep(time.Millisecond)
@@ -79,19 +79,19 @@ func TestImageCacheConfigValidate(t *testing.T) {
 		"valide": {
 			cfg: Config{Dir: testDir, ErrorCacheTTL: time.Minute, MinInterval: time.Millisecond, FetchFn: fetch},
 		},
-		"sans dir": {
+		"without dir": {
 			cfg:     Config{ErrorCacheTTL: time.Minute, MinInterval: time.Millisecond, FetchFn: fetch},
 			wantErr: "dir is required",
 		},
-		"TTL trop courte": {
+		"TTL too short": {
 			cfg:     Config{Dir: testDir, ErrorCacheTTL: time.Second, MinInterval: time.Millisecond, FetchFn: fetch},
 			wantErr: "ErrorCacheTTL must be at least 1 minute",
 		},
-		"sans intervalle": {
+		"without interval": {
 			cfg:     Config{Dir: testDir, ErrorCacheTTL: time.Minute, FetchFn: fetch},
 			wantErr: "MinInterval is required",
 		},
-		"intervalle négatif": {
+		"negative interval": {
 			cfg:     Config{Dir: testDir, ErrorCacheTTL: time.Minute, MinInterval: -time.Second, FetchFn: fetch},
 			wantErr: "MinInterval is required",
 		},
@@ -150,7 +150,7 @@ func TestImageCacheUsesInjectedLogger(t *testing.T) {
 	}
 
 	if !strings.Contains(buf.String(), `"component":"imgcache"`) {
-		t.Errorf("le logger injecté n'a pas été utilisé, logs: %s", buf.String())
+		t.Errorf("injected logger was not used, logs: %s", buf.String())
 	}
 }
 
@@ -204,7 +204,7 @@ func TestImageCacheEnsureDownloadsAndCaches(t *testing.T) {
 
 	content, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("le fichier annoncé par Ensure est illisible: %v", err)
+		t.Fatalf("file announced by Ensure is unreadable: %v", err)
 	}
 
 	if string(content) != "image-bytes" {
@@ -212,11 +212,11 @@ func TestImageCacheEnsureDownloadsAndCaches(t *testing.T) {
 	}
 
 	if _, err := ic.Ensure(context.Background(), "one-piece/ch1/001.jpg"); err != nil {
-		t.Fatalf("Ensure (2e appel): %v", err)
+		t.Fatalf("Ensure (2nd call): %v", err)
 	}
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("FetchFn appelée %d fois pour 2 Ensure sur la même image, want 1", got)
+		t.Errorf("FetchFn called %d times for 2 Ensure on same image, want 1", got)
 	}
 }
 
@@ -242,7 +242,7 @@ func TestImageCacheEnsureNoTempFileLeftBehind(t *testing.T) {
 
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), ".dl-") {
-			t.Errorf("fichier temporaire laissé sur le disque: %s", e.Name())
+			t.Errorf("temp file left on disk: %s", e.Name())
 		}
 	}
 }
@@ -284,7 +284,7 @@ func TestImageCacheEnsureCoalescesConcurrentCalls(t *testing.T) {
 	select {
 	case <-started:
 	case <-time.After(2 * time.Second):
-		t.Fatal("FetchFn n'a jamais démarré")
+		t.Fatal("FetchFn never started")
 	}
 
 	for range 3 {
@@ -304,7 +304,7 @@ func TestImageCacheEnsureCoalescesConcurrentCalls(t *testing.T) {
 	wg.Wait()
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("FetchFn appelée %d fois pour 4 Ensure simultanés sur la même clé, want 1", got)
+		t.Errorf("FetchFn called %d times for 4 concurrent Ensure on same key, want 1", got)
 	}
 }
 
@@ -332,11 +332,11 @@ func TestImageCacheEnsureCachesErrors(t *testing.T) {
 
 	_, err = ic.Ensure(context.Background(), "missing.jpg")
 	if !errors.Is(err, sentinel) {
-		t.Errorf("Ensure (2e appel) = %v, want %v", err, sentinel)
+		t.Errorf("Ensure (2nd call) = %v, want %v", err, sentinel)
 	}
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("FetchFn appelée %d fois, want 1 (le cache d'erreurs doit absorber le 2e appel)", got)
+		t.Errorf("FetchFn called %d times, want 1 (error cache must absorb 2nd call)", got)
 	}
 }
 
@@ -352,7 +352,7 @@ func TestImageCacheEnsureRejectsInvalidNames(t *testing.T) {
 
 	for _, name := range []string{"", "/", ".", "..", "a\x00b"} {
 		if _, err := ic.Ensure(context.Background(), name); err == nil {
-			t.Errorf("Ensure(%q) = nil, want une erreur", name)
+			t.Errorf("Ensure(%q) = nil, want error", name)
 		}
 	}
 }
@@ -374,7 +374,7 @@ func TestImageCacheEscapesAreContained(t *testing.T) {
 	}
 
 	if !strings.HasPrefix(path, dir+string(os.PathSeparator)) {
-		t.Errorf("écriture hors du répertoire de cache: %q (cache: %q)", path, dir)
+		t.Errorf("write outside cache directory: %q (cache: %q)", path, dir)
 	}
 }
 
@@ -392,7 +392,7 @@ func TestImageCacheRunCreatesNestedDir(t *testing.T) {
 
 	path, err := ic.Ensure(context.Background(), "serie/001.jpg")
 	if err != nil {
-		t.Fatalf("Ensure dans un répertoire fraîchement créé: %v", err)
+		t.Fatalf("Ensure in freshly created directory: %v", err)
 	}
 
 	if _, err := os.Stat(path); err != nil {
@@ -408,22 +408,22 @@ func TestSafeKey(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		"chemin simple":         {in: testImageName, want: testImageName},
+		"simple path":           {in: testImageName, want: testImageName},
 		"sous-dossiers":         {in: testNestedImage, want: testNestedImage},
 		"slash initial":         {in: "/serie/001.jpg", want: "serie/001.jpg"},
-		"remontée simple":       {in: "../001.jpg", want: testImageName},
-		"remontée multiple":     {in: "../../../etc/passwd", want: testEscapedPath},
-		"remontée au milieu":    {in: "serie/../../etc/passwd", want: testEscapedPath},
+		"simple traversal":       {in: "../001.jpg", want: testImageName},
+		"multiple traversal":     {in: "../../../etc/passwd", want: testEscapedPath},
+		"traversal in the middle":    {in: "serie/../../etc/passwd", want: testEscapedPath},
 		"antislashs windows":    {in: `serie\ch1\001.jpg`, want: testNestedImage},
-		"remontée en antislash": {in: `..\..\etc\passwd`, want: testEscapedPath},
+		"backslash traversal": {in: `..\..\etc\passwd`, want: testEscapedPath},
 		"point courant":         {in: "./001.jpg", want: testImageName},
 		"double slash":          {in: "serie//001.jpg", want: "serie/001.jpg"},
-		"vide":                  {in: "", wantErr: true},
+		"empty":                  {in: "", wantErr: true},
 		"octet nul":             {in: "a\x00b.jpg", wantErr: true},
 		"racine":                {in: "/", wantErr: true},
 		"point":                 {in: ".", wantErr: true},
 		"double point":          {in: "..", wantErr: true},
-		"remontée seule":        {in: "../..", wantErr: true},
+		"traversal only":        {in: "../..", wantErr: true},
 	}
 
 	for name, tc := range tests {
@@ -434,7 +434,7 @@ func TestSafeKey(t *testing.T) {
 
 			if tc.wantErr {
 				if err == nil {
-					t.Fatalf("safeKey(%q) = %q, want une erreur", tc.in, got)
+					t.Fatalf("safeKey(%q) = %q, want error", tc.in, got)
 				}
 
 				return
@@ -449,7 +449,7 @@ func TestSafeKey(t *testing.T) {
 			}
 
 			if strings.HasPrefix(got, "/") || strings.Contains(got, "..") {
-				t.Errorf("safeKey(%q) = %q : clé non contenue", tc.in, got)
+				t.Errorf("safeKey(%q) = %q: key not contained", tc.in, got)
 			}
 		})
 	}
@@ -476,7 +476,7 @@ func TestImageCacheRateLimitsFetches(t *testing.T) {
 	}
 
 	if elapsed := time.Since(start); elapsed < 2*minInterval {
-		t.Errorf("3 téléchargements en %v, want au moins %v", elapsed, 2*minInterval)
+		t.Errorf("3 downloads in %v, want at least %v", elapsed, 2*minInterval)
 	}
 }
 
@@ -502,7 +502,7 @@ func TestImageCacheProcessSkipsRateLimitWhenAlreadyOnDisk(t *testing.T) {
 	}
 
 	diskPath := filepath.Join(dir, testImageName)
-	if err := os.WriteFile(diskPath, []byte("déjà là"), 0o600); err != nil {
+	if err := os.WriteFile(diskPath, []byte("already there"), 0o600); err != nil {
 		t.Fatalf("os.WriteFile: %v", err)
 	}
 
@@ -510,7 +510,7 @@ func TestImageCacheProcessSkipsRateLimitWhenAlreadyOnDisk(t *testing.T) {
 
 	lim := rate.NewLimiter(rate.Every(time.Hour), 1)
 	if !lim.Allow() {
-		t.Fatal("le jeton initial du limiteur devrait être disponible")
+		t.Fatal("initial rate limiter token should be available")
 	}
 
 	finished := make(chan struct{})
@@ -524,7 +524,7 @@ func TestImageCacheProcessSkipsRateLimitWhenAlreadyOnDisk(t *testing.T) {
 	select {
 	case <-finished:
 	case <-time.After(2 * time.Second):
-		t.Fatal("process a attendu le limiteur pour un fichier déjà en cache")
+		t.Fatal("process waited on rate limiter for cached file")
 	}
 
 	if j.err != nil {
@@ -532,7 +532,7 @@ func TestImageCacheProcessSkipsRateLimitWhenAlreadyOnDisk(t *testing.T) {
 	}
 
 	if got := calls.Load(); got != 0 {
-		t.Errorf("FetchFn appelée %d fois pour un fichier déjà en cache, want 0", got)
+		t.Errorf("FetchFn called %d times for cached file, want 0", got)
 	}
 }
 
@@ -570,11 +570,11 @@ func TestImageCacheProcessDoesNotCacheContextErrors(t *testing.T) {
 				t.Helper()
 
 				if err == nil {
-					t.Fatal("job.err = nil, want une erreur du limiteur")
+					t.Fatal("job.err = nil, want rate limiter error")
 				}
 
 				if errors.Is(err, context.DeadlineExceeded) {
-					t.Errorf("job.err = %v, want une erreur non sentinel", err)
+					t.Errorf("job.err = %v, want non-sentinel error", err)
 				}
 			},
 		},
@@ -601,7 +601,7 @@ func TestImageCacheProcessDoesNotCacheContextErrors(t *testing.T) {
 
 			lim := rate.NewLimiter(rate.Every(time.Hour), 1)
 			if !lim.Allow() {
-				t.Fatal("le jeton initial du limiteur devrait être disponible")
+				t.Fatal("initial rate limiter token should be available")
 			}
 
 			ctx, cancel := tc.newCtx()
@@ -618,14 +618,14 @@ func TestImageCacheProcessDoesNotCacheContextErrors(t *testing.T) {
 			tc.checkErr(t, j.err)
 
 			if !strings.Contains(buf.String(), "job failed") {
-				t.Fatalf("process n'a pas traversé son defer, logs: %s", buf.String())
+				t.Fatalf("process did not run through defer, logs: %s", buf.String())
 			}
 
 			ic.mtx.Lock()
 			defer ic.mtx.Unlock()
 
 			if len(ic.errorCache) != 0 {
-				t.Errorf("cache d'erreurs non vide (%d entrée(s)) : ces erreurs ne disent rien de l'image",
+				t.Errorf("error cache not empty (%d entry/entries): these errors say nothing about the image",
 					len(ic.errorCache))
 			}
 		})

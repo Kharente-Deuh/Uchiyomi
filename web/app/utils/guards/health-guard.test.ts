@@ -5,11 +5,11 @@ import { requiresHealthCheck, resolveHealthGuard } from './health-guard'
 import { routeStub } from './route.stub'
 
 describe('requiresHealthCheck', () => {
-  it('exempte /status pour ne pas boucler sur la redirection', () => {
+  it('exempts /status to avoid redirect loops', () => {
     expect(requiresHealthCheck(routeStub({ name: 'status' }))).toBe(false)
   })
 
-  it('exige le check sur toute autre route', () => {
+  it('requires the check on every other route', () => {
     expect(requiresHealthCheck(routeStub({ name: 'index' }))).toBe(true)
     expect(requiresHealthCheck(routeStub({ name: 'library' }))).toBe(true)
   })
@@ -18,23 +18,23 @@ describe('requiresHealthCheck', () => {
 describe('resolveHealthGuard', () => {
   const target = routeStub({ name: 'library', fullPath: '/library' })
 
-  it('laisse passer un serveur prêt', () => {
+  it('allows a ready server through', () => {
     expect(resolveHealthGuard(target, { status: 'ok', components: {} })).toBeUndefined()
   })
 
-  it('redirige un serveur en cours de démarrage', () => {
+  it('redirects a starting server', () => {
     expect(resolveHealthGuard(target, { status: 'starting', components: {} })).toBe('/status?redirect=%2Flibrary')
   })
 
-  it('redirige un serveur en échec', () => {
+  it('redirects a failed server', () => {
     expect(resolveHealthGuard(target, { status: 'failed', components: {} })).toBe('/status?redirect=%2Flibrary')
   })
 
-  it('redirige un serveur injoignable', () => {
+  it('redirects an unreachable server', () => {
     expect(resolveHealthGuard(target, { status: 'unreachable' })).toBe('/status?redirect=%2Flibrary')
   })
 
-  it('encode la query string du chemin cible', () => {
+  it('encodes the target path query string', () => {
     const paged = routeStub({ name: 'library', fullPath: '/library?page=2' })
 
     expect(resolveHealthGuard(paged, { status: 'starting', components: {} }))

@@ -17,7 +17,7 @@ const (
 func TestClaimsValue(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil sérialise un objet vide", func(t *testing.T) {
+	t.Run("nil serializes empty object", func(t *testing.T) {
 		t.Parallel()
 
 		var c pgmodels.Claims
@@ -37,7 +37,7 @@ func TestClaimsValue(t *testing.T) {
 		}
 	})
 
-	t.Run("map sérialisée en JSON", func(t *testing.T) {
+	t.Run("map serialized as JSON", func(t *testing.T) {
 		t.Parallel()
 
 		got, err := pgmodels.Claims{testEmailClaim: testEmail}.Value()
@@ -50,7 +50,7 @@ func TestClaimsValue(t *testing.T) {
 		}
 	})
 
-	t.Run("map vide", func(t *testing.T) {
+	t.Run("empty map", func(t *testing.T) {
 		t.Parallel()
 
 		got, err := pgmodels.Claims{}.Value()
@@ -67,7 +67,7 @@ func TestClaimsValue(t *testing.T) {
 func TestClaimsScan(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil remet la map à nil", func(t *testing.T) {
+	t.Run("nil resets map to nil", func(t *testing.T) {
 		t.Parallel()
 
 		c := pgmodels.Claims{"stale": true}
@@ -94,12 +94,12 @@ func TestClaimsScan(t *testing.T) {
 		}
 	})
 
-	t.Run("JSON invalide", func(t *testing.T) {
+	t.Run("invalid JSON", func(t *testing.T) {
 		t.Parallel()
 
 		var c pgmodels.Claims
 		if err := c.Scan([]byte(`{`)); err == nil {
-			t.Error("Scan sur un JSON tronqué = nil, want une erreur")
+			t.Error("Scan on truncated JSON = nil, want error")
 		}
 	})
 
@@ -110,7 +110,7 @@ func TestClaimsScan(t *testing.T) {
 
 		err := c.Scan(`{"email":"bob@example.com"}`)
 		if err == nil {
-			t.Fatal("Scan(string) = nil, want une erreur")
+			t.Fatal("Scan(string) = nil, want error")
 		}
 
 		if want := "claims: type string inattendu"; err.Error() != want {

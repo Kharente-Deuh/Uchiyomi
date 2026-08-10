@@ -50,30 +50,30 @@ func TestNewHealthRegistryDeclaresTheLatchesAndTheDBProbe(t *testing.T) {
 		}
 
 		if c.Status != health.StatusStarting {
-			t.Errorf("%s = %q, attendu %q", name, c.Status, health.StatusStarting)
+			t.Errorf("%s = %q, want %q", name, c.Status, health.StatusStarting)
 		}
 
 		if c.Probe {
-			t.Errorf("%s est déclaré comme sonde", name)
+			t.Errorf("%s is declared as probe", name)
 		}
 	}
 
 	if !rep.Components[componentDB].Probe {
-		t.Error("db n'est pas déclaré comme sonde")
+		t.Error("db is not declared as probe")
 	}
 }
 
 func TestNewHealthRegistryWiresTheProbeToTheGivenDatabase(t *testing.T) {
-	boom := errors.New("connexion refusée")
+	boom := errors.New("connection refused")
 	reg := NewHealthRegistry(&fakeDB{ping: func(context.Context) error { return boom }})
 
 	c := reg.Snapshot(context.Background()).Components[componentDB]
 	if c.Status != health.StatusFailed {
-		t.Fatalf("db = %q, attendu %q", c.Status, health.StatusFailed)
+		t.Fatalf("db = %q, want %q", c.Status, health.StatusFailed)
 	}
 
 	if c.Reason != boom.Error() {
-		t.Errorf("raison = %q, attendu %q", c.Reason, boom.Error())
+		t.Errorf("reason = %q, want %q", c.Reason, boom.Error())
 	}
 }
 
@@ -83,20 +83,20 @@ func TestApplicationRoutesAre503WhileMigrationsAreStarting(t *testing.T) {
 	for _, path := range []string{"/api/setup/status", "/api/sources/asura/search"} {
 		code, raw := serve(t, h, path)
 		if code != http.StatusServiceUnavailable {
-			t.Errorf("%s: code = %d, attendu %d", path, code, http.StatusServiceUnavailable)
+			t.Errorf("%s: code = %d, want %d", path, code, http.StatusServiceUnavailable)
 
 			continue
 		}
 
 		var body messageBody
 		if err := json.Unmarshal(raw, &body); err != nil {
-			t.Errorf("%s: décodage de %q: %v", path, raw, err)
+			t.Errorf("%s: decode of %q: %v", path, raw, err)
 
 			continue
 		}
 
 		if body.Message != notReadyMessage {
-			t.Errorf("%s: message = %q, attendu %q", path, body.Message, notReadyMessage)
+			t.Errorf("%s: message = %q, want %q", path, body.Message, notReadyMessage)
 		}
 	}
 }
@@ -108,7 +108,7 @@ func TestApplicationRoutesRespondOnceMigrationsAreOK(t *testing.T) {
 
 	code, raw := serve(t, h, "/api/setup/status")
 	if code != http.StatusOK {
-		t.Fatalf("code = %d, attendu %d (corps: %s)", code, http.StatusOK, raw)
+		t.Fatalf("code = %d, want %d (body: %s)", code, http.StatusOK, raw)
 	}
 
 	var body struct {
@@ -116,11 +116,11 @@ func TestApplicationRoutesRespondOnceMigrationsAreOK(t *testing.T) {
 	}
 
 	if err := json.Unmarshal(raw, &body); err != nil {
-		t.Fatalf("décodage de %q: %v", raw, err)
+		t.Fatalf("decode of %q: %v", raw, err)
 	}
 
 	if body.Required {
-		t.Error("required = true, attendu la réponse du service feint")
+		t.Error("required = true, want fake service response")
 	}
 }
 
@@ -128,11 +128,11 @@ func TestHealthRoutesAnswerWhileTheGateIsClosed(t *testing.T) {
 	h, _ := newTestHandler(t, &fakeDB{})
 
 	if code, _ := serve(t, h, "/healthz"); code != http.StatusOK {
-		t.Errorf("/healthz: code = %d, attendu %d", code, http.StatusOK)
+		t.Errorf("/healthz: code = %d, want %d", code, http.StatusOK)
 	}
 
 	if code, _ := serve(t, h, "/readyz"); code != http.StatusServiceUnavailable {
-		t.Errorf("/readyz: code = %d, attendu %d", code, http.StatusServiceUnavailable)
+		t.Errorf("/readyz: code = %d, want %d", code, http.StatusServiceUnavailable)
 	}
 }
 
@@ -149,10 +149,10 @@ func TestRequireMigrationsDoesNotRunTheProbe(t *testing.T) {
 	reg.Set(componentMigrations, nil)
 
 	if code, raw := serve(t, h, "/api/setup/status"); code != http.StatusOK {
-		t.Fatalf("code = %d, attendu %d (corps: %s)", code, http.StatusOK, raw)
+		t.Fatalf("code = %d, want %d (body: %s)", code, http.StatusOK, raw)
 	}
 
 	if pings != 0 {
-		t.Errorf("sonde db appelée %d fois pour une requête applicative, attendu 0", pings)
+		t.Errorf("db probe called %d times for application request, want 0", pings)
 	}
 }

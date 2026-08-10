@@ -10,12 +10,12 @@ const USER = { isAuthenticated: true, isAdmin: false }
 const ADMIN = { isAuthenticated: true, isAdmin: true }
 
 describe('requiresAuthCheck', () => {
-  it('ignore une route sans groupe, pour lui épargner l\'aller-retour /me', () => {
+  it('skips a route without a group to spare the /me round-trip', () => {
     expect(requiresAuthCheck(routeStub({ name: 'status' }))).toBe(false)
     expect(requiresAuthCheck(routeStub({ name: 'status', meta: { authGroups: [] } }))).toBe(false)
   })
 
-  it('exige le check dès qu\'un groupe est déclaré', () => {
+  it('requires the check as soon as a group is declared', () => {
     expect(requiresAuthCheck(routeStub({ meta: { authGroups: [AUTHENTICATED_ROUTE_GROUP] } }))).toBe(true)
   })
 })
@@ -27,21 +27,21 @@ describe('resolveAuthGuard', () => {
     meta: { authGroups: [AUTHENTICATED_ROUTE_GROUP] },
   })
 
-  it('renvoie sur /login un anonyme, en gardant la cible pour l\'après-connexion', () => {
+  it('redirects anonymous user to /login, preserving the target for post-login', () => {
     expect(resolveAuthGuard({ to: library, ...ANONYMOUS })).toBe('/login?redirect=%2Flibrary%3Fpage%3D2')
   })
 
-  it('renvoie sur /login sans query depuis l\'accueil, qui est déjà la cible par défaut', () => {
+  it('redirects to /login without query from home, which is already the default target', () => {
     const index = routeStub({ name: 'index', fullPath: '/', meta: { authGroups: [AUTHENTICATED_ROUTE_GROUP] } })
 
     expect(resolveAuthGuard({ to: index, ...ANONYMOUS })).toBe('/login')
   })
 
-  it('laisse passer un utilisateur connecté', () => {
+  it('allows an authenticated user through', () => {
     expect(resolveAuthGuard({ to: library, ...USER })).toBeUndefined()
   })
 
-  it('renvoie à l\'accueil un connecté qui revient sur /login', () => {
+  it('redirects an authenticated user on /login back to home', () => {
     const login = routeStub({ name: 'login', fullPath: '/login', meta: { authGroups: [NOT_AUTHENTICATED_ROUTE_GROUP] } })
 
     expect(resolveAuthGuard({ to: login, ...USER })).toBe('/')
@@ -49,18 +49,18 @@ describe('resolveAuthGuard', () => {
   })
 })
 
-describe('resolveAuthGuard, groupe admin', () => {
+describe('resolveAuthGuard, admin group', () => {
   const admin = routeStub({ name: 'settings', fullPath: '/settings', meta: { authGroups: [ADMIN_ROUTE_GROUP] } })
 
-  it('envoie un anonyme sur /login plutôt que de le faire rebondir par l\'accueil', () => {
+  it('sends anonymous user to /login rather than bouncing through home', () => {
     expect(resolveAuthGuard({ to: admin, ...ANONYMOUS })).toBe('/login?redirect=%2Fsettings')
   })
 
-  it('renvoie à l\'accueil un connecté sans les droits', () => {
+  it('redirects authenticated user without rights to home', () => {
     expect(resolveAuthGuard({ to: admin, ...USER })).toBe('/')
   })
 
-  it('laisse passer un admin', () => {
+  it('allows an admin through', () => {
     expect(resolveAuthGuard({ to: admin, ...ADMIN })).toBeUndefined()
   })
 })

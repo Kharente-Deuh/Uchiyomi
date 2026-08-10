@@ -36,7 +36,7 @@ func TestConfigValidate(t *testing.T) {
 		wantErr string
 	}{
 		"valide":       {cfg: asurahttp.Config{AsuraURL: "https://api.example.com"}},
-		"URL vide":     {cfg: asurahttp.Config{}, wantErr: "asuraURL is not a valid URL"},
+		"empty URL":     {cfg: asurahttp.Config{}, wantErr: "asuraURL is not a valid URL"},
 		"URL relative": {cfg: asurahttp.Config{AsuraURL: "example.com"}, wantErr: "asuraURL is not a valid URL"},
 	}
 
@@ -67,7 +67,7 @@ func TestDepsValidate(t *testing.T) {
 
 	var deps asurahttp.Deps
 	if err := deps.Validate(); err == nil {
-		t.Error("Validate() sans client HTTP doit échouer")
+		t.Error("Validate() without HTTP client must fail")
 	}
 
 	deps = asurahttp.Deps{Http: http.DefaultClient}
@@ -80,11 +80,11 @@ func TestNewRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 
 	if _, err := asurahttp.New(asurahttp.Deps{}, asurahttp.Config{AsuraURL: "https://x.dev"}); err == nil {
-		t.Error("New sans client HTTP doit échouer")
+		t.Error("New without HTTP client must fail")
 	}
 
 	if _, err := asurahttp.New(asurahttp.Deps{Http: http.DefaultClient}, asurahttp.Config{}); err == nil {
-		t.Error("New avec une config vide doit échouer")
+		t.Error("New with empty config must fail")
 	}
 }
 
@@ -108,7 +108,7 @@ func TestSearchRequestShape(t *testing.T) {
 	}
 
 	if got == nil {
-		t.Fatal("aucune requête reçue")
+		t.Fatal("no request received")
 	}
 
 	if got.Path != "/series" {
@@ -188,8 +188,8 @@ func TestSearchDefaultOrderFollowsSort(t *testing.T) {
 		wantOrder string
 	}{
 		"tri par titre => ascendant":       {sort: domain.SortTypeTitle, wantOrder: "asc"},
-		"tri par popularité => descendant": {sort: domain.SortTypePopular, wantOrder: "desc"},
-		"tri par défaut => descendant":     {sort: "", wantOrder: "desc"},
+		"sort by popularity => descending": {sort: domain.SortTypePopular, wantOrder: "desc"},
+		"default sort => descending":     {sort: "", wantOrder: "desc"},
 	}
 
 	for name, tc := range tests {
@@ -295,7 +295,7 @@ func TestSearchServerErrors(t *testing.T) {
 			})
 
 			if _, err := c.Search(context.Background(), domain.SearchOpts{}); err == nil {
-				t.Errorf("Search sur un %d = nil, want une erreur", status)
+				t.Errorf("Search on %d = nil, want error", status)
 			}
 		})
 	}
@@ -309,7 +309,7 @@ func TestSearchMalformedJSON(t *testing.T) {
 	})
 
 	if _, err := c.Search(context.Background(), domain.SearchOpts{}); err == nil {
-		t.Error("Search sur un JSON tronqué = nil, want une erreur")
+		t.Error("Search on truncated JSON = nil, want error")
 	}
 }
 
@@ -373,7 +373,7 @@ func TestGetChaptersListBySerie(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		_, _ = w.Write([]byte(`{"data":[
-			{"id":1,"slug":"chapter-1","number":1,"title":"Le début"},
+			{"id":1,"slug":"chapter-1","number":1,"title":"The beginning"},
 			{"id":2,"slug":"chapter-2","number":2}
 		]}`))
 	}))
@@ -390,7 +390,7 @@ func TestGetChaptersListBySerie(t *testing.T) {
 	}
 
 	if chaptersPtr == nil {
-		t.Fatal("GetChaptersListBySerie a renvoyé un résultat nil sans erreur")
+		t.Fatal("GetChaptersListBySerie returned nil result without error")
 	}
 
 	chapters := *chaptersPtr
@@ -407,12 +407,12 @@ func TestGetChaptersListBySerie(t *testing.T) {
 		t.Errorf("chapters[0].ID = %q, want %q", chapters[0].ID, "chapter-1")
 	}
 
-	if chapters[0].Number != 1 || chapters[0].Title != "Le début" {
+	if chapters[0].Number != 1 || chapters[0].Title != "The beginning" {
 		t.Errorf("chapters[0] = %+v", chapters[0])
 	}
 
 	if chapters[1].Title != "" {
-		t.Errorf("chapters[1].Title = %q, want vide", chapters[1].Title)
+		t.Errorf("chapters[1].Title = %q, want empty", chapters[1].Title)
 	}
 }
 
@@ -457,7 +457,7 @@ func TestGetImageURLsByChapter(t *testing.T) {
 	}
 
 	if urlsPtr == nil {
-		t.Fatal("GetImageURLsByChapter a renvoyé un résultat nil sans erreur")
+		t.Fatal("GetImageURLsByChapter returned nil result without error")
 	}
 
 	urls := *urlsPtr
@@ -495,11 +495,11 @@ func TestGetImageURLsByChapterEmptyPages(t *testing.T) {
 	}
 
 	if urlsPtr == nil {
-		t.Fatal("GetImageURLsByChapter a renvoyé un résultat nil sans erreur")
+		t.Fatal("GetImageURLsByChapter returned nil result without error")
 	}
 
 	if len(*urlsPtr) != 0 {
-		t.Errorf("urls = %v, want vide", *urlsPtr)
+		t.Errorf("urls = %v, want empty", *urlsPtr)
 	}
 }
 
@@ -528,6 +528,6 @@ func TestSearchNotFound(t *testing.T) {
 	})
 
 	if _, err := c.Search(context.Background(), domain.SearchOpts{}); !errors.Is(err, domain.ErrNotFound) {
-		t.Errorf("Search sur un 404 = %v, want domain.ErrNotFound", err)
+		t.Errorf("Search on 404 = %v, want domain.ErrNotFound", err)
 	}
 }

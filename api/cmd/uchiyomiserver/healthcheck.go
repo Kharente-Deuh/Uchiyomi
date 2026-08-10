@@ -38,7 +38,7 @@ func healthcheck(ctx context.Context, url string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("readyz a répondu %d", resp.StatusCode)
+		return fmt.Errorf("readyz responded %d", resp.StatusCode)
 	}
 
 	return nil

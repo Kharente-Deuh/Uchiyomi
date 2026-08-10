@@ -48,11 +48,11 @@ func TestNewValidatesDeps(t *testing.T) {
 
 	r, err := pg.New(pg.Deps{})
 	if err == nil {
-		t.Fatal("New sans DB doit échouer")
+		t.Fatal("New without DB must fail")
 	}
 
 	if r != nil {
-		t.Error("New a renvoyé un repository en plus de l'erreur")
+		t.Error("New returned a repository in addition to the error")
 	}
 
 	if want := "deps.Validate: db is required"; err.Error() != want {
@@ -107,15 +107,15 @@ func TestCountAdminsError(t *testing.T) {
 
 	got, err := r.CountAdmins(context.Background())
 	if err == nil {
-		t.Fatal("CountAdmins doit remonter l'erreur SQL")
+		t.Fatal("CountAdmins must propagate SQL error")
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 
 	if got != 0 {
-		t.Errorf("CountAdmins() = %d, want 0 en cas d'erreur", got)
+		t.Errorf("CountAdmins() = %d, want 0 on error", got)
 	}
 }
 
@@ -160,7 +160,7 @@ func TestGetByIDNotFound(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("GetByID a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("GetByID returned %+v in addition to the error", got)
 	}
 }
 
@@ -174,11 +174,11 @@ func TestGetByIDError(t *testing.T) {
 
 	_, err := r.GetByID(context.Background(), uuid.New())
 	if errors.Is(err, domain.ErrNotFound) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrNotFound")
+		t.Error("SQL failure must not be translated to ErrNotFound")
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }
 
@@ -204,11 +204,11 @@ func TestCreate(t *testing.T) {
 	}
 
 	if got.ID == uuid.Nil {
-		t.Error("Create n'a pas généré d'ID")
+		t.Error("Create did not generate ID")
 	}
 
 	if got.CreatedAt.Before(before) || got.UpdatedAt.Before(before) {
-		t.Errorf("horodatages non renseignés: created=%v updated=%v", got.CreatedAt, got.UpdatedAt)
+		t.Errorf("timestamps not set: created=%v updated=%v", got.CreatedAt, got.UpdatedAt)
 	}
 }
 
@@ -284,7 +284,7 @@ func TestCreateDuplicate(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("Create a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Create returned %+v in addition to the error", got)
 	}
 }
 
@@ -300,11 +300,11 @@ func TestCreateError(t *testing.T) {
 
 	_, err := r.Create(context.Background(), users.CreateUserOpts{Name: userNameBob})
 	if errors.Is(err, domain.ErrAlreadyExists) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrAlreadyExists")
+		t.Error("SQL failure must not be translated to ErrAlreadyExists")
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }
 
@@ -360,6 +360,6 @@ func TestUpdateNotFound(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("Update a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Update returned %+v in addition to the error", got)
 	}
 }

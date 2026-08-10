@@ -107,10 +107,10 @@ func TestConfigValidate(t *testing.T) {
 		wantErr  string
 	}{
 		"endpoint valide":       {endpoint: setupEndpoint, wantErr: ""},
-		"endpoint imbriqué":     {endpoint: "/api/v1/setup", wantErr: ""},
+		"nested endpoint":     {endpoint: "/api/v1/setup", wantErr: ""},
 		"racine":                {endpoint: "/", wantErr: ""},
-		"vide":                  {endpoint: "", wantErr: "endpoint is required"},
-		"sans slash initial":    {endpoint: "setup", wantErr: `endpoint must start with '/', got "setup"`},
+		"empty":                  {endpoint: "", wantErr: "endpoint is required"},
+		"without leading slash":    {endpoint: "setup", wantErr: `endpoint must start with '/', got "setup"`},
 		"URL absolute":          {endpoint: "http://x/setup", wantErr: `endpoint must start with '/', got "http://x/setup"`},
 		"espace avant le slash": {endpoint: " /setup", wantErr: `endpoint must start with '/', got " /setup"`},
 	}
@@ -154,15 +154,15 @@ func TestDepsValidate(t *testing.T) {
 			deps:    setuphttp.Deps{SetupService: &stubSetupService{}, Cookies: newCookies(t), Logger: logger},
 			wantErr: "",
 		},
-		"sans service": {
+		"without service": {
 			deps:    setuphttp.Deps{Cookies: newCookies(t), Logger: logger},
 			wantErr: "setupService is required",
 		},
-		"sans cookies": {
+		"without cookies": {
 			deps:    setuphttp.Deps{SetupService: &stubSetupService{}, Logger: logger},
 			wantErr: "cookies is required",
 		},
-		"sans logger": {
+		"without logger": {
 			deps:    setuphttp.Deps{SetupService: &stubSetupService{}, Cookies: newCookies(t)},
 			wantErr: "logger is required",
 		},
@@ -201,12 +201,12 @@ func TestNewFailsFast(t *testing.T) {
 		deps    setuphttp.Deps
 		wantErr string
 	}{
-		"config invalide": {
+		"invalid config": {
 			cfg:     setuphttp.Config{Endpoint: "setup"},
 			deps:    setuphttp.Deps{SetupService: &stubSetupService{}, Cookies: newCookies(t), Logger: logger},
 			wantErr: `cfg.Validate: endpoint must start with '/', got "setup"`,
 		},
-		"deps invalides": {
+		"invalid deps": {
 			cfg:     setuphttp.Config{Endpoint: setupEndpoint},
 			deps:    setuphttp.Deps{Logger: logger},
 			wantErr: "deps.Validate: setupService is required",
@@ -223,7 +223,7 @@ func TestNewFailsFast(t *testing.T) {
 			}
 
 			if c != nil {
-				t.Error("New a renvoyé un controller en plus de l'erreur")
+				t.Error("New returned a controller in addition to the error")
 			}
 
 			if err.Error() != tc.wantErr {
@@ -237,8 +237,8 @@ func TestGetSetupStatusOK(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]bool{
-		"setup requis":     true,
-		"setup non requis": false,
+		"setup required":     true,
+		"setup not required": false,
 	}
 
 	for name, required := range tests {
@@ -261,7 +261,7 @@ func TestGetSetupStatusOK(t *testing.T) {
 
 			var got setuphttp.GetStatusResponse
 			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+				t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 			}
 
 			if got.Required != required {
@@ -269,11 +269,11 @@ func TestGetSetupStatusOK(t *testing.T) {
 			}
 
 			if svc.calls != 1 {
-				t.Errorf("service appelé %d fois, want 1", svc.calls)
+				t.Errorf("service called %d times, want 1", svc.calls)
 			}
 
 			if logs.Len() != 0 {
-				t.Errorf("aucun log attendu sur le chemin nominal: %s", logs.String())
+				t.Errorf("no logs expected on happy path: %s", logs.String())
 			}
 		})
 	}
@@ -297,7 +297,7 @@ func TestGetSetupStatusServiceError(t *testing.T) {
 	}
 
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 	}
 
 	if got.Message != "Internal Server Error" {
@@ -305,15 +305,15 @@ func TestGetSetupStatusServiceError(t *testing.T) {
 	}
 
 	if strings.Contains(rec.Body.String(), "database is down") {
-		t.Errorf("l'erreur interne a fuité dans la réponse: %s", rec.Body.String())
+		t.Errorf("internal error leaked into response: %s", rec.Body.String())
 	}
 
 	if !strings.Contains(logs.String(), "database is down") {
-		t.Errorf("l'erreur interne est absente des logs: %s", logs.String())
+		t.Errorf("internal error missing from logs: %s", logs.String())
 	}
 
 	if !strings.Contains(logs.String(), "failed to check setup status") {
-		t.Errorf("message de log attendu absent: %s", logs.String())
+		t.Errorf("expected log message missing: %s", logs.String())
 	}
 }
 
@@ -328,12 +328,12 @@ func TestLoggerCarriesComponentAttribute(t *testing.T) {
 
 	var entry map[string]any
 	if err := json.Unmarshal(bytes.TrimSpace(logs.Bytes()), &entry); err != nil {
-		t.Fatalf("log non décodable (%q): %v", logs.String(), err)
+		t.Fatalf("log not decodable (%q): %v", logs.String(), err)
 	}
 
 	if entry["component"] != "setup.gateway.http" {
 		//nolint:lll
-		t.Errorf("component = %v, want %q — le logger n'a pas été décoré dans New", entry["component"], "setup.gateway.http")
+		t.Errorf("component = %v, want %q — logger was not decorated in New", entry["component"], "setup.gateway.http")
 	}
 }
 
@@ -345,10 +345,10 @@ func TestInitRouterMountsUnderEndpoint(t *testing.T) {
 		path       string
 		wantStatus int
 	}{
-		"route montée":           {endpoint: setupEndpoint, path: "/setup/status", wantStatus: http.StatusOK},
-		"endpoint imbriqué":      {endpoint: "/api/v1/setup", path: "/api/v1/setup/status", wantStatus: http.StatusOK},
-		"chemin inconnu":         {endpoint: setupEndpoint, path: "/status", wantStatus: http.StatusNotFound},
-		"sous-chemin inexistant": {endpoint: setupEndpoint, path: "/setup/status/extra", wantStatus: http.StatusNotFound},
+		"mounted route":           {endpoint: setupEndpoint, path: "/setup/status", wantStatus: http.StatusOK},
+		"nested endpoint":      {endpoint: "/api/v1/setup", path: "/api/v1/setup/status", wantStatus: http.StatusOK},
+		"unknown path":           {endpoint: setupEndpoint, path: "/status", wantStatus: http.StatusNotFound},
+		"missing subpath":        {endpoint: setupEndpoint, path: "/setup/status/extra", wantStatus: http.StatusNotFound},
 	}
 
 	for name, tc := range tests {
@@ -429,7 +429,7 @@ func TestDoSetupSetsSessionCookie(t *testing.T) {
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1", len(cookies))
+		t.Fatalf("%d cookies set, want 1", len(cookies))
 	}
 
 	if cookies[0].Value != "letoken" {
@@ -437,7 +437,7 @@ func TestDoSetupSetsSessionCookie(t *testing.T) {
 	}
 
 	if !cookies[0].HttpOnly {
-		t.Error("HttpOnly absent")
+		t.Error("HttpOnly missing")
 	}
 }
 
@@ -456,11 +456,11 @@ func TestDoSetupSucceedsWithoutCookieWhenSessionFails(t *testing.T) {
 	}
 
 	if n := len(rec.Result().Cookies()); n != 0 {
-		t.Errorf("%d cookies posés, want 0", n)
+		t.Errorf("%d cookies set, want 0", n)
 	}
 
 	if !strings.Contains(logs.String(), "disk full") {
-		t.Errorf("l'échec d'émission est absent des logs: %s", logs.String())
+		t.Errorf("issuance failure missing from logs: %s", logs.String())
 	}
 }
 
@@ -484,8 +484,8 @@ func TestDoSetupRejectsBadRequests(t *testing.T) {
 
 	tests := map[string]string{
 		"corps illisible":         `{`,
-		"nom vide":                setupRequestBody("", adminPassword),
-		"mot de passe trop court": setupRequestBody(adminUsername, "court"),
+		"empty name":                setupRequestBody("", adminPassword),
+		"password too short": setupRequestBody(adminUsername, "court"),
 	}
 
 	for name, body := range tests {
@@ -503,7 +503,7 @@ func TestDoSetupRejectsBadRequests(t *testing.T) {
 			}
 
 			if svc.doCalls != 0 {
-				t.Errorf("service appelé %d fois sur une requête invalide", svc.doCalls)
+				t.Errorf("service called %d times on invalid request", svc.doCalls)
 			}
 		})
 	}
@@ -524,10 +524,10 @@ func TestDoSetupServiceError(t *testing.T) {
 	}
 
 	if strings.Contains(rec.Body.String(), "database is down") {
-		t.Errorf("l'erreur interne a fuité dans la réponse: %s", rec.Body.String())
+		t.Errorf("internal error leaked into response: %s", rec.Body.String())
 	}
 
 	if !strings.Contains(logs.String(), "database is down") {
-		t.Errorf("l'erreur interne est absente des logs: %s", logs.String())
+		t.Errorf("internal error missing from logs: %s", logs.String())
 	}
 }

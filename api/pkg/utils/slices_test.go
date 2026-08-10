@@ -36,16 +36,16 @@ func TestMapSliceEmpty(t *testing.T) {
 	t.Parallel()
 
 	if got := utils.MapSlice([]int{}, func(i int) int { return i }); len(got) != 0 {
-		t.Errorf("utils.MapSlice(vide) = %v, want vide", got)
+		t.Errorf("utils.MapSlice(empty) = %v, want empty", got)
 	}
 
 	got := utils.MapSlice(nil, func(i int) int { return i })
 	if got == nil {
-		t.Error("utils.MapSlice(nil) = nil, want une slice vide")
+		t.Error("utils.MapSlice(nil) = nil, want empty slice")
 	}
 
 	if len(got) != 0 {
-		t.Errorf("utils.MapSlice(nil) = %v, want vide", got)
+		t.Errorf("utils.MapSlice(nil) = %v, want empty", got)
 	}
 }
 
@@ -54,7 +54,7 @@ func TestMapSlicePreservesOrder(t *testing.T) {
 
 	got := utils.MapSlice([]int{5, 1, 4, 2}, func(i int) int { return i * 10 })
 	if !reflect.DeepEqual(got, []int{50, 10, 40, 20}) {
-		t.Errorf("utils.MapSlice() = %v, l'ordre n'est pas préservé", got)
+		t.Errorf("utils.MapSlice() = %v, order not preserved", got)
 	}
 }
 
@@ -66,10 +66,10 @@ func TestFilterSlice(t *testing.T) {
 		keep func(int) bool
 		want []int
 	}{
-		"garde les pairs": {in: []int{1, 2, 3, 4}, keep: func(i int) bool { return i%2 == 0 }, want: []int{2, 4}},
+		"keeps evens": {in: []int{1, 2, 3, 4}, keep: func(i int) bool { return i%2 == 0 }, want: []int{2, 4}},
 		"tout garder":     {in: []int{1, 2}, keep: func(int) bool { return true }, want: []int{1, 2}},
 		"tout jeter":      {in: []int{1, 2}, keep: func(int) bool { return false }, want: []int{}},
-		"slice vide":      {in: []int{}, keep: func(int) bool { return true }, want: []int{}},
+		"empty slice":      {in: []int{}, keep: func(int) bool { return true }, want: []int{}},
 		"slice nil":       {in: nil, keep: func(int) bool { return true }, want: []int{}},
 	}
 
@@ -83,7 +83,7 @@ func TestFilterSlice(t *testing.T) {
 			}
 
 			if got == nil {
-				t.Error("FilterSlice a renvoyé nil, want une slice vide")
+				t.Error("FilterSlice returned nil, want empty slice")
 			}
 		})
 	}
@@ -96,6 +96,6 @@ func TestFilterSliceDoesNotMutateInput(t *testing.T) {
 	_ = utils.FilterSlice(in, func(i int) bool { return i%2 == 0 })
 
 	if !reflect.DeepEqual(in, []int{1, 2, 3, 4}) {
-		t.Errorf("la slice d'entrée a été modifiée: %v", in)
+		t.Errorf("input slice was modified: %v", in)
 	}
 }

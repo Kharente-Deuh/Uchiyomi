@@ -305,9 +305,9 @@ func TestAuthCodeURLAlwaysRequestsTheOpenIDScope(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string][]string{
-		"scopes sans openid": {scopeProfile, "email"},
-		"scopes avec openid": {scopeOpenID, scopeProfile},
-		"aucun scope":        nil,
+		"scopes without openid": {scopeProfile, "email"},
+		"scopes with openid":    {scopeOpenID, scopeProfile},
+		"no scopes":          nil,
 	}
 
 	for name, scopes := range tests {

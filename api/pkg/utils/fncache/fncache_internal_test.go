@@ -54,11 +54,11 @@ func TestFnCacheGetRefetchesAfterTTL(t *testing.T) {
 	c.mtx.Unlock()
 
 	if _, err := c.Get(context.Background(), "k"); err != nil {
-		t.Fatalf("Get (après expiration): %v", err)
+		t.Fatalf("Get (after expiration): %v", err)
 	}
 
 	if got := calls.Load(); got != 2 {
-		t.Errorf("Fn appelée %d fois, want 2 (une entrée expirée doit être rechargée)", got)
+		t.Errorf("Fn called %d times, want 2 (expired entry must be reloaded)", got)
 	}
 }
 
@@ -87,7 +87,7 @@ func TestFnCacheCleanStoreDropsOldEntries(t *testing.T) {
 	c.mtx.Unlock()
 
 	if still {
-		t.Error("l'entrée expirée est toujours dans le store après cleanStore")
+		t.Error("expired entry still in store after cleanStore")
 	}
 }
 
@@ -116,11 +116,11 @@ func TestFnCacheGetUsesErrorTTLForFailures(t *testing.T) {
 	c.mtx.Unlock()
 
 	if _, err := c.Get(context.Background(), "k"); !errors.Is(err, sentinel) {
-		t.Fatalf("Get (après ErrorTTL): %v", err)
+		t.Fatalf("Get (after ErrorTTL): %v", err)
 	}
 
 	if got := calls.Load(); got != 2 {
-		t.Errorf("Fn appelée %d fois, want 2 (une erreur expire selon ErrorTTL)", got)
+		t.Errorf("Fn called %d times, want 2 (error expires per ErrorTTL)", got)
 	}
 }
 
@@ -140,7 +140,7 @@ func TestFnCacheGetDoesNotCacheContextCanceled(t *testing.T) {
 	c.mtx.Unlock()
 
 	if stored {
-		t.Error("context.Canceled a été mis dans le store")
+		t.Error("context.Canceled was stored")
 	}
 }
 
@@ -160,11 +160,11 @@ func TestFnCacheGetCachesContextDeadlineExceeded(t *testing.T) {
 	}
 
 	if _, err := c.Get(context.Background(), "k"); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("Get (2e appel): %v", err)
+		t.Fatalf("Get (2nd call): %v", err)
 	}
 
 	if got := calls.Load(); got != 1 {
-		t.Errorf("Fn appelée %d fois, want 1 (DeadlineExceeded doit être mis en cache)", got)
+		t.Errorf("Fn called %d times, want 1 (DeadlineExceeded must be cached)", got)
 	}
 }
 
@@ -189,7 +189,7 @@ func TestFnCacheCleanStoreKeepsFreshEntriesRegardlessOfInterval(t *testing.T) {
 	c.mtx.Unlock()
 
 	if !still {
-		t.Error("cleanStore a supprimé une entrée encore dans sa TTL")
+		t.Error("cleanStore removed entry still within TTL")
 	}
 }
 
@@ -220,7 +220,7 @@ func TestFnCacheCleanStoreDropsExpiredErrorEntries(t *testing.T) {
 	c.mtx.Unlock()
 
 	if still {
-		t.Error("cleanStore a gardé une entrée en erreur expirée selon ErrorTTL")
+		t.Error("cleanStore kept error entry expired per ErrorTTL")
 	}
 }
 
@@ -259,11 +259,11 @@ func TestFnCacheGetEnforcesMaxEntries(t *testing.T) {
 	}
 
 	if hasA {
-		t.Error("l'entrée la plus ancienne est toujours là")
+		t.Error("oldest entry still present")
 	}
 
 	if !hasC {
-		t.Error("la dernière entrée insérée a été évincée")
+		t.Error("last inserted entry was evicted")
 	}
 }
 
@@ -290,7 +290,7 @@ func TestFnCacheGetRefreshDoesNotEvict(t *testing.T) {
 	c.mtx.Unlock()
 
 	if _, err := c.Get(context.Background(), "b"); err != nil {
-		t.Fatalf("Get(\"b\") après expiration: %v", err)
+		t.Fatalf("Get(\"b\") after expiration: %v", err)
 	}
 
 	c.mtx.Lock()
@@ -303,7 +303,7 @@ func TestFnCacheGetRefreshDoesNotEvict(t *testing.T) {
 	}
 
 	if !hasA {
-		t.Error("recharger une clé existante a évincé l'entrée la plus ancienne")
+		t.Error("reloading existing key evicted oldest entry")
 	}
 }
 
@@ -364,14 +364,14 @@ func TestFnCacheGetEvictsStaleEntryOverOlderLiveOne(t *testing.T) {
 	}
 
 	if hasKO {
-		t.Error("l'entrée en erreur expirée est toujours là")
+		t.Error("expired error entry still present")
 	}
 
 	if !hasOK {
-		t.Error("le succès encore frais a été évincé alors qu'une entrée expirée était disponible")
+		t.Error("fresh success was evicted although expired entry was available")
 	}
 
 	if !hasNew {
-		t.Error("la nouvelle entrée n'a pas été insérée")
+		t.Error("new entry was not inserted")
 	}
 }

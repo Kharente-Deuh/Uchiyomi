@@ -105,7 +105,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	if got.UpdatedAt.Before(before) {
-		t.Errorf("UpdatedAt = %v, non renseigné par le repository", got.UpdatedAt)
+		t.Errorf("UpdatedAt = %v, not set by repository", got.UpdatedAt)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestCreateDuplicate(t *testing.T) {
 	}
 
 	if got != nil {
-		t.Errorf("Create a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Create returned %+v in addition to the error", got)
 	}
 }
 
@@ -140,11 +140,11 @@ func TestCreateError(t *testing.T) {
 
 	_, err := r.Create(context.Background(), password.UpsertPasswordCredsOpts{UserID: uuid.New(), Hash: "h"})
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 
 	if errors.Is(err, domain.ErrAlreadyExists) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrAlreadyExists")
+		t.Error("SQL failure must not be translated to ErrAlreadyExists")
 	}
 }
 
@@ -201,7 +201,7 @@ func TestGetByUserIDError(t *testing.T) {
 	}
 
 	if errors.Is(err, domain.ErrNotFound) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrNotFound")
+		t.Error("SQL failure must not be translated to ErrNotFound")
 	}
 }
 
@@ -250,6 +250,6 @@ func TestUpdateByUserIDError(t *testing.T) {
 
 	err := r.UpdateByUserID(context.Background(), password.UpsertPasswordCredsOpts{UserID: uuid.New(), Hash: newHash})
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }

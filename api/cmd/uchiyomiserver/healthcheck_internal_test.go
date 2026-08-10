@@ -34,7 +34,7 @@ func TestHealthcheckFailsOn503(t *testing.T) {
 	srv := serverReturning(t, http.StatusServiceUnavailable)
 
 	if err := healthcheck(context.Background(), srv.URL+"/readyz"); err == nil {
-		t.Fatal("healthcheck: erreur attendue sur 503")
+		t.Fatal("healthcheck: error expected on 503")
 	}
 }
 
@@ -44,14 +44,14 @@ func TestHealthcheckFailsWhenNothingListens(t *testing.T) {
 	srv.Close()
 
 	if err := healthcheck(context.Background(), url); err == nil {
-		t.Fatal("healthcheck: erreur attendue quand personne n'écoute")
+		t.Fatal("healthcheck: error expected when nobody is listening")
 	}
 }
 
 func TestHealthcheckTimeoutExceedsTheProbeBudget(t *testing.T) {
 	if healthcheckTimeout <= healthhttp.DefaultProbeTimeout {
 		t.Fatalf(
-			"healthcheckTimeout = %s, attendu strictement supérieur à DefaultProbeTimeout (%s)",
+			"healthcheckTimeout = %s, want strictly greater than DefaultProbeTimeout (%s)",
 			healthcheckTimeout, healthhttp.DefaultProbeTimeout,
 		)
 	}

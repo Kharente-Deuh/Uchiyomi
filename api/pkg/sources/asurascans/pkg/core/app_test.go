@@ -73,19 +73,19 @@ func TestDependenciesValidate(t *testing.T) {
 		wantErr string
 	}{
 		"complet": {drop: func(*core.Dependencies) {}},
-		"sans searchCache": {
+		"without searchCache": {
 			drop:    func(d *core.Dependencies) { d.SearchCache = nil },
 			wantErr: "searchCache is required",
 		},
-		"sans getInfosBySlugCache": {
+		"without getInfosBySlugCache": {
 			drop:    func(d *core.Dependencies) { d.GetInfosBySlugCache = nil },
 			wantErr: "getInfosBySlugCache is required",
 		},
-		"sans getChaptersListBySeriesCache": {
+		"without getChaptersListBySeriesCache": {
 			drop:    func(d *core.Dependencies) { d.GetChaptersListBySeriesCache = nil },
 			wantErr: "getChaptersListBySeriesCache is required",
 		},
-		"sans getImageURLsByChapter": {
+		"without getImageURLsByChapter": {
 			drop:    func(d *core.Dependencies) { d.GetImageURLsByChapter = nil },
 			wantErr: "getImageURLsByChapter is required",
 		},
@@ -120,11 +120,11 @@ func TestNewRejectsIncompleteDeps(t *testing.T) {
 
 	app, err := core.New(core.Dependencies{})
 	if err == nil {
-		t.Fatal("New avec des dépendances vides doit échouer")
+		t.Fatal("New with empty dependencies must fail")
 	}
 
 	if app != nil {
-		t.Error("New a renvoyé une App en plus de l'erreur")
+		t.Error("New returned an App in addition to the error")
 	}
 
 	if want := "deps.Validate: searchCache is required"; err.Error() != want {
@@ -141,7 +141,7 @@ func TestNewSucceeds(t *testing.T) {
 	}
 
 	if app == nil {
-		t.Fatal("New a renvoyé une App nil sans erreur")
+		t.Fatal("New returned nil App without error")
 	}
 }
 
@@ -169,7 +169,7 @@ func TestAppSearchDelegatesToCache(t *testing.T) {
 	}
 
 	if res == nil || res.Meta.Total != 3 {
-		t.Errorf("résultat = %+v", res)
+		t.Errorf("result = %+v", res)
 	}
 
 	if opts := <-called; opts.Search != "one piece" {
@@ -191,18 +191,18 @@ func TestAppGetChaptersListBySeriesReturnsACopy(t *testing.T) {
 	}
 
 	if len(first) == 0 {
-		t.Fatal("le cache de test doit renvoyer au moins un chapitre")
+		t.Fatal("test cache must return at least one chapter")
 	}
 
 	first[0].ID = "corrompu"
 
 	second, err := app.GetChaptersListBySeries(context.Background(), "slug")
 	if err != nil {
-		t.Fatalf("GetChaptersListBySeries (2e appel): %v", err)
+		t.Fatalf("GetChaptersListBySeries (2nd call): %v", err)
 	}
 
 	if second[0].ID != "c1" {
-		t.Errorf("second[0].ID = %q, want \"c1\" : l'appelant a pu modifier l'entrée du cache", second[0].ID)
+		t.Errorf("second[0].ID = %q, want \"c1\": caller could modify cache entry", second[0].ID)
 	}
 }
 
@@ -222,18 +222,18 @@ func TestAppGetImageURLsByChapterReturnsACopy(t *testing.T) {
 	}
 
 	if len(first) == 0 {
-		t.Fatal("le cache de test doit renvoyer au moins une URL")
+		t.Fatal("test cache must return at least one URL")
 	}
 
 	first[0] = "corrompu"
 
 	second, err := app.GetImageURLsByChapter(context.Background(), opts)
 	if err != nil {
-		t.Fatalf("GetImageURLsByChapter (2e appel): %v", err)
+		t.Fatalf("GetImageURLsByChapter (2nd call): %v", err)
 	}
 
 	if second[0] != "https://example.test/1.jpg" {
-		t.Errorf("second[0] = %q : l'appelant a pu modifier l'entrée du cache", second[0])
+		t.Errorf("second[0] = %q: caller could modify cache entry", second[0])
 	}
 }
 
@@ -255,9 +255,9 @@ func TestAppRunReturnsOnContextCancel(t *testing.T) {
 	select {
 	case err := <-done:
 		if err == nil {
-			t.Error("Run() = nil, want une erreur de contexte")
+			t.Error("Run() = nil, want context error")
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("Run n'est jamais revenue après l'annulation du contexte")
+		t.Fatal("Run never returned after context cancellation")
 	}
 }

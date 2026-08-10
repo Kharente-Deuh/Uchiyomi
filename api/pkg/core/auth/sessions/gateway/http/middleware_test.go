@@ -52,7 +52,7 @@ func protected(t *testing.T) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, ok := sessionshttp.UserFrom(r.Context())
 		if !ok {
-			t.Error("le handler protégé n'a pas trouvé d'utilisateur dans le contexte")
+			t.Error("protected handler did not find user in context")
 			w.WriteHeader(http.StatusTeapot)
 
 			return
@@ -102,7 +102,7 @@ func TestMiddlewareRejectsMissingCookieWithoutCallingService(t *testing.T) {
 	}
 
 	if svc.calls != 0 {
-		t.Errorf("service appelé %d fois sans cookie", svc.calls)
+		t.Errorf("service called %d times without cookie", svc.calls)
 	}
 }
 
@@ -121,7 +121,7 @@ func TestMiddlewareClearsCookieOnInvalidSession(t *testing.T) {
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1 pour effacer le token", len(cookies))
+		t.Fatalf("%d cookies set, want 1 to clear token", len(cookies))
 	}
 
 	if cookies[0].MaxAge != -1 {
@@ -143,15 +143,15 @@ func TestMiddlewareReturns500OnInfrastructureError(t *testing.T) {
 	}
 
 	if strings.Contains(rec.Body.String(), "connection refused") {
-		t.Errorf("l'erreur interne a fuité dans la réponse: %s", rec.Body.String())
+		t.Errorf("internal error leaked into response: %s", rec.Body.String())
 	}
 
 	if !strings.Contains(logs.String(), "connection refused") {
-		t.Errorf("l'erreur interne est absente des logs: %s", logs.String())
+		t.Errorf("internal error missing from logs: %s", logs.String())
 	}
 
 	if !strings.Contains(logs.String(), `"level":"ERROR"`) {
-		t.Errorf("la panne d'infrastructure doit être loguée en ERROR: %s", logs.String())
+		t.Errorf("infrastructure failure must be logged at ERROR: %s", logs.String())
 	}
 }
 
@@ -178,11 +178,11 @@ func TestMiddlewarePassesUserToHandler(t *testing.T) {
 	}
 
 	if svc.gotToken != testToken {
-		t.Errorf("le service a reçu %q, want %q", svc.gotToken, testToken)
+		t.Errorf("service received %q, want %q", svc.gotToken, testToken)
 	}
 
 	if logs.Len() != 0 {
-		t.Errorf("aucun log attendu sur le chemin nominal: %s", logs.String())
+		t.Errorf("no logs expected on happy path: %s", logs.String())
 	}
 }
 
@@ -202,7 +202,7 @@ func TestMiddlewareReissuesCookieAfterRenewal(t *testing.T) {
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1", len(cookies))
+		t.Fatalf("%d cookies set, want 1", len(cookies))
 	}
 
 	if cookies[0].MaxAge != 10800 {
@@ -210,7 +210,7 @@ func TestMiddlewareReissuesCookieAfterRenewal(t *testing.T) {
 	}
 
 	if cookies[0].Value != testToken {
-		t.Errorf("Value = %q, want le token inchangé", cookies[0].Value)
+		t.Errorf("Value = %q, want unchanged token", cookies[0].Value)
 	}
 }
 
@@ -230,15 +230,15 @@ func TestMiddlewareLogsRenewalFailureButServesRequest(t *testing.T) {
 	h.ServeHTTP(rec, requestWithToken(testToken))
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d — une prolongation ratée ne déconnecte personne", rec.Code, http.StatusOK)
+		t.Errorf("status = %d, want %d — failed extension must not log anyone out", rec.Code, http.StatusOK)
 	}
 
 	if !strings.Contains(logs.String(), "deadlock detected") {
-		t.Errorf("l'échec de prolongation est absent des logs: %s", logs.String())
+		t.Errorf("extension failure missing from logs: %s", logs.String())
 	}
 
 	if !strings.Contains(logs.String(), `"level":"WARN"`) {
-		t.Errorf("la prolongation ratée doit être loguée en WARN, pas au-dessus: %s", logs.String())
+		t.Errorf("failed extension must be logged at WARN, not above: %s", logs.String())
 	}
 }
 
@@ -246,7 +246,7 @@ func TestUserFromReturnsFalseWithoutMiddleware(t *testing.T) {
 	t.Parallel()
 
 	if _, ok := sessionshttp.UserFrom(context.Background()); ok {
-		t.Error("UserFrom a trouvé un utilisateur dans un contexte vierge")
+		t.Error("UserFrom found user in blank context")
 	}
 }
 
@@ -254,7 +254,7 @@ func TestSessionFromReturnsFalseWithoutMiddleware(t *testing.T) {
 	t.Parallel()
 
 	if _, ok := sessionshttp.SessionFrom(context.Background()); ok {
-		t.Error("SessionFrom a trouvé une session dans un contexte vierge")
+		t.Error("SessionFrom found session in blank context")
 	}
 }
 
@@ -286,12 +286,12 @@ func TestRequireSessionRejectsMissingCookieAndClearsIt(t *testing.T) {
 	}
 
 	if svc.calls != 0 {
-		t.Errorf("service appelé %d fois sans cookie", svc.calls)
+		t.Errorf("service called %d times without cookie", svc.calls)
 	}
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
-		t.Fatalf("%d cookies posés, want 1", len(cookies))
+		t.Fatalf("%d cookies set, want 1", len(cookies))
 	}
 
 	if cookies[0].MaxAge != -1 {
@@ -326,7 +326,7 @@ func TestRequireSessionPopulatesSessionFrom(t *testing.T) {
 	handler := a.RequireSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		session, ok := sessionshttp.SessionFrom(r.Context())
 		if !ok {
-			t.Error("SessionFrom n'a pas trouvé de session dans le contexte")
+			t.Error("SessionFrom did not find session in context")
 			w.WriteHeader(http.StatusTeapot)
 
 			return

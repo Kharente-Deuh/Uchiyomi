@@ -117,11 +117,11 @@ func TestConfigValidate(t *testing.T) {
 		cfg     usershttp.Config
 	}{
 		"endpoint valide":   {cfg: usershttp.Config{Endpoint: usersEndpoint}},
-		"endpoint imbriqué": {cfg: usershttp.Config{Endpoint: "/api/v1/users"}},
+		"nested endpoint": {cfg: usershttp.Config{Endpoint: "/api/v1/users"}},
 		"racine":            {cfg: usershttp.Config{Endpoint: "/"}},
-		"middlewares posés": {cfg: usershttp.Config{Endpoint: usersEndpoint, Middlewares: chi.Middlewares{passthrough}}},
-		"vide":              {cfg: usershttp.Config{}, wantErr: "endpoint is required"},
-		"sans slash initial": {
+		"middlewares set": {cfg: usershttp.Config{Endpoint: usersEndpoint, Middlewares: chi.Middlewares{passthrough}}},
+		"empty":              {cfg: usershttp.Config{}, wantErr: "endpoint is required"},
+		"without leading slash": {
 			cfg:     usershttp.Config{Endpoint: "users"},
 			wantErr: `endpoint must start with '/', got "users"`,
 		},
@@ -167,7 +167,7 @@ func TestDepsValidate(t *testing.T) {
 		wantErr string
 	}{
 		"complet":     {deps: usershttp.Deps{Logger: logger}},
-		"sans logger": {deps: usershttp.Deps{}, wantErr: "logger is required"},
+		"without logger": {deps: usershttp.Deps{}, wantErr: "logger is required"},
 	}
 
 	for name, tc := range tests {
@@ -202,12 +202,12 @@ func TestNewFailsFast(t *testing.T) {
 		wantErr string
 		cfg     usershttp.Config
 	}{
-		"config invalide": {
+		"invalid config": {
 			cfg:     usershttp.Config{Endpoint: "users"},
 			deps:    usershttp.Deps{Logger: logger},
 			wantErr: `cfg.Validate: endpoint must start with '/', got "users"`,
 		},
-		"deps invalides": {
+		"invalid deps": {
 			cfg:     usershttp.Config{Endpoint: usersEndpoint},
 			deps:    usershttp.Deps{},
 			wantErr: "deps.Validate: logger is required",
@@ -224,7 +224,7 @@ func TestNewFailsFast(t *testing.T) {
 			}
 
 			if c != nil {
-				t.Error("New a renvoyé un controller en plus de l'erreur")
+				t.Error("New returned a controller in addition to the error")
 			}
 
 			if err.Error() != tc.wantErr {
@@ -239,7 +239,7 @@ func TestGetMeReturnsAuthenticatedUser(t *testing.T) {
 
 	tests := map[string]bool{
 		"administrateur": true,
-		"utilisateur":    false,
+		"user":    false,
 	}
 
 	for name, isAdmin := range tests {
@@ -261,7 +261,7 @@ func TestGetMeReturnsAuthenticatedUser(t *testing.T) {
 
 			var got usershttp.GetMeResponse
 			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-				t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+				t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 			}
 
 			if got.ID != user.ID.String() {
@@ -277,7 +277,7 @@ func TestGetMeReturnsAuthenticatedUser(t *testing.T) {
 			}
 
 			if logs.Len() != 0 {
-				t.Errorf("aucun log attendu sur le chemin nominal: %s", logs.String())
+				t.Errorf("no logs expected on happy path: %s", logs.String())
 			}
 		})
 	}
@@ -298,18 +298,18 @@ func TestGetMeExposesOnlyItsDTOFields(t *testing.T) {
 
 	var got map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 	}
 
 	want := map[string]bool{"id": true, "username": true, "isAdmin": true}
 	for key := range got {
 		if !want[key] {
-			t.Errorf("champ %q exposé par /me alors qu'il n'est pas dans GetMeResponse", key)
+			t.Errorf("field %q exposed by /me although not in GetMeResponse", key)
 		}
 	}
 
 	if len(got) != len(want) {
-		t.Errorf("%d champs dans la réponse, want %d: %s", len(got), len(want), rec.Body.String())
+		t.Errorf("%d fields in response, want %d: %s", len(got), len(want), rec.Body.String())
 	}
 }
 
@@ -329,7 +329,7 @@ func TestGetMeUnauthorizedWhenContextHasNoUser(t *testing.T) {
 	}
 
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("corps non décodable (%q): %v", rec.Body.String(), err)
+		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 	}
 
 	if got.Message != "Unauthorized" {
@@ -349,7 +349,7 @@ func TestGetMeRejectsRequestWithoutSessionCookie(t *testing.T) {
 	}
 
 	if rec.Body.Len() > 0 && bytes.Contains(rec.Body.Bytes(), []byte(testUsername)) {
-		t.Errorf("l'identité a fuité sur une requête non authentifiée: %s", rec.Body.String())
+		t.Errorf("identity leaked on unauthenticated request: %s", rec.Body.String())
 	}
 }
 
@@ -361,10 +361,10 @@ func TestInitRouterMountsUnderEndpoint(t *testing.T) {
 		path       string
 		wantStatus int
 	}{
-		"route montée":           {endpoint: usersEndpoint, path: mePath, wantStatus: http.StatusOK},
-		"endpoint imbriqué":      {endpoint: "/api/v1/users", path: "/api/v1/users/me", wantStatus: http.StatusOK},
-		"chemin inconnu":         {endpoint: usersEndpoint, path: "/me", wantStatus: http.StatusNotFound},
-		"sous-chemin inexistant": {endpoint: usersEndpoint, path: "/users/me/extra", wantStatus: http.StatusNotFound},
+		"mounted route":           {endpoint: usersEndpoint, path: mePath, wantStatus: http.StatusOK},
+		"nested endpoint":      {endpoint: "/api/v1/users", path: "/api/v1/users/me", wantStatus: http.StatusOK},
+		"unknown path":           {endpoint: usersEndpoint, path: "/me", wantStatus: http.StatusNotFound},
+		"missing subpath":        {endpoint: usersEndpoint, path: "/users/me/extra", wantStatus: http.StatusNotFound},
 		"racine de l'endpoint":   {endpoint: usersEndpoint, path: usersEndpoint, wantStatus: http.StatusNotFound},
 	}
 

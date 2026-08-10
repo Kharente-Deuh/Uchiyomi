@@ -22,7 +22,7 @@ func TestPingSucceedsWhenDatabaseAnswers(t *testing.T) {
 }
 
 func TestPingFailsWhenDatabaseDoesNot(t *testing.T) {
-	wantErr := errors.New("connexion refusée")
+	wantErr := errors.New("connection refused")
 
 	db, mock := pgtest.NewWithPings(t)
 	mock.ExpectPing().WillReturnError(wantErr)
@@ -31,10 +31,10 @@ func TestPingFailsWhenDatabaseDoesNot(t *testing.T) {
 
 	err := pgdb.Ping(context.Background())
 	if err == nil {
-		t.Fatal("Ping: erreur attendue, nil obtenu")
+		t.Fatal("Ping: error expected, got nil")
 	}
 
 	if !errors.Is(err, wantErr) {
-		t.Errorf("Ping: erreur %v, attendu qu'elle encapsule %v", err, wantErr)
+		t.Errorf("Ping: error %v, want it to wrap %v", err, wantErr)
 	}
 }

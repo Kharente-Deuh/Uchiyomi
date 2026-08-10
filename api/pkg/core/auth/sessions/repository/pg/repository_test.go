@@ -34,11 +34,11 @@ func TestNewValidatesDeps(t *testing.T) {
 
 	r, err := pg.New(pg.Deps{})
 	if err == nil {
-		t.Fatal("New sans DB doit échouer")
+		t.Fatal("New without DB must fail")
 	}
 
 	if r != nil {
-		t.Error("New a renvoyé un repository en plus de l'erreur")
+		t.Error("New returned a repository in addition to the error")
 	}
 
 	if want := "deps.Validate: db is required"; err.Error() != want {
@@ -82,11 +82,11 @@ func TestInsert(t *testing.T) {
 	}
 
 	if got.ID == uuid.Nil {
-		t.Error("Insert n'a pas généré d'ID")
+		t.Error("Insert did not generate ID")
 	}
 
 	if got.CreatedAt.IsZero() {
-		t.Error("Insert n'a pas horodaté la session")
+		t.Error("Insert did not timestamp session")
 	}
 }
 
@@ -102,11 +102,11 @@ func TestInsertError(t *testing.T) {
 
 	got, err := r.Insert(context.Background(), sessions.InsertSessionOpts{UserID: uuid.New()})
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 
 	if got != nil {
-		t.Errorf("Insert a renvoyé %+v en plus de l'erreur", got)
+		t.Errorf("Insert returned %+v in addition to the error", got)
 	}
 }
 
@@ -289,7 +289,7 @@ func TestGetByTokenHashNotFound(t *testing.T) {
 	}
 
 	if session != nil || user != nil {
-		t.Errorf("GetByTokenHash a renvoyé (%+v, %+v) en plus de l'erreur", session, user)
+		t.Errorf("GetByTokenHash returned (%+v, %+v) in addition to the error", session, user)
 	}
 }
 
@@ -303,11 +303,11 @@ func TestGetByTokenHashError(t *testing.T) {
 
 	_, _, err := r.GetByTokenHash(context.Background(), []byte("x"))
 	if errors.Is(err, domain.ErrNotFound) {
-		t.Error("une panne SQL ne doit pas être traduite en ErrNotFound")
+		t.Error("SQL failure must not be translated to ErrNotFound")
 	}
 
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }
 
@@ -342,7 +342,7 @@ func TestUpdateExpiryError(t *testing.T) {
 
 	err := r.UpdateExpiry(context.Background(), uuid.New(), time.Now())
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 }
 
@@ -417,10 +417,10 @@ func TestDeleteExpiredError(t *testing.T) {
 
 	got, err := r.DeleteExpired(context.Background(), time.Now())
 	if !errors.Is(err, sentinel) {
-		t.Errorf("err = %v, l'erreur d'origine n'est plus atteignable", err)
+		t.Errorf("err = %v, original error no longer reachable", err)
 	}
 
 	if got != 0 {
-		t.Errorf("DeleteExpired() = %d, want 0 en cas d'erreur", got)
+		t.Errorf("DeleteExpired() = %d, want 0 on error", got)
 	}
 }
