@@ -20,9 +20,9 @@ type FederatedIdentity struct {
 	LastValidatedAt time.Time
 	LastLoginAt     time.Time
 	CreatedAt       time.Time
-	RefreshTokenEnc []byte
 	Claims          map[string]any
 	Subject         string
+	RefreshTokenEnc []byte
 	ID              uuid.UUID
 	UserID          uuid.UUID
 	ProviderID      uuid.UUID
@@ -30,9 +30,9 @@ type FederatedIdentity struct {
 
 type CreateFederatedIdentityOpts struct {
 	LastValidatedAt time.Time
-	RefreshTokenEnc []byte
 	Claims          map[string]any
 	Subject         string
+	RefreshTokenEnc []byte
 	UserID          uuid.UUID
 	ProviderID      uuid.UUID
 }
@@ -45,9 +45,9 @@ type GetFederatedIdentityOpts struct {
 type UpdateFederatedIdentityOpts struct {
 	LastValidatedAt   time.Time
 	LastLoginAt       time.Time
+	Claims            map[string]any
 	RefreshTokenEnc   []byte
+	ID                uuid.UUID
 	SetRefreshToken   bool
 	ClearRefreshToken bool
-	Claims            map[string]any
-	ID                uuid.UUID
 }

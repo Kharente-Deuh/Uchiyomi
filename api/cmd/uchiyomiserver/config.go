@@ -15,10 +15,10 @@ import (
 
 type cfg struct {
 	OIDC struct {
-		PublicURL            string        `env:"PUBLIC_URL,required,notEmpty"`
-		EncryptionKeyB64     string        `env:"OIDC_ENCRYPTION_KEY,required,notEmpty"`
-		RevalidationInterval time.Duration `env:"OIDC_REVALIDATION_INTERVAL" envDefault:"15m"`
+		PublicURL            string `env:"PUBLIC_URL,required,notEmpty"`
+		EncryptionKeyB64     string `env:"OIDC_ENCRYPTION_KEY,required,notEmpty"`
 		EncryptionKey        []byte
+		RevalidationInterval time.Duration `env:"OIDC_REVALIDATION_INTERVAL" envDefault:"15m"`
 	}
 	Logger struct {
 		Level logging.LogLevel `env:"LOG_LEVEL" envDefault:"info"`

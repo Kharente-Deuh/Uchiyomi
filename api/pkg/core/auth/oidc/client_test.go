@@ -111,11 +111,12 @@ func (idp *testIdP) setTokenHandler(h func(w http.ResponseWriter, r *http.Reques
 }
 
 func jsonTokenResponse(rawIDToken string) func(w http.ResponseWriter, r *http.Request) {
+	const tokenBody = `{"access_token":"test-access-token","token_type":"Bearer",` +
+		`"expires_in":3600,"id_token":%q,"refresh_token":"initial-refresh"}`
+
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w,
-			`{"access_token":"test-access-token","token_type":"Bearer","expires_in":3600,"id_token":%q,"refresh_token":"initial-refresh"}`,
-			rawIDToken)
+		fmt.Fprintf(w, tokenBody, rawIDToken)
 	}
 }
 

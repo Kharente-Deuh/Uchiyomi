@@ -16,9 +16,9 @@ import (
 )
 
 type stubRevalidator struct {
+	done  chan struct{}
 	errs  []error
 	calls int
-	done  chan struct{}
 }
 
 func (s *stubRevalidator) RevalidateFederatedIdentity(

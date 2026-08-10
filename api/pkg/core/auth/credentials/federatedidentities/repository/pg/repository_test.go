@@ -22,9 +22,10 @@ import (
 )
 
 const (
-	testSubject = "sub-123"
-	testEmail   = "bob@example.com"
-	claimsEmail = "email"
+	testSubject  = "sub-123"
+	testEmail    = "bob@example.com"
+	claimsEmail  = "email"
+	claimsColumn = "claims"
 )
 
 func duplicateKeyErr() error {
@@ -64,7 +65,7 @@ func TestCreateJoinsAmbientTransaction(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(`INSERT INTO "federated_identities"`).
-		WillReturnRows(sqlmock.NewRows([]string{"claims", "id"}).AddRow(nil, uuid.New()))
+		WillReturnRows(sqlmock.NewRows([]string{claimsColumn, "id"}).AddRow(nil, uuid.New()))
 	mock.ExpectCommit()
 
 	err = tr.WithinTx(context.Background(), transaction.TxOpts{}, func(ctx context.Context) error {
@@ -189,7 +190,7 @@ func TestGet(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM "federated_identities" WHERE provider_id = \$1 AND subject = \$2`).
 		WithArgs(providerID, testSubject, 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "user_id", "provider_id", "subject", "claims", "created_at", "last_login_at"}).
+			sqlmock.NewRows([]string{"id", "user_id", "provider_id", "subject", claimsColumn, "created_at", "last_login_at"}).
 				AddRow(id, userID, providerID, testSubject, []byte(`{"email":"bob@example.com"}`), created, lastLogin),
 		)
 
@@ -320,7 +321,7 @@ func TestListDueForRevalidation(t *testing.T) {
 	mock.ExpectQuery(`SELECT DISTINCT "federated_identities"`).
 		WithArgs(before, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "user_id", "provider_id", "subject", "claims",
+			"id", "user_id", "provider_id", "subject", claimsColumn,
 			"refresh_token_enc", "last_validated_at", "created_at", "last_login_at",
 		}).AddRow(
 			id, userID, providerID, testSubject, []byte(`{}`),

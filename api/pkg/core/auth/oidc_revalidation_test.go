@@ -17,10 +17,10 @@ import (
 )
 
 type revalidationSessionService struct {
+	err           error
+	calls         int
 	gotUserID     uuid.UUID
 	gotProviderID uuid.UUID
-	calls         int
-	err           error
 }
 
 func (s *revalidationSessionService) Create(

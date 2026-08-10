@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -105,7 +106,7 @@ type fakeOIDCRevalidationApp struct{}
 func (fakeOIDCRevalidationApp) Run(ctx context.Context) error {
 	<-ctx.Done()
 
-	return ctx.Err()
+	return fmt.Errorf("context done: %w", ctx.Err())
 }
 
 func (fakeSessionsRepository) DeleteByUserAndProvider(context.Context, uuid.UUID, uuid.UUID) error {
