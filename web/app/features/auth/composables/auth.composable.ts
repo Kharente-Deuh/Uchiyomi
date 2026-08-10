@@ -15,7 +15,7 @@ export interface AuthComposable {
 
   fetchMe: () => Promise<AuthCheck>
   login: (request: LoginWithPwdRequest) => Promise<LoginWithPwdStatus>
-  logout: () => Promise<void>
+  logout: () => Promise<string | undefined>
 }
 
 export function useAuth(): AuthComposable {
@@ -38,7 +38,7 @@ export function useAuth(): AuthComposable {
     return res.status
   }
 
-  async function logout(): Promise<void> {
+  async function logout(): Promise<string | undefined> {
     loading.value = true
 
     const res = await authApi.logout()
@@ -49,6 +49,8 @@ export function useAuth(): AuthComposable {
     store.invalidate()
 
     loading.value = false
+
+    return res.success ? res.data.endSessionUrl : undefined
   }
 
   async function fetchMe(): Promise<AuthCheck> {

@@ -140,18 +140,23 @@ func (f *fakeFederatedIdentitiesRepo) Update(
 }
 
 type fakeOIDCClient struct {
-	authCodeErr    error
-	exchangeErr    error
-	tokenSet       *oidcproviders.TokenSet
-	authCodeURL    string
-	gotCode        string
-	gotVerifier    string
-	gotNonce       string
-	gotRedirectURI string
-	gotAuthParams  oidcproviders.AuthCodeParams
-	gotProvider    oidcproviders.OIDCProvider
-	authCodeCalls  int
-	exchangeCalls  int
+	authCodeErr           error
+	exchangeErr           error
+	endSessionErr         error
+	tokenSet              *oidcproviders.TokenSet
+	authCodeURL           string
+	endSessionURL         string
+	gotCode               string
+	gotVerifier           string
+	gotNonce              string
+	gotRedirectURI        string
+	gotPostLogoutRedirect string
+	gotAuthParams         oidcproviders.AuthCodeParams
+	gotProvider           oidcproviders.OIDCProvider
+	authCodeCalls         int
+	exchangeCalls         int
+	endSessionCalls       int
+	endSessionSupported   bool
 }
 
 func (f *fakeOIDCClient) AuthCodeURL(
@@ -187,6 +192,22 @@ func (f *fakeOIDCClient) Exchange(
 	}
 
 	return f.tokenSet, nil
+}
+
+func (f *fakeOIDCClient) EndSessionURL(
+	_ context.Context,
+	provider oidcproviders.OIDCProvider,
+	postLogoutRedirectURI string,
+) (string, bool, error) {
+	f.endSessionCalls++
+	f.gotProvider = provider
+	f.gotPostLogoutRedirect = postLogoutRedirectURI
+
+	if f.endSessionErr != nil {
+		return "", false, f.endSessionErr
+	}
+
+	return f.endSessionURL, f.endSessionSupported, nil
 }
 
 func TestStartOIDCLoginBuildsAuthCodeURLAndCookie(t *testing.T) {

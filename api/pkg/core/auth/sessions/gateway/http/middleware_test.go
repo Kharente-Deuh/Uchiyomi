@@ -250,6 +250,104 @@ func TestUserFromReturnsFalseWithoutMiddleware(t *testing.T) {
 	}
 }
 
+func TestSessionFromReturnsFalseWithoutMiddleware(t *testing.T) {
+	t.Parallel()
+
+	if _, ok := sessionshttp.SessionFrom(context.Background()); ok {
+		t.Error("SessionFrom a trouvé une session dans un contexte vierge")
+	}
+}
+
+func TestRequireSessionRejectsMissingCookieAndClearsIt(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubSessionService{}
+	logger, _ := testLogger()
+
+	a, err := sessionshttp.NewAuthenticator(sessionshttp.AuthenticatorDeps{
+		SessionService: svc,
+		Cookies:        newCookies(t, true),
+		Logger:         logger,
+		Now:            func() time.Time { return time.Now() },
+	})
+	if err != nil {
+		t.Fatalf("NewAuthenticator: %v", err)
+	}
+
+	handler := a.RequireSession(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/logout", nil))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+
+	if svc.calls != 0 {
+		t.Errorf("service appelé %d fois sans cookie", svc.calls)
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("%d cookies posés, want 1", len(cookies))
+	}
+
+	if cookies[0].MaxAge != -1 {
+		t.Errorf("MaxAge = %d, want -1", cookies[0].MaxAge)
+	}
+}
+
+func TestRequireSessionPopulatesSessionFrom(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, time.August, 3, 12, 0, 0, 0, time.UTC)
+	user := &users.User{ID: uuid.New(), Name: testUser}
+	wantSession := sessions.Session{ID: uuid.New(), UserID: user.ID, ExpiresAt: now.Add(time.Hour)}
+	svc := &stubSessionService{result: &sessions.AuthenticatedSession{
+		User:    user,
+		Session: wantSession,
+	}}
+	logger, _ := testLogger()
+
+	a, err := sessionshttp.NewAuthenticator(sessionshttp.AuthenticatorDeps{
+		SessionService: svc,
+		Cookies:        newCookies(t, true),
+		Logger:         logger,
+		Now:            func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatalf("NewAuthenticator: %v", err)
+	}
+
+	var gotSession sessions.Session
+
+	handler := a.RequireSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, ok := sessionshttp.SessionFrom(r.Context())
+		if !ok {
+			t.Error("SessionFrom n'a pas trouvé de session dans le contexte")
+			w.WriteHeader(http.StatusTeapot)
+
+			return
+		}
+
+		gotSession = session
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, requestWithToken(testToken))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	if gotSession.ID != wantSession.ID {
+		t.Errorf("session = %v, want %v", gotSession.ID, wantSession.ID)
+	}
+}
+
 func newAuthenticatorForUser(t *testing.T, user *users.User) *sessionshttp.Authenticator {
 	t.Helper()
 

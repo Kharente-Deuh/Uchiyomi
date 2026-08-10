@@ -45,12 +45,14 @@ type stubAuthService struct {
 	finishErr     error
 	startErr      error
 	logoutErr     error
+	logoutResult  *auth.LogoutResult
 	startResult   *auth.OIDCStart
 	result        *auth.LoginResult
 	finishResult  *auth.OIDCLoginResult
 	gotFinishOpts auth.FinishOIDCLoginOpts
 	gotOpts       auth.LoginWithPwdOpts
 	logoutToken   string
+	logoutSession sessions.Session
 	gotStartOpts  auth.StartOIDCLoginOpts
 	calls         int
 	logoutCalls   int
@@ -76,11 +78,20 @@ func (s *stubAuthService) CreateUserWithPwd(context.Context, auth.CreateUserWith
 	panic("CreateUserWithPwd n'est pas exposée par ce controller")
 }
 
-func (s *stubAuthService) Logout(_ context.Context, token string) error {
+func (s *stubAuthService) Logout(_ context.Context, opts auth.LogoutOpts) (*auth.LogoutResult, error) {
 	s.logoutCalls++
-	s.logoutToken = token
+	s.logoutToken = opts.Token
+	s.logoutSession = opts.Session
 
-	return s.logoutErr
+	if s.logoutErr != nil {
+		return nil, s.logoutErr
+	}
+
+	if s.logoutResult != nil {
+		return s.logoutResult, nil
+	}
+
+	return &auth.LogoutResult{}, nil
 }
 
 func (s *stubAuthService) StartOIDCLogin(_ context.Context, opts auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {
@@ -181,7 +192,17 @@ func loginBody(user, pwd string) string {
 func newTestRouter(t *testing.T, svc *stubAuthService) (chi.Router, *bytes.Buffer) {
 	t.Helper()
 
-	return newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+	return newTestRouterWithLogoutMiddlewares(t, svc, nil)
+}
+
+func newTestRouterWithLogoutMiddlewares(
+	t *testing.T,
+	svc *stubAuthService,
+	logoutMiddlewares chi.Middlewares,
+) (chi.Router, *bytes.Buffer) {
+	t.Helper()
+
+	return newTestRouterWithProvidersAndLogoutMiddlewares(t, svc, &stubProvidersLister{}, logoutMiddlewares)
 }
 
 func newTestRouterWithProviders(
@@ -191,9 +212,23 @@ func newTestRouterWithProviders(
 ) (chi.Router, *bytes.Buffer) {
 	t.Helper()
 
+	return newTestRouterWithProvidersAndLogoutMiddlewares(t, svc, providers, nil)
+}
+
+func newTestRouterWithProvidersAndLogoutMiddlewares(
+	t *testing.T,
+	svc *stubAuthService,
+	providers *stubProvidersLister,
+	logoutMiddlewares chi.Middlewares,
+) (chi.Router, *bytes.Buffer) {
+	t.Helper()
+
 	logger, logs := testLogger()
 
-	c, err := authhttp.New(authhttp.Config{Endpoint: authEndpoint}, authhttp.Deps{
+	c, err := authhttp.New(authhttp.Config{
+		Endpoint:          authEndpoint,
+		LogoutMiddlewares: logoutMiddlewares,
+	}, authhttp.Deps{
 		AuthService:      svc,
 		Cookies:          newCookies(t),
 		OIDCStateCookies: newOIDCStateCookies(t),
@@ -209,6 +244,53 @@ func newTestRouterWithProviders(
 	c.InitRouter(r)
 
 	return r, logs
+}
+
+type stubSessionService struct {
+	err      error
+	result   *sessions.AuthenticatedSession
+	gotToken string
+	calls    int
+}
+
+func (s *stubSessionService) Authenticate(
+	_ context.Context,
+	token string,
+) (*sessions.AuthenticatedSession, error) {
+	s.calls++
+	s.gotToken = token
+
+	if s.err != nil {
+		return nil, s.err
+	}
+
+	return s.result, nil
+}
+
+func logoutMiddlewaresFor(t *testing.T, svc *stubSessionService) chi.Middlewares {
+	t.Helper()
+
+	logger, _ := testLogger()
+
+	a, err := sessionshttp.NewAuthenticator(sessionshttp.AuthenticatorDeps{
+		SessionService: svc,
+		Cookies:        newCookies(t),
+		Logger:         logger,
+		Now:            frozenNow,
+	})
+	if err != nil {
+		t.Fatalf("NewAuthenticator: %v", err)
+	}
+
+	return chi.Middlewares{a.RequireSession}
+}
+
+func injectSessionMiddleware(user *users.User, session sessions.Session) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(sessionshttp.WithAuth(r.Context(), user, session)))
+		})
+	}
 }
 
 func postLogin(t *testing.T, r chi.Router, body string) *httptest.ResponseRecorder {
@@ -658,16 +740,20 @@ func postLogout(t *testing.T, r chi.Router, cookie *http.Cookie) *httptest.Respo
 	return rec
 }
 
-func TestLogoutRevokesSessionAndClearsCookie(t *testing.T) {
+func TestLogoutRevokesSessionClearsCookieReturns200(t *testing.T) {
 	t.Parallel()
 
+	user := loggedInUser()
+	session := sessions.Session{ID: uuid.New(), UserID: user.ID, ExpiresAt: frozenNow().Add(time.Hour)}
 	svc := &stubAuthService{}
-	r, _ := newTestRouter(t, svc)
+	r, _ := newTestRouterWithLogoutMiddlewares(t, svc, chi.Middlewares{
+		injectSessionMiddleware(user, session),
+	})
 
 	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
 
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusNoContent, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
 	if svc.logoutCalls != 1 {
@@ -676,6 +762,10 @@ func TestLogoutRevokesSessionAndClearsCookie(t *testing.T) {
 
 	if svc.logoutToken != token {
 		t.Errorf("token reçu = %q, want %q", svc.logoutToken, token)
+	}
+
+	if svc.logoutSession.ID != session.ID {
+		t.Errorf("session reçue = %v, want %v", svc.logoutSession.ID, session.ID)
 	}
 
 	cookies := rec.Result().Cookies()
@@ -692,20 +782,56 @@ func TestLogoutRevokesSessionAndClearsCookie(t *testing.T) {
 	}
 }
 
-func TestLogoutWithoutCookieClearsCookieAndSkipsService(t *testing.T) {
+func TestLogoutWithoutCookieReturns401AndClearsCookie(t *testing.T) {
 	t.Parallel()
 
 	svc := &stubAuthService{}
-	r, _ := newTestRouter(t, svc)
+	sessionSvc := &stubSessionService{}
+	r, _ := newTestRouterWithLogoutMiddlewares(t, svc, logoutMiddlewaresFor(t, sessionSvc))
 
 	rec := postLogout(t, r, nil)
 
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusNoContent, rec.Body.String())
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusUnauthorized, rec.Body.String())
 	}
 
 	if svc.logoutCalls != 0 {
 		t.Errorf("Logout appelé %d fois, want 0", svc.logoutCalls)
+	}
+
+	if sessionSvc.calls != 0 {
+		t.Errorf("Authenticate appelé %d fois sans cookie", sessionSvc.calls)
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("%d cookies posés, want 1", len(cookies))
+	}
+
+	if cookies[0].MaxAge != -1 {
+		t.Errorf("MaxAge = %d, want -1", cookies[0].MaxAge)
+	}
+}
+
+func TestLogoutInvalidSession401ClearsCookie(t *testing.T) {
+	t.Parallel()
+
+	svc := &stubAuthService{}
+	sessionSvc := &stubSessionService{err: sessions.ErrInvalidSession}
+	r, _ := newTestRouterWithLogoutMiddlewares(t, svc, logoutMiddlewaresFor(t, sessionSvc))
+
+	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+
+	if svc.logoutCalls != 0 {
+		t.Errorf("Logout appelé %d fois, want 0", svc.logoutCalls)
+	}
+
+	if sessionSvc.calls != 1 {
+		t.Errorf("Authenticate appelé %d fois, want 1", sessionSvc.calls)
 	}
 
 	cookies := rec.Result().Cookies()
@@ -721,8 +847,12 @@ func TestLogoutWithoutCookieClearsCookieAndSkipsService(t *testing.T) {
 func TestLogoutServiceErrorLeavesCookieIntact(t *testing.T) {
 	t.Parallel()
 
+	user := loggedInUser()
+	session := sessions.Session{ID: uuid.New(), UserID: user.ID, ExpiresAt: frozenNow().Add(time.Hour)}
 	svc := &stubAuthService{logoutErr: errors.New("database is down")}
-	r, logs := newTestRouter(t, svc)
+	r, logs := newTestRouterWithLogoutMiddlewares(t, svc, chi.Middlewares{
+		injectSessionMiddleware(user, session),
+	})
 
 	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
 
@@ -736,6 +866,33 @@ func TestLogoutServiceErrorLeavesCookieIntact(t *testing.T) {
 
 	if !strings.Contains(logs.String(), "failed to logout") {
 		t.Errorf("message de log attendu absent: %s", logs.String())
+	}
+}
+
+func TestLogoutReturnsEndSessionURL(t *testing.T) {
+	t.Parallel()
+
+	const endSessionURL = "https://idp.example.com/logout?client_id=app"
+	user := loggedInUser()
+	session := sessions.Session{ID: uuid.New(), UserID: user.ID, ExpiresAt: frozenNow().Add(time.Hour)}
+	svc := &stubAuthService{logoutResult: &auth.LogoutResult{EndSessionURL: endSessionURL}}
+	r, _ := newTestRouterWithLogoutMiddlewares(t, svc, chi.Middlewares{
+		injectSessionMiddleware(user, session),
+	})
+
+	rec := postLogout(t, r, &http.Cookie{Name: sessionCookieName, Value: token})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var got authhttp.LogoutResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal(%s): %v", rec.Body.String(), err)
+	}
+
+	if got.EndSessionURL != endSessionURL {
+		t.Errorf("endSessionUrl = %q, want %q", got.EndSessionURL, endSessionURL)
 	}
 }
 

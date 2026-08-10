@@ -14,6 +14,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/hash"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/password"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidc"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
@@ -26,6 +27,7 @@ const (
 	userName         = "alice"
 	pwd              = "hunter2hunter2"
 	token            = "letoken"
+	publicURL        = "https://app.example.com"
 	oidcRedirectURI  = "https://app.example.com/callback"
 	testCipherKey    = "abcdefghijklmnopqrstuvwxyz012345"
 	usernameClaimKey = "preferred_username"
@@ -302,7 +304,7 @@ func newFakes() *fakes {
 
 	return &fakes{
 		clock: c,
-		cfg:   auth.Config{RedirectURI: oidcRedirectURI, StateCookieTTL: 10 * time.Minute},
+		cfg:   auth.Config{PublicURL: publicURL, RedirectURI: oidcRedirectURI, StateCookieTTL: 10 * time.Minute},
 		now:   time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC),
 		hs:    &fakeHashService{clock: c, match: true},
 		ur:    &fakeUsersRepository{user: user, byID: map[uuid.UUID]*users.User{user.ID: user}},
@@ -358,7 +360,7 @@ func TestNewRequiresTransactor(t *testing.T) {
 	f := newFakes()
 
 	svc, err := auth.New(
-		auth.Config{RedirectURI: oidcRedirectURI},
+		auth.Config{PublicURL: publicURL, RedirectURI: oidcRedirectURI},
 		auth.Deps{HashService: f.hs, UsersRepository: f.ur, PwdRepository: f.pr},
 	)
 	if err == nil {
@@ -725,42 +727,141 @@ func TestLoginWithPwdPropagatesInfrastructureErrors(t *testing.T) {
 	}
 }
 
-func TestLogoutForwardsTokenToRevoke(t *testing.T) {
+func TestLogout(t *testing.T) {
 	t.Parallel()
 
-	f := newFakes()
+	providerID := uuid.New()
+	endSessionURL := "https://idp.example.com/logout?client_id=client-id&" +
+		"post_logout_redirect_uri=https%3A%2F%2Fapp.example.com%2Flogin"
 
-	if err := f.svc(t).Logout(context.Background(), token); err != nil {
-		t.Fatalf("Logout: %v", err)
+	tests := map[string]struct {
+		session    sessions.Session
+		setup      func(*fakes)
+		wantURL    string
+		wantRevoke bool
+		wantErr    error
+	}{
+		"password session → empty EndSessionURL": {
+			session:    sessions.Session{AuthMethod: sessions.AuthMethodPassword},
+			wantRevoke: true,
+		},
+		"oidc + EndSessionURL supported → URL returned": {
+			session: sessions.Session{
+				AuthMethod: sessions.AuthMethodOIDC,
+				ProviderID: &providerID,
+			},
+			setup: func(f *fakes) {
+				f.opr.provider.ID = providerID
+				f.oc.endSessionURL = endSessionURL
+				f.oc.endSessionSupported = true
+			},
+			wantURL:    endSessionURL,
+			wantRevoke: true,
+		},
+		"oidc + EndSessionURL not supported → empty": {
+			session: sessions.Session{
+				AuthMethod: sessions.AuthMethodOIDC,
+				ProviderID: &providerID,
+			},
+			setup: func(f *fakes) {
+				f.opr.provider.ID = providerID
+				f.oc.endSessionSupported = false
+			},
+			wantRevoke: true,
+		},
+		"oidc + provider not found → empty": {
+			session: sessions.Session{
+				AuthMethod: sessions.AuthMethodOIDC,
+				ProviderID: ptrUUID(uuid.New()),
+			},
+			setup: func(f *fakes) {
+				f.opr.err = domain.ErrNotFound
+			},
+			wantRevoke: true,
+		},
+		"oidc + EndSessionURL error → empty (logout succeeds)": {
+			session: sessions.Session{
+				AuthMethod: sessions.AuthMethodOIDC,
+				ProviderID: &providerID,
+			},
+			setup: func(f *fakes) {
+				f.opr.provider.ID = providerID
+				f.oc.endSessionErr = oidc.ErrClientUnavailable
+			},
+			wantRevoke: true,
+		},
+		"revoke error": {
+			session: sessions.Session{AuthMethod: sessions.AuthMethodPassword},
+			setup: func(f *fakes) {
+				f.ss.revokeErr = sessions.ErrInvalidSession
+			},
+			wantErr: sessions.ErrInvalidSession,
+		},
 	}
 
-	if f.ss.revokeCalls != 1 {
-		t.Errorf("Revoke appelée %d fois, want 1", f.ss.revokeCalls)
-	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-	if f.ss.gotToken != token {
-		t.Errorf("Revoke a reçu %q, want %q", f.ss.gotToken, token)
+			f := newFakes()
+			if tc.setup != nil {
+				tc.setup(f)
+			}
+
+			got, err := f.svc(t).Logout(context.Background(), auth.LogoutOpts{
+				Token:   token,
+				Session: tc.session,
+			})
+
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("Logout = %v, want %v", err, tc.wantErr)
+				}
+
+				if got != nil {
+					t.Fatalf("Logout = %+v, want nil result on error", got)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Logout: %v", err)
+			}
+
+			if got == nil {
+				t.Fatal("Logout returned nil result")
+			}
+
+			if got.EndSessionURL != tc.wantURL {
+				t.Errorf("EndSessionURL = %q, want %q", got.EndSessionURL, tc.wantURL)
+			}
+
+			if tc.wantRevoke && f.ss.revokeCalls != 1 {
+				t.Errorf("Revoke appelée %d fois, want 1", f.ss.revokeCalls)
+			}
+
+			if f.ss.gotToken != token {
+				t.Errorf("Revoke a reçu %q, want %q", f.ss.gotToken, token)
+			}
+
+			if tc.wantURL != "" {
+				if f.oc.endSessionCalls != 1 {
+					t.Errorf("EndSessionURL appelée %d fois, want 1", f.oc.endSessionCalls)
+				}
+
+				if f.oc.gotPostLogoutRedirect != publicURL+"/login" {
+					t.Errorf(
+						"post_logout_redirect_uri = %q, want %q",
+						f.oc.gotPostLogoutRedirect,
+						publicURL+"/login",
+					)
+				}
+			}
+		})
 	}
 }
 
-func TestLogoutPropagatesRevokeError(t *testing.T) {
-	t.Parallel()
-
-	f := newFakes()
-	f.ss.revokeErr = sessions.ErrInvalidSession
-
-	err := f.svc(t).Logout(context.Background(), token)
-	if !errors.Is(err, sessions.ErrInvalidSession) {
-		t.Errorf("err = %v, want ErrInvalidSession", err)
-	}
-}
-
-func TestLogoutReturnsNilOnSuccess(t *testing.T) {
-	t.Parallel()
-
-	f := newFakes()
-
-	if err := f.svc(t).Logout(context.Background(), token); err != nil {
-		t.Errorf("Logout() = %v, want nil", err)
-	}
+func ptrUUID(id uuid.UUID) *uuid.UUID {
+	return &id
 }

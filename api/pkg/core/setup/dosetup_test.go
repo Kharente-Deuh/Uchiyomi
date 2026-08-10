@@ -66,7 +66,7 @@ func (f *fakeAuthService) LoginWithPwd(context.Context, auth.LoginWithPwdOpts) (
 	panic("LoginWithPwd ne doit pas être appelée par DoSetup")
 }
 
-func (f *fakeAuthService) Logout(context.Context, string) error {
+func (f *fakeAuthService) Logout(context.Context, auth.LogoutOpts) (*auth.LogoutResult, error) {
 	panic("Logout ne doit pas être appelée par DoSetup")
 }
 

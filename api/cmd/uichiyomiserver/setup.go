@@ -246,7 +246,7 @@ func setupServices(deps servicesDeps) (*services, error) {
 	redirectURI := deps.PublicURL + oidcCallbackPath
 
 	authSvc, err := auth.New(
-		auth.Config{RedirectURI: redirectURI, StateCookieTTL: 10 * time.Minute},
+		auth.Config{RedirectURI: redirectURI, PublicURL: deps.PublicURL, StateCookieTTL: 10 * time.Minute},
 		auth.Deps{
 			Transactor:                    deps.DBr.Txor,
 			UsersRepository:               deps.DBr.UsersRepository,
@@ -540,7 +540,10 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 	}
 
 	authCtrl, err := httpauth.New(
-		httpauth.Config{Endpoint: "/auth"},
+		httpauth.Config{
+			Endpoint:          "/auth",
+			LogoutMiddlewares: chi.Middlewares{authenticator.RequireSession},
+		},
 		httpauth.Deps{
 			AuthService:      deps.AuthService,
 			Cookies:          cookiesMgr,

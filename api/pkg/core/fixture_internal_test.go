@@ -126,8 +126,8 @@ func (fakeAuthService) CreateUserWithPwd(context.Context, auth.CreateUserWithPwd
 	return nil, errors.New(notImplemented)
 }
 
-func (fakeAuthService) Logout(context.Context, string) error {
-	return errors.New(notImplemented)
+func (fakeAuthService) Logout(context.Context, auth.LogoutOpts) (*auth.LogoutResult, error) {
+	return nil, errors.New(notImplemented)
 }
 
 func (fakeAuthService) StartOIDCLogin(context.Context, auth.StartOIDCLoginOpts) (*auth.OIDCStart, error) {

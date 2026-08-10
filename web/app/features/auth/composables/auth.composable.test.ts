@@ -99,12 +99,23 @@ describe('useAuth().login', () => {
 })
 
 describe('useAuth().logout', () => {
-  it('clears the user', async () => {
-    logout.mockResolvedValue({ success: true, data: undefined })
+  it('clears the user and returns undefined without an endSessionUrl', async () => {
+    logout.mockResolvedValue({ success: true, data: {} })
     const auth = useAuth()
     useAuthStore().setUser(user)
 
-    await auth.logout()
+    await expect(auth.logout()).resolves.toBeUndefined()
+
+    expect(auth.user.value).toBeUndefined()
+  })
+
+  it('returns endSessionUrl when the API provides one', async () => {
+    const endSessionUrl = 'https://id.example.org/logout'
+    logout.mockResolvedValue({ success: true, data: { endSessionUrl } })
+    const auth = useAuth()
+    useAuthStore().setUser(user)
+
+    await expect(auth.logout()).resolves.toBe(endSessionUrl)
 
     expect(auth.user.value).toBeUndefined()
   })
@@ -115,13 +126,13 @@ describe('useAuth().logout', () => {
     const auth = useAuth()
     useAuthStore().setUser(user)
 
-    await auth.logout()
+    await expect(auth.logout()).resolves.toBeUndefined()
 
     expect(auth.user.value).toBeUndefined()
   })
 
   it('leaves loading false once settled', async () => {
-    logout.mockResolvedValue({ success: true, data: undefined })
+    logout.mockResolvedValue({ success: true, data: {} })
     const auth = useAuth()
 
     await auth.logout()

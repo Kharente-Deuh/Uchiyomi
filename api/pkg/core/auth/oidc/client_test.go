@@ -34,12 +34,13 @@ const (
 )
 
 type testIdP struct {
-	tokenHandler  func(w http.ResponseWriter, r *http.Request)
-	srv           *httptest.Server
-	key           *rsa.PrivateKey
-	keyID         string
-	mu            sync.Mutex
-	discoveryHits int32
+	tokenHandler       func(w http.ResponseWriter, r *http.Request)
+	srv                *httptest.Server
+	key                *rsa.PrivateKey
+	keyID              string
+	endSessionEndpoint string
+	mu                 sync.Mutex
+	discoveryHits      int32
 }
 
 func newTestIdP(t *testing.T) *testIdP {
@@ -60,12 +61,18 @@ func newTestIdP(t *testing.T) *testIdP {
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&idp.discoveryHits, 1)
 		w.Header().Set("Content-Type", "application/json")
+
+		endSession := ""
+		if idp.endSessionEndpoint != "" {
+			endSession = fmt.Sprintf(`,"end_session_endpoint": %q`, idp.endSessionEndpoint)
+		}
+
 		fmt.Fprintf(w, `{
 			"issuer": %q,
 			"authorization_endpoint": "%s/auth",
 			"token_endpoint": "%s/token",
-			"jwks_uri": "%s/jwks"
-		}`, srv.URL, srv.URL, srv.URL, srv.URL)
+			"jwks_uri": "%s/jwks"%s
+		}`, srv.URL, srv.URL, srv.URL, srv.URL, endSession)
 	})
 
 	mux.HandleFunc("/jwks", func(w http.ResponseWriter, _ *http.Request) {
@@ -572,5 +579,81 @@ func TestNewClientValidatesDeps(t *testing.T) {
 
 	if _, err := oidc.NewClient(oidc.ClientConfig{}, oidc.ClientDeps{HTTPClient: http.DefaultClient}); err == nil {
 		t.Error("NewClient without a cipher = nil, want an error")
+	}
+}
+
+func TestEndSessionURLBuildsLogoutURLWithClientIDAndPostLogoutRedirectURI(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	idp.endSessionEndpoint = idp.srv.URL + "/logout"
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	const postLogoutRedirectURI = "https://app.example.com/login"
+
+	got, supported, err := c.EndSessionURL(context.Background(), provider, postLogoutRedirectURI)
+	if err != nil {
+		t.Fatalf("EndSessionURL: %v", err)
+	}
+
+	if !supported {
+		t.Fatal("supported = false, want true")
+	}
+
+	parsed, err := url.Parse(got)
+	if err != nil {
+		t.Fatalf("url.Parse: %v", err)
+	}
+
+	if parsed.Path != "/logout" {
+		t.Errorf("path = %q, want %q", parsed.Path, "/logout")
+	}
+
+	q := parsed.Query()
+
+	if q.Get("client_id") != provider.ClientID {
+		t.Errorf("client_id = %q, want %q", q.Get("client_id"), provider.ClientID)
+	}
+
+	if q.Get("post_logout_redirect_uri") != postLogoutRedirectURI {
+		t.Errorf("post_logout_redirect_uri = %q, want %q", q.Get("post_logout_redirect_uri"), postLogoutRedirectURI)
+	}
+
+	if q.Get("id_token_hint") != "" {
+		t.Errorf("id_token_hint = %q, want empty", q.Get("id_token_hint"))
+	}
+}
+
+func TestEndSessionURLReturnsUnsupportedWhenEndpointMissing(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	got, supported, err := c.EndSessionURL(context.Background(), provider, "https://app.example.com/login")
+	if err != nil {
+		t.Fatalf("EndSessionURL: %v", err)
+	}
+
+	if supported {
+		t.Error("supported = true, want false")
+	}
+
+	if got != "" {
+		t.Errorf("EndSessionURL = %q, want empty", got)
+	}
+}
+
+func TestEndSessionURLPropagatesProviderUnavailable(t *testing.T) {
+	t.Parallel()
+
+	provider := testProvider("https://idp.invalid.example")
+	c := newTestClient(t)
+
+	_, _, err := c.EndSessionURL(context.Background(), provider, "https://app.example.com/login")
+	if !errors.Is(err, oidc.ErrClientUnavailable) {
+		t.Errorf("EndSessionURL = %v, want ErrClientUnavailable", err)
 	}
 }

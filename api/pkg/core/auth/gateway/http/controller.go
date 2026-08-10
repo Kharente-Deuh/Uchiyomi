@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,7 +22,8 @@ import (
 )
 
 type Config struct {
-	Endpoint string
+	Endpoint          string
+	LogoutMiddlewares chi.Middlewares
 }
 
 func (cfg *Config) Validate() error {
@@ -31,6 +33,14 @@ func (cfg *Config) Validate() error {
 
 	if !strings.HasPrefix(cfg.Endpoint, "/") {
 		return fmt.Errorf("endpoint must start with '/', got %q", cfg.Endpoint)
+	}
+
+	hasNilMiddlewares := slices.ContainsFunc(cfg.LogoutMiddlewares, func(m func(http.Handler) http.Handler) bool {
+		return m == nil
+	})
+
+	if hasNilMiddlewares {
+		return errors.New("all logout middlewares must not be nil")
 	}
 
 	return nil
@@ -105,7 +115,7 @@ func New(cfg Config, deps Deps) (*Controller, error) {
 func (c *Controller) InitRouter(r chi.Router) {
 	r.Route(c.cfg.Endpoint, func(r chi.Router) {
 		r.Post("/login", c.loginWithPwd)
-		r.Post("/logout", c.logout)
+		r.With(c.cfg.LogoutMiddlewares...).Post("/logout", c.logout)
 		r.Get("/providers", c.listProviders)
 		r.Get("/oidc/{id}/start", c.startOIDCLogin)
 		r.Get("/oidc/callback", c.oidcCallback)
@@ -151,17 +161,23 @@ func (c *Controller) loginWithPwd(w http.ResponseWriter, r *http.Request) {
 func (c *Controller) logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	if token := c.deps.Cookies.Read(r); token != "" {
-		if err := c.deps.AuthService.Logout(ctx, token); err != nil {
-			c.deps.Logger.ErrorContext(ctx, "failed to logout", logging.Err(err))
-			httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
+	session, _ := sessionshttp.SessionFrom(ctx)
 
-			return
-		}
+	res, err := c.deps.AuthService.Logout(ctx, auth.LogoutOpts{
+		Token:   c.deps.Cookies.Read(r),
+		Session: session,
+	})
+	if err != nil {
+		c.deps.Logger.ErrorContext(ctx, "failed to logout", logging.Err(err))
+		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
+
+		return
 	}
 
 	c.deps.Cookies.Clear(w)
-	w.WriteHeader(http.StatusNoContent)
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, LogoutResponse{
+		EndSessionURL: res.EndSessionURL,
+	})
 }
 
 func (c *Controller) listProviders(w http.ResponseWriter, r *http.Request) {

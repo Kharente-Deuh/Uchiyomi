@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -195,6 +196,41 @@ func (c *Client) Exchange(
 	sid, _ := claims[sidClaim].(string)
 
 	return &oidcproviders.TokenSet{Subject: idToken.Subject, SID: sid, Claims: claims}, nil
+}
+
+func (c *Client) EndSessionURL(
+	ctx context.Context,
+	provider oidcproviders.OIDCProvider,
+	postLogoutRedirectURI string,
+) (string, bool, error) {
+	p, err := c.providerFor(ctx, provider)
+	if err != nil {
+		return "", false, fmt.Errorf("client.providerFor: %w", err)
+	}
+
+	var claims struct {
+		EndSessionEndpoint string `json:"end_session_endpoint"`
+	}
+
+	if err := p.Claims(&claims); err != nil {
+		return "", false, fmt.Errorf("provider.Claims: %w", err)
+	}
+
+	if claims.EndSessionEndpoint == "" {
+		return "", false, nil
+	}
+
+	u, err := url.Parse(claims.EndSessionEndpoint)
+	if err != nil {
+		return "", false, fmt.Errorf("url.Parse: %w", err)
+	}
+
+	q := u.Query()
+	q.Set("client_id", provider.ClientID)
+	q.Set("post_logout_redirect_uri", postLogoutRedirectURI)
+	u.RawQuery = q.Encode()
+
+	return u.String(), true, nil
 }
 
 func (c *Client) Evict(id uuid.UUID) {

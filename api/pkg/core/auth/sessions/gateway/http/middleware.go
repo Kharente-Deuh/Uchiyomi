@@ -63,10 +63,24 @@ func NewAuthenticator(deps AuthenticatorDeps) (*Authenticator, error) {
 
 type userCtxKey struct{}
 
+type sessionCtxKey struct{}
+
 func UserFrom(ctx context.Context) (*users.User, bool) {
 	user, ok := ctx.Value(userCtxKey{}).(*users.User)
 
 	return user, ok
+}
+
+func SessionFrom(ctx context.Context) (sessions.Session, bool) {
+	session, ok := ctx.Value(sessionCtxKey{}).(sessions.Session)
+
+	return session, ok
+}
+
+func WithAuth(ctx context.Context, user *users.User, session sessions.Session) context.Context {
+	ctx = context.WithValue(ctx, userCtxKey{}, user)
+
+	return context.WithValue(ctx, sessionCtxKey{}, session)
 }
 
 func (a *Authenticator) Middleware(next http.Handler) http.Handler {
@@ -101,7 +115,20 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 
 		a.deps.Cookies.Set(w, token, authenticated.Session.ExpiresAt, a.deps.Now())
 
-		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, userCtxKey{}, authenticated.User)))
+		next.ServeHTTP(w, r.WithContext(WithAuth(ctx, authenticated.User, authenticated.Session)))
+	})
+}
+
+func (a *Authenticator) RequireSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if a.deps.Cookies.Read(r) == "" {
+			a.deps.Cookies.Clear(w)
+			httputils.WriteError(w, a.deps.Logger, http.StatusUnauthorized, "")
+
+			return
+		}
+
+		a.Middleware(next).ServeHTTP(w, r)
 	})
 }
 

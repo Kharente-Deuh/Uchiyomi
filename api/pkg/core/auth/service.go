@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"time"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/federatedidentities"
@@ -87,6 +88,7 @@ func (deps *Deps) Validate() error {
 }
 
 type Config struct {
+	PublicURL      string
 	RedirectURI    string
 	StateCookieTTL time.Duration
 }
@@ -96,8 +98,33 @@ func (cfg *Config) Validate() error {
 		return errors.New("redirectURI is required")
 	}
 
+	if err := validatePublicURL(cfg.PublicURL); err != nil {
+		return err
+	}
+
 	if cfg.StateCookieTTL == 0 {
 		cfg.StateCookieTTL = defaultStateCookieTTL
+	}
+
+	return nil
+}
+
+func validatePublicURL(raw string) error {
+	if raw == "" {
+		return errors.New("publicURL is required")
+	}
+
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("publicURL is not a valid URL: %w", err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("publicURL must have an http or https scheme, got %q", raw)
+	}
+
+	if u.Host == "" {
+		return fmt.Errorf("publicURL must have a host, got %q", raw)
 	}
 
 	return nil
@@ -199,14 +226,6 @@ func (s *Service) LoginWithPwd(ctx context.Context, opts LoginWithPwdOpts) (*Log
 	}
 
 	return &LoginResult{Session: session, User: user}, nil
-}
-
-func (s *Service) Logout(ctx context.Context, token string) error {
-	if err := s.deps.SessionService.Revoke(ctx, token); err != nil {
-		return fmt.Errorf("s.deps.SessionService.Revoke: %w", err)
-	}
-
-	return nil
 }
 
 func (s *Service) equalizeLoginTiming(password string) {

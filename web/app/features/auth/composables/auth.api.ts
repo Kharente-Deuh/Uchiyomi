@@ -4,9 +4,13 @@ import type { User } from '~/features/users/composables/users.api'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
 
+export interface LogoutResponse {
+  endSessionUrl?: string
+}
+
 export interface AuthApi {
   loginWithPwd: (request: LoginWithPwdRequest) => Promise<LoginWithPwdResult>
-  logout: () => Promise<ApiResponse<void>>
+  logout: () => Promise<ApiResponse<LogoutResponse>>
   getProviders: () => Promise<ApiResponse<ProviderSummary[]>>
 }
 
@@ -46,11 +50,11 @@ export function createAuthApi(): AuthApi {
     }
   }
 
-  async function logout(): Promise<ApiResponse<void>> {
+  async function logout(): Promise<ApiResponse<LogoutResponse>> {
     try {
-      await api('/logout', { method: 'POST' })
+      const data = await api<LogoutResponse>('/logout', { method: 'POST' })
 
-      return { success: true, data: undefined }
+      return { success: true, data }
     } catch (error) {
       return { success: false, error: ApiError.fromFetchError(error) }
     }

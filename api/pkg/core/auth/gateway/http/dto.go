@@ -19,3 +19,7 @@ type ProviderSummaryResponse struct {
 	ID          string `json:"id"`
 	DisplayName string `json:"displayName"`
 }
+
+type LogoutResponse struct {
+	EndSessionURL string `json:"endSessionUrl,omitempty"`
+}
