@@ -170,7 +170,7 @@ func TestInsertAndGetByTokenHashRoundTripProviderIdentity(t *testing.T) {
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"id", "user_id", "token_hash", "auth_method", "created_at", "expires_at",
-						"provider_id", "provider_s_id",
+						"provider_id", "provider_sid",
 						"User__id", "User__name", "User__is_admin", "User__created_at", "User__updated_at",
 					}).AddRow(
 						uuid.New(), userID, hash, "password", created, expires,

@@ -9,9 +9,9 @@ import (
 )
 
 type Session struct {
-	CreatedAt   time.Time `gorm:"autoCreateTime"`
-	ExpiresAt   time.Time `gorm:"not null;index"`
-	ProviderSID *string
+	CreatedAt   time.Time  `gorm:"autoCreateTime"`
+	ExpiresAt   time.Time  `gorm:"not null;index"`
+	ProviderSID *string    `gorm:"column:provider_sid"`
 	ProviderID  *uuid.UUID `gorm:"type:uuid;index"`
 	AuthMethod  string     `gorm:"type:text;not null"`
 	TokenHash   []byte     `gorm:"type:bytea;not null;uniqueIndex"`
