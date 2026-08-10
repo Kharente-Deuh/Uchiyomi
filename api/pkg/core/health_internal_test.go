@@ -41,7 +41,7 @@ func TestNewHealthRegistryDeclaresTheLatchesAndTheDBProbe(t *testing.T) {
 
 	rep := reg.Snapshot(context.Background())
 
-	for _, name := range []string{componentMigrations, componentAsura, componentSessions} {
+	for _, name := range []string{componentMigrations, componentAsura, componentSessions, componentOIDCRevalidation} {
 		c, ok := rep.Components[name]
 		if !ok {
 			t.Errorf("latche %s absente du registre", name)

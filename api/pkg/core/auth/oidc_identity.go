@@ -58,11 +58,24 @@ func (s *Service) reuseIdentity(
 		return nil, fmt.Errorf("s.deps.UsersRepository.GetByID: %w", err)
 	}
 
-	err = s.deps.FederatedIdentitiesRepository.Update(ctx, federatedidentities.UpdateFederatedIdentityOpts{
+	refreshTokenEnc, lastValidatedAt, err := s.federatedIdentityFieldsFromTokenSet(tokenSet)
+	if err != nil {
+		return nil, err
+	}
+
+	updateOpts := federatedidentities.UpdateFederatedIdentityOpts{
 		ID:          fi.ID,
 		Claims:      tokenSet.Claims,
 		LastLoginAt: s.now(),
-	})
+	}
+
+	if len(refreshTokenEnc) > 0 {
+		updateOpts.RefreshTokenEnc = refreshTokenEnc
+		updateOpts.SetRefreshToken = true
+		updateOpts.LastValidatedAt = lastValidatedAt
+	}
+
+	err = s.deps.FederatedIdentitiesRepository.Update(ctx, updateOpts)
 	if err != nil {
 		return nil, fmt.Errorf("s.deps.FederatedIdentitiesRepository.Update: %w", err)
 	}
@@ -76,14 +89,21 @@ func (s *Service) linkIdentity(
 	tokenSet *oidcproviders.TokenSet,
 	user *users.User,
 ) (*users.User, error) {
-	_, err := s.deps.FederatedIdentitiesRepository.Create(ctx, federatedidentities.CreateFederatedIdentityOpts{
-		Subject:    tokenSet.Subject,
-		ProviderID: provider.ID,
-		UserID:     user.ID,
-		Claims:     tokenSet.Claims,
+	refreshTokenEnc, lastValidatedAt, err := s.federatedIdentityFieldsFromTokenSet(tokenSet)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.createFederatedIdentity(ctx, federatedidentities.CreateFederatedIdentityOpts{
+		Subject:         tokenSet.Subject,
+		ProviderID:      provider.ID,
+		UserID:          user.ID,
+		Claims:          tokenSet.Claims,
+		RefreshTokenEnc: refreshTokenEnc,
+		LastValidatedAt: lastValidatedAt,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("s.deps.FederatedIdentitiesRepository.Create: %w", err)
+		return nil, err
 	}
 
 	return user, nil
@@ -105,11 +125,18 @@ func (s *Service) provisionIdentity(
 			return fmt.Errorf("s.deps.UsersRepository.Create: %w", err)
 		}
 
+		refreshTokenEnc, lastValidatedAt, err := s.federatedIdentityFieldsFromTokenSet(tokenSet)
+		if err != nil {
+			return err
+		}
+
 		_, err = s.deps.FederatedIdentitiesRepository.Create(ctx, federatedidentities.CreateFederatedIdentityOpts{
-			Subject:    tokenSet.Subject,
-			ProviderID: provider.ID,
-			UserID:     user.ID,
-			Claims:     tokenSet.Claims,
+			Subject:         tokenSet.Subject,
+			ProviderID:      provider.ID,
+			UserID:          user.ID,
+			Claims:          tokenSet.Claims,
+			RefreshTokenEnc: refreshTokenEnc,
+			LastValidatedAt: lastValidatedAt,
 		})
 		if err != nil {
 			return fmt.Errorf("s.deps.FederatedIdentitiesRepository.Create: %w", err)

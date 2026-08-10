@@ -10,16 +10,17 @@ import (
 )
 
 const (
-	componentMigrations = "migrations"
-	componentAsura      = "asura"
-	componentSessions   = "sessions"
-	componentDB         = "db"
+	componentMigrations       = "migrations"
+	componentAsura            = "asura"
+	componentSessions         = "sessions"
+	componentOIDCRevalidation = "oidc-revalidation"
+	componentDB               = "db"
 )
 
 const notReadyMessage = "service is starting"
 
 func NewHealthRegistry(db Database) *health.Registry {
-	reg := health.NewRegistry(componentMigrations, componentAsura, componentSessions)
+	reg := health.NewRegistry(componentMigrations, componentAsura, componentSessions, componentOIDCRevalidation)
 	reg.AddProbe(componentDB, db.Ping)
 
 	return reg

@@ -52,16 +52,16 @@ func (r *PGFederatedIdentitiesRepository) db(ctx context.Context) gorm.Interface
 func (r *PGFederatedIdentitiesRepository) Create(ctx context.Context, opts federatedidentities.CreateFederatedIdentityOpts) (*federatedidentities.FederatedIdentity, error) {
 	now := time.Now()
 	model := &pgmodels.FederatedIdentity{
-		ID:         uuid.New(),
-		UserID:     opts.UserID,
-		ProviderID: opts.ProviderID,
-
-		Subject: opts.Subject,
-		Claims:  opts.Claims,
-
-		LastLoginAt: now,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:              uuid.New(),
+		UserID:          opts.UserID,
+		ProviderID:      opts.ProviderID,
+		Subject:         opts.Subject,
+		Claims:          opts.Claims,
+		RefreshTokenEnc: opts.RefreshTokenEnc,
+		LastValidatedAt: opts.LastValidatedAt,
+		LastLoginAt:     now,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 
 	err := r.db(ctx).Create(ctx, model)
@@ -100,10 +100,21 @@ func (r *PGFederatedIdentitiesRepository) Get(ctx context.Context, opts federate
 
 //nolint:lll
 func (r *PGFederatedIdentitiesRepository) Update(ctx context.Context, opts federatedidentities.UpdateFederatedIdentityOpts) error {
-	affectedNb, err := r.db(ctx).Where("id = ?", opts.ID).Updates(ctx, pgmodels.FederatedIdentity{
-		Claims:      opts.Claims,
-		LastLoginAt: opts.LastLoginAt,
-	})
+	updates := pgmodels.FederatedIdentity{
+		Claims:          opts.Claims,
+		LastLoginAt:     opts.LastLoginAt,
+		LastValidatedAt: opts.LastValidatedAt,
+	}
+
+	if opts.SetRefreshToken {
+		updates.RefreshTokenEnc = opts.RefreshTokenEnc
+	}
+
+	if opts.ClearRefreshToken {
+		updates.RefreshTokenEnc = nil
+	}
+
+	affectedNb, err := r.db(ctx).Where("id = ?", opts.ID).Updates(ctx, updates)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -121,14 +132,46 @@ func (r *PGFederatedIdentitiesRepository) Update(ctx context.Context, opts feder
 }
 
 //nolint:lll
+func (r *PGFederatedIdentitiesRepository) ListDueForRevalidation(
+	ctx context.Context,
+	before time.Time,
+) ([]federatedidentities.FederatedIdentity, error) {
+	now := time.Now()
+
+	var models []pgmodels.FederatedIdentity
+
+	err := pgtx.From(ctx, r.deps.DB).
+		Model(&pgmodels.FederatedIdentity{}).
+		Distinct().
+		Joins(`INNER JOIN sessions ON sessions.user_id = federated_identities.user_id
+			AND sessions.provider_id = federated_identities.provider_id`).
+		Where("federated_identities.refresh_token_enc IS NOT NULL").
+		Where("federated_identities.last_validated_at < ?", before).
+		Where("sessions.expires_at > ?", now).
+		Find(&models).Error
+	if err != nil {
+		return nil, fmt.Errorf("db query: %w", err)
+	}
+
+	out := make([]federatedidentities.FederatedIdentity, len(models))
+	for i, model := range models {
+		out[i] = r.modelToDomain(model)
+	}
+
+	return out, nil
+}
+
+//nolint:lll
 func (r *PGFederatedIdentitiesRepository) modelToDomain(model pgmodels.FederatedIdentity) federatedidentities.FederatedIdentity {
 	return federatedidentities.FederatedIdentity{
-		ID:          model.ID,
-		UserID:      model.UserID,
-		ProviderID:  model.ProviderID,
-		Subject:     model.Subject,
-		Claims:      model.Claims,
-		LastLoginAt: model.LastLoginAt,
-		CreatedAt:   model.CreatedAt,
+		ID:              model.ID,
+		UserID:          model.UserID,
+		ProviderID:      model.ProviderID,
+		Subject:         model.Subject,
+		Claims:          model.Claims,
+		RefreshTokenEnc: model.RefreshTokenEnc,
+		LastValidatedAt: model.LastValidatedAt,
+		LastLoginAt:     model.LastLoginAt,
+		CreatedAt:       model.CreatedAt,
 	}
 }

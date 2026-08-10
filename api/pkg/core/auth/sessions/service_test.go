@@ -103,6 +103,13 @@ func (f *fakeRepository) DeleteByUserID(_ context.Context, id uuid.UUID) error {
 	return f.deleteErr
 }
 
+func (f *fakeRepository) DeleteByUserAndProvider(_ context.Context, userID, providerID uuid.UUID) error {
+	f.deleteUsers++
+	f.gotUserID = userID
+
+	return f.deleteErr
+}
+
 func (f *fakeRepository) DeleteExpired(context.Context, time.Time) (int64, error) {
 	panic("DeleteExpired must not be called by the service")
 }
@@ -745,5 +752,23 @@ func TestRevokeAllForUserPropagatesRepositoryError(t *testing.T) {
 	err := frozenSvc(t, repo, time.Now()).RevokeAllForUser(context.Background(), uuid.New())
 	if !errors.Is(err, sentinel) {
 		t.Errorf("err = %v, original error no longer reachable", err)
+	}
+}
+
+func TestRevokeForProviderDeletesByUserAndProvider(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeRepository{}
+	userID := uuid.New()
+	providerID := uuid.New()
+
+	if err := frozenSvc(t, repo, time.Now()).RevokeForProvider(
+		context.Background(), userID, providerID,
+	); err != nil {
+		t.Fatalf("RevokeForProvider: %v", err)
+	}
+
+	if repo.gotUserID != userID {
+		t.Errorf("DeleteByUserAndProvider user = %v, want %v", repo.gotUserID, userID)
 	}
 }

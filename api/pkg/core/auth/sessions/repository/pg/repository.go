@@ -123,6 +123,17 @@ func (r *PGSessionsRepository) DeleteByUserID(ctx context.Context, userID uuid.U
 	return nil
 }
 
+func (r *PGSessionsRepository) DeleteByUserAndProvider(
+	ctx context.Context,
+	userID, providerID uuid.UUID,
+) error {
+	if _, err := r.db(ctx).Where("user_id = ? AND provider_id = ?", userID, providerID).Delete(ctx); err != nil {
+		return fmt.Errorf("r.db(ctx).Delete: %w", err)
+	}
+
+	return nil
+}
+
 func (r *PGSessionsRepository) DeleteExpired(ctx context.Context, now time.Time) (int64, error) {
 	deleted, err := r.db(ctx).Where("expires_at <= ?", now).Delete(ctx)
 	if err != nil {

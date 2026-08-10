@@ -46,6 +46,7 @@ type SessionService interface {
 	Authenticate(context.Context, string) (*AuthenticatedSession, error)
 	Revoke(context.Context, string) error
 	RevokeAllForUser(context.Context, uuid.UUID) error
+	RevokeForProvider(context.Context, uuid.UUID, uuid.UUID) error
 }
 
 type CreateSessionOpts struct {
@@ -61,6 +62,7 @@ type SessionsRepository interface {
 	UpdateExpiry(context.Context, uuid.UUID, time.Time) error
 	DeleteByTokenHash(context.Context, []byte) error
 	DeleteByUserID(context.Context, uuid.UUID) error
+	DeleteByUserAndProvider(context.Context, uuid.UUID, uuid.UUID) error
 	DeleteExpired(context.Context, time.Time) (int64, error)
 }
 

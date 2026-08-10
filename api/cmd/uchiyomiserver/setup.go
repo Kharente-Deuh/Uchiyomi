@@ -21,6 +21,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/federatedidentities"
 	pgfederatedidentities "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/federatedidentities/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/hash/bcrypthash"
 	pgpwd "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/password/repository/pg"
@@ -64,8 +65,12 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	}
 
 	apps, err := setupApps(appsDeps{
-		Logger:             logger,
-		SessionsRepository: dbr.SessionsRepository,
+		Logger:                        logger,
+		SessionsRepository:            dbr.SessionsRepository,
+		AuthService:                   services.Auth,
+		FederatedIdentitiesRepository: dbr.FederatedIdentitiesRepository,
+		OIDCProvidersRepository:       dbr.OIDCProvidersRepository,
+		RevalidationInterval:          cfg.OIDC.RevalidationInterval,
 	})
 	if err != nil {
 		//nolint:wrapcheck
@@ -101,11 +106,12 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			UsersCtrl:         ctrls.Users,
 			OIDCProvidersCtrl: ctrls.OIDCProviders,
 
-			Health:   registry,
-			Logger:   logger,
-			DB:       dbr.PGDB,
-			Asura:    apps.Asura,
-			Sessions: apps.Sessions,
+			Health:           registry,
+			Logger:           logger,
+			DB:               dbr.PGDB,
+			Asura:            apps.Asura,
+			Sessions:         apps.Sessions,
+			OIDCRevalidation: apps.OIDCRevalidation,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init main app: %w", err)
@@ -298,13 +304,18 @@ func setupServices(deps servicesDeps) (*services, error) {
 }
 
 type apps struct {
-	Asura    *asura.App
-	Sessions *sessions.App
+	Asura            *asura.App
+	Sessions         *sessions.App
+	OIDCRevalidation *oidc.RevalidationApp
 }
 
 type appsDeps struct {
-	Logger             *slog.Logger
-	SessionsRepository sessions.SessionsRepository
+	Logger                        *slog.Logger
+	SessionsRepository            sessions.SessionsRepository
+	AuthService                   *auth.Service
+	FederatedIdentitiesRepository federatedidentities.FederatedIdentitiesRepository
+	OIDCProvidersRepository       oidcproviders.OIDCProvidersRepository
+	RevalidationInterval          time.Duration
 }
 
 func setupApps(deps appsDeps) (*apps, error) {
@@ -318,14 +329,28 @@ func setupApps(deps appsDeps) (*apps, error) {
 		return nil, fmt.Errorf("failed to init sessions app: %w", err)
 	}
 
+	oidcRevalidation, err := oidc.NewRevalidationApp(
+		oidc.RevalidationConfig{Interval: deps.RevalidationInterval},
+		oidc.RevalidationDeps{
+			Logger:                        deps.Logger,
+			Revalidator:                   deps.AuthService,
+			FederatedIdentitiesRepository: deps.FederatedIdentitiesRepository,
+			OIDCProvidersRepository:       deps.OIDCProvidersRepository,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init oidc revalidation app: %w", err)
+	}
+
 	asura, err := setupAsura(deps.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init asura source: %w", err)
 	}
 
 	a := &apps{
-		Asura:    asura,
-		Sessions: sessionApp,
+		Asura:            asura,
+		Sessions:         sessionApp,
+		OIDCRevalidation: oidcRevalidation,
 	}
 
 	return a, nil

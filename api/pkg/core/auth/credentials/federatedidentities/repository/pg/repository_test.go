@@ -22,9 +22,10 @@ import (
 )
 
 const (
-	testSubject = "sub-123"
-	testEmail   = "bob@example.com"
-	claimsEmail = "email"
+	testSubject  = "sub-123"
+	testEmail    = "bob@example.com"
+	claimsEmail  = "email"
+	claimsColumn = "claims"
 )
 
 func duplicateKeyErr() error {
@@ -64,7 +65,7 @@ func TestCreateJoinsAmbientTransaction(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(`INSERT INTO "federated_identities"`).
-		WillReturnRows(sqlmock.NewRows([]string{"claims", "id"}).AddRow(nil, uuid.New()))
+		WillReturnRows(sqlmock.NewRows([]string{claimsColumn, "id"}).AddRow(nil, uuid.New()))
 	mock.ExpectCommit()
 
 	err = tr.WithinTx(context.Background(), transaction.TxOpts{}, func(ctx context.Context) error {
@@ -189,7 +190,7 @@ func TestGet(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM "federated_identities" WHERE provider_id = \$1 AND subject = \$2`).
 		WithArgs(providerID, testSubject, 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", "user_id", "provider_id", "subject", "claims", "created_at", "last_login_at"}).
+			sqlmock.NewRows([]string{"id", "user_id", "provider_id", "subject", claimsColumn, "created_at", "last_login_at"}).
 				AddRow(id, userID, providerID, testSubject, []byte(`{"email":"bob@example.com"}`), created, lastLogin),
 		)
 
@@ -305,5 +306,61 @@ func TestUpdateError(t *testing.T) {
 	})
 	if !errors.Is(err, sentinel) {
 		t.Errorf("err = %v, original error no longer reachable", err)
+	}
+}
+
+func TestListDueForRevalidation(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	before := time.Now().Add(-15 * time.Minute)
+	id, userID, providerID := uuid.New(), uuid.New(), uuid.New()
+	lastValidated := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`SELECT DISTINCT "federated_identities"`).
+		WithArgs(before, sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "provider_id", "subject", claimsColumn,
+			"refresh_token_enc", "last_validated_at", "created_at", "last_login_at",
+		}).AddRow(
+			id, userID, providerID, testSubject, []byte(`{}`),
+			[]byte("enc"), lastValidated, time.Now(), time.Now(),
+		))
+
+	got, err := r.ListDueForRevalidation(context.Background(), before)
+	if err != nil {
+		t.Fatalf("ListDueForRevalidation: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("len = %d, want 1", len(got))
+	}
+
+	if got[0].ID != id || got[0].UserID != userID || got[0].ProviderID != providerID {
+		t.Errorf("ListDueForRevalidation() = %+v", got[0])
+	}
+
+	if !got[0].LastValidatedAt.Equal(lastValidated) {
+		t.Errorf("LastValidatedAt = %v, want %v", got[0].LastValidatedAt, lastValidated)
+	}
+}
+
+func TestUpdateClearsRefreshToken(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "federated_identities" SET`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := r.Update(context.Background(), federatedidentities.UpdateFederatedIdentityOpts{
+		ID:                uuid.New(),
+		ClearRefreshToken: true,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
 	}
 }

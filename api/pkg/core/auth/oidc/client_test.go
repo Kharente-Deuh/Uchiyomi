@@ -111,11 +111,33 @@ func (idp *testIdP) setTokenHandler(h func(w http.ResponseWriter, r *http.Reques
 }
 
 func jsonTokenResponse(rawIDToken string) func(w http.ResponseWriter, r *http.Request) {
+	const tokenBody = `{"access_token":"test-access-token","token_type":"Bearer",` +
+		`"expires_in":3600,"id_token":%q,"refresh_token":"initial-refresh"}`
+
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, tokenBody, rawIDToken)
+	}
+}
+
+func jsonRefreshResponse(rawIDToken, refreshToken string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		if got := r.PostFormValue("grant_type"); got != "refresh_token" {
+			http.Error(w, "wrong grant_type", http.StatusBadRequest)
+
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w,
-			`{"access_token":"test-access-token","token_type":"Bearer","expires_in":3600,"id_token":%q}`,
-			rawIDToken)
+			`{"access_token":"test-access-token","token_type":"Bearer","expires_in":3600,"id_token":%q,"refresh_token":%q}`,
+			rawIDToken, refreshToken)
 	}
 }
 
@@ -371,6 +393,10 @@ func TestExchangeVerifiesTheIDToken(t *testing.T) {
 
 	if ts.Claims["sub"] != testSubject {
 		t.Errorf("Claims[sub] = %v, want %q", ts.Claims["sub"], testSubject)
+	}
+
+	if ts.RefreshToken != "initial-refresh" {
+		t.Errorf("RefreshToken = %q, want %q", ts.RefreshToken, "initial-refresh")
 	}
 }
 
@@ -655,5 +681,66 @@ func TestEndSessionURLPropagatesProviderUnavailable(t *testing.T) {
 	_, _, err := c.EndSessionURL(context.Background(), provider, "https://app.example.com/login")
 	if !errors.Is(err, oidc.ErrClientUnavailable) {
 		t.Errorf("EndSessionURL = %v, want ErrClientUnavailable", err)
+	}
+}
+
+func TestRefreshVerifiesTheIDTokenAndReturnsRotatedRefreshToken(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+
+	rawIDToken := signClaims(t, idp.key, idp.keyID, baseClaims(idp.srv.URL, provider.ClientID, testNonce))
+	idp.setTokenHandler(jsonRefreshResponse(rawIDToken, "rotated-refresh"))
+
+	c := newTestClient(t)
+
+	ts, err := c.Refresh(context.Background(), provider, "stored-refresh")
+	if err != nil {
+		t.Fatalf("Refresh: %v", err)
+	}
+
+	if ts.Subject != testSubject {
+		t.Errorf("Subject = %q, want %q", ts.Subject, testSubject)
+	}
+
+	if ts.RefreshToken != "rotated-refresh" {
+		t.Errorf("RefreshToken = %q, want %q", ts.RefreshToken, "rotated-refresh")
+	}
+}
+
+func TestRefreshReturnsInvalidGrant(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	idp.setTokenHandler(invalidGrantResponse())
+
+	c := newTestClient(t)
+
+	_, err := c.Refresh(context.Background(), provider, "revoked-refresh")
+	if !errors.Is(err, oidcproviders.ErrInvalidGrant) {
+		t.Errorf("Refresh = %v, want ErrInvalidGrant", err)
+	}
+}
+
+func TestRefreshPropagatesTransientFailures(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	idp.setTokenHandler(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	})
+
+	c := newTestClient(t)
+
+	_, err := c.Refresh(context.Background(), provider, "stored-refresh")
+	if err == nil {
+		t.Fatal("Refresh = nil, want an error")
+	}
+
+	if errors.Is(err, oidcproviders.ErrInvalidGrant) {
+		t.Errorf("Refresh = %v, must not be ErrInvalidGrant on 5xx", err)
 	}
 }

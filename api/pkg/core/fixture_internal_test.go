@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -97,6 +98,18 @@ func (fakeSessionsRepository) UpdateExpiry(context.Context, uuid.UUID, time.Time
 }
 
 func (fakeSessionsRepository) DeleteByTokenHash(context.Context, []byte) error {
+	return errors.New(notImplemented)
+}
+
+type fakeOIDCRevalidationApp struct{}
+
+func (fakeOIDCRevalidationApp) Run(ctx context.Context) error {
+	<-ctx.Done()
+
+	return fmt.Errorf("context done: %w", ctx.Err())
+}
+
+func (fakeSessionsRepository) DeleteByUserAndProvider(context.Context, uuid.UUID, uuid.UUID) error {
 	return errors.New(notImplemented)
 }
 
@@ -307,6 +320,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			Health:            registry,
 			Asura:             asuraApp,
 			Sessions:          sessionsApp,
+			OIDCRevalidation:  fakeOIDCRevalidationApp{},
 		})
 	if err != nil {
 		t.Fatalf("New: %v", err)

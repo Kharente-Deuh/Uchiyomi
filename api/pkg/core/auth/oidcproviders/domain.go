@@ -88,6 +88,8 @@ type LightOIDCProvider struct {
 
 var ErrIncompleteDiscovery = errors.New("discovery document is incomplete")
 
+var ErrInvalidGrant = errors.New("oidc: refresh token is invalid or revoked")
+
 type Discoverer interface {
 	Discover(ctx context.Context, issuerURL string) (*Discovery, error)
 }
@@ -103,6 +105,7 @@ type Discovery struct {
 type Client interface {
 	AuthCodeURL(ctx context.Context, provider OIDCProvider, params AuthCodeParams) (string, error)
 	Exchange(ctx context.Context, provider OIDCProvider, code, verifier, nonce, redirectURI string) (*TokenSet, error)
+	Refresh(ctx context.Context, provider OIDCProvider, refreshToken string) (*TokenSet, error)
 	EndSessionURL(ctx context.Context, provider OIDCProvider, postLogoutRedirectURI string) (string, bool, error)
 }
 
@@ -114,7 +117,8 @@ type AuthCodeParams struct {
 }
 
 type TokenSet struct {
-	Claims  map[string]any
-	Subject string
-	SID     string
+	Claims       map[string]any
+	RefreshToken string
+	Subject      string
+	SID          string
 }

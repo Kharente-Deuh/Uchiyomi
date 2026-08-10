@@ -139,6 +139,13 @@ func (f *fakeFederatedIdentitiesRepo) Update(
 	return f.updateErr
 }
 
+func (f *fakeFederatedIdentitiesRepo) ListDueForRevalidation(
+	context.Context,
+	time.Time,
+) ([]federatedidentities.FederatedIdentity, error) {
+	panic("ListDueForRevalidation is not used by the auth service")
+}
+
 type fakeOIDCClient struct {
 	authCodeErr           error
 	exchangeErr           error
@@ -208,6 +215,14 @@ func (f *fakeOIDCClient) EndSessionURL(
 	}
 
 	return f.endSessionURL, f.endSessionSupported, nil
+}
+
+func (f *fakeOIDCClient) Refresh(
+	context.Context,
+	oidcproviders.OIDCProvider,
+	string,
+) (*oidcproviders.TokenSet, error) {
+	panic("Refresh is not used by the auth service")
 }
 
 func TestStartOIDCLoginBuildsAuthCodeURLAndCookie(t *testing.T) {

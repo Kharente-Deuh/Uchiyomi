@@ -72,8 +72,9 @@ type Deps struct {
 	Logger *slog.Logger
 	Health *health.Registry
 
-	Asura    *asura.App
-	Sessions *sessions.App
+	Asura            *asura.App
+	Sessions         *sessions.App
+	OIDCRevalidation interface{ Run(context.Context) error }
 }
 
 func (deps *Deps) Validate() error {
@@ -99,6 +100,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.Sessions == nil {
 		return errors.New("sessions is required")
+	}
+
+	if deps.OIDCRevalidation == nil {
+		return errors.New("oidcRevalidation is required")
 	}
 
 	if deps.HealthCtrl == nil {
@@ -173,6 +178,7 @@ func (a *App) startup(ctx context.Context, errG *errgroup.Group) func() error {
 
 		errG.Go(a.runComponent(ctx, componentAsura, a.deps.Asura.Run))
 		errG.Go(a.runComponent(ctx, componentSessions, a.deps.Sessions.Run))
+		errG.Go(a.runComponent(ctx, componentOIDCRevalidation, a.deps.OIDCRevalidation.Run))
 
 		return nil
 	}

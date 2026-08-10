@@ -22,6 +22,7 @@ var _ oidcproviders.Client = (*Client)(nil)
 var (
 	ErrClientUnavailable = errors.New("oidc client: provider is unavailable")
 	ErrExchangeFailed    = errors.New("oidc client: token exchange failed")
+	ErrRefreshFailed     = errors.New("oidc client: token refresh failed")
 	ErrIDTokenInvalid    = errors.New("oidc client: id token verification failed")
 	ErrNonceMismatch     = errors.New("oidc client: id token nonce mismatch")
 )
@@ -195,7 +196,84 @@ func (c *Client) Exchange(
 
 	sid, _ := claims[sidClaim].(string)
 
-	return &oidcproviders.TokenSet{Subject: idToken.Subject, SID: sid, Claims: claims}, nil
+	return &oidcproviders.TokenSet{
+		Subject:      idToken.Subject,
+		SID:          sid,
+		Claims:       claims,
+		RefreshToken: token.RefreshToken,
+	}, nil
+}
+
+func (c *Client) Refresh(
+	ctx context.Context,
+	provider oidcproviders.OIDCProvider,
+	refreshToken string,
+) (*oidcproviders.TokenSet, error) {
+	if refreshToken == "" {
+		return nil, fmt.Errorf("%w: refresh token must not be empty", ErrRefreshFailed)
+	}
+
+	p, err := c.providerFor(ctx, provider)
+	if err != nil {
+		return nil, fmt.Errorf("client.providerFor: %w", err)
+	}
+
+	secret, err := c.deps.Cipher.Open(provider.ClientSecretEnc)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.Open: %w", err)
+	}
+
+	cfg := oauth2.Config{
+		ClientID:     provider.ClientID,
+		ClientSecret: string(secret),
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  p.Endpoint().AuthURL,
+			TokenURL: p.Endpoint().TokenURL,
+		},
+		Scopes: dedup(provider.Scopes, openIDScope, offlineAccessScope),
+	}
+
+	refreshCtx := gooidc.ClientContext(ctx, c.deps.HTTPClient)
+
+	token, err := cfg.TokenSource(refreshCtx, &oauth2.Token{RefreshToken: refreshToken}).Token()
+	if err != nil {
+		if retrieveErr, ok := err.(*oauth2.RetrieveError); ok && retrieveErr.ErrorCode == "invalid_grant" {
+			return nil, oidcproviders.ErrInvalidGrant
+		}
+
+		return nil, fmt.Errorf("%w: %w", ErrRefreshFailed, err)
+	}
+
+	rawIDToken, ok := token.Extra("id_token").(string)
+	if !ok || rawIDToken == "" {
+		return nil, fmt.Errorf("%w: token response is missing the id_token", ErrRefreshFailed)
+	}
+
+	idTokenVerifier := p.Verifier(&gooidc.Config{ClientID: provider.ClientID})
+
+	idToken, err := idTokenVerifier.Verify(refreshCtx, rawIDToken)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrIDTokenInvalid, err)
+	}
+
+	var claims map[string]any
+	if err := idToken.Claims(&claims); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrIDTokenInvalid, err)
+	}
+
+	sid, _ := claims[sidClaim].(string)
+
+	rotated := token.RefreshToken
+	if rotated == "" {
+		rotated = refreshToken
+	}
+
+	return &oidcproviders.TokenSet{
+		Subject:      idToken.Subject,
+		SID:          sid,
+		Claims:       claims,
+		RefreshToken: rotated,
+	}, nil
 }
 
 func (c *Client) EndSessionURL(
