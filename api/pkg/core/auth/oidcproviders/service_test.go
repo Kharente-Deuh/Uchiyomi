@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
@@ -28,6 +29,7 @@ type fakeRepository struct {
 	updated  *oidcproviders.UpdateOIDCProviderOpts
 	provider *oidcproviders.OIDCProvider
 	all      []oidcproviders.LightOIDCProvider
+	users    []oidcproviders.OIDCProviderUser
 	err      error
 	deleted  []uuid.UUID
 }
@@ -64,11 +66,18 @@ func (f *fakeRepository) GetAll(context.Context) ([]oidcproviders.LightOIDCProvi
 	return f.all, f.err
 }
 
+func (f *fakeRepository) GetUsers(context.Context, uuid.UUID) ([]oidcproviders.OIDCProviderUser, error) {
+	return f.users, f.err
+}
+
 type fakeCipher struct {
-	err error
+	err   error
+	seals int
 }
 
 func (f *fakeCipher) Seal(plaintext []byte) ([]byte, error) {
+	f.seals++
+
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -220,11 +229,12 @@ func TestCreatePropagatesADuplicateIssuer(t *testing.T) {
 	}
 }
 
-func TestUpdateLeavesTheSecretUntouchedWhenOmitted(t *testing.T) {
+func TestUpdateNeverSealsASecret(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeRepository{provider: &oidcproviders.OIDCProvider{ID: uuid.New()}}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+	cipher := &fakeCipher{}
+	s := newService(t, repo, cipher, &fakeDiscoverer{})
 
 	_, err := s.Update(context.Background(), uuid.New(), oidcproviders.UpdateOpts{
 		DisplayName:   testDisplayName,
@@ -241,33 +251,8 @@ func TestUpdateLeavesTheSecretUntouchedWhenOmitted(t *testing.T) {
 		t.Fatal("the repository was never called")
 	}
 
-	if repo.updated.ClientSecretEnc != nil {
-		t.Errorf("ClientSecretEnc = %q, want nil so the stored secret is kept", repo.updated.ClientSecretEnc)
-	}
-}
-
-func TestUpdateEncryptsTheSecretWhenGiven(t *testing.T) {
-	t.Parallel()
-
-	repo := &fakeRepository{provider: &oidcproviders.OIDCProvider{ID: uuid.New()}}
-	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
-
-	secret := "rotated"
-
-	_, err := s.Update(context.Background(), uuid.New(), oidcproviders.UpdateOpts{
-		DisplayName:   testDisplayName,
-		IssuerURL:     testIssuerURL,
-		ClientID:      testClientID,
-		ClientSecret:  &secret,
-		Scopes:        []string{testScope},
-		UsernameClaim: testUsernameClaim,
-	})
-	if err != nil {
-		t.Fatalf("Update: %v", err)
-	}
-
-	if !bytes.Equal(repo.updated.ClientSecretEnc, []byte("sealed:rotated")) {
-		t.Errorf("ClientSecretEnc = %q, want the sealed secret", repo.updated.ClientSecretEnc)
+	if cipher.seals != 0 {
+		t.Errorf("the cipher was called %d times, want 0: an update must not rotate the secret", cipher.seals)
 	}
 }
 
@@ -322,12 +307,40 @@ func TestGetByIDNeverReturnsTheSecret(t *testing.T) {
 		t.Fatalf("GetByID: %v", err)
 	}
 
-	if got.ClientSecretEnc != nil {
-		t.Errorf("ClientSecretEnc = %q, want nil", got.ClientSecretEnc)
+	if got.Provider.ClientSecretEnc != nil {
+		t.Errorf("ClientSecretEnc = %q, want nil", got.Provider.ClientSecretEnc)
 	}
 
-	if got.DisplayName != testDisplayName {
-		t.Errorf("DisplayName = %q, want the rest of the provider to come through", got.DisplayName)
+	if got.Provider.DisplayName != testDisplayName {
+		t.Errorf("DisplayName = %q, want the rest of the provider to come through", got.Provider.DisplayName)
+	}
+}
+
+func TestGetByIDReturnsTheLinkedUsers(t *testing.T) {
+	t.Parallel()
+
+	linkedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+	userID := uuid.New()
+	repo := &fakeRepository{
+		provider: &oidcproviders.OIDCProvider{ID: uuid.New(), DisplayName: testDisplayName},
+		users: []oidcproviders.OIDCProviderUser{
+			{ID: userID, Username: "alice", LinkedAt: linkedAt, IsAdmin: true},
+		},
+	}
+	s := newService(t, repo, &fakeCipher{}, &fakeDiscoverer{})
+
+	got, err := s.GetByID(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+
+	if len(got.Users) != 1 {
+		t.Fatalf("Users = %+v, want the repository's users", got.Users)
+	}
+
+	if got.Users[0].ID != userID || got.Users[0].Username != "alice" ||
+		!got.Users[0].IsAdmin || !got.Users[0].LinkedAt.Equal(linkedAt) {
+		t.Errorf("Users[0] = %+v", got.Users[0])
 	}
 }
 

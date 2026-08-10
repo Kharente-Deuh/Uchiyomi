@@ -53,6 +53,12 @@ func (emptyOIDCProvidersRepository) GetAll(context.Context) ([]oidcproviders.Lig
 	return nil, nil
 }
 
+func (emptyOIDCProvidersRepository) GetUsers(
+	context.Context, uuid.UUID,
+) ([]oidcproviders.OIDCProviderUser, error) {
+	return nil, nil
+}
+
 type noopCipher struct{}
 
 func (noopCipher) Seal(plaintext []byte) ([]byte, error) { return plaintext, nil }

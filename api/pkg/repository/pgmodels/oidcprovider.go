@@ -12,8 +12,7 @@ import (
 type OIDCProvider struct {
 	UpdatedAt           time.Time `gorm:"autoUpdateTime"`
 	CreatedAt           time.Time `gorm:"autoCreateTime"`
-	AdminClaim          *string
-	AllowedClaim        *string
+	RoleClaim           *string
 	ClientID            string
 	UsernameClaim       string
 	IssuerURL           string `gorm:"type:text;not null;uniqueIndex"`
@@ -24,7 +23,7 @@ type OIDCProvider struct {
 	AllowedValues       pq.StringArray      `gorm:"type:text[]"`
 	FederatedIdentities []FederatedIdentity `gorm:"foreignKey:ProviderID;constraint:OnDelete:CASCADE"`
 	ID                  uuid.UUID           `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AutoProvision       bool                `gorm:"not null;default:true"`
+	AutoProvision       bool                `gorm:"not null;default:false"`
 }
 
 func (OIDCProvider) TableName() string {

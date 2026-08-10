@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { LoginWithPwdRequest, LoginWithPwdStatus } from './auth.api'
-import type { AuthCheck } from '~/features/auth/store/auth.store'
 import type { User } from '~/features/users/composables/users.api'
 import { createAuthApi } from './auth.api'
+
+export type AuthCheck = 'ok' | 'unauthenticated' | 'unreachable'
 
 export interface AuthComposable {
   user: Ref<User | undefined>
@@ -13,19 +14,19 @@ export interface AuthComposable {
   loading: Ref<boolean>
 
   fetchMe: () => Promise<AuthCheck>
-  invalidate: () => void
-
   login: (request: LoginWithPwdRequest) => Promise<LoginWithPwdStatus>
+  logout: () => Promise<void>
 }
 
 export function useAuth(): AuthComposable {
   const store = useAuthStore()
   const authApi = createAuthApi()
+  const usersApi = createUsersApi()
 
   const user = computed(() => store.user)
   const isAuthenticated = computed(() => !!user.value)
   const isAdmin = computed(() => !!user.value?.isAdmin)
-  const loading = computed(() => store.status === 'loading')
+  const loading = ref(false)
 
   async function login(request: LoginWithPwdRequest): Promise<LoginWithPwdStatus> {
     const res = await authApi.loginWithPwd(request)
@@ -37,6 +38,35 @@ export function useAuth(): AuthComposable {
     return res.status
   }
 
+  async function logout(): Promise<void> {
+    loading.value = true
+
+    const res = await authApi.logout()
+    if (!res.success) {
+      console.error('authApi.logout', res.error)
+    }
+
+    store.invalidate()
+
+    loading.value = false
+  }
+
+  async function fetchMe(): Promise<AuthCheck> {
+    const res = await usersApi.getCurrentUser()
+    if (res.success) {
+      store.setUser(res.data)
+
+      return 'ok'
+    }
+
+    store.invalidate()
+    if (res.error.status === 401) {
+      return 'unauthenticated'
+    }
+
+    return 'unreachable'
+  }
+
   return {
     user,
     isAuthenticated,
@@ -45,8 +75,7 @@ export function useAuth(): AuthComposable {
     loading,
 
     login,
-
-    fetchMe: store.fetchMe,
-    invalidate: store.invalidate,
+    fetchMe,
+    logout,
   }
 }

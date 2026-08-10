@@ -9,7 +9,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   const { isAuthenticated, isAdmin, fetchMe } = useAuth()
 
-  if (await fetchMe() === 'unavailable') {
+  if (await fetchMe() === 'unreachable') {
     return abortNavigation(createError({
       statusCode: 503,
       statusMessage: 'Unable to verify the current session',

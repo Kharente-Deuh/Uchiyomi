@@ -65,5 +65,136 @@
     "title": "Bienvenue",
     "subtitle": "Connectez-vous à votre serveur Uchiyomi",
     "submit": "Se connecter"
+  },
+  "auth": {
+    "signOut": "Se déconnecter"
+  },
+  "nav": {
+    "system": {
+      "title": "Système"
+    },
+    "settings": {
+      "title": "Paramètres"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "oidc": {
+      "title": "Fournisseurs OIDC",
+      "create": {
+        "success": "Fournisseur {name} créé !",
+        "error": "Le fournisseur existe déjà",
+        "title": "Nouveau fournisseur OIDC"
+      },
+      "delete": {
+        "success": "Fournisseur supprimé !",
+        "confirmation": "Voulez-vous vraiment supprimer {name} ?"
+      },
+      "fields": {
+        "displayName": {
+          "label": "Nom d'affichage"
+        },
+        "issuerUrl": {
+          "label": "URL de l'émetteur"
+        },
+        "clienId": {
+          "label": "Identifiant client"
+        },
+        "clientSecret": {
+          "label": "Secret client"
+        },
+        "scopes": {
+          "label": "Scopes"
+        },
+        "usernameClame": {
+          "label": "Claim nom d'utilisateur"
+        },
+        "roleClaim": {
+          "label": "Claim role"
+        },
+        "adminValues": {
+          "label": "Valeurs du rôle d'administrateur"
+        },
+        "allowedValues": {
+          "label": "Valeurs du rôle d'utilisateur normal"
+        },
+        "autoProvision": {
+          "hint": "Crée le compte lors de la première connexion. \nSinon, l'utilisateur doit déjà exister.",
+          "label": "Auto provision"
+        },
+        "users": {
+          "role": "Rôle",
+          "linkedAt": "Date du lien",
+          "username": "Nom d'utilisateur"
+        }
+      },
+      "category": {
+        "providerInfos": {
+          "title": "Informations sur le fournisseur"
+        },
+        "claims": {
+          "title": "Claims"
+        },
+        "users": {
+          "title": "Utilisateurs ({count})",
+          "noUsers": "Aucun utilisateur n'est lié à ce fournisseur"
+        }
+      },
+      "test": {
+        "title": "Résultat du test de l'émetteur",
+        "fields": {
+          "issuer": {
+            "label": "Émetteur"
+          },
+          "authorizationEndpoint": {
+            "label": "Authorization endpoint"
+          },
+          "tokenEndpoint": {
+            "label": "Token endpoint"
+          },
+          "userInfoEndpoint": {
+            "label": "UserInfo endpoint"
+          },
+          "endSessionEndpoint": {
+            "label": "End session endpoint"
+          },
+          "redirectUri": {
+            "label": "Redirect URI"
+          },
+          "supportsRpInitiatedLogout": {
+            "label": "Prend en charge la déconnexion initiée par RP"
+          }
+        },
+        "error": {
+          "unreachable": "Émetteur inaccessible"
+        }
+      },
+      "titleShort": "OIDC",
+      "update": {
+        "success": "Fournisseur mis à jour !"
+      },
+      "errors": {
+        "noProviders": "Aucun fournisseur n'est défini",
+        "notFound": "Fournisseur introuvable"
+      },
+      "description": "Gérer les fournisseurs OIDC"
+    }
+  },
+  "error": {
+    "unknown": "Erreur inconnue"
+  },
+  "actions": {
+    "cancel": "Annuler",
+    "save": "Sauvegarder",
+    "create": "Créer",
+    "delete": "Supprimer",
+    "continue": "Continuer"
+  },
+  "common": {
+    "loading": "Chargement..."
+  },
+  "role": {
+    "admin": "Administrateur",
+    "user": "Utilisateur"
   }
 }

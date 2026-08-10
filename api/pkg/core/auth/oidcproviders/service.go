@@ -62,17 +62,14 @@ type CreateOpts struct {
 
 	Scopes []string
 
-	AdminClaim  *string
-	AdminValues []string
+	RoleClaim *string
 
-	AllowedClaim  *string
+	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
 }
 
 type UpdateOpts struct {
-	ClientSecret *string
-
 	DisplayName   string
 	IssuerURL     string
 	ClientID      string
@@ -80,10 +77,9 @@ type UpdateOpts struct {
 
 	Scopes []string
 
-	AdminClaim  *string
-	AdminValues []string
+	RoleClaim *string
 
-	AllowedClaim  *string
+	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
 }
@@ -124,13 +120,18 @@ func (s *Service) List(ctx context.Context) ([]LightOIDCProvider, error) {
 	return providers, nil
 }
 
-func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*OIDCProvider, error) {
+func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*OIDCProviderDetails, error) {
 	provider, err := s.deps.Repository.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("s.deps.Repository.GetByID: %w", err)
 	}
 
-	return withoutSecret(provider), nil
+	users, err := s.deps.Repository.GetUsers(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.GetUsers: %w", err)
+	}
+
+	return &OIDCProviderDetails{Provider: *withoutSecret(provider), Users: users}, nil
 }
 
 func (s *Service) Create(ctx context.Context, opts CreateOpts) (*OIDCProvider, error) {
@@ -150,9 +151,8 @@ func (s *Service) Create(ctx context.Context, opts CreateOpts) (*OIDCProvider, e
 		ClientSecretEnc: secretEnc,
 		Scopes:          opts.Scopes,
 		UsernameClaim:   opts.UsernameClaim,
-		AdminClaim:      opts.AdminClaim,
+		RoleClaim:       opts.RoleClaim,
 		AdminValues:     opts.AdminValues,
-		AllowedClaim:    opts.AllowedClaim,
 		AllowedValues:   opts.AllowedValues,
 		AutoProvision:   opts.AutoProvision,
 	})
@@ -168,29 +168,16 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, opts UpdateOpts) (*O
 		return nil, err
 	}
 
-	var secretEnc []byte
-
-	if opts.ClientSecret != nil {
-		sealed, err := s.deps.Cipher.Seal([]byte(*opts.ClientSecret))
-		if err != nil {
-			return nil, fmt.Errorf("s.deps.Cipher.Seal: %w", err)
-		}
-
-		secretEnc = sealed
-	}
-
 	provider, err := s.deps.Repository.Update(ctx, id, UpdateOIDCProviderOpts{
-		DisplayName:     opts.DisplayName,
-		IssuerURL:       opts.IssuerURL,
-		ClientID:        opts.ClientID,
-		ClientSecretEnc: secretEnc,
-		Scopes:          opts.Scopes,
-		UsernameClaim:   opts.UsernameClaim,
-		AdminClaim:      opts.AdminClaim,
-		AdminValues:     opts.AdminValues,
-		AllowedClaim:    opts.AllowedClaim,
-		AllowedValues:   opts.AllowedValues,
-		AutoProvision:   opts.AutoProvision,
+		DisplayName:   opts.DisplayName,
+		IssuerURL:     opts.IssuerURL,
+		ClientID:      opts.ClientID,
+		Scopes:        opts.Scopes,
+		UsernameClaim: opts.UsernameClaim,
+		RoleClaim:     opts.RoleClaim,
+		AdminValues:   opts.AdminValues,
+		AllowedValues: opts.AllowedValues,
+		AutoProvision: opts.AutoProvision,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("s.deps.Repository.Update: %w", err)

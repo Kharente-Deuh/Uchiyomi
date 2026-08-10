@@ -29,12 +29,13 @@ const (
 	testToken       = "letoken"
 	testDisplayName = "Keycloak"
 	testIssuerURL   = "https://sso.example.com"
+	testUsername    = "alice"
 
 	//nolint:lll
-	validBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"s3cr3t","usernameClaim":"preferred_username","scopes":["openid"],"adminClaim":null,"adminValues":null,"allowedClaim":null,"allowedValues":null,"autoProvision":true}`
+	validBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"s3cr3t","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 
 	//nolint:lll
-	validPutBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","usernameClaim":"preferred_username","scopes":["openid"],"adminClaim":null,"adminValues":null,"allowedClaim":null,"allowedValues":null,"autoProvision":true,"clientSecret":null}`
+	validPutBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 )
 
 var errUnexpected = errors.New("boom")
@@ -45,6 +46,7 @@ type stubService struct {
 	probe     *oidcproviders.ProbeResult
 	updateOpt *oidcproviders.UpdateOpts
 	list      []oidcproviders.LightOIDCProvider
+	users     []oidcproviders.OIDCProviderUser
 }
 
 func (s *stubService) List(context.Context) ([]oidcproviders.LightOIDCProvider, error) {
@@ -52,8 +54,12 @@ func (s *stubService) List(context.Context) ([]oidcproviders.LightOIDCProvider, 
 }
 
 //nolint:lll
-func (s *stubService) GetByID(context.Context, uuid.UUID) (*oidcproviders.OIDCProvider, error) {
-	return s.provider, s.err
+func (s *stubService) GetByID(context.Context, uuid.UUID) (*oidcproviders.OIDCProviderDetails, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+
+	return &oidcproviders.OIDCProviderDetails{Provider: *s.provider, Users: s.users}, nil
 }
 
 //nolint:lll
@@ -162,11 +168,13 @@ func admin() *users.User {
 	return &users.User{ID: uuid.New(), Name: "root", IsAdmin: true}
 }
 
-func TestListReturnsOnlyIDAndDisplayName(t *testing.T) {
+func TestListReturnsOnlyTheLightFields(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
-	svc := &stubService{list: []oidcproviders.LightOIDCProvider{{ID: id, DisplayName: testDisplayName}}}
+	svc := &stubService{list: []oidcproviders.LightOIDCProvider{
+		{ID: id, DisplayName: testDisplayName, CreatedAt: time.Now(), UserCount: 3},
+	}}
 	r := newRouter(t, svc, adminMiddlewares(t, admin()))
 
 	rec := do(r, http.MethodGet, endpoint, "")
@@ -184,7 +192,7 @@ func TestListReturnsOnlyIDAndDisplayName(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
 
-	want := map[string]bool{"id": true, "displayName": true}
+	want := map[string]bool{"id": true, "displayName": true, "createdAt": true, "userCount": true}
 	for key := range got[0] {
 		if !want[key] {
 			t.Errorf("the list exposes %q, which belongs to the detail response", key)
@@ -197,6 +205,10 @@ func TestListReturnsOnlyIDAndDisplayName(t *testing.T) {
 
 	if got[0]["id"] != id.String() {
 		t.Errorf("id = %v, want %s", got[0]["id"], id)
+	}
+
+	if got[0]["userCount"] != float64(3) {
+		t.Errorf("userCount = %v, want 3", got[0]["userCount"])
 	}
 }
 
@@ -228,6 +240,55 @@ func TestGetReturnsTheProviderWithoutASecret(t *testing.T) {
 	}
 }
 
+func TestGetReturnsTheLinkedUsers(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	linkedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+	svc := &stubService{
+		provider: sampleProvider(),
+		users: []oidcproviders.OIDCProviderUser{
+			{ID: userID, Username: testUsername, LinkedAt: linkedAt, IsAdmin: true},
+		},
+	}
+	r := newRouter(t, svc, adminMiddlewares(t, admin()))
+
+	rec := do(r, http.MethodGet, endpoint+"/"+uuid.New().String(), "")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var got struct {
+		Users []map[string]any `json:"users"`
+	}
+
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("undecodable body (%q): %v", rec.Body.String(), err)
+	}
+
+	if len(got.Users) != 1 {
+		t.Fatalf("users = %+v, want one entry", got.Users)
+	}
+
+	if got.Users[0]["id"] != userID.String() || got.Users[0]["username"] != testUsername ||
+		got.Users[0]["isAdmin"] != true || got.Users[0]["linkedAt"] != "2026-01-02T03:04:05Z" {
+		t.Errorf("users[0] = %+v", got.Users[0])
+	}
+}
+
+func TestGetReturnsAnEmptyUserListWhenNobodyIsLinked(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
+
+	rec := do(r, http.MethodGet, endpoint+"/"+uuid.New().String(), "")
+
+	if !strings.Contains(rec.Body.String(), `"users":[]`) {
+		t.Errorf("body = %s, want an empty users array", rec.Body.String())
+	}
+}
+
 func TestGetNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -255,7 +316,7 @@ func TestGetRejectsAMalformedID(t *testing.T) {
 func TestListForbiddenForANonAdmin(t *testing.T) {
 	t.Parallel()
 
-	user := &users.User{ID: uuid.New(), Name: "alice", IsAdmin: false}
+	user := &users.User{ID: uuid.New(), Name: testUsername, IsAdmin: false}
 	r := newRouter(t, &stubService{}, adminMiddlewares(t, user))
 
 	rec := do(r, http.MethodGet, endpoint, "")
@@ -287,7 +348,7 @@ func TestEveryRouteIsForbiddenForANonAdmin(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			user := &users.User{ID: uuid.New(), Name: "alice"}
+			user := &users.User{ID: uuid.New(), Name: testUsername}
 			r := newRouter(t, &stubService{}, adminMiddlewares(t, user))
 
 			rec := do(r, tc.method, tc.path, tc.body)
@@ -321,6 +382,36 @@ func TestCreateReturnsCreated(t *testing.T) {
 	}
 }
 
+func TestCreateAcceptsEmptyValueListsWithoutARoleClaim(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
+
+	//nolint:lll
+	body := `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"adminValues":[],"allowedValues":[]}`
+
+	rec := do(r, http.MethodPost, endpoint, body)
+
+	if rec.Code != http.StatusCreated {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+}
+
+func TestUpdateRejectsValuesWithoutARoleClaim(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
+
+	//nolint:lll
+	body := `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":null,"usernameClaim":"u","scopes":["openid"],"adminValues":["admins"]}`
+
+	rec := do(r, http.MethodPut, endpoint+"/"+uuid.New().String(), body)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
 func TestCreateRejectsAMalformedBody(t *testing.T) {
 	t.Parallel()
 
@@ -331,6 +422,10 @@ func TestCreateRejectsAMalformedBody(t *testing.T) {
 		"unknown field":    `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"nope":1}`, //nolint:lll
 		"no scope":         `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":[]}`,                  //nolint:lll
 		"no client secret": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`,                             //nolint:lll
+		//nolint:lll
+		"admin values without a role claim": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"adminValues":["admins"]}`,
+		//nolint:lll
+		"allowed values with a blank role claim": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"roleClaim":"  ","allowedValues":["users"]}`,
 	}
 
 	for name, body := range tests {
@@ -388,7 +483,7 @@ func TestCreateBadRequestOnAnIncompleteDiscoveryDocument(t *testing.T) {
 	}
 }
 
-func TestUpdateWithoutASecretLeavesItNil(t *testing.T) {
+func TestUpdateForwardsTheRequest(t *testing.T) {
 	t.Parallel()
 
 	svc := &stubService{provider: sampleProvider()}
@@ -404,28 +499,28 @@ func TestUpdateWithoutASecretLeavesItNil(t *testing.T) {
 		t.Fatal("the service was never called")
 	}
 
-	if svc.updateOpt.ClientSecret != nil {
-		t.Errorf("ClientSecret = %q, want nil", *svc.updateOpt.ClientSecret)
+	if svc.updateOpt.IssuerURL != testIssuerURL {
+		t.Errorf("IssuerURL = %q, want %q", svc.updateOpt.IssuerURL, testIssuerURL)
 	}
 }
 
-func TestUpdateForwardsTheSecretWhenPresent(t *testing.T) {
+func TestUpdateRejectsAClientSecret(t *testing.T) {
 	t.Parallel()
 
 	svc := &stubService{provider: sampleProvider()}
 	r := newRouter(t, svc, adminMiddlewares(t, admin()))
 
 	//nolint:lll
-	body := `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"rotated","usernameClaim":"preferred_username","scopes":["openid"],"adminClaim":null,"adminValues":null,"allowedClaim":null,"allowedValues":null,"autoProvision":true}`
+	body := `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"rotated","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 
 	rec := do(r, http.MethodPut, endpoint+"/"+uuid.New().String(), body)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	if svc.updateOpt.ClientSecret == nil || *svc.updateOpt.ClientSecret != "rotated" {
-		t.Errorf("ClientSecret = %v, want \"rotated\"", svc.updateOpt.ClientSecret)
+	if svc.updateOpt != nil {
+		t.Error("the service was called despite the rejected body")
 	}
 }
 

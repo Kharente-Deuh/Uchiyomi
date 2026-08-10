@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
-import { nextTick, reactive } from 'vue'
-import { object, string } from 'yup'
+import { isReactive, nextTick, reactive, toRaw } from 'vue'
+import { array, object, string } from 'yup'
 import { useForm } from './use-form'
 
 const schema = object({ a: string().optional(), b: string().optional() })
@@ -49,5 +49,15 @@ describe('isDirty & reset', () => {
     await nextTick()
     expect(form.values.value).toEqual({ a: '9', b: '2' })
     expect(form.isDirty.value).toBe(false)
+  })
+
+  it('reset(next) accepts a plain object holding reactive values', async () => {
+    const listSchema = object({ a: string().optional(), list: array().of(string().required()).optional() })
+    const form = useForm({ schema: listSchema, initialValues: { a: '1', list: [] } })
+    const source = reactive({ a: '9', list: ['x', 'y'] })
+    expect(() => form.reset({ a: source.a, list: source.list })).not.toThrow()
+    await nextTick()
+    expect(form.values.value).toEqual({ a: '9', list: ['x', 'y'] })
+    expect(isReactive(toRaw(form.values.value).list)).toBe(false)
   })
 })

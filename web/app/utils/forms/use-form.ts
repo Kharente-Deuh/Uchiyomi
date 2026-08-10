@@ -3,7 +3,7 @@
 import type { Ref } from 'vue'
 import type { InferType } from 'yup'
 import type { AnyObjectSchema, ArrayFieldApi, FieldApi, UseFormOptions, UseFormReturn, VuetifyFieldProps as VuetifyFieldProperties } from './types'
-import { computed, reactive, readonly, ref, toRaw, watch } from 'vue'
+import { computed, reactive, readonly, ref, toRaw, unref, watch } from 'vue'
 import { getFieldMeta, validateValues } from './schema'
 
 function flatten(object: Record<string, any>, prefix = ''): Record<string, true> {
@@ -22,6 +22,28 @@ function flatten(object: Record<string, any>, prefix = ''): Record<string, true>
   }
 
   return out
+}
+
+function cloneRaw<T>(value: T): T {
+  const raw = toRaw(unref(value))
+  if (Array.isArray(raw)) {
+    return raw.map(item => cloneRaw(item)) as T
+  }
+
+  if (raw instanceof Date) {
+    return new Date(raw) as T
+  }
+
+  if (raw && typeof raw === 'object' && Object.getPrototypeOf(raw) === Object.prototype) {
+    const out: Record<string, any> = {}
+    for (const [key, item] of Object.entries(raw)) {
+      out[key] = cloneRaw(item)
+    }
+
+    return out as T
+  }
+
+  return raw as T
 }
 
 function getByPath(object: Record<string, any>, path: string): any {
@@ -60,8 +82,8 @@ export function useForm<S extends AnyObjectSchema>(
 ): UseFormReturn<InferType<S>> {
   const { schema, initialValues, validateOn = 'blur', asyncDebounceMs = 0 } = options
 
-  const values = ref<Record<string, any>>(structuredClone(initialValues as Record<string, any>))
-  const snapshot = ref<Record<string, any>>(structuredClone(initialValues as Record<string, any>))
+  const values = ref<Record<string, any>>(cloneRaw(initialValues as Record<string, any>))
+  const snapshot = ref<Record<string, any>>(cloneRaw(initialValues as Record<string, any>))
   const errors = ref<Record<string, string[]>>({})
   const touched = ref<Record<string, boolean>>({})
   const validating = ref(false)
@@ -116,9 +138,9 @@ export function useForm<S extends AnyObjectSchema>(
   const serverErrors = ref<Record<string, string[]>>({})
 
   function reset(next?: Record<string, any>): void {
-    const target = toRaw(next ?? snapshot.value)
-    values.value = structuredClone(target)
-    snapshot.value = structuredClone(target)
+    const target = cloneRaw(next ?? snapshot.value)
+    values.value = target
+    snapshot.value = cloneRaw(target)
     touched.value = {}
     serverErrors.value = {}
   }

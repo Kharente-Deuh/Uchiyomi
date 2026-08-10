@@ -3,14 +3,15 @@
 package http
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/httputils"
 )
 
 type CreateProviderRequest struct {
-	AdminClaim    *string                 `json:"adminClaim"`
-	AllowedClaim  *string                 `json:"allowedClaim"`
+	RoleClaim     *string                 `json:"roleClaim"`
 	DisplayName   httputils.TrimmedString `json:"displayName" validate:"required,max=64"`
 	IssuerURL     httputils.TrimmedString `json:"issuerUrl" validate:"required,url"`
 	ClientID      httputils.TrimmedString `json:"clientId" validate:"required"`
@@ -23,17 +24,37 @@ type CreateProviderRequest struct {
 }
 
 type UpdateProviderRequest struct {
-	AdminClaim    *string                  `json:"adminClaim"`
-	AllowedClaim  *string                  `json:"allowedClaim"`
-	ClientSecret  *httputils.TrimmedString `json:"clientSecret" validate:"omitempty,min=1"`
-	DisplayName   httputils.TrimmedString  `json:"displayName" validate:"required,max=64"`
-	IssuerURL     httputils.TrimmedString  `json:"issuerUrl" validate:"required,url"`
-	ClientID      httputils.TrimmedString  `json:"clientId" validate:"required"`
-	UsernameClaim httputils.TrimmedString  `json:"usernameClaim" validate:"required"`
-	Scopes        []string                 `json:"scopes" validate:"required,min=1,dive,required"`
-	AdminValues   []string                 `json:"adminValues"`
-	AllowedValues []string                 `json:"allowedValues"`
-	AutoProvision bool                     `json:"autoProvision"`
+	RoleClaim     *string                 `json:"roleClaim"`
+	DisplayName   httputils.TrimmedString `json:"displayName" validate:"required,max=64"`
+	IssuerURL     httputils.TrimmedString `json:"issuerUrl" validate:"required,url"`
+	ClientID      httputils.TrimmedString `json:"clientId" validate:"required"`
+	UsernameClaim httputils.TrimmedString `json:"usernameClaim" validate:"required"`
+	Scopes        []string                `json:"scopes" validate:"required,min=1,dive,required"`
+	AdminValues   []string                `json:"adminValues"`
+	AllowedValues []string                `json:"allowedValues"`
+	AutoProvision bool                    `json:"autoProvision"`
+}
+
+var errRoleClaimRequired = errors.New("roleClaim is required when adminValues or allowedValues is set")
+
+func (r CreateProviderRequest) validate() error {
+	return validateRoleClaim(r.RoleClaim, r.AdminValues, r.AllowedValues)
+}
+
+func (r UpdateProviderRequest) validate() error {
+	return validateRoleClaim(r.RoleClaim, r.AdminValues, r.AllowedValues)
+}
+
+func validateRoleClaim(claim *string, adminValues, allowedValues []string) error {
+	if claim != nil && strings.TrimSpace(*claim) != "" {
+		return nil
+	}
+
+	if len(adminValues) > 0 || len(allowedValues) > 0 {
+		return errRoleClaimRequired
+	}
+
+	return nil
 }
 
 type ProbeRequest struct {
@@ -41,15 +62,16 @@ type ProbeRequest struct {
 }
 
 type LightProviderResponse struct {
-	ID          string `json:"id"`
-	DisplayName string `json:"displayName"`
+	CreatedAt   time.Time `json:"createdAt"`
+	ID          string    `json:"id"`
+	DisplayName string    `json:"displayName"`
+	UserCount   int64     `json:"userCount"`
 }
 
 type ProviderResponse struct {
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
-	AdminClaim    *string   `json:"adminClaim"`
-	AllowedClaim  *string   `json:"allowedClaim"`
+	RoleClaim     *string   `json:"roleClaim"`
 	ID            string    `json:"id"`
 	DisplayName   string    `json:"displayName"`
 	IssuerURL     string    `json:"issuerUrl"`
@@ -59,6 +81,18 @@ type ProviderResponse struct {
 	AdminValues   []string  `json:"adminValues"`
 	AllowedValues []string  `json:"allowedValues"`
 	AutoProvision bool      `json:"autoProvision"`
+}
+
+type ProviderUserResponse struct {
+	LinkedAt time.Time `json:"linkedAt"`
+	ID       string    `json:"id"`
+	Username string    `json:"username"`
+	IsAdmin  bool      `json:"isAdmin"`
+}
+
+type ProviderDetailsResponse struct {
+	Users []ProviderUserResponse `json:"users"`
+	ProviderResponse
 }
 
 type ProbeResponse struct {

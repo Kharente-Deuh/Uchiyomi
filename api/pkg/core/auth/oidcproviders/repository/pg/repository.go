@@ -83,12 +83,41 @@ func (r *PGOIDCProvidersRepository) GetByIssuerURL(ctx context.Context, issuerUR
 }
 
 func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders.LightOIDCProvider, error) {
-	models, err := r.db(ctx).Order("display_name, id").Find(ctx)
+	var rows []lightProviderRow
+
+	err := pgtx.From(ctx, r.deps.DB).
+		WithContext(ctx).
+		Model(&pgmodels.OIDCProvider{}).
+		Select("oidc_providers.id, oidc_providers.display_name, oidc_providers.created_at, " +
+			"COUNT(DISTINCT federated_identities.user_id) AS user_count").
+		Joins("LEFT JOIN federated_identities ON federated_identities.provider_id = oidc_providers.id").
+		Group("oidc_providers.id").
+		Order("oidc_providers.display_name, oidc_providers.id").
+		Scan(&rows).Error
 	if err != nil {
-		return nil, fmt.Errorf("r.db(ctx).Find: %w", err)
+		return nil, fmt.Errorf("pgtx.From(ctx, r.deps.DB).Scan: %w", err)
 	}
 
-	return utils.MapSlice(models, r.lightModelToDomain), nil
+	return utils.MapSlice(rows, r.lightRowToDomain), nil
+}
+
+//nolint:lll
+func (r *PGOIDCProvidersRepository) GetUsers(ctx context.Context, id uuid.UUID) ([]oidcproviders.OIDCProviderUser, error) {
+	var rows []providerUserRow
+
+	err := pgtx.From(ctx, r.deps.DB).
+		WithContext(ctx).
+		Model(&pgmodels.FederatedIdentity{}).
+		Select("users.id, users.name AS username, users.is_admin, federated_identities.created_at AS linked_at").
+		Joins("JOIN users ON users.id = federated_identities.user_id").
+		Where("federated_identities.provider_id = ?", id).
+		Order("federated_identities.created_at, users.name").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("pgtx.From(ctx, r.deps.DB).Scan: %w", err)
+	}
+
+	return utils.MapSlice(rows, r.userRowToDomain), nil
 }
 
 //nolint:lll
@@ -105,9 +134,8 @@ func (r *PGOIDCProvidersRepository) Create(ctx context.Context, opts oidcprovide
 		ClientSecretEnc: opts.ClientSecretEnc,
 		Scopes:          opts.Scopes,
 		UsernameClaim:   opts.UsernameClaim,
-		AdminClaim:      opts.AdminClaim,
+		RoleClaim:       opts.RoleClaim,
 		AdminValues:     opts.AdminValues,
-		AllowedClaim:    opts.AllowedClaim,
 		AllowedValues:   opts.AllowedValues,
 		AutoProvision:   opts.AutoProvision,
 	}
@@ -134,16 +162,11 @@ func (r *PGOIDCProvidersRepository) Update(ctx context.Context, id uuid.UUID, op
 		"client_id":      opts.ClientID,
 		"scopes":         pq.StringArray(opts.Scopes),
 		"username_claim": opts.UsernameClaim,
-		"admin_claim":    opts.AdminClaim,
+		"role_claim":     opts.RoleClaim,
 		"admin_values":   pq.StringArray(opts.AdminValues),
-		"allowed_claim":  opts.AllowedClaim,
 		"allowed_values": pq.StringArray(opts.AllowedValues),
 		"auto_provision": opts.AutoProvision,
 		"updated_at":     time.Now(),
-	}
-
-	if opts.ClientSecretEnc != nil {
-		values["client_secret_enc"] = opts.ClientSecretEnc
 	}
 
 	rows, err := r.db(ctx).Where("id = ?", id).Set(clause.Assignments(values)).Update(ctx)
@@ -175,10 +198,35 @@ func (r *PGOIDCProvidersRepository) DeleteByID(ctx context.Context, id uuid.UUID
 	return nil
 }
 
-func (r *PGOIDCProvidersRepository) lightModelToDomain(model pgmodels.OIDCProvider) oidcproviders.LightOIDCProvider {
+type lightProviderRow struct {
+	CreatedAt   time.Time
+	DisplayName string
+	ID          uuid.UUID
+	UserCount   int64
+}
+
+type providerUserRow struct {
+	LinkedAt time.Time
+	Username string
+	ID       uuid.UUID
+	IsAdmin  bool
+}
+
+func (r *PGOIDCProvidersRepository) userRowToDomain(row providerUserRow) oidcproviders.OIDCProviderUser {
+	return oidcproviders.OIDCProviderUser{
+		ID:       row.ID,
+		Username: row.Username,
+		LinkedAt: row.LinkedAt,
+		IsAdmin:  row.IsAdmin,
+	}
+}
+
+func (r *PGOIDCProvidersRepository) lightRowToDomain(row lightProviderRow) oidcproviders.LightOIDCProvider {
 	return oidcproviders.LightOIDCProvider{
-		ID:          model.ID,
-		DisplayName: model.DisplayName,
+		ID:          row.ID,
+		DisplayName: row.DisplayName,
+		CreatedAt:   row.CreatedAt,
+		UserCount:   row.UserCount,
 	}
 }
 
@@ -191,9 +239,8 @@ func (r *PGOIDCProvidersRepository) modelToDomain(model pgmodels.OIDCProvider) o
 		ClientSecretEnc: model.ClientSecretEnc,
 		Scopes:          model.Scopes,
 		UsernameClaim:   model.UsernameClaim,
-		AdminClaim:      model.AdminClaim,
+		RoleClaim:       model.RoleClaim,
 		AdminValues:     model.AdminValues,
-		AllowedClaim:    model.AllowedClaim,
 		AllowedValues:   model.AllowedValues,
 		AutoProvision:   model.AutoProvision,
 		CreatedAt:       model.CreatedAt,

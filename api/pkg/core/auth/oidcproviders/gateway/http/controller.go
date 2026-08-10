@@ -21,7 +21,7 @@ import (
 
 type providersService interface {
 	List(ctx context.Context) ([]oidcproviders.LightOIDCProvider, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*oidcproviders.OIDCProvider, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*oidcproviders.OIDCProviderDetails, error)
 	Create(ctx context.Context, opts oidcproviders.CreateOpts) (*oidcproviders.OIDCProvider, error)
 	Update(ctx context.Context, id uuid.UUID, opts oidcproviders.UpdateOpts) (*oidcproviders.OIDCProvider, error)
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -118,7 +118,12 @@ func (c *Controller) list(w http.ResponseWriter, r *http.Request) {
 
 	res := make([]LightProviderResponse, 0, len(providers))
 	for _, p := range providers {
-		res = append(res, LightProviderResponse{ID: p.ID.String(), DisplayName: p.DisplayName})
+		res = append(res, LightProviderResponse{
+			CreatedAt:   p.CreatedAt,
+			ID:          p.ID.String(),
+			DisplayName: p.DisplayName,
+			UserCount:   p.UserCount,
+		})
 	}
 
 	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, res)
@@ -134,14 +139,14 @@ func (c *Controller) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	provider, err := c.deps.Service.GetByID(ctx, id)
+	details, err := c.deps.Service.GetByID(ctx, id)
 	if err != nil {
 		c.writeServiceError(w, r, "failed to read an oidc provider", err)
 
 		return
 	}
 
-	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, toProviderResponse(provider))
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, toProviderDetailsResponse(details))
 }
 
 func (c *Controller) create(w http.ResponseWriter, r *http.Request) {
@@ -154,6 +159,12 @@ func (c *Controller) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := req.validate(); err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, err.Error())
+
+		return
+	}
+
 	provider, err := c.deps.Service.Create(ctx, oidcproviders.CreateOpts{
 		DisplayName:   req.DisplayName.String(),
 		IssuerURL:     req.IssuerURL.String(),
@@ -161,9 +172,8 @@ func (c *Controller) create(w http.ResponseWriter, r *http.Request) {
 		ClientSecret:  req.ClientSecret.String(),
 		UsernameClaim: req.UsernameClaim.String(),
 		Scopes:        req.Scopes,
-		AdminClaim:    req.AdminClaim,
+		RoleClaim:     req.RoleClaim,
 		AdminValues:   req.AdminValues,
-		AllowedClaim:  req.AllowedClaim,
 		AllowedValues: req.AllowedValues,
 		AutoProvision: req.AutoProvision,
 	})
@@ -193,23 +203,20 @@ func (c *Controller) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var secret *string
+	if err := req.validate(); err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, err.Error())
 
-	if req.ClientSecret != nil {
-		value := req.ClientSecret.String()
-		secret = &value
+		return
 	}
 
 	provider, err := c.deps.Service.Update(ctx, id, oidcproviders.UpdateOpts{
-		ClientSecret:  secret,
 		DisplayName:   req.DisplayName.String(),
 		IssuerURL:     req.IssuerURL.String(),
 		ClientID:      req.ClientID.String(),
 		UsernameClaim: req.UsernameClaim.String(),
 		Scopes:        req.Scopes,
-		AdminClaim:    req.AdminClaim,
+		RoleClaim:     req.RoleClaim,
 		AdminValues:   req.AdminValues,
-		AllowedClaim:  req.AllowedClaim,
 		AllowedValues: req.AllowedValues,
 		AutoProvision: req.AutoProvision,
 	})
@@ -286,12 +293,28 @@ func (c *Controller) writeServiceError(w http.ResponseWriter, r *http.Request, m
 	}
 }
 
+func toProviderDetailsResponse(d *oidcproviders.OIDCProviderDetails) ProviderDetailsResponse {
+	users := make([]ProviderUserResponse, 0, len(d.Users))
+	for _, u := range d.Users {
+		users = append(users, ProviderUserResponse{
+			LinkedAt: u.LinkedAt,
+			ID:       u.ID.String(),
+			Username: u.Username,
+			IsAdmin:  u.IsAdmin,
+		})
+	}
+
+	return ProviderDetailsResponse{
+		ProviderResponse: toProviderResponse(&d.Provider),
+		Users:            users,
+	}
+}
+
 func toProviderResponse(p *oidcproviders.OIDCProvider) ProviderResponse {
 	return ProviderResponse{
 		CreatedAt:     p.CreatedAt,
 		UpdatedAt:     p.UpdatedAt,
-		AdminClaim:    p.AdminClaim,
-		AllowedClaim:  p.AllowedClaim,
+		RoleClaim:     p.RoleClaim,
 		ID:            p.ID.String(),
 		DisplayName:   p.DisplayName,
 		IssuerURL:     p.IssuerURL,

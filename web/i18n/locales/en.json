@@ -65,5 +65,136 @@
     "title": "Welcome back",
     "subtitle": "Sign in to your Uchiyomi server",
     "submit": "Sign in"
+  },
+  "auth": {
+    "signOut": "Sign out"
+  },
+  "nav": {
+    "system": {
+      "title": "System"
+    },
+    "settings": {
+      "title": "Settings"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "oidc": {
+      "title": "OIDC Providers",
+      "create": {
+        "success": "Provider {name} created !",
+        "error": "Provider already exists",
+        "title": "New OIDC Provider"
+      },
+      "delete": {
+        "success": "Provider deleted !",
+        "confirmation": "Do you really want to delete {name} ?"
+      },
+      "fields": {
+        "displayName": {
+          "label": "Display name"
+        },
+        "issuerUrl": {
+          "label": "Issuer URL"
+        },
+        "clienId": {
+          "label": "Client ID"
+        },
+        "clientSecret": {
+          "label": "Client secret"
+        },
+        "autoProvision": {
+          "label": "Auto provision",
+          "hint": "Creates the account on first sign-in. Otherwise, the user must already exist."
+        },
+        "scopes": {
+          "label": "Scopes"
+        },
+        "usernameClame": {
+          "label": "Username claim"
+        },
+        "roleClaim": {
+          "label": "Role claim"
+        },
+        "adminValues": {
+          "label": "Admin role values"
+        },
+        "allowedValues": {
+          "label": "Regular user role values"
+        },
+        "users": {
+          "username": "Username",
+          "role": "Role",
+          "linkedAt": "Link date"
+        }
+      },
+      "category": {
+        "providerInfos": {
+          "title": "Provider informations"
+        },
+        "claims": {
+          "title": "Claims"
+        },
+        "users": {
+          "title": "Users ({count})",
+          "noUsers": "No users are linked to this provider"
+        }
+      },
+      "errors": {
+        "notFound": "Provider not found",
+        "noProviders": "There is not provders set"
+      },
+      "test": {
+        "title": "Issuer test result",
+        "fields": {
+          "issuer": {
+            "label": "Issuer"
+          },
+          "authorizationEndpoint": {
+            "label": "Authorization endpoint"
+          },
+          "tokenEndpoint": {
+            "label": "Token endpoint"
+          },
+          "userInfoEndpoint": {
+            "label": "UserInfo endpoint"
+          },
+          "endSessionEndpoint": {
+            "label": "End session endpoint"
+          },
+          "redirectUri": {
+            "label": "Redirect URI"
+          },
+          "supportsRpInitiatedLogout": {
+            "label": "Supports RP-intiatied logout"
+          }
+        },
+        "error": {
+          "unreachable": "Issuer unreachable"
+        }
+      },
+      "titleShort": "OIDC",
+      "update": {
+        "success": "Provider updated !"
+      },
+      "description": "Manage OIDC providers"
+    }
+  },
+  "error": {
+    "unknown": "Unknown error"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "delete": "Delete",
+    "continue": "Continue"
+  },
+  "common": {
+    "loading": "Loading..."
+  },
+  "role": {
+    "admin": "Admin",
+    "user": "User"
   }
 }

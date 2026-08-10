@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
-import { array, number, object, string } from 'yup'
+import { array, boolean, number, object, string } from 'yup'
 import { getFieldMeta, validateValues } from './schema'
 
 const schema = object({
@@ -9,6 +9,14 @@ const schema = object({
   age: number().optional(),
   address: object({ city: string().required() }),
   tags: array().of(string().required()).required(),
+})
+
+const definedSchema = object({
+  claim: string().defined(),
+  values: array().of(string().required()).defined(),
+  bounded: string().defined().min(3),
+  flag: boolean().required(),
+  scopes: array().of(string().required()).required().min(1),
 })
 
 describe('getFieldMeta', () => {
@@ -22,6 +30,26 @@ describe('getFieldMeta', () => {
 
   it('reads nested field meta', () => {
     expect(getFieldMeta(schema, 'address.city')).toEqual({ label: undefined, required: true })
+  })
+
+  it('does not mark a defined string as required', () => {
+    expect(getFieldMeta(definedSchema, 'claim').required).toBe(false)
+  })
+
+  it('does not mark a defined array as required', () => {
+    expect(getFieldMeta(definedSchema, 'values').required).toBe(false)
+  })
+
+  it('marks a defined field whose empty value fails a test as required', () => {
+    expect(getFieldMeta(definedSchema, 'bounded').required).toBe(true)
+  })
+
+  it('marks a required boolean as required', () => {
+    expect(getFieldMeta(definedSchema, 'flag').required).toBe(true)
+  })
+
+  it('marks a non-empty array as required', () => {
+    expect(getFieldMeta(definedSchema, 'scopes').required).toBe(true)
   })
 })
 

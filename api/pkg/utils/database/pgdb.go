@@ -96,7 +96,7 @@ func createPGDatabase(cfg PGConfig) (*gorm.DB, error) {
 		cfg.Password,
 		utils.Ternary(cfg.SSLRequired, "require", "disable"))
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})
 	if err != nil {
 		return nil, fmt.Errorf("gorm.Open: %w", err)
 	}

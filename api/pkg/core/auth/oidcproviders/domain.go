@@ -17,13 +17,13 @@ type OIDCProvidersRepository interface {
 	Update(context.Context, uuid.UUID, UpdateOIDCProviderOpts) (*OIDCProvider, error)
 	DeleteByID(context.Context, uuid.UUID) error
 	GetAll(context.Context) ([]LightOIDCProvider, error)
+	GetUsers(context.Context, uuid.UUID) ([]OIDCProviderUser, error)
 }
 
 type OIDCProvider struct {
 	UpdatedAt       time.Time
 	CreatedAt       time.Time
-	AdminClaim      *string
-	AllowedClaim    *string
+	RoleClaim       *string
 	ClientID        string
 	UsernameClaim   string
 	IssuerURL       string
@@ -39,17 +39,14 @@ type OIDCProvider struct {
 type UpdateOIDCProviderOpts struct {
 	DisplayName string
 
-	IssuerURL       string
-	ClientID        string
-	ClientSecretEnc []byte
-	Scopes          []string
+	IssuerURL string
+	ClientID  string
+	Scopes    []string
 
 	UsernameClaim string
+	RoleClaim     *string
 
-	AdminClaim  *string
-	AdminValues []string
-
-	AllowedClaim  *string
+	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
 }
@@ -63,18 +60,30 @@ type CreateOIDCProviderOpts struct {
 	Scopes          []string
 
 	UsernameClaim string
+	RoleClaim     *string
 
-	AdminClaim  *string
-	AdminValues []string
-
-	AllowedClaim  *string
+	AdminValues   []string
 	AllowedValues []string
 	AutoProvision bool
 }
 
+type OIDCProviderUser struct {
+	LinkedAt time.Time
+	Username string
+	ID       uuid.UUID
+	IsAdmin  bool
+}
+
+type OIDCProviderDetails struct {
+	Users    []OIDCProviderUser
+	Provider OIDCProvider
+}
+
 type LightOIDCProvider struct {
+	CreatedAt   time.Time
 	DisplayName string
 	ID          uuid.UUID
+	UserCount   int64
 }
 
 var ErrIncompleteDiscovery = errors.New("discovery document is incomplete")

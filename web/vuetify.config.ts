@@ -86,6 +86,18 @@ export default defineVuetifyConfiguration({
       menuIcon: 'fa6-solid:caret-down',
       variant: 'outlined',
     },
+    VCombobox: {
+      density: 'comfortable',
+      bgColor: 'surface-variant',
+      class: 'text-field-override',
+      color: 'primary',
+      clearIcon: 'fa6-solid:xmark',
+      menuIcon: 'fa6-solid:caret-down',
+      variant: 'outlined',
+      chips: true,
+      clearable: true,
+      multiple: true,
+    },
     VTextarea: {
       clearIcon: 'fa6-solid:xmark',
       density: 'comfortable',

@@ -13,6 +13,7 @@ import (
 type AuthService interface {
 	LoginWithPwd(context.Context, LoginWithPwdOpts) (*LoginResult, error)
 	CreateUserWithPwd(context.Context, CreateUserWithPwdOpts) (*users.User, error)
+	Logout(context.Context, string) error
 }
 
 type LoginResult struct {

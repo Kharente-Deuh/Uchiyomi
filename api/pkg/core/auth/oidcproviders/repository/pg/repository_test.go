@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
@@ -60,13 +61,13 @@ func newRepo(t *testing.T) (*pg.PGOIDCProvidersRepository, sqlmock.Sqlmock) {
 func providerRows(id uuid.UUID) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
 		"id", colDisplayName, "issuer_url", "client_id", colClientSecretEnc,
-		colScopes, "username_claim", "admin_claim", "admin_values",
-		"allowed_claim", "allowed_values", "auto_provision",
+		colScopes, "username_claim", "role_claim", "admin_values",
+		"allowed_values", "auto_provision",
 	}).AddRow(
 		id, testDisplayName, testIssuerURL, "uchiyomi", []byte("enc"),
 		pq.StringArray{scopeOpenID, scopeProfile}, "preferred_username",
 		"groups", pq.StringArray{adminGroupValue},
-		"groups", pq.StringArray{"users"},
+		pq.StringArray{"users"},
 		true,
 	)
 }
@@ -141,8 +142,8 @@ func TestGetByID(t *testing.T) {
 		t.Errorf("AdminValues = %v, want [admins]", got.AdminValues)
 	}
 
-	if got.AdminClaim == nil || *got.AdminClaim != "groups" {
-		t.Errorf("AdminClaim = %v, want \"groups\"", got.AdminClaim)
+	if got.RoleClaim == nil || *got.RoleClaim != "groups" {
+		t.Errorf("RoleClaim = %v, want \"groups\"", got.RoleClaim)
 	}
 
 	if !got.AutoProvision {
@@ -222,12 +223,13 @@ func TestGetAll(t *testing.T) {
 	r, mock := newRepo(t)
 
 	id1, id2 := uuid.New(), uuid.New()
+	testCreatedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 
-	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" ORDER BY display_name, id`).
+	mock.ExpectQuery(`COUNT\(DISTINCT federated_identities.user_id\).*LEFT JOIN federated_identities`).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", colDisplayName, colClientSecretEnc}).
-				AddRow(id1, testDisplayName, []byte("secret1")).
-				AddRow(id2, "Authentik", []byte("secret2")),
+			sqlmock.NewRows([]string{"id", colDisplayName, "created_at", "user_count"}).
+				AddRow(id1, testDisplayName, testCreatedAt, 2).
+				AddRow(id2, "Authentik", testCreatedAt, 0),
 		)
 
 	got, err := r.GetAll(context.Background())
@@ -236,8 +238,8 @@ func TestGetAll(t *testing.T) {
 	}
 
 	want := []oidcproviders.LightOIDCProvider{
-		{ID: id1, DisplayName: testDisplayName},
-		{ID: id2, DisplayName: "Authentik"},
+		{ID: id1, DisplayName: testDisplayName, CreatedAt: testCreatedAt, UserCount: 2},
+		{ID: id2, DisplayName: "Authentik", CreatedAt: testCreatedAt, UserCount: 0},
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -250,7 +252,7 @@ func TestGetAllEmpty(t *testing.T) {
 
 	r, mock := newRepo(t)
 
-	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).
+	mock.ExpectQuery(`LEFT JOIN federated_identities`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", colDisplayName}))
 
 	got, err := r.GetAll(context.Background())
@@ -269,9 +271,70 @@ func TestGetAllError(t *testing.T) {
 	r, mock := newRepo(t)
 
 	sentinel := errors.New("timeout")
-	mock.ExpectQuery(`SELECT \* FROM "oidc_providers"`).WillReturnError(sentinel)
+	mock.ExpectQuery(`LEFT JOIN federated_identities`).WillReturnError(sentinel)
 
 	if _, err := r.GetAll(context.Background()); !errors.Is(err, sentinel) {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestGetUsers(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id1, id2 := uuid.New(), uuid.New()
+	linkedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+
+	mock.ExpectQuery(`JOIN users ON users.id = federated_identities.user_id`).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"id", "username", "is_admin", "linked_at"}).
+				AddRow(id1, "alice", true, linkedAt).
+				AddRow(id2, "bob", false, linkedAt),
+		)
+
+	got, err := r.GetUsers(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("GetUsers: %v", err)
+	}
+
+	want := []oidcproviders.OIDCProviderUser{
+		{ID: id1, Username: "alice", LinkedAt: linkedAt, IsAdmin: true},
+		{ID: id2, Username: "bob", LinkedAt: linkedAt, IsAdmin: false},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("GetUsers() = %+v, want %+v", got, want)
+	}
+}
+
+func TestGetUsersEmpty(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectQuery(`JOIN users ON users.id = federated_identities.user_id`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "is_admin", "linked_at"}))
+
+	got, err := r.GetUsers(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("GetUsers: %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Errorf("GetUsers() = %+v, want vide", got)
+	}
+}
+
+func TestGetUsersError(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	sentinel := errors.New("timeout")
+	mock.ExpectQuery(`JOIN users ON users.id = federated_identities.user_id`).WillReturnError(sentinel)
+
+	if _, err := r.GetUsers(context.Background(), uuid.New()); !errors.Is(err, sentinel) {
 		t.Errorf("err = %v", err)
 	}
 }
@@ -286,7 +349,7 @@ func TestCreate(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
 	mock.ExpectCommit()
 
-	adminClaim := "groups"
+	roleClaim := "groups"
 
 	got, err := r.Create(context.Background(), oidcproviders.CreateOIDCProviderOpts{
 		DisplayName:     testDisplayName,
@@ -295,7 +358,7 @@ func TestCreate(t *testing.T) {
 		ClientSecretEnc: []byte("enc"),
 		Scopes:          []string{scopeOpenID, scopeProfile, "email"},
 		UsernameClaim:   "preferred_username",
-		AdminClaim:      &adminClaim,
+		RoleClaim:       &roleClaim,
 		AdminValues:     []string{adminGroupValue},
 		AutoProvision:   true,
 	})
@@ -359,7 +422,7 @@ func TestCreateError(t *testing.T) {
 	}
 }
 
-func TestUpdateWritesTheSecretWhenGiven(t *testing.T) {
+func TestUpdate(t *testing.T) {
 	t.Parallel()
 
 	r, mock := newRepo(t)
@@ -367,20 +430,18 @@ func TestUpdateWritesTheSecretWhenGiven(t *testing.T) {
 	id := uuid.New()
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`UPDATE "oidc_providers" SET .*"client_secret_enc"`).
-		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE "oidc_providers" SET`).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" WHERE id = \$1`).
 		WithArgs(id, 1).
 		WillReturnRows(providerRows(id))
 
 	got, err := r.Update(context.Background(), id, oidcproviders.UpdateOIDCProviderOpts{
-		DisplayName:     testDisplayName,
-		IssuerURL:       testIssuerURL,
-		ClientID:        "uchiyomi",
-		ClientSecretEnc: []byte("newenc"),
-		Scopes:          []string{scopeOpenID},
-		UsernameClaim:   "preferred_username",
+		DisplayName:   testDisplayName,
+		IssuerURL:     testIssuerURL,
+		ClientID:      "uchiyomi",
+		Scopes:        []string{scopeOpenID},
+		UsernameClaim: "preferred_username",
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
@@ -391,7 +452,7 @@ func TestUpdateWritesTheSecretWhenGiven(t *testing.T) {
 	}
 }
 
-func TestUpdateLeavesTheSecretAloneWhenOmitted(t *testing.T) {
+func TestUpdateNeverTouchesTheSecret(t *testing.T) {
 	t.Parallel()
 
 	var updateSQL string
