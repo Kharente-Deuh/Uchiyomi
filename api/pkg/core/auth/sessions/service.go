@@ -219,3 +219,11 @@ func (s *Service) RevokeForProvider(ctx context.Context, userID, providerID uuid
 
 	return nil
 }
+
+func (s *Service) RevokeByProviderAndSID(ctx context.Context, providerID uuid.UUID, sid string) error {
+	if err := s.deps.Repository.DeleteByProviderAndSID(ctx, providerID, sid); err != nil {
+		return fmt.Errorf("s.deps.Repository.DeleteByProviderAndSID: %w", err)
+	}
+
+	return nil
+}

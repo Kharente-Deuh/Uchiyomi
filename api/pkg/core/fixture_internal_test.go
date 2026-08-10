@@ -113,6 +113,10 @@ func (fakeSessionsRepository) DeleteByUserAndProvider(context.Context, uuid.UUID
 	return errors.New(notImplemented)
 }
 
+func (fakeSessionsRepository) DeleteByProviderAndSID(context.Context, uuid.UUID, string) error {
+	return errors.New(notImplemented)
+}
+
 func (fakeSessionsRepository) DeleteByUserID(context.Context, uuid.UUID) error {
 	return errors.New(notImplemented)
 }
@@ -150,6 +154,10 @@ func (fakeAuthService) StartOIDCLogin(context.Context, auth.StartOIDCLoginOpts) 
 //nolint:lll
 func (fakeAuthService) FinishOIDCLogin(context.Context, auth.FinishOIDCLoginOpts) (*auth.OIDCLoginResult, error) {
 	return nil, errors.New(notImplemented)
+}
+
+func (fakeAuthService) BackchannelLogout(context.Context, string) error {
+	return errors.New(notImplemented)
 }
 
 type fakeOIDCProvidersService struct{}

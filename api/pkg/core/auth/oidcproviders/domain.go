@@ -107,6 +107,7 @@ type Client interface {
 	Exchange(ctx context.Context, provider OIDCProvider, code, verifier, nonce, redirectURI string) (*TokenSet, error)
 	Refresh(ctx context.Context, provider OIDCProvider, refreshToken string) (*TokenSet, error)
 	EndSessionURL(ctx context.Context, provider OIDCProvider, postLogoutRedirectURI string) (string, bool, error)
+	VerifyLogoutToken(ctx context.Context, provider OIDCProvider, raw string) (*LogoutToken, error)
 }
 
 type AuthCodeParams struct {
@@ -122,3 +123,10 @@ type TokenSet struct {
 	Subject      string
 	SID          string
 }
+
+type LogoutToken struct {
+	Subject string
+	SID     string
+}
+
+var ErrLogoutTokenInvalid = errors.New("oidc: logout token is invalid")

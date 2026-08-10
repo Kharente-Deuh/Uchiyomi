@@ -228,13 +228,21 @@ func (f *fakePwdRepository) UpdateByUserID(context.Context, password.UpsertPassw
 }
 
 type fakeSessionService struct {
-	err         error
-	revokeErr   error
-	issued      *sessions.IssuedSession
-	gotToken    string
-	gotOpts     sessions.CreateSessionOpts
-	calls       int
-	revokeCalls int
+	err                    error
+	revokeErr              error
+	revokeForProviderErr   error
+	revokeBySIDErr         error
+	issued                 *sessions.IssuedSession
+	gotRevokeBySID         string
+	gotToken               string
+	gotOpts                sessions.CreateSessionOpts
+	calls                  int
+	revokeCalls            int
+	revokeForProviderCalls int
+	revokeBySIDCalls       int
+	gotRevokeUserID        uuid.UUID
+	gotRevokeProviderID    uuid.UUID
+	gotRevokeBySIDProvider uuid.UUID
 }
 
 func (f *fakeSessionService) Create(
@@ -270,8 +278,28 @@ func (f *fakeSessionService) RevokeAllForUser(context.Context, uuid.UUID) error 
 	panic("RevokeAllForUser is not used by the auth service")
 }
 
-func (f *fakeSessionService) RevokeForProvider(context.Context, uuid.UUID, uuid.UUID) error {
-	panic("RevokeForProvider is not used by the auth service")
+func (f *fakeSessionService) RevokeForProvider(_ context.Context, userID, providerID uuid.UUID) error {
+	f.revokeForProviderCalls++
+	f.gotRevokeUserID = userID
+	f.gotRevokeProviderID = providerID
+
+	if f.revokeForProviderErr != nil {
+		return f.revokeForProviderErr
+	}
+
+	return nil
+}
+
+func (f *fakeSessionService) RevokeByProviderAndSID(_ context.Context, providerID uuid.UUID, sid string) error {
+	f.revokeBySIDCalls++
+	f.gotRevokeBySIDProvider = providerID
+	f.gotRevokeBySID = sid
+
+	if f.revokeBySIDErr != nil {
+		return f.revokeBySIDErr
+	}
+
+	return nil
 }
 
 type fakes struct {

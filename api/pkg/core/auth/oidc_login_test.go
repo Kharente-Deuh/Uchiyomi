@@ -29,10 +29,13 @@ const (
 )
 
 type fakeOIDCProvidersRepo struct {
-	err      error
-	provider *oidcproviders.OIDCProvider
-	gotID    uuid.UUID
-	calls    int
+	provider     *oidcproviders.OIDCProvider
+	err          error
+	issuerErr    error
+	gotIssuerURL string
+	gotID        uuid.UUID
+	calls        int
+	issuerCalls  int
 }
 
 func (f *fakeOIDCProvidersRepo) GetByID(_ context.Context, id uuid.UUID) (*oidcproviders.OIDCProvider, error) {
@@ -46,8 +49,22 @@ func (f *fakeOIDCProvidersRepo) GetByID(_ context.Context, id uuid.UUID) (*oidcp
 	return f.provider, nil
 }
 
-func (f *fakeOIDCProvidersRepo) GetByIssuerURL(context.Context, string) (*oidcproviders.OIDCProvider, error) {
-	panic("GetByIssuerURL is not used by the auth service")
+func (f *fakeOIDCProvidersRepo) GetByIssuerURL(
+	_ context.Context,
+	issuerURL string,
+) (*oidcproviders.OIDCProvider, error) {
+	f.issuerCalls++
+	f.gotIssuerURL = issuerURL
+
+	if f.issuerErr != nil {
+		return nil, f.issuerErr
+	}
+
+	if f.provider != nil && f.provider.IssuerURL == issuerURL {
+		return f.provider, nil
+	}
+
+	return nil, domain.ErrNotFound
 }
 
 func (f *fakeOIDCProvidersRepo) Create(
@@ -150,7 +167,9 @@ type fakeOIDCClient struct {
 	authCodeErr           error
 	exchangeErr           error
 	endSessionErr         error
+	verifyLogoutErr       error
 	tokenSet              *oidcproviders.TokenSet
+	logoutToken           *oidcproviders.LogoutToken
 	authCodeURL           string
 	endSessionURL         string
 	gotCode               string
@@ -158,11 +177,13 @@ type fakeOIDCClient struct {
 	gotNonce              string
 	gotRedirectURI        string
 	gotPostLogoutRedirect string
+	gotLogoutRaw          string
 	gotAuthParams         oidcproviders.AuthCodeParams
 	gotProvider           oidcproviders.OIDCProvider
 	authCodeCalls         int
 	exchangeCalls         int
 	endSessionCalls       int
+	verifyLogoutCalls     int
 	endSessionSupported   bool
 }
 
@@ -223,6 +244,22 @@ func (f *fakeOIDCClient) Refresh(
 	string,
 ) (*oidcproviders.TokenSet, error) {
 	panic("Refresh is not used by the auth service")
+}
+
+func (f *fakeOIDCClient) VerifyLogoutToken(
+	_ context.Context,
+	provider oidcproviders.OIDCProvider,
+	raw string,
+) (*oidcproviders.LogoutToken, error) {
+	f.verifyLogoutCalls++
+	f.gotProvider = provider
+	f.gotLogoutRaw = raw
+
+	if f.verifyLogoutErr != nil {
+		return nil, f.verifyLogoutErr
+	}
+
+	return f.logoutToken, nil
 }
 
 func TestStartOIDCLoginBuildsAuthCodeURLAndCookie(t *testing.T) {

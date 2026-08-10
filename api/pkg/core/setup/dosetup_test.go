@@ -78,6 +78,10 @@ func (f *fakeAuthService) FinishOIDCLogin(context.Context, auth.FinishOIDCLoginO
 	panic("FinishOIDCLogin must not be called by DoSetup")
 }
 
+func (f *fakeAuthService) BackchannelLogout(context.Context, string) error {
+	panic("BackchannelLogout must not be called by DoSetup")
+}
+
 type stubSessionService struct {
 	err     error
 	issued  *sessions.IssuedSession
@@ -115,6 +119,10 @@ func (s *stubSessionService) RevokeAllForUser(context.Context, uuid.UUID) error 
 
 func (s *stubSessionService) RevokeForProvider(context.Context, uuid.UUID, uuid.UUID) error {
 	panic("RevokeForProvider must not be called by DoSetup")
+}
+
+func (s *stubSessionService) RevokeByProviderAndSID(context.Context, uuid.UUID, string) error {
+	panic("RevokeByProviderAndSID must not be called by DoSetup")
 }
 
 func defaultSessionStub() *stubSessionService {

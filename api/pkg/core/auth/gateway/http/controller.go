@@ -119,6 +119,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 		r.Get("/providers", c.listProviders)
 		r.Get("/oidc/{id}/start", c.startOIDCLogin)
 		r.Get("/oidc/callback", c.oidcCallback)
+		r.Post("/oidc/backchannel-logout", c.oidcBackchannelLogout)
 	})
 }
 
@@ -225,6 +226,41 @@ func (c *Controller) startOIDCLogin(w http.ResponseWriter, r *http.Request) {
 
 	c.deps.OIDCStateCookies.Set(w, res.StateCookieValue, res.ExpiresAt, c.deps.Now())
 	http.Redirect(w, r, res.AuthCodeURL, http.StatusFound)
+}
+
+func (c *Controller) oidcBackchannelLogout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	r.Body = http.MaxBytesReader(w, r.Body, 16*1024)
+
+	if err := r.ParseForm(); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	raw := r.PostFormValue("logout_token")
+	if raw == "" {
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	if err := c.deps.AuthService.BackchannelLogout(ctx, raw); err != nil {
+		if errors.Is(err, auth.ErrLogoutTokenInvalid) {
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
+
+		c.deps.Logger.ErrorContext(ctx, "failed to process backchannel logout", logging.Err(err))
+		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
+
+		return
+	}
+
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (c *Controller) oidcCallback(w http.ResponseWriter, r *http.Request) {

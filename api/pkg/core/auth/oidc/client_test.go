@@ -31,6 +31,12 @@ const (
 	testState       = "test-state"
 	scopeOpenID     = "openid"
 	scopeProfile    = "profile"
+	algRS256        = "RS256"
+	jwkUseSig       = "sig"
+	claimSub        = "sub"
+	claimIAT        = "iat"
+	claimSID        = "sid"
+	testSessionSID  = "session-abc"
 )
 
 type testIdP struct {
@@ -79,7 +85,7 @@ func newTestIdP(t *testing.T) *testIdP {
 		w.Header().Set("Content-Type", "application/json")
 
 		set := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{
-			{Key: &key.PublicKey, KeyID: idp.keyID, Algorithm: "RS256", Use: "sig"},
+			{Key: &key.PublicKey, KeyID: idp.keyID, Algorithm: algRS256, Use: jwkUseSig},
 		}}
 
 		if err := json.NewEncoder(w).Encode(set); err != nil {
@@ -187,7 +193,7 @@ func signClaims(t *testing.T, key *rsa.PrivateKey, keyID string, claims map[stri
 
 	signer, err := jose.NewSigner(jose.SigningKey{
 		Algorithm: jose.RS256,
-		Key:       jose.JSONWebKey{Key: key, KeyID: keyID, Algorithm: "RS256", Use: "sig"},
+		Key:       jose.JSONWebKey{Key: key, KeyID: keyID, Algorithm: algRS256, Use: jwkUseSig},
 	}, (&jose.SignerOptions{}).WithType("JWT"))
 	if err != nil {
 		t.Fatalf("jose.NewSigner: %v", err)
@@ -215,12 +221,12 @@ func baseClaims(issuer, clientID, nonce string) map[string]any {
 	now := time.Now()
 
 	return map[string]any{
-		"iss":   issuer,
-		"aud":   clientID,
-		"sub":   testSubject,
-		"exp":   now.Add(time.Hour).Unix(),
-		"iat":   now.Unix(),
-		"nonce": nonce,
+		"iss":    issuer,
+		"aud":    clientID,
+		claimSub: testSubject,
+		"exp":    now.Add(time.Hour).Unix(),
+		claimIAT: now.Unix(),
+		"nonce":  nonce,
 	}
 }
 
@@ -512,7 +518,7 @@ func TestExchangeReadsTheSIDClaim(t *testing.T) {
 
 	t.Run("with sid", func(t *testing.T) {
 		claims := baseClaims(idp.srv.URL, provider.ClientID, testNonce)
-		claims["sid"] = "session-abc"
+		claims[claimSID] = testSessionSID
 		idp.setTokenHandler(jsonTokenResponse(signClaims(t, idp.key, idp.keyID, claims)))
 
 		ts, err := c.Exchange(context.Background(), provider, "test-code", "test-verifier", testNonce, testRedirectURI)
@@ -520,8 +526,8 @@ func TestExchangeReadsTheSIDClaim(t *testing.T) {
 			t.Fatalf("Exchange: %v", err)
 		}
 
-		if ts.SID != "session-abc" {
-			t.Errorf("SID = %q, want %q", ts.SID, "session-abc")
+		if ts.SID != testSessionSID {
+			t.Errorf("SID = %q, want %q", ts.SID, testSessionSID)
 		}
 	})
 
@@ -721,6 +727,183 @@ func TestRefreshReturnsInvalidGrant(t *testing.T) {
 	_, err := c.Refresh(context.Background(), provider, "revoked-refresh")
 	if !errors.Is(err, oidcproviders.ErrInvalidGrant) {
 		t.Errorf("Refresh = %v, want ErrInvalidGrant", err)
+	}
+}
+
+func logoutTokenClaims(issuer, clientID string, extra map[string]any) map[string]any {
+	now := time.Now()
+	claims := map[string]any{
+		"iss":    issuer,
+		"aud":    clientID,
+		claimIAT: now.Unix(),
+		"events": map[string]any{
+			"http://schemas.openid.net/event/backchannel-logout": map[string]any{},
+		},
+	}
+
+	for k, v := range extra {
+		claims[k] = v
+	}
+
+	return claims
+}
+
+func signLogoutClaims(t *testing.T, idp *testIdP, claims map[string]any) string {
+	t.Helper()
+
+	signer, err := jose.NewSigner(jose.SigningKey{
+		Algorithm: jose.RS256,
+		Key:       jose.JSONWebKey{Key: idp.key, KeyID: idp.keyID, Algorithm: algRS256, Use: jwkUseSig},
+	}, (&jose.SignerOptions{}).WithType("logout+jwt"))
+	if err != nil {
+		t.Fatalf("jose.NewSigner: %v", err)
+	}
+
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+
+	jws, err := signer.Sign(payload)
+	if err != nil {
+		t.Fatalf("signer.Sign: %v", err)
+	}
+
+	compact, err := jws.CompactSerialize()
+	if err != nil {
+		t.Fatalf("jws.CompactSerialize: %v", err)
+	}
+
+	return compact
+}
+
+func TestVerifyLogoutTokenAcceptsValidTokenWithSID(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	claims := logoutTokenClaims(idp.srv.URL, provider.ClientID, map[string]any{
+		claimSID: testSessionSID,
+		claimSub: testSubject,
+	})
+	raw := signLogoutClaims(t, idp, claims)
+
+	got, err := c.VerifyLogoutToken(context.Background(), provider, raw)
+	if err != nil {
+		t.Fatalf("VerifyLogoutToken: %v", err)
+	}
+
+	if got.SID != testSessionSID {
+		t.Errorf("SID = %q, want %q", got.SID, testSessionSID)
+	}
+
+	if got.Subject != testSubject {
+		t.Errorf("Subject = %q, want %q", got.Subject, testSubject)
+	}
+}
+
+func TestVerifyLogoutTokenRejectsBadSignature(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("rsa.GenerateKey: %v", err)
+	}
+
+	claims := logoutTokenClaims(idp.srv.URL, provider.ClientID, map[string]any{
+		claimSID: testSessionSID,
+		claimSub: testSubject,
+	})
+	raw := signClaims(t, otherKey, idp.keyID, claims)
+
+	_, err = c.VerifyLogoutToken(context.Background(), provider, raw)
+	if !errors.Is(err, oidcproviders.ErrLogoutTokenInvalid) {
+		t.Errorf("VerifyLogoutToken = %v, want ErrLogoutTokenInvalid", err)
+	}
+}
+
+func TestVerifyLogoutTokenRejectsWrongAud(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	claims := logoutTokenClaims(idp.srv.URL, "wrong", map[string]any{
+		claimSID: testSessionSID,
+		claimSub: testSubject,
+	})
+	raw := signLogoutClaims(t, idp, claims)
+
+	_, err := c.VerifyLogoutToken(context.Background(), provider, raw)
+	if !errors.Is(err, oidcproviders.ErrLogoutTokenInvalid) {
+		t.Errorf("VerifyLogoutToken = %v, want ErrLogoutTokenInvalid", err)
+	}
+}
+
+func TestVerifyLogoutTokenRejectsPresentNonce(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	claims := logoutTokenClaims(idp.srv.URL, provider.ClientID, map[string]any{
+		claimSID: testSessionSID,
+		claimSub: testSubject,
+		"nonce":  "n",
+	})
+	raw := signLogoutClaims(t, idp, claims)
+
+	_, err := c.VerifyLogoutToken(context.Background(), provider, raw)
+	if !errors.Is(err, oidcproviders.ErrLogoutTokenInvalid) {
+		t.Errorf("VerifyLogoutToken = %v, want ErrLogoutTokenInvalid", err)
+	}
+}
+
+func TestVerifyLogoutTokenRejectsMissingEventClaim(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	claims := logoutTokenClaims(idp.srv.URL, provider.ClientID, map[string]any{
+		claimSID: testSessionSID,
+		claimSub: testSubject,
+	})
+	delete(claims, "events")
+	raw := signLogoutClaims(t, idp, claims)
+
+	_, err := c.VerifyLogoutToken(context.Background(), provider, raw)
+	if !errors.Is(err, oidcproviders.ErrLogoutTokenInvalid) {
+		t.Errorf("VerifyLogoutToken = %v, want ErrLogoutTokenInvalid", err)
+	}
+}
+
+func TestVerifyLogoutTokenRejectsStaleIAT(t *testing.T) {
+	t.Parallel()
+
+	idp := newTestIdP(t)
+	provider := testProvider(idp.srv.URL)
+	c := newTestClient(t)
+
+	claims := logoutTokenClaims(idp.srv.URL, provider.ClientID, map[string]any{
+		claimSID: testSessionSID,
+		claimSub: testSubject,
+		"iat":    time.Now().Add(-10 * time.Minute).Unix(),
+	})
+	raw := signLogoutClaims(t, idp, claims)
+
+	_, err := c.VerifyLogoutToken(context.Background(), provider, raw)
+	if !errors.Is(err, oidcproviders.ErrLogoutTokenInvalid) {
+		t.Errorf("VerifyLogoutToken = %v, want ErrLogoutTokenInvalid", err)
 	}
 }
 

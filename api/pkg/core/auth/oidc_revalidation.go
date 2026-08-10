@@ -63,14 +63,7 @@ func (s *Service) revokeFederatedAccess(ctx context.Context, fi federatedidentit
 		return fmt.Errorf("s.deps.SessionService.RevokeForProvider: %w", err)
 	}
 
-	if err := s.deps.FederatedIdentitiesRepository.Update(ctx, federatedidentities.UpdateFederatedIdentityOpts{
-		ID:                fi.ID,
-		ClearRefreshToken: true,
-	}); err != nil {
-		return fmt.Errorf("s.deps.FederatedIdentitiesRepository.Update: %w", err)
-	}
-
-	return nil
+	return s.clearFederatedRefreshToken(ctx, fi.ProviderID, fi.Subject)
 }
 
 func (s *Service) RevalidateFederatedIdentity(
