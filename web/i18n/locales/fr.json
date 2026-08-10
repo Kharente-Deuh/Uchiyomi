@@ -88,7 +88,7 @@
       },
       "delete": {
         "success": "Fournisseur supprimé !",
-        "confirmation": "Voulez-vous vraiment supprimer {name} ?"
+        "confirmation": "Voulez-vous vraiment supprimer {name} ?"
       },
       "fields": {
         "displayName": {
