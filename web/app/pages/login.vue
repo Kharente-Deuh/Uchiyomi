@@ -14,9 +14,19 @@ definePageMeta({
 const route = useRoute()
 const { t } = useI18n()
 const { login } = useAuth()
+const { providers, fetchProviders } = useOIDCProviders()
+
+const redirect = computed(() => safeRedirect(route.query.redirect))
+
+const oidcErrorCodes = ['oidcState', 'oidcDenied', 'oidcNotAllowed', 'oidcNoAccount', 'oidcUnavailable'] as const
+const initialErrorCode = typeof route.query.error === 'string' && (oidcErrorCodes as readonly string[]).includes(route.query.error)
+  ? route.query.error
+  : undefined
 
 const loading = ref<boolean>(false)
-const error = ref<string>()
+const error = ref<string | undefined>(initialErrorCode ? t(`login.error.${initialErrorCode}`) : undefined)
+
+onMounted(fetchProviders)
 
 async function onSubmit(values: LoginWithPwdRequest): Promise<void> {
   error.value = undefined
@@ -24,7 +34,7 @@ async function onSubmit(values: LoginWithPwdRequest): Promise<void> {
 
   const res = await login(values)
   if (res === 'ok') {
-    await navigateTo(safeRedirect(route.query.redirect))
+    await navigateTo(redirect.value)
 
     return
   }
@@ -67,5 +77,9 @@ const { field, handleSubmit } = useForm({
       v-bind="field('password').props"
       data-test="login-password"
     />
+
+    <template #footer>
+      <AuthOidcProviderButtons :providers :redirect="redirect" />
+    </template>
   </AuthCard>
 </template>
