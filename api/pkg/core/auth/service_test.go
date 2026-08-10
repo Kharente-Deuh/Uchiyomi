@@ -3,8 +3,10 @@
 package auth_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -105,6 +107,7 @@ type fakeUsersRepository struct {
 	byNameErr   error
 	byIDErr     error
 	updateErr   error
+	countErr    error
 	err         error
 	user        *users.User
 	byID        map[uuid.UUID]*users.User
@@ -113,6 +116,8 @@ type fakeUsersRepository struct {
 	nameCalls   int
 	byIDCalls   int
 	updateCalls int
+	adminCount  int
+	countCalls  int
 	gotUpdate   users.UpdateUserOpts
 	gotID       uuid.UUID
 	inTx        bool
@@ -141,7 +146,13 @@ func (f *fakeUsersRepository) GetByUsername(_ context.Context, name string) (*us
 }
 
 func (f *fakeUsersRepository) CountAdmins(context.Context) (int, error) {
-	panic("CountAdmins n'est pas utilisée par le service auth")
+	f.countCalls++
+
+	if f.countErr != nil {
+		return 0, f.countErr
+	}
+
+	return f.adminCount, nil
 }
 
 func (f *fakeUsersRepository) GetByID(_ context.Context, id uuid.UUID) (*users.User, error) {
@@ -269,6 +280,7 @@ type fakes struct {
 	fir   *fakeFederatedIdentitiesRepo
 	oc    *fakeOIDCClient
 	sc    *crypto.Cipher
+	logs  *bytes.Buffer
 	cfg   auth.Config
 }
 
@@ -310,12 +322,15 @@ func newFakes() *fakes {
 				Claims:  map[string]any{usernameClaimKey: userName},
 			},
 		},
-		sc: sc,
+		sc:   sc,
+		logs: &bytes.Buffer{},
 	}
 }
 
 func (f *fakes) svc(t *testing.T) *auth.Service {
 	t.Helper()
+
+	logger := slog.New(slog.NewJSONHandler(f.logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	svc, err := auth.New(f.cfg, auth.Deps{
 		HashService:                   f.hs,
@@ -327,6 +342,7 @@ func (f *fakes) svc(t *testing.T) *auth.Service {
 		FederatedIdentitiesRepository: f.fir,
 		OIDCClient:                    f.oc,
 		StateCipher:                   f.sc,
+		Logger:                        logger,
 		Now:                           func() time.Time { return f.now },
 	})
 	if err != nil {

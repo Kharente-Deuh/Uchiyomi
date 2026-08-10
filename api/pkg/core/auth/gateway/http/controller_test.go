@@ -1011,10 +1011,14 @@ func TestOIDCCallbackSentinelErrors(t *testing.T) {
 	tests := map[string]struct {
 		finishErr error
 		wantCode  string
+		wantLevel string
 	}{
-		"not allowed": {finishErr: auth.ErrOIDCNotAllowed, wantCode: "oidcNotAllowed"},
-		"no account":  {finishErr: auth.ErrOIDCNoAccount, wantCode: "oidcNoAccount"},
-		"unavailable": {finishErr: auth.ErrOIDCUnavailable, wantCode: "oidcUnavailable"},
+		"denied":      {finishErr: auth.ErrOIDCDenied, wantCode: "oidcDenied", wantLevel: "WARN"},
+		"state":       {finishErr: auth.ErrOIDCState, wantCode: "oidcState", wantLevel: "WARN"},
+		"not allowed": {finishErr: auth.ErrOIDCNotAllowed, wantCode: "oidcNotAllowed", wantLevel: "WARN"},
+		"no account":  {finishErr: auth.ErrOIDCNoAccount, wantCode: "oidcNoAccount", wantLevel: "WARN"},
+		"unavailable": {finishErr: auth.ErrOIDCUnavailable, wantCode: "oidcUnavailable", wantLevel: "ERROR"},
+		"inconnue":    {finishErr: errors.New("boom"), wantCode: "oidcUnavailable", wantLevel: "ERROR"},
 	}
 
 	for name, tc := range tests {
@@ -1022,7 +1026,7 @@ func TestOIDCCallbackSentinelErrors(t *testing.T) {
 			t.Parallel()
 
 			svc := &stubAuthService{finishErr: tc.finishErr}
-			r, _ := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
+			r, logs := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
 
 			stateCookie := &http.Cookie{Name: oidcStateCookieName, Value: "state-value"}
 			rec := getOIDCCallback(t, r, "?code=abc&state=state-value", stateCookie)
@@ -1034,6 +1038,15 @@ func TestOIDCCallbackSentinelErrors(t *testing.T) {
 			want := "/login?error=" + tc.wantCode
 			if loc := rec.Header().Get("Location"); loc != want {
 				t.Errorf("Location = %q, want %q", loc, want)
+			}
+
+			var entry map[string]any
+			if err := json.Unmarshal(bytes.TrimSpace(logs.Bytes()), &entry); err != nil {
+				t.Fatalf("log non décodable (%q): %v", logs.String(), err)
+			}
+
+			if entry["level"] != tc.wantLevel {
+				t.Errorf("level = %v, want %v", entry["level"], tc.wantLevel)
 			}
 		})
 	}

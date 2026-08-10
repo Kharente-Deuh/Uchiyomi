@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/federatedidentities"
@@ -37,6 +38,7 @@ type Deps struct {
 	FederatedIdentitiesRepository federatedidentities.FederatedIdentitiesRepository
 	OIDCClient                    oidcproviders.Client
 	StateCipher                   stateCipher
+	Logger                        *slog.Logger
 	Now                           func() time.Time
 }
 
@@ -77,6 +79,10 @@ func (deps *Deps) Validate() error {
 		return errors.New("stateCipher is required")
 	}
 
+	if deps.Logger == nil {
+		return errors.New("logger is required")
+	}
+
 	return nil
 }
 
@@ -114,6 +120,8 @@ func New(cfg Config, deps Deps) (*Service, error) {
 	if deps.Now == nil {
 		deps.Now = time.Now
 	}
+
+	deps.Logger = deps.Logger.With("component", "auth.service")
 
 	return &Service{deps: deps, cfg: cfg}, nil
 }

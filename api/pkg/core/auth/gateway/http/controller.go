@@ -201,7 +201,7 @@ func (c *Controller) startOIDCLogin(w http.ResponseWriter, r *http.Request) {
 		Redirect:   r.URL.Query().Get("redirect"),
 	})
 	if err != nil {
-		c.deps.Logger.ErrorContext(ctx, "failed to start oidc login", logging.Err(err))
+		c.logOIDCError(ctx, "failed to start oidc login", err)
 		http.Redirect(w, r, "/login?error="+oidcErrorCode(err), http.StatusFound)
 
 		return
@@ -226,7 +226,7 @@ func (c *Controller) oidcCallback(w http.ResponseWriter, r *http.Request) {
 		StateCookieValue: stateCookieValue,
 	})
 	if err != nil {
-		c.deps.Logger.ErrorContext(ctx, "failed to finish oidc login", logging.Err(err))
+		c.logOIDCError(ctx, "failed to finish oidc login", err)
 		http.Redirect(w, r, "/login?error="+oidcErrorCode(err), http.StatusFound)
 
 		return
@@ -234,6 +234,23 @@ func (c *Controller) oidcCallback(w http.ResponseWriter, r *http.Request) {
 
 	c.deps.Cookies.Set(w, res.Session.Token, res.Session.ExpiresAt, c.deps.Now())
 	http.Redirect(w, r, res.Redirect, http.StatusFound)
+}
+
+func (c *Controller) logOIDCError(ctx context.Context, msg string, err error) {
+	if isExpectedOIDCOutcome(err) {
+		c.deps.Logger.WarnContext(ctx, msg, logging.Err(err))
+
+		return
+	}
+
+	c.deps.Logger.ErrorContext(ctx, msg, logging.Err(err))
+}
+
+func isExpectedOIDCOutcome(err error) bool {
+	return errors.Is(err, auth.ErrOIDCDenied) ||
+		errors.Is(err, auth.ErrOIDCState) ||
+		errors.Is(err, auth.ErrOIDCNotAllowed) ||
+		errors.Is(err, auth.ErrOIDCNoAccount)
 }
 
 func oidcErrorCode(err error) string {

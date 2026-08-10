@@ -29,6 +29,7 @@ const (
 	defaultClientTimeout = 10 * time.Second
 	defaultCacheTTL      = 15 * time.Minute
 
+	openIDScope        = "openid"
 	offlineAccessScope = "offline_access"
 	sidClaim           = "sid"
 )
@@ -120,7 +121,7 @@ func (c *Client) AuthCodeURL(
 			TokenURL: p.Endpoint().TokenURL,
 		},
 		RedirectURL: params.RedirectURI,
-		Scopes:      dedup(provider.Scopes, offlineAccessScope),
+		Scopes:      dedup(provider.Scopes, openIDScope, offlineAccessScope),
 	}
 
 	return cfg.AuthCodeURL(
@@ -161,7 +162,6 @@ func (c *Client) Exchange(
 			TokenURL: p.Endpoint().TokenURL,
 		},
 		RedirectURL: redirectURI,
-		Scopes:      dedup(provider.Scopes, offlineAccessScope),
 	}
 
 	exchangeCtx := gooidc.ClientContext(ctx, c.deps.HTTPClient)

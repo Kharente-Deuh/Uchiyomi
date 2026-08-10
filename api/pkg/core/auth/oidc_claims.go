@@ -20,9 +20,13 @@ func (s *Service) mapClaims(
 	values := claimValues(tokenSet.Claims, *provider.RoleClaim)
 
 	allowed = len(provider.AllowedValues) == 0 || intersects(values, provider.AllowedValues)
-	isAdmin = len(provider.AdminValues) > 0 && intersects(values, provider.AdminValues)
+	isAdmin = mapsAdminRole(provider) && intersects(values, provider.AdminValues)
 
 	return username, isAdmin, allowed
+}
+
+func mapsAdminRole(provider oidcproviders.OIDCProvider) bool {
+	return provider.RoleClaim != nil && len(provider.AdminValues) > 0
 }
 
 func usernameClaim(claims map[string]any, key string) (string, bool) {

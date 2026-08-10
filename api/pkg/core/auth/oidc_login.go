@@ -136,8 +136,8 @@ func (s *Service) FinishOIDCLogin(ctx context.Context, opts FinishOIDCLoginOpts)
 		return nil, err
 	}
 
-	if _, err := s.deps.UsersRepository.Update(ctx, users.UpdateUserOpts{ID: user.ID, IsAdmin: isAdmin}); err != nil {
-		return nil, fmt.Errorf("s.deps.UsersRepository.Update: %w", err)
+	if err := s.syncIsAdmin(ctx, *provider, user, isAdmin); err != nil {
+		return nil, err
 	}
 
 	session, err := s.deps.SessionService.Create(ctx, sessions.CreateSessionOpts{
@@ -151,6 +151,39 @@ func (s *Service) FinishOIDCLogin(ctx context.Context, opts FinishOIDCLoginOpts)
 	}
 
 	return &OIDCLoginResult{Session: session, Redirect: safeRedirectPath(payload.Redirect)}, nil
+}
+
+func (s *Service) syncIsAdmin(
+	ctx context.Context,
+	provider oidcproviders.OIDCProvider,
+	user *users.User,
+	isAdmin bool,
+) error {
+	if !mapsAdminRole(provider) {
+		return nil
+	}
+
+	if user.IsAdmin && !isAdmin {
+		admins, err := s.deps.UsersRepository.CountAdmins(ctx)
+		if err != nil {
+			return fmt.Errorf("s.deps.UsersRepository.CountAdmins: %w", err)
+		}
+
+		if admins <= 1 {
+			s.deps.Logger.WarnContext(ctx,
+				"kept the last admin: the oidc provider maps them to a non-admin role",
+				"userID", user.ID, "providerID", provider.ID,
+			)
+
+			return nil
+		}
+	}
+
+	if _, err := s.deps.UsersRepository.Update(ctx, users.UpdateUserOpts{ID: user.ID, IsAdmin: isAdmin}); err != nil {
+		return fmt.Errorf("s.deps.UsersRepository.Update: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Service) now() time.Time {

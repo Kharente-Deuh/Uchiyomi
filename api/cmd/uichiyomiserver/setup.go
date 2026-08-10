@@ -257,6 +257,7 @@ func setupServices(deps servicesDeps) (*services, error) {
 			FederatedIdentitiesRepository: deps.DBr.FederatedIdentitiesRepository,
 			OIDCClient:                    oidcClient,
 			StateCipher:                   cipher,
+			Logger:                        deps.Logger,
 		},
 	)
 	if err != nil {

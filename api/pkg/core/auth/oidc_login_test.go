@@ -5,6 +5,7 @@ package auth_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -518,8 +519,8 @@ func TestFinishOIDCLoginHappyPathIssuesOIDCSession(t *testing.T) {
 		t.Errorf("Redirect = %q, want /library", got.Redirect)
 	}
 
-	if f.ur.updateCalls != 1 {
-		t.Errorf("UsersRepository.Update appelée %d fois, want 1", f.ur.updateCalls)
+	if f.ur.updateCalls != 0 {
+		t.Errorf("UsersRepository.Update appelée %d fois sans RoleClaim configuré, want 0", f.ur.updateCalls)
 	}
 }
 
@@ -937,6 +938,110 @@ func TestFinishOIDCLoginRecomputesIsAdminOnEveryBranch(t *testing.T) {
 
 			if !f.ur.gotUpdate.IsAdmin {
 				t.Error("IsAdmin non recalculé à true")
+			}
+		})
+	}
+}
+
+func TestFinishOIDCLoginNeverDemotesWhenTheProviderMapsNoAdminRole(t *testing.T) {
+	t.Parallel()
+
+	role := roleClaimKey
+
+	tests := map[string]func(*fakes){
+		"aucun RoleClaim":  func(*fakes) {},
+		"AdminValues vide": func(f *fakes) { f.opr.provider.RoleClaim = &role },
+	}
+
+	for name, setup := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			f := newFakes()
+			f.ur.user.IsAdmin = true
+			f.ur.adminCount = 12
+			setup(f)
+
+			svc := f.svc(t)
+
+			cookie, state := startCookie(t, f, svc)
+
+			got, err := svc.FinishOIDCLogin(context.Background(), auth.FinishOIDCLoginOpts{
+				Code:             testOIDCCode,
+				State:            state,
+				StateCookieValue: cookie,
+			})
+			if err != nil {
+				t.Fatalf("FinishOIDCLogin: %v", err)
+			}
+
+			if got.Session == nil {
+				t.Fatal("Session nil")
+			}
+
+			if f.ur.updateCalls != 0 {
+				t.Errorf("UsersRepository.Update appelée %d fois, want 0 (%+v)", f.ur.updateCalls, f.ur.gotUpdate)
+			}
+		})
+	}
+}
+
+func TestFinishOIDCLoginKeepsTheLastAdminWhenTheProviderDemotesThem(t *testing.T) {
+	t.Parallel()
+
+	role := roleClaimKey
+
+	tests := map[string]struct {
+		adminCount     int
+		wantUpdate     bool
+		wantWarnLogged bool
+	}{
+		"dernier admin":  {adminCount: 1, wantUpdate: false, wantWarnLogged: true},
+		"un autre admin": {adminCount: 2, wantUpdate: true, wantWarnLogged: false},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			f := newFakes()
+			f.opr.provider.RoleClaim = &role
+			f.opr.provider.AdminValues = []string{adminRole}
+			f.oc.tokenSet.Claims[roleClaimKey] = guestRole
+			f.ur.user.IsAdmin = true
+			f.ur.adminCount = tc.adminCount
+
+			svc := f.svc(t)
+
+			cookie, state := startCookie(t, f, svc)
+
+			got, err := svc.FinishOIDCLogin(context.Background(), auth.FinishOIDCLoginOpts{
+				Code:             testOIDCCode,
+				State:            state,
+				StateCookieValue: cookie,
+			})
+			if err != nil {
+				t.Fatalf("FinishOIDCLogin: %v", err)
+			}
+
+			if got.Session == nil {
+				t.Fatal("Session nil")
+			}
+
+			if tc.wantUpdate {
+				if f.ur.updateCalls != 1 {
+					t.Fatalf("UsersRepository.Update appelée %d fois, want 1", f.ur.updateCalls)
+				}
+
+				if f.ur.gotUpdate.IsAdmin {
+					t.Error("IsAdmin = true, want false : la rétrogradation doit s'appliquer")
+				}
+			} else if f.ur.updateCalls != 0 {
+				t.Errorf("le dernier admin a été rétrogradé (%+v)", f.ur.gotUpdate)
+			}
+
+			if got := strings.Contains(f.logs.String(), "kept the last admin"); got != tc.wantWarnLogged {
+				t.Errorf("log d'avertissement présent = %v, want %v (logs: %s)", got, tc.wantWarnLogged, f.logs)
 			}
 		})
 	}

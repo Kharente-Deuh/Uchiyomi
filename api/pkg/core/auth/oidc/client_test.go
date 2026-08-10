@@ -295,6 +295,54 @@ func TestAuthCodeURLIncludesPKCEStateNonceAndOfflineAccess(t *testing.T) {
 	}
 }
 
+func TestAuthCodeURLAlwaysRequestsTheOpenIDScope(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string][]string{
+		"scopes sans openid": {"profile", "email"},
+		"scopes avec openid": {"openid", "profile"},
+		"aucun scope":        nil,
+	}
+
+	for name, scopes := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			idp := newTestIdP(t)
+			c := newTestClient(t)
+			provider := testProvider(idp.srv.URL)
+			provider.Scopes = scopes
+
+			rawURL, err := c.AuthCodeURL(context.Background(), provider, oidcproviders.AuthCodeParams{
+				RedirectURI: testRedirectURI,
+				State:       "test-state",
+				Nonce:       testNonce,
+				Verifier:    "test-verifier-that-is-long-enough-for-pkce-1234567890",
+			})
+			if err != nil {
+				t.Fatalf("AuthCodeURL: %v", err)
+			}
+
+			parsed, err := url.Parse(rawURL)
+			if err != nil {
+				t.Fatalf("url.Parse: %v", err)
+			}
+
+			var openIDCount int
+
+			for _, s := range strings.Fields(parsed.Query().Get("scope")) {
+				if s == "openid" {
+					openIDCount++
+				}
+			}
+
+			if openIDCount != 1 {
+				t.Errorf("openid count in scope = %d, want 1 (scope=%q)", openIDCount, parsed.Query().Get("scope"))
+			}
+		})
+	}
+}
+
 func TestExchangeVerifiesTheIDToken(t *testing.T) {
 	t.Parallel()
 
