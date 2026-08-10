@@ -28,6 +28,9 @@ const (
 	testRedirectURI = "https://app.example.com/callback"
 	testNonce       = "test-nonce"
 	testSubject     = "user-123"
+	testState       = "test-state"
+	scopeOpenID     = "openid"
+	scopeProfile    = "profile"
 )
 
 type testIdP struct {
@@ -198,7 +201,7 @@ func testProvider(issuer string) oidcproviders.OIDCProvider {
 		IssuerURL:       issuer,
 		ClientID:        "test-client",
 		ClientSecretEnc: []byte("encrypted-secret"),
-		Scopes:          []string{"openid", "profile"},
+		Scopes:          []string{scopeOpenID, scopeProfile},
 	}
 }
 
@@ -234,7 +237,7 @@ func TestAuthCodeURLIncludesPKCEStateNonceAndOfflineAccess(t *testing.T) {
 
 	rawURL, err := c.AuthCodeURL(context.Background(), provider, oidcproviders.AuthCodeParams{
 		RedirectURI: testRedirectURI,
-		State:       "test-state",
+		State:       testState,
 		Nonce:       testNonce,
 		Verifier:    "test-verifier-that-is-long-enough-for-pkce-1234567890",
 	})
@@ -249,8 +252,8 @@ func TestAuthCodeURLIncludesPKCEStateNonceAndOfflineAccess(t *testing.T) {
 
 	q := parsed.Query()
 
-	if q.Get("state") != "test-state" {
-		t.Errorf("state = %q, want %q", q.Get("state"), "test-state")
+	if q.Get("state") != testState {
+		t.Errorf("state = %q, want %q", q.Get("state"), testState)
 	}
 
 	if q.Get("nonce") != testNonce {
@@ -275,9 +278,9 @@ func TestAuthCodeURLIncludesPKCEStateNonceAndOfflineAccess(t *testing.T) {
 		switch s {
 		case "offline_access":
 			offlineCount++
-		case "openid":
+		case scopeOpenID:
 			hasOpenID = true
-		case "profile":
+		case scopeProfile:
 			hasProfile = true
 		}
 	}
@@ -295,8 +298,8 @@ func TestAuthCodeURLAlwaysRequestsTheOpenIDScope(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string][]string{
-		"scopes sans openid": {"profile", "email"},
-		"scopes avec openid": {"openid", "profile"},
+		"scopes sans openid": {scopeProfile, "email"},
+		"scopes avec openid": {scopeOpenID, scopeProfile},
 		"aucun scope":        nil,
 	}
 
@@ -311,7 +314,7 @@ func TestAuthCodeURLAlwaysRequestsTheOpenIDScope(t *testing.T) {
 
 			rawURL, err := c.AuthCodeURL(context.Background(), provider, oidcproviders.AuthCodeParams{
 				RedirectURI: testRedirectURI,
-				State:       "test-state",
+				State:       testState,
 				Nonce:       testNonce,
 				Verifier:    "test-verifier-that-is-long-enough-for-pkce-1234567890",
 			})
@@ -327,7 +330,7 @@ func TestAuthCodeURLAlwaysRequestsTheOpenIDScope(t *testing.T) {
 			var openIDCount int
 
 			for _, s := range strings.Fields(parsed.Query().Get("scope")) {
-				if s == "openid" {
+				if s == scopeOpenID {
 					openIDCount++
 				}
 			}

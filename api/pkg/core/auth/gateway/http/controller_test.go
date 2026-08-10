@@ -37,6 +37,7 @@ const (
 	sessionCookieName   = "uchiyomi_session"
 	oidcStateCookieName = "uchiyomi_oidc_state"
 	oidcStateCookiePath = "/api/auth/oidc"
+	logLevelWarn        = "WARN"
 )
 
 type stubAuthService struct {
@@ -1013,10 +1014,10 @@ func TestOIDCCallbackSentinelErrors(t *testing.T) {
 		wantCode  string
 		wantLevel string
 	}{
-		"denied":      {finishErr: auth.ErrOIDCDenied, wantCode: "oidcDenied", wantLevel: "WARN"},
-		"state":       {finishErr: auth.ErrOIDCState, wantCode: "oidcState", wantLevel: "WARN"},
-		"not allowed": {finishErr: auth.ErrOIDCNotAllowed, wantCode: "oidcNotAllowed", wantLevel: "WARN"},
-		"no account":  {finishErr: auth.ErrOIDCNoAccount, wantCode: "oidcNoAccount", wantLevel: "WARN"},
+		"denied":      {finishErr: auth.ErrOIDCDenied, wantCode: "oidcDenied", wantLevel: logLevelWarn},
+		"state":       {finishErr: auth.ErrOIDCState, wantCode: "oidcState", wantLevel: logLevelWarn},
+		"not allowed": {finishErr: auth.ErrOIDCNotAllowed, wantCode: "oidcNotAllowed", wantLevel: logLevelWarn},
+		"no account":  {finishErr: auth.ErrOIDCNoAccount, wantCode: "oidcNoAccount", wantLevel: logLevelWarn},
 		"unavailable": {finishErr: auth.ErrOIDCUnavailable, wantCode: "oidcUnavailable", wantLevel: "ERROR"},
 		"inconnue":    {finishErr: errors.New("boom"), wantCode: "oidcUnavailable", wantLevel: "ERROR"},
 	}
