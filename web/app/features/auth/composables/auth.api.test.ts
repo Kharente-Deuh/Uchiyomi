@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createAuthApi } from './auth.api'
+import { ApiError } from '~/utils/api'
+import { createAuthApi, oidcStartUrl } from './auth.api'
 
 const call = vi.fn()
 
@@ -40,5 +41,55 @@ describe('createAuthApi().loginWithPwd', () => {
     await expect(createAuthApi().loginWithPwd({ username: 'a', password: 'b' })).resolves.toEqual({
       status: 'unknown-error',
     })
+  })
+})
+
+describe('createAuthApi().getProviders', () => {
+  beforeEach(() => {
+    call.mockReset()
+  })
+
+  const providers = [
+    { id: 'google', displayName: 'Google' },
+    { id: 'okta', displayName: 'Okta' },
+  ]
+
+  it('returns the provider list on success', async () => {
+    call.mockResolvedValue(providers)
+
+    await expect(createAuthApi().getProviders()).resolves.toEqual({
+      success: true,
+      data: providers,
+    })
+  })
+
+  it('returns an ApiError on failure', async () => {
+    call.mockRejectedValue({ statusCode: 500, data: {} })
+
+    const result = await createAuthApi().getProviders()
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBeInstanceOf(ApiError)
+      expect(result.error.status).toBe(500)
+    }
+  })
+})
+
+describe('oidcStartUrl', () => {
+  it('builds the start URL with an encoded redirect', () => {
+    expect(oidcStartUrl('google', '/library')).toBe('/api/auth/oidc/google/start?redirect=%2Flibrary')
+  })
+
+  it('encodes special characters in the redirect', () => {
+    expect(oidcStartUrl('okta', '/library?tag=sci-fi&sort=asc')).toBe(
+      '/api/auth/oidc/okta/start?redirect=%2Flibrary%3Ftag%3Dsci-fi%26sort%3Dasc',
+    )
+  })
+
+  it('encodes unicode characters in the redirect', () => {
+    expect(oidcStartUrl('okta', '/library/漫画')).toBe(
+      '/api/auth/oidc/okta/start?redirect=%2Flibrary%2F%E6%BC%AB%E7%94%BB',
+    )
   })
 })
