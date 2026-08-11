@@ -17,6 +17,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/database"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/imgcache"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/logging"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 
@@ -33,6 +34,9 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	httpsession "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	pgsessions "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/repository/pg"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
+	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
+	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
@@ -64,6 +68,20 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, err
 	}
 
+	asuraApp, err := setupAsura(logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init asura source: %w", err)
+	}
+
+	coversBundle, err := setupCovers(coversDeps{
+		Logger:    logger,
+		CoversDir: cfg.Covers.Dir,
+		AsuraApp:  asuraApp,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init covers: %w", err)
+	}
+
 	apps, err := setupApps(appsDeps{
 		Logger:                        logger,
 		SessionsRepository:            dbr.SessionsRepository,
@@ -77,6 +95,9 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, err
 	}
 
+	apps.Asura = asuraApp
+	apps.Covers = coversBundle.App
+
 	registry := core.NewHealthRegistry(dbr.PGDB)
 
 	ctrls, err := setupCtrls(ctrlsDeps{
@@ -85,7 +106,8 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		SetupService:         services.Setup,
 		AuthService:          services.Auth,
 		OIDCProvidersService: services.OIDCProviders,
-		AsuraApp:             apps.Asura,
+		AsuraApp:             asuraApp,
+		CoversService:        coversBundle.Service,
 		Registry:             registry,
 	})
 	if err != nil {
@@ -101,6 +123,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		core.Deps{
 			SetupCtrl:         ctrls.Setup,
 			AsuraCtrl:         ctrls.Asura,
+			CoversCtrl:        ctrls.Covers,
 			HealthCtrl:        ctrls.Health,
 			AuthCtrl:          ctrls.Auth,
 			UsersCtrl:         ctrls.Users,
@@ -110,6 +133,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			Logger:           logger,
 			DB:               dbr.PGDB,
 			Asura:            apps.Asura,
+			Covers:           apps.Covers,
 			Sessions:         apps.Sessions,
 			OIDCRevalidation: apps.OIDCRevalidation,
 		})
@@ -305,6 +329,7 @@ func setupServices(deps servicesDeps) (*services, error) {
 
 type apps struct {
 	Asura            *asura.App
+	Covers           *covers.App
 	Sessions         *sessions.App
 	OIDCRevalidation *oidc.RevalidationApp
 }
@@ -342,18 +367,83 @@ func setupApps(deps appsDeps) (*apps, error) {
 		return nil, fmt.Errorf("failed to init oidc revalidation app: %w", err)
 	}
 
-	asura, err := setupAsura(deps.Logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init asura source: %w", err)
-	}
-
 	a := &apps{
-		Asura:            asura,
 		Sessions:         sessionApp,
 		OIDCRevalidation: oidcRevalidation,
 	}
 
 	return a, nil
+}
+
+type coversBundle struct {
+	App     *covers.App
+	Service *covers.Service
+}
+
+type coversDeps struct {
+	Logger    *slog.Logger
+	AsuraApp  *asura.App
+	CoversDir string
+}
+
+func setupCovers(deps coversDeps) (*coversBundle, error) {
+	fetchTimeout := time.Minute
+
+	httpClient := &http.Client{
+		Timeout: fetchTimeout,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
+
+	asuraResolver, err := coversasura.New(
+		coversasura.Config{CDNBaseURL: coversasura.DefaultCDNBaseURL},
+		coversasura.Deps{
+			Getter:     deps.AsuraApp,
+			HTTPClient: httpClient,
+			Logger:     deps.Logger,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("coversasura.New: %w", err)
+	}
+
+	resolvers := map[string]covers.CoverResolver{
+		covers.SourceAsuraScans: asuraResolver,
+	}
+
+	cache, err := imgcache.New(imgcache.Config{
+		Dir:           deps.CoversDir,
+		FetchFn:       covers.NewFetchFn(resolvers),
+		ErrorCacheTTL: time.Minute,
+		MinInterval:   500 * time.Millisecond,
+		Logger:        deps.Logger,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("imgcache.New: %w", err)
+	}
+
+	svc, err := covers.NewService(
+		covers.ServiceConfig{ProxyPathPrefix: core.APIPrefix + "/sources/cover"},
+		covers.ServiceDeps{
+			Cache:      cache,
+			Resolvers:  resolvers,
+			HTTPClient: httpClient,
+			Logger:     deps.Logger,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("covers.NewService: %w", err)
+	}
+
+	app, err := covers.NewApp(covers.AppDeps{Cache: cache})
+	if err != nil {
+		return nil, fmt.Errorf("covers.NewApp: %w", err)
+	}
+
+	return &coversBundle{App: app, Service: svc}, nil
 }
 
 func setupAsura(logger *slog.Logger) (*asura.App, error) {
@@ -488,6 +578,7 @@ func setupAsura(logger *slog.Logger) (*asura.App, error) {
 type ctrls struct {
 	Setup         *httpsetup.Controller
 	Asura         *httpasura.Controller
+	Covers        *httpcovers.Controller
 	Health        *httphealth.Controller
 	Auth          *httpauth.Controller
 	Users         *httpusers.Controller
@@ -496,6 +587,7 @@ type ctrls struct {
 
 type ctrlsDeps struct {
 	AsuraApp             *asura.App
+	CoversService        *covers.Service
 	SetupService         *setup.Service
 	SessionsService      *sessions.Service
 	Logger               *slog.Logger
@@ -533,17 +625,31 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init authenticator: %w", err)
 	}
 
-	asura, err := httpasura.New(httpasura.Config{
+	asuraCtrl, err := httpasura.New(httpasura.Config{
 		Endpoint:    "/asura",
 		Middlewares: chi.Middlewares{authenticator.Middleware},
 	},
 		httpasura.Deps{
 			AsuraApp: deps.AsuraApp,
 			Logger:   deps.Logger,
+			CoverURLBuilder: func(source, slug string) string {
+				return deps.CoversService.BuildProxyURL(source, slug)
+			},
 		})
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to init asura controller: %w", err)
+	}
+
+	coversCtrl, err := httpcovers.New(httpcovers.Config{
+		Endpoint:    "/cover",
+		Middlewares: chi.Middlewares{authenticator.Middleware},
+	}, httpcovers.Deps{
+		Service: deps.CoversService,
+		Logger:  deps.Logger,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init covers controller: %w", err)
 	}
 
 	setup, err := httpsetup.New(httpsetup.Config{Endpoint: "/setup"}, httpsetup.Deps{
@@ -609,7 +715,8 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 	}
 
 	c := &ctrls{
-		Asura:         asura,
+		Asura:         asuraCtrl,
+		Covers:        coversCtrl,
 		Setup:         setup,
 		Health:        healthCtrl,
 		Auth:          authCtrl,

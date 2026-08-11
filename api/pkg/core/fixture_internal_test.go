@@ -23,6 +23,9 @@ import (
 	httpoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	sessionshttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
+	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
+	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
 	healthhttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
@@ -33,6 +36,7 @@ import (
 	httasura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/imgcache"
 )
 
 const (
@@ -99,6 +103,61 @@ func (fakeSessionsRepository) UpdateExpiry(context.Context, uuid.UUID, time.Time
 
 func (fakeSessionsRepository) DeleteByTokenHash(context.Context, []byte) error {
 	return errors.New(notImplemented)
+}
+
+func newTestCoversBundle(t *testing.T, asuraApp *asura.App) (*covers.App, *covers.Service) {
+	t.Helper()
+
+	logger := slog.New(slog.DiscardHandler)
+
+	httpClient := &http.Client{Timeout: time.Minute}
+
+	asuraResolver, err := coversasura.New(
+		coversasura.Config{CDNBaseURL: coversasura.DefaultCDNBaseURL},
+		coversasura.Deps{
+			Getter:     asuraApp,
+			HTTPClient: httpClient,
+			Logger:     logger,
+		},
+	)
+	if err != nil {
+		t.Fatalf("coversasura.New: %v", err)
+	}
+
+	resolvers := map[string]covers.CoverResolver{
+		covers.SourceAsuraScans: asuraResolver,
+	}
+
+	cache, err := imgcache.New(imgcache.Config{
+		Dir:           t.TempDir(),
+		FetchFn:       covers.NewFetchFn(resolvers),
+		ErrorCacheTTL: time.Minute,
+		MinInterval:   time.Millisecond,
+		Logger:        logger,
+	})
+	if err != nil {
+		t.Fatalf("imgcache.New: %v", err)
+	}
+
+	svc, err := covers.NewService(
+		covers.ServiceConfig{ProxyPathPrefix: APIPrefix + "/sources/cover"},
+		covers.ServiceDeps{
+			Cache:      cache,
+			Resolvers:  resolvers,
+			HTTPClient: httpClient,
+			Logger:     logger,
+		},
+	)
+	if err != nil {
+		t.Fatalf("covers.NewService: %v", err)
+	}
+
+	app, err := covers.NewApp(covers.AppDeps{Cache: cache})
+	if err != nil {
+		t.Fatalf("covers.NewApp: %v", err)
+	}
+
+	return app, svc
 }
 
 type fakeOIDCRevalidationApp struct{}
@@ -290,12 +349,28 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("httpusers.New: %v", err)
 	}
 
+	coversApp, coversService := newTestCoversBundle(t, asuraApp)
+
 	asuraCtrl, err := httasura.New(
 		httasura.Config{Endpoint: "/asura"},
-		httasura.Deps{Logger: logger, AsuraApp: asuraApp},
+		httasura.Deps{
+			Logger:   logger,
+			AsuraApp: asuraApp,
+			CoverURLBuilder: func(source, slug string) string {
+				return coversService.BuildProxyURL(source, slug)
+			},
+		},
 	)
 	if err != nil {
 		t.Fatalf("httasura.New: %v", err)
+	}
+
+	coversCtrl, err := httpcovers.New(
+		httpcovers.Config{Endpoint: "/cover"},
+		httpcovers.Deps{Service: coversService, Logger: logger},
+	)
+	if err != nil {
+		t.Fatalf("httpcovers.New: %v", err)
 	}
 
 	healthCtrl, err := healthhttp.New(
@@ -322,11 +397,13 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			AuthCtrl:          authCtrl,
 			UsersCtrl:         usersCtrl,
 			AsuraCtrl:         asuraCtrl,
+			CoversCtrl:        coversCtrl,
 			HealthCtrl:        healthCtrl,
 			OIDCProvidersCtrl: oidcProvidersCtrl,
 			Logger:            logger,
 			Health:            registry,
 			Asura:             asuraApp,
+			Covers:            coversApp,
 			Sessions:          sessionsApp,
 			OIDCRevalidation:  fakeOIDCRevalidationApp{},
 		})
