@@ -40,6 +40,7 @@ services:
       PORT: 3000
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+      COVERS_DIR: /covers
       OIDC_ENCRYPTION_KEY: "${OIDC_ENCRYPTION_KEY:?set OIDC_ENCRYPTION_KEY, e.g. openssl rand -base64 32}"
     healthcheck:
       test: ["CMD", "/uchiyomiserver", "-healthcheck"]
@@ -48,6 +49,8 @@ services:
       retries: 3
       start_period: 15s
     read_only: true
+    volumes:
+      - covers:/covers
     cap_drop:
       - ALL
     security_opt:
@@ -56,3 +59,4 @@ services:
 
 volumes:
   pgdata:
+  covers:

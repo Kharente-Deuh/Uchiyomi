@@ -14,14 +14,11 @@ import (
 )
 
 type cfg struct {
-	OIDC struct {
-		PublicURL            string `env:"PUBLIC_URL,required,notEmpty"`
-		EncryptionKeyB64     string `env:"OIDC_ENCRYPTION_KEY,required,notEmpty"`
-		EncryptionKey        []byte
-		RevalidationInterval time.Duration `env:"OIDC_REVALIDATION_INTERVAL" envDefault:"15m"`
-	}
 	Logger struct {
 		Level logging.LogLevel `env:"LOG_LEVEL" envDefault:"info"`
+	}
+	Covers struct {
+		Dir string `env:"COVERS_DIR" envDefault:"covers"`
 	}
 	PG struct {
 		Host        string `env:"DB_HOST,required"`
@@ -31,6 +28,12 @@ type cfg struct {
 		Schema      string `env:"DB_SCHEMA"`
 		SSLRequired bool   `env:"DB_SSL" envDefault:"false"`
 		Port        int    `env:"DB_PORT" envDefault:"5432"`
+	}
+	OIDC struct {
+		PublicURL            string `env:"PUBLIC_URL,required,notEmpty"`
+		EncryptionKeyB64     string `env:"OIDC_ENCRYPTION_KEY,required,notEmpty"`
+		EncryptionKey        []byte
+		RevalidationInterval time.Duration `env:"OIDC_REVALIDATION_INTERVAL" envDefault:"15m"`
 	}
 	Http struct {
 		AllowedOrigins []string `env:"CORS_ORIGINS" envSeparator:","`

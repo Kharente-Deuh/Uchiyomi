@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
@@ -44,8 +45,9 @@ func (cfg *Config) Validate() error {
 }
 
 type Deps struct {
-	AsuraApp *core.App
-	Logger   *slog.Logger
+	AsuraApp        *core.App
+	Logger          *slog.Logger
+	CoverURLBuilder func(source, slug string) string
 }
 
 func (deps *Deps) Validate() error {
@@ -55,6 +57,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.Logger == nil {
 		return errors.New("logger is required")
+	}
+
+	if deps.CoverURLBuilder == nil {
+		return errors.New("coverURLBuilder is required")
 	}
 
 	return nil
@@ -117,6 +123,8 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	buildCover := c.deps.CoverURLBuilder
+
 	dto := searchResDTO{
 		Total: res.Meta.Total,
 		Items: utils.MapSlice(res.Items, func(i domain.SearchResultItem) searchResItemDTO {
@@ -126,7 +134,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 				CreatedAt:     i.CreatedAt,
 				PublicURL:     i.PublicURL,
 				SourceURL:     i.SourceURL,
-				Cover:         i.Cover,
+				Cover:         buildCover(covers.SourceAsuraScans, i.Slug),
 				Status:        i.Status,
 				Type:          i.Type,
 				Author:        i.Author,
@@ -180,7 +188,7 @@ func (c *Controller) getInfosBySlug(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:     s.CreatedAt,
 		Description:   s.Description,
 		Title:         s.Title,
-		Cover:         s.Cover,
+		Cover:         c.deps.CoverURLBuilder(covers.SourceAsuraScans, s.Slug),
 		Status:        s.Status,
 		Type:          s.Type,
 		Author:        s.Author,

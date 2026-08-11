@@ -16,6 +16,8 @@ import (
 	httpauth "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/gateway/http"
 	httpoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
+	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
@@ -64,6 +66,7 @@ type Deps struct {
 
 	SetupCtrl         *httpsetup.Controller
 	AsuraCtrl         *httpasura.Controller
+	CoversCtrl        *httpcovers.Controller
 	HealthCtrl        *httphealth.Controller
 	AuthCtrl          *httpauth.Controller
 	UsersCtrl         *httpusers.Controller
@@ -73,6 +76,7 @@ type Deps struct {
 	Health *health.Registry
 
 	Asura            *asura.App
+	Covers           *covers.App
 	Sessions         *sessions.App
 	OIDCRevalidation interface{ Run(context.Context) error }
 }
@@ -86,6 +90,10 @@ func (deps *Deps) Validate() error {
 		return errors.New("asuraCtrl is required")
 	}
 
+	if deps.CoversCtrl == nil {
+		return errors.New("coversCtrl is required")
+	}
+
 	if deps.Logger == nil {
 		return errors.New("logger is required")
 	}
@@ -96,6 +104,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.Asura == nil {
 		return errors.New("asura is required")
+	}
+
+	if deps.Covers == nil {
+		return errors.New("covers is required")
 	}
 
 	if deps.Sessions == nil {
@@ -177,6 +189,7 @@ func (a *App) startup(ctx context.Context, errG *errgroup.Group) func() error {
 		a.deps.Health.Set(componentMigrations, nil)
 
 		errG.Go(a.runComponent(ctx, componentAsura, a.deps.Asura.Run))
+		errG.Go(a.runComponent(ctx, componentCovers, a.deps.Covers.Run))
 		errG.Go(a.runComponent(ctx, componentSessions, a.deps.Sessions.Run))
 		errG.Go(a.runComponent(ctx, componentOIDCRevalidation, a.deps.OIDCRevalidation.Run))
 
@@ -255,6 +268,7 @@ func (a *App) newRouter(ui http.Handler) chi.Router {
 			a.deps.UsersCtrl.InitRouter(r)
 			a.deps.OIDCProvidersCtrl.InitRouter(r)
 			r.Route("/sources", func(r chi.Router) {
+				a.deps.CoversCtrl.InitRouter(r)
 				a.deps.AsuraCtrl.InitRouter(r)
 			})
 		})
