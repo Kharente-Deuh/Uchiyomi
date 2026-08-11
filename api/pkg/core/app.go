@@ -16,6 +16,7 @@ import (
 	httpauth "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/gateway/http"
 	httpoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
+	httpcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
@@ -70,6 +71,7 @@ type Deps struct {
 	HealthCtrl        *httphealth.Controller
 	AuthCtrl          *httpauth.Controller
 	UsersCtrl         *httpusers.Controller
+	ComicsCtrl        *httpcomics.Controller
 	OIDCProvidersCtrl *httpoidcproviders.Controller
 
 	Logger *slog.Logger
@@ -132,6 +134,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.OIDCProvidersCtrl == nil {
 		return errors.New("oidcProvidersCtrl is required")
+	}
+
+	if deps.ComicsCtrl == nil {
+		return errors.New("comicsCtrl is required")
 	}
 
 	if deps.Health == nil {
@@ -267,6 +273,7 @@ func (a *App) newRouter(ui http.Handler) chi.Router {
 			a.deps.AuthCtrl.InitRouter(r)
 			a.deps.UsersCtrl.InitRouter(r)
 			a.deps.OIDCProvidersCtrl.InitRouter(r)
+			a.deps.ComicsCtrl.InitRouter(r)
 			r.Route("/sources", func(r chi.Router) {
 				a.deps.CoversCtrl.InitRouter(r)
 				a.deps.AsuraCtrl.InitRouter(r)

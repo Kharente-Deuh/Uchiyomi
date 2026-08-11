@@ -8,10 +8,44 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
+	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 )
+
+type stubComicsRepository struct{}
+
+func (stubComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetBySourceSlug(
+	context.Context, comics.GetBySourceSlugOpts,
+) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetBySlugsAndSource(
+	context.Context, sources.SourceName, []string,
+) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (stubComicsRepository) Delete(context.Context, uuid.UUID) error {
+	return coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
 
 func newCache[P any, T any](
 	t *testing.T, key func(P) string, fn func(context.Context, P) (*T, error),
@@ -37,14 +71,33 @@ func newCache[P any, T any](
 
 func identityKey(s string) string { return s }
 
-func fullDeps(t *testing.T) core.Dependencies {
+func searchCacheKey(opts domain.SearchCacheOpts) string {
+	return domain.SearchOpts{
+		Search:      opts.Search,
+		Sort:        opts.Sort,
+		SortOrder:   opts.SortOrder,
+		Status:      opts.Status,
+		Type:        opts.Type,
+		Artist:      opts.Artist,
+		Genres:      opts.Genres,
+		Offset:      opts.Offset,
+		Limit:       opts.Limit,
+		MinChapters: opts.MinChapters,
+	}.CacheKey()
+}
+
+func testConfig() core.Config {
+	return core.Config{SourceName: sources.SourceAsuraScans}
+}
+
+func fullDeps(t *testing.T) core.Deps {
 	t.Helper()
 
-	return core.Dependencies{
+	return core.Deps{
 		Logger: slog.New(slog.DiscardHandler),
-		SearchCache: newCache(t, domain.SearchOpts.CacheKey,
-			func(context.Context, domain.SearchOpts) (*domain.SearchResult, error) {
-				return &domain.SearchResult{}, nil
+		SearchCache: newCache(t, searchCacheKey,
+			func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
+				return &domain.SearchCacheResult{}, nil
 			}),
 		GetInfosBySlugCache: newCache(t, identityKey,
 			func(context.Context, string) (*domain.GetInfosBySlugResponse, error) {
@@ -62,32 +115,37 @@ func fullDeps(t *testing.T) core.Dependencies {
 
 				return &urls, nil
 			}),
+		ComicsRepository: stubComicsRepository{},
 	}
 }
 
-func TestDependenciesValidate(t *testing.T) {
+func TestDepsValidate(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		drop    func(*core.Dependencies)
+		drop    func(*core.Deps)
 		wantErr string
 	}{
-		"complet": {drop: func(*core.Dependencies) {}},
+		"complet": {drop: func(*core.Deps) {}},
 		"without searchCache": {
-			drop:    func(d *core.Dependencies) { d.SearchCache = nil },
+			drop:    func(d *core.Deps) { d.SearchCache = nil },
 			wantErr: "searchCache is required",
 		},
 		"without getInfosBySlugCache": {
-			drop:    func(d *core.Dependencies) { d.GetInfosBySlugCache = nil },
+			drop:    func(d *core.Deps) { d.GetInfosBySlugCache = nil },
 			wantErr: "getInfosBySlugCache is required",
 		},
 		"without getChaptersListBySeriesCache": {
-			drop:    func(d *core.Dependencies) { d.GetChaptersListBySeriesCache = nil },
+			drop:    func(d *core.Deps) { d.GetChaptersListBySeriesCache = nil },
 			wantErr: "getChaptersListBySeriesCache is required",
 		},
 		"without getImageURLsByChapter": {
-			drop:    func(d *core.Dependencies) { d.GetImageURLsByChapter = nil },
+			drop:    func(d *core.Deps) { d.GetImageURLsByChapter = nil },
 			wantErr: "getImageURLsByChapter is required",
+		},
+		"without comicsRepository": {
+			drop:    func(d *core.Deps) { d.ComicsRepository = nil },
+			wantErr: "comicsRepository is required",
 		},
 	}
 
@@ -118,7 +176,7 @@ func TestDependenciesValidate(t *testing.T) {
 func TestNewRejectsIncompleteDeps(t *testing.T) {
 	t.Parallel()
 
-	app, err := core.New(core.Dependencies{})
+	app, err := core.New(testConfig(), core.Deps{})
 	if err == nil {
 		t.Fatal("New with empty dependencies must fail")
 	}
@@ -135,7 +193,7 @@ func TestNewRejectsIncompleteDeps(t *testing.T) {
 func TestNewSucceeds(t *testing.T) {
 	t.Parallel()
 
-	app, err := core.New(fullDeps(t))
+	app, err := core.New(testConfig(), fullDeps(t))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -148,17 +206,17 @@ func TestNewSucceeds(t *testing.T) {
 func TestAppSearchDelegatesToCache(t *testing.T) {
 	t.Parallel()
 
-	called := make(chan domain.SearchOpts, 1)
+	called := make(chan domain.SearchCacheOpts, 1)
 
 	deps := fullDeps(t)
-	deps.SearchCache = newCache(t, domain.SearchOpts.CacheKey,
-		func(_ context.Context, opts domain.SearchOpts) (*domain.SearchResult, error) {
+	deps.SearchCache = newCache(t, searchCacheKey,
+		func(_ context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
 			called <- opts
 
-			return &domain.SearchResult{Meta: domain.SearchResultMeta{Total: 3}}, nil
+			return &domain.SearchCacheResult{Meta: domain.SearchResultMeta{Total: 3}}, nil
 		})
 
-	app, err := core.New(deps)
+	app, err := core.New(testConfig(), deps)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -180,7 +238,7 @@ func TestAppSearchDelegatesToCache(t *testing.T) {
 func TestAppGetChaptersListBySeriesReturnsACopy(t *testing.T) {
 	t.Parallel()
 
-	app, err := core.New(fullDeps(t))
+	app, err := core.New(testConfig(), fullDeps(t))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -209,7 +267,7 @@ func TestAppGetChaptersListBySeriesReturnsACopy(t *testing.T) {
 func TestAppGetImageURLsByChapterReturnsACopy(t *testing.T) {
 	t.Parallel()
 
-	app, err := core.New(fullDeps(t))
+	app, err := core.New(testConfig(), fullDeps(t))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -240,7 +298,7 @@ func TestAppGetImageURLsByChapterReturnsACopy(t *testing.T) {
 func TestAppRunReturnsOnContextCancel(t *testing.T) {
 	t.Parallel()
 
-	app, err := core.New(fullDeps(t))
+	app, err := core.New(testConfig(), fullDeps(t))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

@@ -11,6 +11,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	core "github.com/kharente-deuh/uchiyomi-server/pkg/core"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
+	httpcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	asuraclient "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
@@ -34,10 +37,12 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	httpsession "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	pgsessions "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/repository/pg"
+	pgcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
+	pglibrary "github.com/kharente-deuh/uchiyomi-server/pkg/core/library/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
@@ -68,7 +73,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, err
 	}
 
-	asuraApp, err := setupAsura(logger)
+	asuraApp, err := setupAsura(logger, dbr.ComicsRepository)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init asura source: %w", err)
 	}
@@ -95,6 +100,16 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, err
 	}
 
+	comicsSvc, err := comics.NewService(comics.Deps{
+		ComicsRepository:  dbr.ComicsRepository,
+		Transactor:        dbr.Txor,
+		LibraryRepository: dbr.LibraryRepository,
+		Sources:           sources.SourceMap{sources.SourceAsuraScans: asuraApp},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init comicsSvc: %w", err)
+	}
+
 	apps.Asura = asuraApp
 	apps.Covers = coversBundle.App
 
@@ -102,6 +117,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 
 	ctrls, err := setupCtrls(ctrlsDeps{
 		Logger:               logger,
+		ComicsService:        comicsSvc,
 		SessionsService:      services.Sessions,
 		SetupService:         services.Setup,
 		AuthService:          services.Auth,
@@ -128,6 +144,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			AuthCtrl:          ctrls.Auth,
 			UsersCtrl:         ctrls.Users,
 			OIDCProvidersCtrl: ctrls.OIDCProviders,
+			ComicsCtrl:        ctrls.Comics,
 
 			Health:           registry,
 			Logger:           logger,
@@ -152,6 +169,8 @@ type dbRelated struct {
 	PwdRepository                 *pgpwd.PGPasswordCredsRepository
 	OIDCProvidersRepository       *pgoidcproviders.PGOIDCProvidersRepository
 	FederatedIdentitiesRepository *pgfederatedidentities.PGFederatedIdentitiesRepository
+	ComicsRepository              *pgcomics.PGComicsRepository
+	LibraryRepository             *pglibrary.PGLibraryRepository
 }
 
 func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
@@ -201,6 +220,16 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		return nil, fmt.Errorf("failed to init federatedIdentitiesRepository: %w", err)
 	}
 
+	comicsRepository, err := pgcomics.New(pgcomics.Deps{DB: pgdb.DB})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init comicsRepository: %w", err)
+	}
+
+	libraryRepository, err := pglibrary.New(pglibrary.Deps{DB: pgdb.DB})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init libraryRepository: %w", err)
+	}
+
 	dbr := &dbRelated{
 		PGDB:                          pgdb,
 		Txor:                          txor,
@@ -209,6 +238,8 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		PwdRepository:                 pwdRepository,
 		OIDCProvidersRepository:       oidcProvidersRepository,
 		FederatedIdentitiesRepository: federatedIdentitiesRepository,
+		ComicsRepository:              comicsRepository,
+		LibraryRepository:             libraryRepository,
 	}
 
 	return dbr, nil
@@ -446,7 +477,7 @@ func setupCovers(deps coversDeps) (*coversBundle, error) {
 	return &coversBundle{App: app, Service: svc}, nil
 }
 
-func setupAsura(logger *slog.Logger) (*asura.App, error) {
+func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura.App, error) {
 	fetchTimeout := time.Minute
 
 	httpClient := &http.Client{
@@ -562,13 +593,14 @@ func setupAsura(logger *slog.Logger) (*asura.App, error) {
 	}
 
 	a, err := asura.New(
-		asura.Config{SourceName: "asurascans"},
+		asura.Config{SourceName: sources.SourceAsuraScans},
 		asura.Deps{
 			Logger:                       logger,
 			SearchCache:                  searchCache,
 			GetInfosBySlugCache:          getInfosBySlugCache,
 			GetChaptersListBySeriesCache: getChaptersListBySerieCache,
 			GetImageURLsByChapter:        getImageURLsByChapterCache,
+			ComicsRepository:             comicsRepo,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("asura.New: %w", err)
@@ -585,6 +617,7 @@ type ctrls struct {
 	Auth          *httpauth.Controller
 	Users         *httpusers.Controller
 	OIDCProviders *httpoidcproviders.Controller
+	Comics        *httpcomics.Controller
 }
 
 type ctrlsDeps struct {
@@ -596,6 +629,7 @@ type ctrlsDeps struct {
 	Registry             *health.Registry
 	AuthService          *auth.Service
 	OIDCProvidersService *oidcproviders.Service
+	ComicsService        *comics.Service
 }
 
 func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
@@ -716,6 +750,15 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init oidc providers controller: %w", err)
 	}
 
+	comicsCtrl, err := httpcomics.New(
+		httpcomics.Config{Endpoint: "/comics"}, httpcomics.Deps{
+			Logger:        deps.Logger,
+			ComicsService: deps.ComicsService,
+		})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init comics controller: %w", err)
+	}
+
 	c := &ctrls{
 		Asura:         asuraCtrl,
 		Covers:        coversCtrl,
@@ -724,6 +767,7 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		Auth:          authCtrl,
 		Users:         usersCtrl,
 		OIDCProviders: oidcProvidersCtrl,
+		Comics:        comicsCtrl,
 	}
 
 	return c, nil

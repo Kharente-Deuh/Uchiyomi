@@ -10,19 +10,23 @@ import (
 	"slices"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"golang.org/x/sync/errgroup"
 )
 
+var _ sources.Source = (*App)(nil)
+
 type Config struct {
-	SourceName string
+	SourceName sources.SourceName
 }
 
 func (c *Config) Validate() error {
-	if c.SourceName == "" {
-		return errors.New("sourceName is required")
+	_, err := sources.ParseSourceName(string(c.SourceName))
+	if err != nil {
+		return fmt.Errorf("sources.ParseSourceName: %w", err)
 	}
 
 	return nil
@@ -52,6 +56,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.GetImageURLsByChapter == nil {
 		return errors.New("getImageURLsByChapter is required")
+	}
+
+	if deps.ComicsRepository == nil {
+		return errors.New("comicsRepository is required")
 	}
 
 	return nil
@@ -128,7 +136,7 @@ func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Searc
 		return nil, fmt.Errorf("a.deps.ComicsRepository.GetBySlugsAndSource: %w", err)
 	}
 
-	items := make([]domain.SearchResultItem, len(foundComics))
+	items := make([]domain.SearchResultItem, len(res.Items))
 	for i, item := range res.Items {
 		isInLibrary := utils.ContainsSlice(foundComics, func(c comics.Comic) bool {
 			return c.Slug == item.Slug
@@ -143,9 +151,16 @@ func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Searc
 	}, nil
 }
 
-func (a *App) GetInfosBySlug(ctx context.Context, slug string) (*domain.GetInfosBySlugResponse, error) {
-	//nolint:wrapcheck
-	return a.deps.GetInfosBySlugCache.Get(ctx, slug)
+func (a *App) GetInfosBySlug(ctx context.Context, slug string) (*sources.GetInfosBySlugResponse, error) {
+	infos, err := a.deps.GetInfosBySlugCache.Get(ctx, slug)
+	if err != nil {
+		//nolint:wrapcheck
+		return nil, err
+	}
+
+	res := infos.Source()
+
+	return &res, nil
 }
 
 func (a *App) GetChaptersListBySeries(ctx context.Context, slug string) ([]domain.Chapter, error) {

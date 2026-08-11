@@ -15,14 +15,15 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgtest"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 )
 
 const (
-	comicSource = "asurascans"
+	comicSource = sources.SourceAsuraScans
 	comicSlug   = "solo-leveling"
 	comicTitle  = "Solo Leveling"
-	comicStatus = "completed"
-	comicType   = "manhwa"
+	comicStatus = sources.SeriesStatusCompleted
+	comicType   = sources.SeriesTypeManhwa
 )
 
 func duplicateComicKeyErr() error {
@@ -68,25 +69,25 @@ func TestGetByID(t *testing.T) {
 	r, mock := newComicsRepo(t)
 
 	id := uuid.New()
+	userID := uuid.New()
 	created := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
 	updated := time.Now().UTC().Truncate(time.Second)
 
-	mock.ExpectQuery(`SELECT \* FROM "comics" WHERE id = \$1`).
-		WithArgs(id, 1).
+	mock.ExpectQuery(`FROM "comics".*comics.id = \$1 AND library_entries.user_id = \$2`).
+		WithArgs(id, userID, 1).
 		WillReturnRows(
 			sqlmock.NewRows([]string{
 				"id", "source", "slug", "title", "status", "comic_type",
-				"chapter_count", "author", "artist", "description", "rating", "release_year",
-				"source_url", "external_cover_url", "local_cover_path", "created_at", "updated_at",
+				"chapter_count", "author", "artist", "description",
+				"genres", "alt_titles", "created_at", "updated_at",
 			}).AddRow(
-				id, comicSource, comicSlug, comicTitle, comicStatus, comicType,
-				200, "Chugong", "Dubu", "desc", 9.5, 2018,
-				"https://api.asurascans.com/series/solo-leveling", "https://cover.example/cover.webp",
-				"covers/solo-leveling.webp", created, updated,
+				id, string(comicSource), comicSlug, comicTitle, string(comicStatus), string(comicType),
+				200, "Chugong", "Dubu", "desc",
+				"{}", "{}", created, updated,
 			),
 		)
 
-	got, err := r.GetByID(context.Background(), id)
+	got, err := r.GetByID(context.Background(), comics.GetByIDOpts{ID: id, UserID: userID})
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -101,10 +102,13 @@ func TestGetByIDNotFound(t *testing.T) {
 
 	r, mock := newComicsRepo(t)
 
-	mock.ExpectQuery(`SELECT \* FROM "comics"`).
+	userID := uuid.New()
+
+	mock.ExpectQuery(`FROM "comics".*comics.id = \$1 AND library_entries.user_id = \$2`).
+		WithArgs(sqlmock.AnyArg(), userID, 1).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
-	got, err := r.GetByID(context.Background(), uuid.New())
+	got, err := r.GetByID(context.Background(), comics.GetByIDOpts{ID: uuid.New(), UserID: userID})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByID = %v, want domain.ErrNotFound", err)
 	}
@@ -120,24 +124,28 @@ func TestGetBySourceSlug(t *testing.T) {
 	r, mock := newComicsRepo(t)
 
 	id := uuid.New()
+	userID := uuid.New()
 	created := time.Now().UTC().Truncate(time.Second)
 	updated := created
 
-	mock.ExpectQuery(`SELECT \* FROM "comics" WHERE source = \$1 AND slug = \$2`).
-		WithArgs(comicSource, comicSlug, 1).
+	mock.ExpectQuery(
+		`FROM "comics".*comics.slug = \$1 AND comics.source = \$2 AND library_entries.user_id = \$3`,
+	).
+		WithArgs(comicSlug, string(comicSource), userID, 1).
 		WillReturnRows(
 			sqlmock.NewRows([]string{
 				"id", "source", "slug", "title", "status", "comic_type",
-				"chapter_count", "author", "artist", "description", "rating", "release_year",
-				"source_url", "external_cover_url", "local_cover_path", "created_at", "updated_at",
+				"chapter_count", "author", "artist", "description",
+				"genres", "alt_titles", "created_at", "updated_at",
 			}).AddRow(
-				id, comicSource, comicSlug, comicTitle, comicStatus, comicType,
-				200, "Chugong", "Dubu", "desc", 9.5, 2018,
-				"", "", "", created, updated,
+				id, string(comicSource), comicSlug, comicTitle, string(comicStatus), string(comicType),
+				200, "Chugong", "Dubu", "desc",
+				"{}", "{}", created, updated,
 			),
 		)
 
-	got, err := r.GetBySourceSlug(context.Background(), comics.SourceSlugKey{
+	got, err := r.GetBySourceSlug(context.Background(), comics.GetBySourceSlugOpts{
+		UserID: userID,
 		Source: comicSource,
 		Slug:   comicSlug,
 	})
@@ -188,29 +196,103 @@ func TestCreate(t *testing.T) {
 	}
 
 	if got.CreatedAt.Before(before) || got.UpdatedAt.Before(before) {
-		t.Errorf("timestamps not set: created=%v updated=%v", got.CreatedAt, got.UpdatedAt)
+		t.Errorf("Create timestamps too early: created=%v updated=%v", got.CreatedAt, got.UpdatedAt)
 	}
 }
 
-func TestCreateDuplicateKey(t *testing.T) {
+func TestCreateDuplicate(t *testing.T) {
 	t.Parallel()
 
 	r, mock := newComicsRepo(t)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`INSERT INTO "comics"`).WillReturnError(duplicateComicKeyErr())
+	mock.ExpectQuery(`INSERT INTO "comics"`).
+		WillReturnError(duplicateComicKeyErr())
 	mock.ExpectRollback()
 
-	got, err := r.Create(context.Background(), comics.CreateComicOpts{
+	_, err := r.Create(context.Background(), comics.CreateComicOpts{
 		Source: comicSource,
 		Slug:   comicSlug,
 		Title:  comicTitle,
+		Status: comicStatus,
+		Type:   comicType,
 	})
 	if !errors.Is(err, domain.ErrAlreadyExists) {
 		t.Errorf("Create = %v, want domain.ErrAlreadyExists", err)
 	}
+}
 
-	if got != nil {
-		t.Errorf("Create returned %+v in addition to the error", got)
+func TestGetMany(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	userID := uuid.New()
+	id := uuid.New()
+	created := time.Now().UTC().Truncate(time.Second)
+	updated := created
+
+	mock.ExpectQuery(`FROM "comics".*library_entries.user_id = \$1`).
+		WithArgs(userID, 10).
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"id", "source", "slug", "title", "status", "comic_type",
+				"chapter_count", "author", "artist", "description",
+				"genres", "alt_titles", "created_at", "updated_at",
+			}).AddRow(
+				id, string(comicSource), comicSlug, comicTitle, string(comicStatus), string(comicType),
+				200, "Chugong", "Dubu", "desc",
+				"{}", "{}", created, updated,
+			),
+		)
+
+	got, err := r.GetMany(context.Background(), comics.GetManyOpts{
+		UserID: &userID,
+		Limit:  10,
+	})
+	if err != nil {
+		t.Fatalf("GetMany: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != id {
+		t.Errorf("GetMany() = %+v", got)
+	}
+}
+
+func TestDelete(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "comics" WHERE id = \$1`).
+		WithArgs(id).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := r.Delete(context.Background(), id)
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+}
+
+func TestDeleteNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "comics" WHERE id = \$1`).
+		WithArgs(id).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	err := r.Delete(context.Background(), id)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("Delete = %v, want domain.ErrNotFound", err)
 	}
 }

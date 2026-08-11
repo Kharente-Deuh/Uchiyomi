@@ -15,9 +15,42 @@ import (
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
+	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
+
+type stubComicsRepository struct{}
+
+func (stubComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetBySourceSlug(
+	context.Context, comics.GetBySourceSlugOpts,
+) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetBySlugsAndSource(
+	context.Context, sources.SourceName, []string,
+) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (stubComicsRepository) Delete(context.Context, uuid.UUID) error {
+	return coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
 
 type emptyOIDCProvidersRepository struct{}
 
@@ -167,7 +200,7 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 
 	logger := slog.New(slog.DiscardHandler)
 
-	asuraApp, err := setupAsura(logger)
+	asuraApp, err := setupAsura(logger, stubComicsRepository{})
 	if err != nil {
 		t.Fatalf("setupAsura: %v", err)
 	}

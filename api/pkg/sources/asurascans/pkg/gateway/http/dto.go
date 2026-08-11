@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 )
 
@@ -24,15 +25,15 @@ type searchResItemDTO struct {
 	PublicURL      string                    `json:"publicUrl"`
 	SourceURL      string                    `json:"sourceUrl"`
 	Cover          string                    `json:"cover"`
-	Status         domain.SeriesStatus       `json:"status"`
-	Type           domain.SeriesType         `json:"type"`
+	Status         sources.SeriesStatus      `json:"status"`
+	Type           sources.SeriesType        `json:"type"`
 	Author         string                    `json:"author"`
 	Artist         string                    `json:"artist"`
 	Description    string                    `json:"description"`
 	Slug           string                    `json:"slug"`
 	Title          string                    `json:"title"`
 	AltTitles      []string                  `json:"altTitles"`
-	Genres         []domain.SeriesGenre      `json:"genres"`
+	Genres         []string                  `json:"genres"`
 	LatestChapters []searchResItemChapterDTO `json:"latestChapters"`
 	ChapterCount   int                       `json:"chapterCount"`
 	Rating         float64                   `json:"rating"`
@@ -68,18 +69,28 @@ func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
 	opts.SortOrder = domain.SortOrder(order)
 
 	status := q.Get("status")
-	if !domain.IsSeriesStatus(status) {
-		return domain.SearchOpts{}, fmt.Errorf("invalid status %q", status)
-	}
+	if status == "" {
+		opts.Status = ""
+	} else {
+		parsedStatus, err := sources.ParseSeriesStatus(status)
+		if err != nil {
+			return domain.SearchOpts{}, fmt.Errorf("invalid status %q: %w", status, err)
+		}
 
-	opts.Status = domain.SeriesStatus(status)
+		opts.Status = parsedStatus
+	}
 
 	seriesType := q.Get("type")
-	if !domain.IsSeriesType(seriesType) {
-		return domain.SearchOpts{}, fmt.Errorf("invalid type %q", seriesType)
-	}
+	if seriesType == "" {
+		opts.Type = ""
+	} else {
+		parsedType, err := sources.ParseSeriesType(seriesType)
+		if err != nil {
+			return domain.SearchOpts{}, fmt.Errorf("invalid type %q: %w", seriesType, err)
+		}
 
-	opts.Type = domain.SeriesType(seriesType)
+		opts.Type = parsedType
+	}
 
 	genres, err := parseGenres(q.Get("genres"))
 	if err != nil {
@@ -120,13 +131,13 @@ func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
 	return opts, nil
 }
 
-func parseGenres(raw string) ([]domain.SeriesGenre, error) {
+func parseGenres(raw string) ([]string, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, nil
 	}
 
 	parts := strings.Split(raw, ",")
-	genres := make([]domain.SeriesGenre, 0, len(parts))
+	genres := make([]string, 0, len(parts))
 
 	for _, part := range parts {
 		genre := strings.TrimSpace(part)
@@ -134,11 +145,7 @@ func parseGenres(raw string) ([]domain.SeriesGenre, error) {
 			continue
 		}
 
-		if !domain.IsSeriesGenre(genre) {
-			return nil, fmt.Errorf("invalid genre %q", genre)
-		}
-
-		genres = append(genres, domain.SeriesGenre(genre))
+		genres = append(genres, string(genre))
 	}
 
 	return genres, nil
@@ -162,23 +169,23 @@ func parsePositiveInt(raw string) (int, error) {
 }
 
 type getInfosBySlugResDTO struct {
-	LastChapterAt time.Time            `json:"lastChapterAt"`
-	UpdatedAt     time.Time            `json:"updatedAt"`
-	CreatedAt     time.Time            `json:"createdAt"`
-	Description   string               `json:"description"`
-	Title         string               `json:"title"`
-	Cover         string               `json:"cover"`
-	Status        domain.SeriesStatus  `json:"status"`
-	Type          domain.SeriesType    `json:"type"`
-	Author        string               `json:"author"`
-	Artist        string               `json:"artist"`
-	SourceURL     string               `json:"sourceUrl"`
-	PublicURL     string               `json:"publicUrl"`
-	Slug          string               `json:"slug"`
-	AltTitles     []string             `json:"altTitles"`
-	Genres        []domain.SeriesGenre `json:"genres"`
-	ChapterCount  int                  `json:"chapterCount"`
-	Rating        float64              `json:"rating"`
+	LastChapterAt time.Time          `json:"lastChapterAt"`
+	UpdatedAt     time.Time          `json:"updatedAt"`
+	CreatedAt     time.Time          `json:"createdAt"`
+	Description   string             `json:"description"`
+	Title         string             `json:"title"`
+	Cover         string             `json:"cover"`
+	Status        sources.SeriesStatus `json:"status"`
+	Type          sources.SeriesType   `json:"type"`
+	Author        string             `json:"author"`
+	Artist        string             `json:"artist"`
+	SourceURL     string             `json:"sourceUrl"`
+	PublicURL     string             `json:"publicUrl"`
+	Slug          string             `json:"slug"`
+	AltTitles     []string           `json:"altTitles"`
+	Genres        []string           `json:"genres"`
+	ChapterCount  int                `json:"chapterCount"`
+	Rating        float64            `json:"rating"`
 }
 
 type getChaptersListBySeriesResItemDTO struct {

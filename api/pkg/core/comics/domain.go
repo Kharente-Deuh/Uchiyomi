@@ -7,64 +7,47 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 )
 
 type Comic struct {
+	ID           uuid.UUID
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	Artist       string
-	Type         ComicType
+	Type         sources.SeriesType
 	Description  string
-	CoverPath    string
-	Source       string
+	Source       sources.SourceName
 	Author       string
-	Status       ComicStatus
+	Status       sources.SeriesStatus
 	Slug         string
 	Title        string
 	Genres       []string
 	AltTitles    []string
 	ChapterCount int
-	ID           uuid.UUID
 }
 
-type ComicType string
-
-const (
-	ComicTypeManga     ComicType = "manga"
-	ComicTypeMangatoon ComicType = "mangatoon"
-	ComicTypeManhua    ComicType = "manhua"
-	ComicTypeManhwa    ComicType = "manhwa"
-)
-
-type ComicStatus string
-
-const (
-	ComicStatusOngoing   ComicStatus = "ongoing"
-	ComicStatusCompleted ComicStatus = "completed"
-	ComicStatusHiatus    ComicStatus = "hiatus"
-	ComicStatusCancelled ComicStatus = "cancelled"
-	ComicStatusDropped   ComicStatus = "dropped"
-)
-
-type SourceSlugKey struct {
-	Source string
+type GetBySourceSlugOpts struct {
+	UserID uuid.UUID
+	Source sources.SourceName
 	Slug   string
 }
 
 type ComicsRepository interface {
-	GetByID(context.Context, uuid.UUID) (*Comic, error)
-	GetBySourceSlug(context.Context, SourceSlugKey) (*Comic, error)
+	GetByID(context.Context, GetByIDOpts) (*Comic, error)
+	GetBySourceSlug(context.Context, GetBySourceSlugOpts) (*Comic, error)
 	Create(context.Context, CreateComicOpts) (*Comic, error)
-	GetBySlugsAndSource(context.Context, string, []string) ([]Comic, error)
+	GetBySlugsAndSource(context.Context, sources.SourceName, []string) ([]Comic, error)
 	Delete(context.Context, uuid.UUID) error
+	GetMany(context.Context, GetManyOpts) ([]Comic, error)
 }
 
 type CreateComicOpts struct {
-	Status       ComicStatus
-	Type         ComicType
+	Status       sources.SeriesStatus
+	Type         sources.SeriesType
 	Description  string
 	CoverPath    string
-	Source       string
+	Source       sources.SourceName
 	Artist       string
 	Slug         string
 	Author       string
@@ -72,4 +55,36 @@ type CreateComicOpts struct {
 	AltTitles    []string
 	Genres       []string
 	ChapterCount int
+}
+
+type ComicsService interface {
+	Create(context.Context, CreateOpts) (*Comic, error)
+	GetByID(context.Context, GetByIDOpts) (*Comic, error)
+	GetMany(context.Context, GetManyOpts) ([]Comic, error)
+	Delete(context.Context, DeleteOpts) error
+}
+
+type CreateOpts struct {
+	Source sources.SourceName
+	Slug   string
+	UserID uuid.UUID
+}
+
+type GetByIDOpts struct {
+	UserID uuid.UUID
+	ID     uuid.UUID
+}
+
+type GetManyOpts struct {
+	UserID *uuid.UUID
+	Source *sources.SourceName
+	Type   *sources.SeriesType
+	Status *sources.SeriesStatus
+	Limit  int
+	Offset int
+}
+
+type DeleteOpts struct {
+	UserID uuid.UUID
+	ID     uuid.UUID
 }

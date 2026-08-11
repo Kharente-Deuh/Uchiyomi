@@ -23,8 +23,8 @@ func TestSearchOptsCacheKeyIsInjective(t *testing.T) {
 		same bool
 	}{
 		"genres split differently": {
-			a: domain.SearchOpts{Genres: []domain.SeriesGenre{"Slice", "of", "Life"}},
-			b: domain.SearchOpts{Genres: []domain.SeriesGenre{"Slice of Life"}},
+			a: domain.SearchOpts{Genres: []string{"Slice", "of", "Life"}},
+			b: domain.SearchOpts{Genres: []string{"Slice of Life"}},
 		},
 		"adjacent text fields offset": {
 			a: domain.SearchOpts{Status: "ongoing", Type: "manga"},
@@ -32,21 +32,21 @@ func TestSearchOptsCacheKeyIsInjective(t *testing.T) {
 		},
 		"empty search vs homonym genre": {
 			a: domain.SearchOpts{Search: testGenreAction},
-			b: domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreAction}},
+			b: domain.SearchOpts{Genres: []string{testGenreAction}},
 		},
 		"genre order irrelevant": {
-			a:    domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreAction, testGenreDrama}},
-			b:    domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreDrama, testGenreAction}},
+			a:    domain.SearchOpts{Genres: []string{testGenreAction, testGenreDrama}},
+			b:    domain.SearchOpts{Genres: []string{testGenreDrama, testGenreAction}},
 			same: true,
 		},
 		"repeated genre irrelevant": {
-			a:    domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreAction, testGenreAction}},
-			b:    domain.SearchOpts{Genres: []domain.SeriesGenre{testGenreAction}},
+			a:    domain.SearchOpts{Genres: []string{testGenreAction, testGenreAction}},
+			b:    domain.SearchOpts{Genres: []string{testGenreAction}},
 			same: true,
 		},
 		"nil and empty slice equivalent": {
 			a:    domain.SearchOpts{Genres: nil},
-			b:    domain.SearchOpts{Genres: []domain.SeriesGenre{}},
+			b:    domain.SearchOpts{Genres: []string{}},
 			same: true,
 		},
 	}
@@ -71,7 +71,7 @@ func TestSearchOptsCacheKeyIsInjective(t *testing.T) {
 func TestSearchOptsCacheKeyDoesNotMutateGenres(t *testing.T) {
 	t.Parallel()
 
-	genres := []domain.SeriesGenre{testGenreDrama, testGenreAction}
+	genres := []string{testGenreDrama, testGenreAction}
 	opts := domain.SearchOpts{Genres: genres}
 
 	_ = opts.CacheKey()
@@ -87,7 +87,7 @@ func TestSearchOptsCacheKeyDistinguishesEveryField(t *testing.T) {
 	base := domain.SearchOpts{
 		Offset: 1, Limit: 2, Search: "s", Sort: domain.SortTypeLatest,
 		SortOrder: domain.SortOrderAsc, Status: "st", Type: "ty", Artist: "ar",
-		Genres: []domain.SeriesGenre{"g"}, MinChapters: 3,
+		Genres: []string{"g"}, MinChapters: 3,
 	}
 
 	variants := map[string]domain.SearchOpts{

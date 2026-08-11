@@ -23,14 +23,18 @@ import (
 	httpoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	sessionshttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
+	httpcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
+	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	healthhttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	httasura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
@@ -248,6 +252,54 @@ func (fakeOIDCProvidersService) Probe(context.Context, string) (*oidcproviders.P
 	return nil, errors.New(notImplemented)
 }
 
+type stubComicsRepository struct{}
+
+func (stubComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetBySourceSlug(
+	context.Context, comics.GetBySourceSlugOpts,
+) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetBySlugsAndSource(
+	context.Context, sources.SourceName, []string,
+) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (stubComicsRepository) Delete(context.Context, uuid.UUID) error {
+	return coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+type fakeComicsService struct{}
+
+func (fakeComicsService) Create(context.Context, comics.CreateOpts) (*comics.Comic, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeComicsService) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeComicsService) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeComicsService) Delete(context.Context, comics.DeleteOpts) error {
+	return errors.New(notImplemented)
+}
+
 func newTestCache[P any, T any](t *testing.T, name string, logger *slog.Logger) *fncache.Cache[P, T] {
 	t.Helper()
 
@@ -274,19 +326,25 @@ func newTestCache[P any, T any](t *testing.T, name string, logger *slog.Logger) 
 func newTestAsura(t *testing.T, logger *slog.Logger) *asura.App {
 	t.Helper()
 
-	app, err := asura.New(asura.Dependencies{
-		Logger:      logger,
-		SearchCache: newTestCache[asuradomain.SearchOpts, asuradomain.SearchResult](t, "search", logger),
-		GetInfosBySlugCache: newTestCache[string, asuradomain.GetInfosBySlugResponse](
-			t, "infos", logger,
-		),
-		GetChaptersListBySeriesCache: newTestCache[string, []asuradomain.Chapter](
-			t, "chapters", logger,
-		),
-		GetImageURLsByChapter: newTestCache[asuradomain.GetImageURLsByChapterOpts, []string](
-			t, "images", logger,
-		),
-	})
+	app, err := asura.New(
+		asura.Config{SourceName: sources.SourceAsuraScans},
+		asura.Deps{
+			Logger: logger,
+			SearchCache: newTestCache[asuradomain.SearchCacheOpts, asuradomain.SearchCacheResult](
+				t, "search", logger,
+			),
+			GetInfosBySlugCache: newTestCache[string, asuradomain.GetInfosBySlugResponse](
+				t, "infos", logger,
+			),
+			GetChaptersListBySeriesCache: newTestCache[string, []asuradomain.Chapter](
+				t, "chapters", logger,
+			),
+			GetImageURLsByChapter: newTestCache[asuradomain.GetImageURLsByChapterOpts, []string](
+				t, "images", logger,
+			),
+			ComicsRepository: stubComicsRepository{},
+		},
+	)
 	if err != nil {
 		t.Fatalf("asura.New: %v", err)
 	}
@@ -389,6 +447,14 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("httpoidcproviders.New: %v", err)
 	}
 
+	comicsCtrl, err := httpcomics.New(
+		httpcomics.Config{Endpoint: "/comics"},
+		httpcomics.Deps{Logger: logger, ComicsService: fakeComicsService{}},
+	)
+	if err != nil {
+		t.Fatalf("httpcomics.New: %v", err)
+	}
+
 	app, err := New(
 		Config{ServerPort: port, AllowedOrigins: []string{"*"}},
 		Deps{
@@ -400,6 +466,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			CoversCtrl:        coversCtrl,
 			HealthCtrl:        healthCtrl,
 			OIDCProvidersCtrl: oidcProvidersCtrl,
+			ComicsCtrl:        comicsCtrl,
 			Logger:            logger,
 			Health:            registry,
 			Asura:             asuraApp,

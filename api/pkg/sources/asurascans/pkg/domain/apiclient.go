@@ -8,135 +8,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 )
 
 type ApiClient interface {
-	Search(context.Context, SearchOpts) (*SearchResult, error)
+	Search(context.Context, SearchCacheOpts) (*SearchCacheResult, error)
 	GetInfosBySlug(context.Context, string) (*GetInfosBySlugResponse, error)
 	GetChaptersListBySerie(context.Context, string) (*[]Chapter, error)
 	GetImageURLsByChapter(context.Context, GetImageURLsByChapterOpts) (*[]string, error)
-}
-
-type SeriesType string
-
-const (
-	SeriesTypeManga     SeriesType = "manga"
-	SeriesTypeMangatoon SeriesType = "mangatoon"
-	SeriesTypeManhua    SeriesType = "manhua"
-	SeriesTypeManhwa    SeriesType = "manhwa"
-)
-
-func IsSeriesType(s string) bool {
-	values := []SeriesType{
-		SeriesTypeManga,
-		SeriesTypeMangatoon,
-		SeriesTypeManhua,
-		SeriesTypeManhwa,
-	}
-
-	return slices.Contains(values, SeriesType(s))
-}
-
-type SeriesGenre string
-
-const (
-	SeriesGenreAction        SeriesGenre = "action"
-	SeriesGenreAdventure     SeriesGenre = "adventure"
-	SeriesGenreComedy        SeriesGenre = "comedy"
-	SeriesGenreCrazyMc       SeriesGenre = "crazy-mc"
-	SeriesGenreDarkFantasy   SeriesGenre = "dark-fantasy"
-	SeriesGenreDemon         SeriesGenre = "demon"
-	SeriesGenreDrama         SeriesGenre = "drama"
-	SeriesGenreDungeons      SeriesGenre = "dungeons"
-	SeriesGenreFantasy       SeriesGenre = "fantasy"
-	SeriesGenreGame          SeriesGenre = "game"
-	SeriesGenreGeniusMc      SeriesGenre = "genius-mc"
-	SeriesGenreIsekai        SeriesGenre = "isekai"
-	SeriesGenreKuchikuchi    SeriesGenre = "kuchikuchi"
-	SeriesGenreMagic         SeriesGenre = "magic"
-	SeriesGenreMartialArts   SeriesGenre = "martial-arts"
-	SeriesGenreMurim         SeriesGenre = "murim"
-	SeriesGenreMystery       SeriesGenre = "mystery"
-	SeriesGenreNecromancer   SeriesGenre = "necromancer"
-	SeriesGenreOverpowered   SeriesGenre = "overpowered"
-	SeriesGenrePsychological SeriesGenre = "psychological"
-	SeriesGenreRegression    SeriesGenre = "regression"
-	SeriesGenreReincarnation SeriesGenre = "reincarnation"
-	SeriesGenreRevenge       SeriesGenre = "revenge"
-	SeriesGenreRomance       SeriesGenre = "romance"
-	SeriesGenreSchoolLife    SeriesGenre = "school-life"
-	SeriesGenreSciFi         SeriesGenre = "sci-fi"
-	SeriesGenreShoujo        SeriesGenre = "shoujo"
-	SeriesGenreShounen       SeriesGenre = "shounen"
-	SeriesGenreSystem        SeriesGenre = "system"
-	SeriesGenreTower         SeriesGenre = "tower"
-	SeriesGenreTragedy       SeriesGenre = "tragedy"
-	SeriesGenreVillain       SeriesGenre = "villain"
-	SeriesGenreViolence      SeriesGenre = "violence"
-)
-
-func IsSeriesGenre(s string) bool {
-	values := []SeriesGenre{
-		SeriesGenreAction,
-		SeriesGenreAdventure,
-		SeriesGenreComedy,
-		SeriesGenreCrazyMc,
-		SeriesGenreDarkFantasy,
-		SeriesGenreDemon,
-		SeriesGenreDrama,
-		SeriesGenreDungeons,
-		SeriesGenreFantasy,
-		SeriesGenreGame,
-		SeriesGenreGeniusMc,
-		SeriesGenreIsekai,
-		SeriesGenreKuchikuchi,
-		SeriesGenreMagic,
-		SeriesGenreMartialArts,
-		SeriesGenreMurim,
-		SeriesGenreMystery,
-		SeriesGenreNecromancer,
-		SeriesGenreOverpowered,
-		SeriesGenrePsychological,
-		SeriesGenreRegression,
-		SeriesGenreReincarnation,
-		SeriesGenreRevenge,
-		SeriesGenreRomance,
-		SeriesGenreSchoolLife,
-		SeriesGenreSciFi,
-		SeriesGenreShoujo,
-		SeriesGenreShounen,
-		SeriesGenreSystem,
-		SeriesGenreTower,
-		SeriesGenreTragedy,
-		SeriesGenreVillain,
-		SeriesGenreViolence,
-	}
-
-	return slices.Contains(values, SeriesGenre(s))
-}
-
-type SeriesStatus string
-
-const (
-	SeriesStatusOngoing   SeriesStatus = "ongoing"
-	SeriesStatusCompleted SeriesStatus = "completed"
-	SeriesStatusHiatus    SeriesStatus = "hiatus"
-	SeriesStatusCancelled SeriesStatus = "cancelled"
-	SeriesStatusDropped   SeriesStatus = "dropped"
-	SeriesStatusNone      SeriesStatus = ""
-)
-
-func IsSeriesStatus(s string) bool {
-	values := []SeriesStatus{
-		SeriesStatusOngoing,
-		SeriesStatusCompleted,
-		SeriesStatusHiatus,
-		SeriesStatusCancelled,
-		SeriesStatusDropped,
-		SeriesStatusNone,
-	}
-
-	return slices.Contains(values, SeriesStatus(s))
 }
 
 type SortType string
@@ -187,10 +66,10 @@ type SearchCacheOpts struct {
 	Search      string
 	Sort        SortType
 	SortOrder   SortOrder
-	Status      SeriesStatus
-	Type        SeriesType
+	Status      sources.SeriesStatus
+	Type        sources.SeriesType
 	Artist      string
-	Genres      []SeriesGenre
+	Genres      []string
 	Offset      int
 	Limit       int
 	MinChapters int
@@ -200,10 +79,10 @@ type SearchOpts struct {
 	Search      string
 	Sort        SortType
 	SortOrder   SortOrder
-	Status      SeriesStatus
-	Type        SeriesType
+	Status      sources.SeriesStatus
+	Type        sources.SeriesType
 	Artist      string
-	Genres      []SeriesGenre
+	Genres      []string
 	Offset      int
 	Limit       int
 	MinChapters int
@@ -233,15 +112,15 @@ type SearchResultItem struct {
 	PublicURL      string
 	SourceURL      string
 	Cover          string
-	Status         SeriesStatus
-	Type           SeriesType
+	Status         sources.SeriesStatus
+	Type           sources.SeriesType
 	Author         string
 	Artist         string
 	Description    string
 	Slug           string
 	Title          string
 	AltTitles      []string
-	Genres         []SeriesGenre
+	Genres         []string
 	LatestChapters []SearchResultItemChapter
 	ChapterCount   int
 	ID             int
@@ -257,15 +136,15 @@ type SearchCacheResultItem struct {
 	PublicURL      string
 	SourceURL      string
 	Cover          string
-	Status         SeriesStatus
-	Type           SeriesType
+	Status         sources.SeriesStatus
+	Type           sources.SeriesType
 	Author         string
 	Artist         string
 	Description    string
 	Slug           string
 	Title          string
 	AltTitles      []string
-	Genres         []SeriesGenre
+	Genres         []string
 	LatestChapters []SearchResultItemChapter
 	ChapterCount   int
 	ID             int
@@ -314,17 +193,39 @@ type GetInfosBySlugResponse struct {
 	Description   string
 	Title         string
 	Cover         string
-	Status        SeriesStatus
-	Type          SeriesType
+	Status        sources.SeriesStatus
+	Type          sources.SeriesType
 	Author        string
 	Artist        string
 	SourceURL     string
 	PublicURL     string
 	Slug          string
 	AltTitles     []string
-	Genres        []SeriesGenre
+	Genres        []string
 	ChapterCount  int
 	Rating        float64
+}
+
+func (r *GetInfosBySlugResponse) Source() sources.GetInfosBySlugResponse {
+	return sources.GetInfosBySlugResponse{
+		LastChapterAt: r.LastChapterAt,
+		UpdatedAt:     r.UpdatedAt,
+		CreatedAt:     r.CreatedAt,
+		Description:   r.Description,
+		Title:         r.Title,
+		Cover:         r.Cover,
+		Status:        r.Status,
+		Type:          r.Type,
+		Author:        r.Author,
+		Artist:        r.Artist,
+		SourceURL:     r.SourceURL,
+		PublicURL:     r.PublicURL,
+		Slug:          r.Slug,
+		AltTitles:     r.AltTitles,
+		Genres:        r.Genres,
+		ChapterCount:  r.ChapterCount,
+		Rating:        r.Rating,
+	}
 }
 
 type Chapter struct {

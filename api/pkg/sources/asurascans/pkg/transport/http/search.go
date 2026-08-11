@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
@@ -76,7 +77,7 @@ func (c *Client) builSearchQuery(opts domain.SearchCacheOpts) string {
 	if len(withDefaults.Genres) > 0 {
 		q.Add("genres", strings.Join(utils.MapSlice(
 			withDefaults.Genres,
-			func(g domain.SeriesGenre) string {
+			func(g string) string {
 				return string(g)
 			}),
 			","))
@@ -116,9 +117,9 @@ func (r *searchHTTPResponse) Domain() *domain.SearchCacheResult {
 
 	items := make([]domain.SearchCacheResultItem, len(r.Data))
 	for i, data := range r.Data {
-		genres := make([]domain.SeriesGenre, len(data.Genres))
+		genres := make([]string, len(data.Genres))
 		for j, g := range data.Genres {
-			genres[j] = domain.SeriesGenre(g.Slug)
+			genres[j] = string(g.Slug)
 		}
 
 		latestChapters := make([]domain.SearchResultItemChapter, len(r.Data[i].LatestChapters))
@@ -139,8 +140,8 @@ func (r *searchHTTPResponse) Domain() *domain.SearchCacheResult {
 			AltTitles:      data.AltTitles,
 			Description:    data.Description,
 			Cover:          data.Cover,
-			Status:         domain.SeriesStatus(data.Status),
-			Type:           domain.SeriesType(data.Type),
+			Status:         sources.SeriesStatus(data.Status),
+			Type:           sources.SeriesType(data.Type),
 			Author:         data.Author,
 			Artist:         data.Artist,
 			Rating:         data.Rating,

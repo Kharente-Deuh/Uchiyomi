@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 )
 
@@ -49,9 +50,9 @@ type getInfosBySlugHttpResponse struct {
 }
 
 func (r *getInfosBySlugHttpResponse) Domain() *domain.GetInfosBySlugResponse {
-	genres := make([]domain.SeriesGenre, len(r.Series.Genres))
+	genres := make([]string, len(r.Series.Genres))
 	for i, g := range r.Series.Genres {
-		genres[i] = domain.SeriesGenre(g.Slug)
+		genres[i] = string(g.Slug)
 	}
 
 	return &domain.GetInfosBySlugResponse{
@@ -60,8 +61,8 @@ func (r *getInfosBySlugHttpResponse) Domain() *domain.GetInfosBySlugResponse {
 		AltTitles:     r.Series.AltTitles,
 		Description:   r.Series.Description,
 		Cover:         r.Series.Cover,
-		Status:        domain.SeriesStatus(r.Series.Status),
-		Type:          domain.SeriesType(r.Series.Type),
+		Status:        sources.SeriesStatus(r.Series.Status),
+		Type:          sources.SeriesType(r.Series.Type),
 		Author:        r.Series.Author,
 		Artist:        r.Series.Artist,
 		Rating:        r.Series.Rating,

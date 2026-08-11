@@ -12,9 +12,11 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgmodels"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var _ comics.ComicsRepository = (*PGComicsRepository)(nil)
@@ -49,8 +51,12 @@ func (r *PGComicsRepository) db(ctx context.Context) gorm.Interface[pgmodels.Com
 	return gorm.G[pgmodels.Comic](pgtx.From(ctx, r.deps.DB))
 }
 
-func (r *PGComicsRepository) GetByID(ctx context.Context, id uuid.UUID) (*comics.Comic, error) {
-	model, err := r.db(ctx).Where("id = ?", id).First(ctx)
+func (r *PGComicsRepository) GetByID(ctx context.Context, opts comics.GetByIDOpts) (*comics.Comic, error) {
+	model, err := r.db(ctx).
+		Joins(clause.JoinTarget{Association: "LibraryEntries"}, nil).
+		Where("comics.id = ? AND library_entries.user_id = ?", opts.ID, opts.UserID).
+		First(ctx)
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrNotFound
@@ -64,8 +70,11 @@ func (r *PGComicsRepository) GetByID(ctx context.Context, id uuid.UUID) (*comics
 	return &ret, nil
 }
 
-func (r *PGComicsRepository) GetBySourceSlug(ctx context.Context, key comics.SourceSlugKey) (*comics.Comic, error) {
-	model, err := r.db(ctx).Where("source = ? AND slug = ?", key.Source, key.Slug).First(ctx)
+func (r *PGComicsRepository) GetBySourceSlug(ctx context.Context, opts comics.GetBySourceSlugOpts) (*comics.Comic, error) {
+	model, err := r.db(ctx).
+		Joins(clause.JoinTarget{Association: "LibraryEntries"}, nil).
+		Where("comics.slug = ? AND comics.source = ? AND library_entries.user_id = ?", opts.Slug, opts.Source, opts.UserID).
+		First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrNotFound
@@ -95,7 +104,6 @@ func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComic
 		Artist:       opts.Artist,
 		Description:  opts.Description,
 		AltTitles:    pq.StringArray(opts.AltTitles),
-		CoverPath:    opts.CoverPath,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
@@ -114,8 +122,43 @@ func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComic
 	return &ret, nil
 }
 
+func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpts) ([]comics.Comic, error) {
+	q := r.db(ctx).Joins(clause.JoinTarget{Association: "LibraryEntries"}, nil).Order("comics.created_at DESC")
+	if opts.UserID != nil {
+		q = q.Where("library_entries.user_id = ?", opts.UserID)
+	}
+
+	if opts.Source != nil {
+		q = q.Where("comics.source = ?", opts.Source)
+	}
+
+	if opts.Type != nil {
+		q = q.Where("comics.type = ?", opts.Type)
+	}
+
+	if opts.Status != nil {
+		q = q.Where("comics.status = ?", opts.Status)
+	}
+
+	models, err := q.Offset(opts.Offset).Limit(opts.Limit).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := make([]comics.Comic, len(models))
+	for i, model := range models {
+		ret[i] = model.Domain()
+	}
+
+	return ret, nil
+}
+
 // nolint:lll
-func (r *PGComicsRepository) GetBySlugsAndSource(ctx context.Context, source string, slugs []string) ([]comics.Comic, error) {
+func (r *PGComicsRepository) GetBySlugsAndSource(
+	ctx context.Context,
+	source sources.SourceName,
+	slugs []string,
+) ([]comics.Comic, error) {
 	models, err := r.db(ctx).Where("source = ? AND slug IN (?)", source, slugs).Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)

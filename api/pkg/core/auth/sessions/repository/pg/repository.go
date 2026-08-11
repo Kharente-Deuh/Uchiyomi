@@ -75,10 +75,7 @@ func (r *PGSessionsRepository) Insert(ctx context.Context, opts sessions.InsertS
 
 //nolint:lll
 func (r *PGSessionsRepository) GetByTokenHash(ctx context.Context, hash []byte) (*sessions.Session, *users.User, error) {
-	model, err := r.db(ctx).
-		Joins(clause.JoinTarget{Association: "User"}, nil).
-		Where("sessions.token_hash = ?", hash).
-		First(ctx)
+	model, err := r.db(ctx).Joins(clause.JoinTarget{Association: "User"}, nil).Where("sessions.token_hash = ?", hash).First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, domain.ErrNotFound
