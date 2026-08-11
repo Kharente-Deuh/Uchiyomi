@@ -205,5 +205,11 @@
   "role": {
     "admin": "Admin",
     "user": "User"
+  },
+  "sources": {
+    "title": "Sources"
+  },
+  "browse": {
+    "title": "Browse"
   }
 }

@@ -50,17 +50,25 @@ const isStickyHeader = computed(() => props.stickyHeader && mobile.value)
     >
       <div class="d-flex align-center ga-4 text-truncate">
         <div v-if="backRoutes?.length" class="d-flex ga-4 align-center">
-          <template v-for="({ to, name }, i) of backRoutes" :key="i">
-            <AtomLink :to>
-              <span
-                class="text-primary-hover text-underline-hover font-title"
-                :class="{
-                  'text-title-large': !mobile,
-                  'text-title-medium': mobile,
-                }"
-              >{{ name }}</span>
-            </AtomLink>
-            <span class="opacity-50 text-title-large">/</span>
+          <AtomLink v-if="mobile" :to="backRoutes.at(-1)?.to">
+            <VIcon icon="fa6-solid:angle-left" size="large" />
+          </AtomLink>
+          <template v-else>
+            <template
+              v-for="({ to, name }, i) of backRoutes"
+              :key="i"
+            >
+              <AtomLink :to>
+                <span
+                  class="text-primary-hover text-underline-hover font-title"
+                  :class="{
+                    'text-title-large': !mobile,
+                    'text-title-medium': mobile,
+                  }"
+                >{{ name }}</span>
+              </AtomLink>
+              <span class="opacity-50 text-title-large">/</span>
+            </template>
           </template>
         </div>
 
