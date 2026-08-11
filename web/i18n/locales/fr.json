@@ -205,5 +205,8 @@
   "role": {
     "admin": "Administrateur",
     "user": "Utilisateur"
+  },
+  "browse": {
+    "title": "Parcourir"
   }
 }

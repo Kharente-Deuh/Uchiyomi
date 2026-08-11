@@ -40,12 +40,30 @@ const settingsNavItems = computed((): NavigationDrawerListItemProps[] => {
 
 const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
   {
+    title: t('browse.title'),
+    items: [
+      {
+        title: t('sources.title'),
+        to: '/browse/sources',
+        icon: 'fa6-solid:boxes-stacked',
+        isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse/sources'),
+        baseRoute: '/browse/sources',
+      },
+    ],
+  },
+  {
     title: t('nav.settings.title'),
     items: settingsNavItems.value,
   },
 ])
 
 const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
+  {
+    to: '/browse',
+    icon: 'fa6-solid:compass',
+    isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/browse'),
+    baseRoute: '/browse',
+  },
   {
     to: '/settings',
     icon: 'fa6-solid:gear',
