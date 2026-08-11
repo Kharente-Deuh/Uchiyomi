@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 )
 
 type User struct {
@@ -21,4 +22,14 @@ type User struct {
 
 func (User) TableName() string {
 	return "users"
+}
+
+func (u *User) Domain() users.User {
+	return users.User{
+		ID:        u.ID,
+		Name:      u.Name,
+		IsAdmin:   u.IsAdmin,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}
 }

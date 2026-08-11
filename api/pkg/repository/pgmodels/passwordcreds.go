@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/password"
 )
 
 type PasswordCreds struct {
@@ -17,4 +18,12 @@ type PasswordCreds struct {
 
 func (PasswordCreds) TableName() string {
 	return "password_credentials"
+}
+
+func (p *PasswordCreds) Domain() password.PasswordCreds {
+	return password.PasswordCreds{
+		UserID:    p.UserID,
+		Hash:      p.Hash,
+		UpdatedAt: p.UpdatedAt,
+	}
 }

@@ -46,7 +46,7 @@ func (c *Client) GetImageURLsByChapter(ctx context.Context, opts domain.GetImage
 		return nil, fmt.Errorf("json.Decode: %w", err)
 	}
 
-	urls := parsed.ToDomain()
+	urls := parsed.Domain()
 
 	return &urls, nil
 }
@@ -127,7 +127,7 @@ type getChapterHttpResponse struct {
 	} `json:"data"`
 }
 
-func (c *getChapterHttpResponse) ToDomain() []string {
+func (c *getChapterHttpResponse) Domain() []string {
 	urls := make([]string, len(c.Data.Chapter.Pages))
 	for i, p := range c.Data.Chapter.Pages {
 		urls[i] = p.URL

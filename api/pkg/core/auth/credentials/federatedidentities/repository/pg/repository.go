@@ -73,7 +73,7 @@ func (r *PGFederatedIdentitiesRepository) Create(ctx context.Context, opts feder
 		return nil, fmt.Errorf("r.db(ctx).Create: %w", err)
 	}
 
-	fi := r.modelToDomain(*model)
+	fi := model.Domain()
 
 	return &fi, nil
 }
@@ -93,7 +93,7 @@ func (r *PGFederatedIdentitiesRepository) Get(ctx context.Context, opts federate
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	fi := r.modelToDomain(model)
+	fi := model.Domain()
 
 	return &fi, nil
 }
@@ -155,23 +155,8 @@ func (r *PGFederatedIdentitiesRepository) ListDueForRevalidation(
 
 	out := make([]federatedidentities.FederatedIdentity, len(models))
 	for i, model := range models {
-		out[i] = r.modelToDomain(model)
+		out[i] = model.Domain()
 	}
 
 	return out, nil
-}
-
-//nolint:lll
-func (r *PGFederatedIdentitiesRepository) modelToDomain(model pgmodels.FederatedIdentity) federatedidentities.FederatedIdentity {
-	return federatedidentities.FederatedIdentity{
-		ID:              model.ID,
-		UserID:          model.UserID,
-		ProviderID:      model.ProviderID,
-		Subject:         model.Subject,
-		Claims:          model.Claims,
-		RefreshTokenEnc: model.RefreshTokenEnc,
-		LastValidatedAt: model.LastValidatedAt,
-		LastLoginAt:     model.LastLoginAt,
-		CreatedAt:       model.CreatedAt,
-	}
 }

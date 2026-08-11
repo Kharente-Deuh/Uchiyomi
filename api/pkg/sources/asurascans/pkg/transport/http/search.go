@@ -46,7 +46,7 @@ func (c *Client) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Se
 		return nil, fmt.Errorf("json.Decode: %w", err)
 	}
 
-	return parsedResult.ToDomain(), nil
+	return parsedResult.Domain(), nil
 }
 
 func (c *Client) builSearchQuery(opts domain.SearchOpts) string {
@@ -107,7 +107,7 @@ type searchHTTPResponse struct {
 	Meta searchHTTPResponseMeta   `json:"meta"`
 }
 
-func (r *searchHTTPResponse) ToDomain() *domain.SearchResult {
+func (r *searchHTTPResponse) Domain() *domain.SearchResult {
 	meta := domain.SearchResultMeta{
 		Total:   r.Meta.Total,
 		PerPage: r.Meta.PerPage,
@@ -168,7 +168,7 @@ type searchHTTPResponseMeta struct {
 	HasMore bool `json:"has_more"`
 }
 
-func (meta *searchHTTPResponseMeta) ToDomain() domain.SearchResultMeta {
+func (meta *searchHTTPResponseMeta) Domain() domain.SearchResultMeta {
 	return domain.SearchResultMeta{
 		Total:   meta.Total,
 		PerPage: meta.PerPage,

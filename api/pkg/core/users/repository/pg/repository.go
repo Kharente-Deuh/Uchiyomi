@@ -67,7 +67,7 @@ func (r *PGUsersRepository) GetByID(ctx context.Context, id uuid.UUID) (*users.U
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	ret := r.modelToDomain(user)
+	ret := user.Domain()
 
 	return &ret, nil
 }
@@ -90,7 +90,7 @@ func (r *PGUsersRepository) Create(ctx context.Context, opts users.CreateUserOpt
 		return nil, fmt.Errorf("r.db(ctx).Create: %w", err)
 	}
 
-	user := r.modelToDomain(*model)
+	user := model.Domain()
 
 	return &user, nil
 }
@@ -105,7 +105,7 @@ func (r *PGUsersRepository) GetByUsername(ctx context.Context, name string) (*us
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	ret := r.modelToDomain(user)
+	ret := user.Domain()
 
 	return &ret, nil
 }
@@ -125,17 +125,7 @@ func (r *PGUsersRepository) Update(ctx context.Context, opts users.UpdateUserOpt
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	ret := r.modelToDomain(user)
+	ret := user.Domain()
 
 	return &ret, nil
-}
-
-func (r *PGUsersRepository) modelToDomain(model pgmodels.User) users.User {
-	return users.User{
-		ID:        model.ID,
-		Name:      model.Name,
-		IsAdmin:   model.IsAdmin,
-		CreatedAt: model.CreatedAt,
-		UpdatedAt: model.UpdatedAt,
-	}
 }

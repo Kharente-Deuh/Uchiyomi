@@ -174,8 +174,6 @@ func TestCreate(t *testing.T) {
 		Artist:       "Dubu",
 		Description:  "desc",
 		AltTitles:    []string{"Na Honjaman Level Up"},
-		Rating:       9.5,
-		ReleaseYear:  2018,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)

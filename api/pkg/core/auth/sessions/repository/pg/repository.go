@@ -68,7 +68,7 @@ func (r *PGSessionsRepository) Insert(ctx context.Context, opts sessions.InsertS
 		return nil, fmt.Errorf("r.db(ctx).Create: %w", err)
 	}
 
-	session := r.modelToDomain(*model)
+	session := model.Domain()
 
 	return &session, nil
 }
@@ -87,14 +87,8 @@ func (r *PGSessionsRepository) GetByTokenHash(ctx context.Context, hash []byte) 
 		return nil, nil, fmt.Errorf("r.db(ctx).First: %w", err)
 	}
 
-	session := r.modelToDomain(model)
-	user := users.User{
-		ID:        model.User.ID,
-		Name:      model.User.Name,
-		IsAdmin:   model.User.IsAdmin,
-		CreatedAt: model.User.CreatedAt,
-		UpdatedAt: model.User.UpdatedAt,
-	}
+	session := model.Domain()
+	user := model.User.Domain()
 
 	return &session, &user, nil
 }
@@ -149,16 +143,4 @@ func (r *PGSessionsRepository) DeleteExpired(ctx context.Context, now time.Time)
 	}
 
 	return int64(deleted), nil
-}
-
-func (r *PGSessionsRepository) modelToDomain(model pgmodels.Session) sessions.Session {
-	return sessions.Session{
-		ID:          model.ID,
-		UserID:      model.UserID,
-		AuthMethod:  sessions.AuthMethod(model.AuthMethod),
-		CreatedAt:   model.CreatedAt,
-		ExpiresAt:   model.ExpiresAt,
-		ProviderID:  model.ProviderID,
-		ProviderSID: model.ProviderSID,
-	}
 }

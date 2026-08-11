@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/lib/pq"
 )
 
@@ -28,4 +29,22 @@ type OIDCProvider struct {
 
 func (OIDCProvider) TableName() string {
 	return "oidc_providers"
+}
+
+func (p *OIDCProvider) Domain() oidcproviders.OIDCProvider {
+	return oidcproviders.OIDCProvider{
+		ID:              p.ID,
+		DisplayName:     p.DisplayName,
+		IssuerURL:       p.IssuerURL,
+		ClientID:        p.ClientID,
+		ClientSecretEnc: p.ClientSecretEnc,
+		Scopes:          p.Scopes,
+		UsernameClaim:   p.UsernameClaim,
+		RoleClaim:       p.RoleClaim,
+		AdminValues:     p.AdminValues,
+		AllowedValues:   p.AllowedValues,
+		AutoProvision:   p.AutoProvision,
+		CreatedAt:       p.CreatedAt,
+		UpdatedAt:       p.UpdatedAt,
+	}
 }

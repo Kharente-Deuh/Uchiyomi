@@ -40,7 +40,7 @@ func (c *Client) GetChaptersListBySerie(ctx context.Context, seriesSlug string) 
 		return nil, fmt.Errorf("json.Decode: %w", err)
 	}
 
-	ch := parsed.ToDomain()
+	ch := parsed.Domain()
 
 	return &ch, nil
 }
@@ -49,7 +49,7 @@ type getSeriesChaptersHttpResponse struct {
 	Chapters []getSeriesChaptersHttpChapter `json:"data"`
 }
 
-func (r *getSeriesChaptersHttpResponse) ToDomain() []domain.Chapter {
+func (r *getSeriesChaptersHttpResponse) Domain() []domain.Chapter {
 	chapters := make([]domain.Chapter, len(r.Chapters))
 	for i, c := range r.Chapters {
 		chapters[i] = domain.Chapter{

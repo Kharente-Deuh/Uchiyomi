@@ -40,7 +40,7 @@ func (c *Client) GetInfosBySlug(ctx context.Context, slug string) (*domain.GetIn
 		return nil, fmt.Errorf("json.Decode: %w", err)
 	}
 
-	return parsed.ToDomain(), nil
+	return parsed.Domain(), nil
 }
 
 type getInfosBySlugHttpResponse struct {
@@ -48,7 +48,7 @@ type getInfosBySlugHttpResponse struct {
 	Series            getInfosBySlugHttpSeries              `json:"series"`
 }
 
-func (r *getInfosBySlugHttpResponse) ToDomain() *domain.GetInfosBySlugResponse {
+func (r *getInfosBySlugHttpResponse) Domain() *domain.GetInfosBySlugResponse {
 	genres := make([]domain.SeriesGenre, len(r.Series.Genres))
 	for i, g := range r.Series.Genres {
 		genres[i] = domain.SeriesGenre(g.Slug)
