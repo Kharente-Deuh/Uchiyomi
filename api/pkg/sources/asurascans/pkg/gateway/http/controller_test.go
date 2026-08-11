@@ -13,7 +13,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
+	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	asurahttp "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
@@ -22,23 +26,53 @@ import (
 
 const testExternalCoverURL = "https://external.example/cover.webp"
 
+type stubComicsRepository struct{}
+
+func (stubComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetBySourceSlug(
+	context.Context, comics.GetBySourceSlugOpts,
+) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetBySlugsAndSource(
+	context.Context, sources.SourceName, []string,
+) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (stubComicsRepository) Delete(context.Context, uuid.UUID) error {
+	return coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
 func newTestAsuraApp(t *testing.T) *asura.App {
 	t.Helper()
 
 	searchCache, err := fncache.New(
-		fncache.Config[domain.SearchOpts, domain.SearchResult]{
+		fncache.Config[domain.SearchCacheOpts, domain.SearchCacheResult]{
 			Name: "search",
-			Fn: func(context.Context, domain.SearchOpts) (*domain.SearchResult, error) {
-				return &domain.SearchResult{
+			Fn: func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
+				return &domain.SearchCacheResult{
 					Meta: domain.SearchResultMeta{Total: 1},
-					Items: []domain.SearchResultItem{{
+					Items: []domain.SearchCacheResultItem{{
 						Slug:  "solo-leveling",
 						Title: "Solo Leveling",
 						Cover: testExternalCoverURL,
 					}},
 				}, nil
 			},
-			Key:           func(domain.SearchOpts) string { return "k" },
+			Key:           func(domain.SearchCacheOpts) string { return "k" },
 			TTL:           time.Minute,
 			ErrorTTL:      time.Minute,
 			FetchTimeout:  time.Minute,
@@ -110,12 +144,13 @@ func newTestAsuraApp(t *testing.T) *asura.App {
 		t.Fatalf("fncache.New(images): %v", err)
 	}
 
-	app, err := asura.New(asura.Dependencies{
+	app, err := asura.New(asura.Config{SourceName: sources.SourceAsuraScans}, asura.Deps{
 		Logger:                       slog.New(slog.DiscardHandler),
 		SearchCache:                  searchCache,
 		GetInfosBySlugCache:          infosCache,
 		GetChaptersListBySeriesCache: chaptersCache,
 		GetImageURLsByChapter:        imagesCache,
+		ComicsRepository:             stubComicsRepository{},
 	})
 	if err != nil {
 		t.Fatalf("asura.New: %v", err)

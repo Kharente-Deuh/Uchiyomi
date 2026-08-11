@@ -12,7 +12,6 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgmodels"
-	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
@@ -61,7 +60,7 @@ func (r *PGOIDCProvidersRepository) GetByID(ctx context.Context, id uuid.UUID) (
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	p := r.modelToDomain(model)
+	p := model.Domain()
 
 	return &p, nil
 }
@@ -77,7 +76,7 @@ func (r *PGOIDCProvidersRepository) GetByIssuerURL(ctx context.Context, issuerUR
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	p := r.modelToDomain(model)
+	p := model.Domain()
 
 	return &p, nil
 }
@@ -98,7 +97,12 @@ func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders
 		return nil, fmt.Errorf("pgtx.From(ctx, r.deps.DB).Scan: %w", err)
 	}
 
-	return utils.MapSlice(rows, r.lightRowToDomain), nil
+	out := make([]oidcproviders.LightOIDCProvider, len(rows))
+	for i, row := range rows {
+		out[i] = row.Domain()
+	}
+
+	return out, nil
 }
 
 //nolint:lll
@@ -117,7 +121,12 @@ func (r *PGOIDCProvidersRepository) GetUsers(ctx context.Context, id uuid.UUID) 
 		return nil, fmt.Errorf("pgtx.From(ctx, r.deps.DB).Scan: %w", err)
 	}
 
-	return utils.MapSlice(rows, r.userRowToDomain), nil
+	out := make([]oidcproviders.OIDCProviderUser, len(rows))
+	for i, row := range rows {
+		out[i] = row.Domain()
+	}
+
+	return out, nil
 }
 
 //nolint:lll
@@ -149,7 +158,7 @@ func (r *PGOIDCProvidersRepository) Create(ctx context.Context, opts oidcprovide
 		return nil, fmt.Errorf("r.db(ctx).Create: %w", err)
 	}
 
-	p := r.modelToDomain(*model)
+	p := model.Domain()
 
 	return &p, nil
 }
@@ -205,6 +214,15 @@ type lightProviderRow struct {
 	UserCount   int64
 }
 
+func (r *lightProviderRow) Domain() oidcproviders.LightOIDCProvider {
+	return oidcproviders.LightOIDCProvider{
+		ID:          r.ID,
+		DisplayName: r.DisplayName,
+		CreatedAt:   r.CreatedAt,
+		UserCount:   r.UserCount,
+	}
+}
+
 type providerUserRow struct {
 	LinkedAt time.Time
 	Username string
@@ -212,38 +230,11 @@ type providerUserRow struct {
 	IsAdmin  bool
 }
 
-func (r *PGOIDCProvidersRepository) userRowToDomain(row providerUserRow) oidcproviders.OIDCProviderUser {
+func (r *providerUserRow) Domain() oidcproviders.OIDCProviderUser {
 	return oidcproviders.OIDCProviderUser{
-		ID:       row.ID,
-		Username: row.Username,
-		LinkedAt: row.LinkedAt,
-		IsAdmin:  row.IsAdmin,
-	}
-}
-
-func (r *PGOIDCProvidersRepository) lightRowToDomain(row lightProviderRow) oidcproviders.LightOIDCProvider {
-	return oidcproviders.LightOIDCProvider{
-		ID:          row.ID,
-		DisplayName: row.DisplayName,
-		CreatedAt:   row.CreatedAt,
-		UserCount:   row.UserCount,
-	}
-}
-
-func (r *PGOIDCProvidersRepository) modelToDomain(model pgmodels.OIDCProvider) oidcproviders.OIDCProvider {
-	return oidcproviders.OIDCProvider{
-		ID:              model.ID,
-		DisplayName:     model.DisplayName,
-		IssuerURL:       model.IssuerURL,
-		ClientID:        model.ClientID,
-		ClientSecretEnc: model.ClientSecretEnc,
-		Scopes:          model.Scopes,
-		UsernameClaim:   model.UsernameClaim,
-		RoleClaim:       model.RoleClaim,
-		AdminValues:     model.AdminValues,
-		AllowedValues:   model.AllowedValues,
-		AutoProvision:   model.AutoProvision,
-		CreatedAt:       model.CreatedAt,
-		UpdatedAt:       model.UpdatedAt,
+		ID:       r.ID,
+		Username: r.Username,
+		LinkedAt: r.LinkedAt,
+		IsAdmin:  r.IsAdmin,
 	}
 }

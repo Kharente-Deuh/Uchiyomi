@@ -11,13 +11,14 @@ import (
 	"net/http"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 )
 
 const DefaultCDNBaseURL = "https://gg.asuracomic.net"
 
 type InfosBySlugGetter interface {
-	GetInfosBySlug(context.Context, string) (*asuradomain.GetInfosBySlugResponse, error)
+	GetInfosBySlug(context.Context, string) (*sources.GetInfosBySlugResponse, error)
 }
 
 type Config struct {

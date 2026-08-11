@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/credentials/federatedidentities"
 )
 
 type FederatedIdentity struct {
@@ -28,6 +29,20 @@ type FederatedIdentity struct {
 
 func (FederatedIdentity) TableName() string {
 	return "federated_identities"
+}
+
+func (f *FederatedIdentity) Domain() federatedidentities.FederatedIdentity {
+	return federatedidentities.FederatedIdentity{
+		ID:              f.ID,
+		UserID:          f.UserID,
+		ProviderID:      f.ProviderID,
+		Subject:         f.Subject,
+		Claims:          f.Claims,
+		RefreshTokenEnc: f.RefreshTokenEnc,
+		LastValidatedAt: f.LastValidatedAt,
+		LastLoginAt:     f.LastLoginAt,
+		CreatedAt:       f.CreatedAt,
+	}
 }
 
 type Claims map[string]any

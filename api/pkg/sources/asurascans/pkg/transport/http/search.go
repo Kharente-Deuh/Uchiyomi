@@ -12,11 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
-func (c *Client) Search(ctx context.Context, opts domain.SearchOpts) (*domain.SearchResult, error) {
+func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/series", c.cfg.AsuraURL), nil)
 	if err != nil {
 		return nil, fmt.Errorf("http.NewRequestWithContext: %w", err)
@@ -46,10 +47,10 @@ func (c *Client) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Se
 		return nil, fmt.Errorf("json.Decode: %w", err)
 	}
 
-	return parsedResult.ToDomain(), nil
+	return parsedResult.Domain(), nil
 }
 
-func (c *Client) builSearchQuery(opts domain.SearchOpts) string {
+func (c *Client) builSearchQuery(opts domain.SearchCacheOpts) string {
 	withDefaults := c.getSearchOptsWithDefaults(opts)
 	q := url.Values{}
 	q.Add("offset", strconv.Itoa(withDefaults.Offset))
@@ -76,8 +77,8 @@ func (c *Client) builSearchQuery(opts domain.SearchOpts) string {
 	if len(withDefaults.Genres) > 0 {
 		q.Add("genres", strings.Join(utils.MapSlice(
 			withDefaults.Genres,
-			func(g domain.SeriesGenre) string {
-				return string(g)
+			func(g string) string {
+				return g
 			}),
 			","))
 	}
@@ -85,7 +86,7 @@ func (c *Client) builSearchQuery(opts domain.SearchOpts) string {
 	return q.Encode()
 }
 
-func (c *Client) getSearchOptsWithDefaults(opts domain.SearchOpts) domain.SearchOpts {
+func (c *Client) getSearchOptsWithDefaults(opts domain.SearchCacheOpts) domain.SearchCacheOpts {
 	withDefaults := opts
 	if withDefaults.Limit == 0 {
 		withDefaults.Limit = 20
@@ -107,18 +108,18 @@ type searchHTTPResponse struct {
 	Meta searchHTTPResponseMeta   `json:"meta"`
 }
 
-func (r *searchHTTPResponse) ToDomain() *domain.SearchResult {
+func (r *searchHTTPResponse) Domain() *domain.SearchCacheResult {
 	meta := domain.SearchResultMeta{
 		Total:   r.Meta.Total,
 		PerPage: r.Meta.PerPage,
 		HasMore: r.Meta.HasMore,
 	}
 
-	items := make([]domain.SearchResultItem, len(r.Data))
+	items := make([]domain.SearchCacheResultItem, len(r.Data))
 	for i, data := range r.Data {
-		genres := make([]domain.SeriesGenre, len(data.Genres))
+		genres := make([]string, len(data.Genres))
 		for j, g := range data.Genres {
-			genres[j] = domain.SeriesGenre(g.Slug)
+			genres[j] = g.Slug
 		}
 
 		latestChapters := make([]domain.SearchResultItemChapter, len(r.Data[i].LatestChapters))
@@ -132,15 +133,15 @@ func (r *searchHTTPResponse) ToDomain() *domain.SearchResult {
 			}
 		}
 
-		items[i] = domain.SearchResultItem{
+		items[i] = domain.SearchCacheResultItem{
 			ID:             data.ID,
 			Slug:           data.Slug,
 			Title:          data.Title,
 			AltTitles:      data.AltTitles,
 			Description:    data.Description,
 			Cover:          data.Cover,
-			Status:         domain.SeriesStatus(data.Status),
-			Type:           domain.SeriesType(data.Type),
+			Status:         sources.SeriesStatus(data.Status),
+			Type:           sources.SeriesType(data.Type),
 			Author:         data.Author,
 			Artist:         data.Artist,
 			Rating:         data.Rating,
@@ -152,11 +153,10 @@ func (r *searchHTTPResponse) ToDomain() *domain.SearchResult {
 			SourceURL:      data.SourceURL,
 			Genres:         genres,
 			LatestChapters: latestChapters,
-			ReleaseYear:    data.ReleaseYear,
 		}
 	}
 
-	return &domain.SearchResult{
+	return &domain.SearchCacheResult{
 		Meta:  meta,
 		Items: items,
 	}
@@ -168,7 +168,7 @@ type searchHTTPResponseMeta struct {
 	HasMore bool `json:"has_more"`
 }
 
-func (meta *searchHTTPResponseMeta) ToDomain() domain.SearchResultMeta {
+func (meta *searchHTTPResponseMeta) Domain() domain.SearchResultMeta {
 	return domain.SearchResultMeta{
 		Total:   meta.Total,
 		PerPage: meta.PerPage,

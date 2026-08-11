@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	asurahttp "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
 )
@@ -103,7 +104,7 @@ func TestSearchRequestShape(t *testing.T) {
 		_, _ = w.Write([]byte(`{"data":[],"meta":{}}`))
 	})
 
-	if _, err := c.Search(context.Background(), domain.SearchOpts{}); err != nil {
+	if _, err := c.Search(context.Background(), domain.SearchCacheOpts{}); err != nil {
 		t.Fatalf("Search: %v", err)
 	}
 
@@ -145,16 +146,16 @@ func TestSearchQueryParameters(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	opts := domain.SearchOpts{
+	opts := domain.SearchCacheOpts{
 		Offset:    40,
 		Limit:     5,
 		Search:    "one piece",
 		Sort:      domain.SortTypeTitle,
 		SortOrder: domain.SortOrderAsc,
-		Status:    domain.SeriesStatusOngoing,
+		Status:    sources.SeriesStatusOngoing,
 		Type:      "manga",
 		Artist:    "oda",
-		Genres:    []domain.SeriesGenre{domain.SeriesGenreAction, domain.SeriesGenreAdventure},
+		Genres:    []string{"action", "adventure"},
 	}
 
 	if _, err := c.Search(context.Background(), opts); err != nil {
@@ -167,7 +168,7 @@ func TestSearchQueryParameters(t *testing.T) {
 		"search": "one piece",
 		"sort":   "title",
 		"order":  "asc",
-		"status": string(domain.SeriesStatusOngoing),
+		"status": string(sources.SeriesStatusOngoing),
 		"type":   "manga",
 		"artist": "oda",
 		"genres": "action,adventure",
@@ -209,7 +210,7 @@ func TestSearchDefaultOrderFollowsSort(t *testing.T) {
 				t.Fatalf("New: %v", err)
 			}
 
-			if _, err := c.Search(context.Background(), domain.SearchOpts{Sort: tc.sort}); err != nil {
+			if _, err := c.Search(context.Background(), domain.SearchCacheOpts{Sort: tc.sort}); err != nil {
 				t.Fatalf("Search: %v", err)
 			}
 
@@ -246,7 +247,7 @@ func TestSearchDecodesResponse(t *testing.T) {
 		_, _ = w.Write([]byte(body))
 	})
 
-	res, err := c.Search(context.Background(), domain.SearchOpts{})
+	res, err := c.Search(context.Background(), domain.SearchCacheOpts{})
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -264,11 +265,11 @@ func TestSearchDecodesResponse(t *testing.T) {
 		t.Errorf("item = %+v", item)
 	}
 
-	if item.Status != domain.SeriesStatusOngoing {
-		t.Errorf("status = %q, want %q", item.Status, domain.SeriesStatusOngoing)
+	if item.Status != sources.SeriesStatusOngoing {
+		t.Errorf("status = %q, want %q", item.Status, sources.SeriesStatusOngoing)
 	}
 
-	if len(item.Genres) != 1 || item.Genres[0] != domain.SeriesGenre("action") {
+	if len(item.Genres) != 1 || item.Genres[0] != string("action") {
 		t.Errorf("genres = %v", item.Genres)
 	}
 
@@ -294,7 +295,7 @@ func TestSearchServerErrors(t *testing.T) {
 				w.WriteHeader(status)
 			})
 
-			if _, err := c.Search(context.Background(), domain.SearchOpts{}); err == nil {
+			if _, err := c.Search(context.Background(), domain.SearchCacheOpts{}); err == nil {
 				t.Errorf("Search on %d = nil, want error", status)
 			}
 		})
@@ -308,7 +309,7 @@ func TestSearchMalformedJSON(t *testing.T) {
 		_, _ = w.Write([]byte(`{"data": [`))
 	})
 
-	if _, err := c.Search(context.Background(), domain.SearchOpts{}); err == nil {
+	if _, err := c.Search(context.Background(), domain.SearchCacheOpts{}); err == nil {
 		t.Error("Search on truncated JSON = nil, want error")
 	}
 }
@@ -323,7 +324,7 @@ func TestSearchHonoursContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	if _, err := c.Search(ctx, domain.SearchOpts{}); !errors.Is(err, context.Canceled) {
+	if _, err := c.Search(ctx, domain.SearchCacheOpts{}); !errors.Is(err, context.Canceled) {
 		t.Errorf("Search = %v, want context.Canceled", err)
 	}
 }
@@ -527,7 +528,7 @@ func TestSearchNotFound(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	if _, err := c.Search(context.Background(), domain.SearchOpts{}); !errors.Is(err, domain.ErrNotFound) {
+	if _, err := c.Search(context.Background(), domain.SearchCacheOpts{}); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Search on 404 = %v, want domain.ErrNotFound", err)
 	}
 }

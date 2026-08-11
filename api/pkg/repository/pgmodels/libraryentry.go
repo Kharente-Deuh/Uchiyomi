@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
 )
 
 type LibraryEntry struct {
@@ -19,4 +20,13 @@ type LibraryEntry struct {
 
 func (LibraryEntry) TableName() string {
 	return "library_entries"
+}
+
+func (e *LibraryEntry) Domain() library.Entry {
+	return library.Entry{
+		ID:      e.ID,
+		UserID:  e.UserID,
+		ComicID: e.ComicID,
+		AddedAt: e.AddedAt,
+	}
 }

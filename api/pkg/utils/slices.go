@@ -22,3 +22,13 @@ func FilterSlice[T any](s []T, f func(T) bool) []T {
 
 	return filtered
 }
+
+func ContainsSlice[T any](s []T, f func(T) bool) bool {
+	for _, i := range s {
+		if f(i) {
+			return true
+		}
+	}
+
+	return false
+}

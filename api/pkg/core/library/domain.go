@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 )
 
 type Entry struct {
@@ -17,21 +16,17 @@ type Entry struct {
 	ComicID uuid.UUID
 }
 
-type EntryWithComic struct {
-	Entry Entry
-	Comic comics.Comic
-}
-
 type LibraryRepository interface {
-	GetByID(context.Context, uuid.UUID) (*Entry, error)
-	GetByUserAndComic(context.Context, uuid.UUID, uuid.UUID) (*Entry, error)
-	ListByUser(context.Context, uuid.UUID) ([]EntryWithComic, error)
-	Create(context.Context, CreateEntryOpts) (*Entry, error)
-	Delete(context.Context, uuid.UUID) error
+	Create(context.Context, CreateOpts) (*Entry, error)
+	Delete(context.Context, DeleteOpts) error
 }
 
-type CreateEntryOpts struct {
-	AddedAt time.Time
+type CreateOpts struct {
+	UserID  uuid.UUID
+	ComicID uuid.UUID
+}
+
+type DeleteOpts struct {
 	UserID  uuid.UUID
 	ComicID uuid.UUID
 }

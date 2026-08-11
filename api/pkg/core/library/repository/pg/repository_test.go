@@ -17,18 +17,6 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgtest"
 )
 
-const (
-	libraryComicSource = "asurascans"
-	libraryComicSlug   = "solo-leveling"
-	libraryComicTitle  = "Solo Leveling"
-	libraryComicStatus = "completed"
-	libraryComicType   = "manhwa"
-)
-
-func libraryEntryCols() []string {
-	return []string{"id", "user_id", "comic_id", "added_at"}
-}
-
 func duplicateLibraryEntryKeyErr() error {
 	return &pgconn.PgError{
 		Code:    "23505",
@@ -66,61 +54,6 @@ func TestLibraryNewValidatesDeps(t *testing.T) {
 	}
 }
 
-func TestLibraryGetByID(t *testing.T) {
-	t.Parallel()
-
-	r, mock := newLibraryRepo(t)
-
-	id := uuid.New()
-	userID := uuid.New()
-	comicID := uuid.New()
-	addedAt := time.Now().UTC().Truncate(time.Second)
-
-	mock.ExpectQuery(`SELECT \* FROM "library_entries" WHERE id = \$1`).
-		WithArgs(id, 1).
-		WillReturnRows(
-			sqlmock.NewRows(libraryEntryCols()).
-				AddRow(id, userID, comicID, addedAt),
-		)
-
-	got, err := r.GetByID(context.Background(), id)
-	if err != nil {
-		t.Fatalf("GetByID: %v", err)
-	}
-
-	want := library.Entry{ID: id, UserID: userID, ComicID: comicID, AddedAt: addedAt}
-	if got == nil || *got != want {
-		t.Errorf("GetByID() = %+v, want %+v", got, want)
-	}
-}
-
-func TestLibraryGetByUserAndComic(t *testing.T) {
-	t.Parallel()
-
-	r, mock := newLibraryRepo(t)
-
-	id := uuid.New()
-	userID := uuid.New()
-	comicID := uuid.New()
-	addedAt := time.Now().UTC().Truncate(time.Second)
-
-	mock.ExpectQuery(`SELECT \* FROM "library_entries" WHERE user_id = \$1 AND comic_id = \$2`).
-		WithArgs(userID, comicID, 1).
-		WillReturnRows(
-			sqlmock.NewRows(libraryEntryCols()).
-				AddRow(id, userID, comicID, addedAt),
-		)
-
-	got, err := r.GetByUserAndComic(context.Background(), userID, comicID)
-	if err != nil {
-		t.Fatalf("GetByUserAndComic: %v", err)
-	}
-
-	if got.ComicID != comicID || got.UserID != userID {
-		t.Errorf("GetByUserAndComic() = %+v", got)
-	}
-}
-
 func TestLibraryCreate(t *testing.T) {
 	t.Parallel()
 
@@ -136,7 +69,7 @@ func TestLibraryCreate(t *testing.T) {
 
 	before := time.Now()
 
-	got, err := r.Create(context.Background(), library.CreateEntryOpts{
+	got, err := r.Create(context.Background(), library.CreateOpts{
 		UserID:  userID,
 		ComicID: comicID,
 	})
@@ -166,7 +99,7 @@ func TestLibraryCreateDuplicateKey(t *testing.T) {
 	mock.ExpectQuery(`INSERT INTO "library_entries"`).WillReturnError(duplicateLibraryEntryKeyErr())
 	mock.ExpectRollback()
 
-	got, err := r.Create(context.Background(), library.CreateEntryOpts{
+	got, err := r.Create(context.Background(), library.CreateOpts{
 		UserID:  uuid.New(),
 		ComicID: uuid.New(),
 	})
@@ -184,15 +117,19 @@ func TestLibraryDelete(t *testing.T) {
 
 	r, mock := newLibraryRepo(t)
 
-	id := uuid.New()
+	userID := uuid.New()
+	comicID := uuid.New()
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`DELETE FROM "library_entries" WHERE id = \$1`).
-		WithArgs(id).
+	mock.ExpectExec(`DELETE FROM "library_entries" WHERE user_id = \$1 AND comic_id = \$2`).
+		WithArgs(userID, comicID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	err := r.Delete(context.Background(), id)
+	err := r.Delete(context.Background(), library.DeleteOpts{
+		UserID:  userID,
+		ComicID: comicID,
+	})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -203,63 +140,20 @@ func TestLibraryDeleteNotFound(t *testing.T) {
 
 	r, mock := newLibraryRepo(t)
 
-	id := uuid.New()
+	userID := uuid.New()
+	comicID := uuid.New()
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`DELETE FROM "library_entries" WHERE id = \$1`).
-		WithArgs(id).
+	mock.ExpectExec(`DELETE FROM "library_entries" WHERE user_id = \$1 AND comic_id = \$2`).
+		WithArgs(userID, comicID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
-	err := r.Delete(context.Background(), id)
+	err := r.Delete(context.Background(), library.DeleteOpts{
+		UserID:  userID,
+		ComicID: comicID,
+	})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Delete = %v, want domain.ErrNotFound", err)
-	}
-}
-
-func TestLibraryListByUser(t *testing.T) {
-	t.Parallel()
-
-	r, mock := newLibraryRepo(t)
-
-	userID := uuid.New()
-	entryID := uuid.New()
-	comicID := uuid.New()
-	addedAt := time.Now().UTC().Truncate(time.Second)
-	created := addedAt
-	updated := addedAt
-
-	mock.ExpectQuery(`SELECT \* FROM "library_entries" WHERE user_id = \$1`).
-		WithArgs(userID).
-		WillReturnRows(
-			sqlmock.NewRows(libraryEntryCols()).
-				AddRow(entryID, userID, comicID, addedAt),
-		)
-
-	mock.ExpectQuery(`SELECT \* FROM "comics" WHERE "comics"\."id" = \$1`).
-		WithArgs(comicID).
-		WillReturnRows(
-			sqlmock.NewRows([]string{
-				"id", "source", "slug", "title", "status", "comic_type",
-				"chapter_count", "author", "artist", "description", "rating", "release_year",
-				"source_url", "external_cover_url", "local_cover_path", "created_at", "updated_at",
-			}).AddRow(
-				comicID, libraryComicSource, libraryComicSlug, libraryComicTitle, libraryComicStatus, libraryComicType,
-				200, "Chugong", "Dubu", "desc", 9.5, 2018,
-				"", "", "", created, updated,
-			),
-		)
-
-	got, err := r.ListByUser(context.Background(), userID)
-	if err != nil {
-		t.Fatalf("ListByUser: %v", err)
-	}
-
-	if len(got) != 1 {
-		t.Fatalf("ListByUser() len = %d, want 1", len(got))
-	}
-
-	if got[0].Entry.ID != entryID || got[0].Comic.ID != comicID {
-		t.Errorf("ListByUser() = %+v", got[0])
 	}
 }

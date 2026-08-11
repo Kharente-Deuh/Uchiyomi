@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 )
 
 type Session struct {
@@ -22,4 +23,16 @@ type Session struct {
 
 func (Session) TableName() string {
 	return "sessions"
+}
+
+func (s *Session) Domain() sessions.Session {
+	return sessions.Session{
+		ID:          s.ID,
+		UserID:      s.UserID,
+		AuthMethod:  sessions.AuthMethod(s.AuthMethod),
+		CreatedAt:   s.CreatedAt,
+		ExpiresAt:   s.ExpiresAt,
+		ProviderID:  s.ProviderID,
+		ProviderSID: s.ProviderSID,
+	}
 }

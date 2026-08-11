@@ -65,7 +65,7 @@ func (r *PGPasswordCredsRepository) Create(ctx context.Context, opts password.Up
 		return nil, fmt.Errorf("r.db(ctx).Create: %w", err)
 	}
 
-	pwdCred := r.modelToDomain(*model)
+	pwdCred := model.Domain()
 
 	return &pwdCred, nil
 }
@@ -81,7 +81,7 @@ func (r *PGPasswordCredsRepository) GetByUserID(ctx context.Context, userID uuid
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	pwdCreds := r.modelToDomain(model)
+	pwdCreds := model.Domain()
 
 	return &pwdCreds, nil
 }
@@ -101,12 +101,4 @@ func (r *PGPasswordCredsRepository) UpdateByUserID(ctx context.Context, opts pas
 	}
 
 	return nil
-}
-
-func (r *PGPasswordCredsRepository) modelToDomain(model pgmodels.PasswordCreds) password.PasswordCreds {
-	return password.PasswordCreds{
-		UserID:    model.UserID,
-		Hash:      model.Hash,
-		UpdatedAt: model.UpdatedAt,
-	}
 }
