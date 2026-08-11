@@ -21,8 +21,8 @@ const (
 )
 
 type fakeTransactor struct {
-	calls int
 	err   error
+	calls int
 }
 
 func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn func(context.Context) error) error {
@@ -36,23 +36,22 @@ func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn 
 }
 
 type fakeComicsRepository struct {
-	getBySourceSlugResult *comics.Comic
-	getBySourceSlugErr    error
-	createResult          *comics.Comic
-	createErr             error
-	getByIDResult         *comics.Comic
 	getByIDErr            error
-	getManyResult         []comics.Comic
-	getManyErr            error
+	getBySourceSlugErr    error
 	deleteErr             error
-
-	getBySourceSlugCalls int
-	createCalls          int
-	getByIDCalls         int
-	getManyCalls         int
-	deleteCalls          int
-	lastCreateOpts       comics.CreateComicOpts
-	lastDeleteID         uuid.UUID
+	createErr             error
+	getManyErr            error
+	getByIDResult         *comics.Comic
+	getBySourceSlugResult *comics.Comic
+	createResult          *comics.Comic
+	getManyResult         []comics.Comic
+	lastCreateOpts        comics.CreateComicOpts
+	getBySourceSlugCalls  int
+	createCalls           int
+	getByIDCalls          int
+	getManyCalls          int
+	deleteCalls           int
+	lastDeleteID          uuid.UUID
 }
 
 func (f *fakeComicsRepository) GetByID(_ context.Context, _ comics.GetByIDOpts) (*comics.Comic, error) {
@@ -89,6 +88,7 @@ func (f *fakeComicsRepository) Create(_ context.Context, opts comics.CreateComic
 	}, nil
 }
 
+//nolint:lll
 func (f *fakeComicsRepository) GetBySlugsAndSource(context.Context, sources.SourceName, []string) ([]comics.Comic, error) {
 	panic("GetBySlugsAndSource must not be called by the comics service")
 }
@@ -138,10 +138,10 @@ func (f *fakeLibraryRepository) Delete(_ context.Context, opts library.DeleteOpt
 }
 
 type fakeSource struct {
-	infos    *sources.GetInfosBySlugResponse
 	err      error
-	calls    int
+	infos    *sources.GetInfosBySlugResponse
 	lastSlug string
+	calls    int
 }
 
 func (f *fakeSource) GetInfosBySlug(_ context.Context, slug string) (*sources.GetInfosBySlugResponse, error) {

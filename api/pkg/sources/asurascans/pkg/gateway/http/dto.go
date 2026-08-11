@@ -142,10 +142,10 @@ func parseGenres(raw string) ([]string, error) {
 	for _, part := range parts {
 		genre := strings.TrimSpace(part)
 		if genre == "" {
-			continue
+			return nil, fmt.Errorf("genre is empty")
 		}
 
-		genres = append(genres, string(genre))
+		genres = append(genres, genre)
 	}
 
 	return genres, nil
@@ -169,23 +169,23 @@ func parsePositiveInt(raw string) (int, error) {
 }
 
 type getInfosBySlugResDTO struct {
-	LastChapterAt time.Time          `json:"lastChapterAt"`
-	UpdatedAt     time.Time          `json:"updatedAt"`
-	CreatedAt     time.Time          `json:"createdAt"`
-	Description   string             `json:"description"`
-	Title         string             `json:"title"`
-	Cover         string             `json:"cover"`
+	LastChapterAt time.Time            `json:"lastChapterAt"`
+	UpdatedAt     time.Time            `json:"updatedAt"`
+	CreatedAt     time.Time            `json:"createdAt"`
+	Description   string               `json:"description"`
+	Title         string               `json:"title"`
+	Cover         string               `json:"cover"`
 	Status        sources.SeriesStatus `json:"status"`
 	Type          sources.SeriesType   `json:"type"`
-	Author        string             `json:"author"`
-	Artist        string             `json:"artist"`
-	SourceURL     string             `json:"sourceUrl"`
-	PublicURL     string             `json:"publicUrl"`
-	Slug          string             `json:"slug"`
-	AltTitles     []string           `json:"altTitles"`
-	Genres        []string           `json:"genres"`
-	ChapterCount  int                `json:"chapterCount"`
-	Rating        float64            `json:"rating"`
+	Author        string               `json:"author"`
+	Artist        string               `json:"artist"`
+	SourceURL     string               `json:"sourceUrl"`
+	PublicURL     string               `json:"publicUrl"`
+	Slug          string               `json:"slug"`
+	AltTitles     []string             `json:"altTitles"`
+	Genres        []string             `json:"genres"`
+	ChapterCount  int                  `json:"chapterCount"`
+	Rating        float64              `json:"rating"`
 }
 
 type getChaptersListBySeriesResItemDTO struct {

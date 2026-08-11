@@ -78,7 +78,7 @@ func (c *Client) builSearchQuery(opts domain.SearchCacheOpts) string {
 		q.Add("genres", strings.Join(utils.MapSlice(
 			withDefaults.Genres,
 			func(g string) string {
-				return string(g)
+				return g
 			}),
 			","))
 	}
@@ -119,7 +119,7 @@ func (r *searchHTTPResponse) Domain() *domain.SearchCacheResult {
 	for i, data := range r.Data {
 		genres := make([]string, len(data.Genres))
 		for j, g := range data.Genres {
-			genres[j] = string(g.Slug)
+			genres[j] = g.Slug
 		}
 
 		latestChapters := make([]domain.SearchResultItemChapter, len(r.Data[i].LatestChapters))

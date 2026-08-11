@@ -33,13 +33,13 @@ const (
 )
 
 type stubComicsService struct {
-	createResult *comics.Comic
-	createErr    error
-	getByIDResult *comics.Comic
+	createErr     error
 	getByIDErr    error
-	getManyResult []comics.Comic
 	getManyErr    error
 	deleteErr     error
+	createResult  *comics.Comic
+	getByIDResult *comics.Comic
+	getManyResult []comics.Comic
 }
 
 func (s *stubComicsService) Create(_ context.Context, _ comics.CreateOpts) (*comics.Comic, error) {
@@ -172,7 +172,11 @@ func TestCreateRequiresAuthentication(t *testing.T) {
 
 	r := newTestRouter(t, &stubComicsService{}, nil)
 
-	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/", bytes.NewReader([]byte(`{"source":"asurascans","slug":"solo-leveling"}`)))
+	req := httptest.NewRequest(
+		http.MethodPost,
+		comicsEndpoint+"/",
+		bytes.NewReader([]byte(`{"source":"asurascans","slug":"solo-leveling"}`)),
+	)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 
@@ -196,7 +200,12 @@ func TestCreateReturnsComic(t *testing.T) {
 
 	r := newTestRouter(t, &stubComicsService{createResult: comic}, authenticatorFor(t, user))
 
-	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/", bytes.NewReader([]byte(`{"source":"asurascans","slug":"solo-leveling"}`)))
+	req := httptest.NewRequest(
+		http.MethodPost,
+		comicsEndpoint+"/",
+		bytes.NewReader([]byte(`{"source":"asurascans","slug":"solo-leveling"}`)),
+	)
+
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -216,12 +225,12 @@ func TestCreateReturnsComic(t *testing.T) {
 }
 
 type comicshttpLightComic struct {
-	ID           uuid.UUID          `json:"id"`
-	Title        string             `json:"title"`
-	Slug         string             `json:"slug"`
-	Source       sources.SourceName `json:"source"`
+	Title        string               `json:"title"`
+	Slug         string               `json:"slug"`
+	Source       sources.SourceName   `json:"source"`
 	Status       sources.SeriesStatus `json:"status"`
 	ChapterCount int                  `json:"chapter_count"`
+	ID           uuid.UUID            `json:"id"`
 }
 
 func TestGetByIDNotFound(t *testing.T) {

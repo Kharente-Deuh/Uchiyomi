@@ -11,11 +11,16 @@ import (
 	"github.com/lib/pq"
 )
 
+const (
+	ComicLibraryEntries string = "LibraryEntries"
+)
+
 type Comic struct {
-	CreatedAt      time.Time          `gorm:"autoCreateTime"`
-	UpdatedAt      time.Time          `gorm:"autoUpdateTime"`
-	Author         string             `gorm:"type:text"`
-	Status         ComicStatus        `gorm:"type:enum('ongoing','completed','hiatus','cancelled','dropped')"`
+	CreatedAt time.Time   `gorm:"autoCreateTime"`
+	UpdatedAt time.Time   `gorm:"autoUpdateTime"`
+	Author    string      `gorm:"type:text"`
+	Status    ComicStatus `gorm:"type:enum('ongoing','completed','hiatus','cancelled','dropped')"`
+	//nolint:lll
 	Source         sources.SourceName `gorm:"type:enum('asurascans');not null;uniqueIndex:idx_comic_source_slug,priority:1;"`
 	Description    string             `gorm:"type:text"`
 	Artist         string             `gorm:"type:text"`

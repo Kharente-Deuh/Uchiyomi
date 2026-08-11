@@ -52,7 +52,7 @@ type getInfosBySlugHttpResponse struct {
 func (r *getInfosBySlugHttpResponse) Domain() *domain.GetInfosBySlugResponse {
 	genres := make([]string, len(r.Series.Genres))
 	for i, g := range r.Series.Genres {
-		genres[i] = string(g.Slug)
+		genres[i] = g.Slug
 	}
 
 	return &domain.GetInfosBySlugResponse{

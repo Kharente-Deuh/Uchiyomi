@@ -121,6 +121,7 @@ func (c *Controller) create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.deps.Logger.Error("failed to create comic", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
+
 		return
 	}
 
@@ -170,6 +171,7 @@ func (c *Controller) getMany(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		c.deps.Logger.Error("user not found in context")
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
 		return
 	}
 
@@ -187,6 +189,7 @@ func (c *Controller) getMany(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.deps.Logger.Error("failed to get many comics", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
+
 		return
 	}
 
@@ -264,39 +267,57 @@ func (c *Controller) getManyQuery(r *http.Request) (*comics.GetManyOpts, error) 
 		opts.Status = &parsed
 	}
 
-	qLimit := r.URL.Query().Get("limit")
-	if qLimit == "" {
-		opts.Limit = 10
-	} else {
-		limit, err := strconv.Atoi(qLimit)
-		if err != nil {
-			return nil, fmt.Errorf("invalid limit: %w", err)
-		}
-
-		if limit < 1 {
-			opts.Limit = 10
-		} else if limit > 100 {
-			opts.Limit = 100
-		} else {
-			opts.Limit = limit
-		}
+	limit, err := parseQueryLimit(r.URL.Query().Get("limit"))
+	if err != nil {
+		return nil, fmt.Errorf("parseQueryLimit: %w", err)
 	}
 
-	qOffset := r.URL.Query().Get("offset")
-	if qOffset == "" {
-		opts.Offset = 0
-	} else {
-		offset, err := strconv.Atoi(qOffset)
-		if err != nil {
-			return nil, fmt.Errorf("invalid offset: %w", err)
-		}
+	opts.Limit = limit
 
-		if offset < 0 {
-			opts.Offset = 0
-		} else {
-			opts.Offset = offset
-		}
+	offset, err := parseQueryOffset(r.URL.Query().Get("offset"))
+	if err != nil {
+		return nil, fmt.Errorf("parseQueryOffset: %w", err)
 	}
+
+	opts.Offset = offset
 
 	return opts, nil
+}
+
+func parseQueryLimit(q string) (int, error) {
+	if q == "" {
+		return 10, nil
+	}
+
+	limit, err := strconv.Atoi(q)
+	if err != nil {
+		return 0, fmt.Errorf("invalid limit: %w", err)
+	}
+
+	if limit < 1 {
+		return 10, nil
+	}
+
+	if limit > 100 {
+		return 100, nil
+	}
+
+	return limit, nil
+}
+
+func parseQueryOffset(q string) (int, error) {
+	if q == "" {
+		return 0, nil
+	}
+
+	offset, err := strconv.Atoi(q)
+	if err != nil {
+		return 0, fmt.Errorf("invalid offset: %w", err)
+	}
+
+	if offset < 0 {
+		return 0, nil
+	}
+
+	return offset, nil
 }

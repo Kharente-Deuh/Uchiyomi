@@ -11,13 +11,12 @@ import (
 )
 
 type Comic struct {
-	ID           uuid.UUID
-	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	CreatedAt    time.Time
+	Source       sources.SourceName
 	Artist       string
 	Type         sources.SeriesType
 	Description  string
-	Source       sources.SourceName
 	Author       string
 	Status       sources.SeriesStatus
 	Slug         string
@@ -25,12 +24,13 @@ type Comic struct {
 	Genres       []string
 	AltTitles    []string
 	ChapterCount int
+	ID           uuid.UUID
 }
 
 type GetBySourceSlugOpts struct {
-	UserID uuid.UUID
 	Source sources.SourceName
 	Slug   string
+	UserID uuid.UUID
 }
 
 type ComicsRepository interface {

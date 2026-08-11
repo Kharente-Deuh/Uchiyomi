@@ -10,12 +10,12 @@ import (
 )
 
 type lightComic struct {
-	ID           uuid.UUID          `json:"id"`
-	Title        string             `json:"title"`
-	Slug         string             `json:"slug"`
-	Source       sources.SourceName `json:"source"`
+	Title        string               `json:"title"`
+	Slug         string               `json:"slug"`
+	Source       sources.SourceName   `json:"source"`
 	Status       sources.SeriesStatus `json:"status"`
 	ChapterCount int                  `json:"chapter_count"`
+	ID           uuid.UUID            `json:"id"`
 }
 
 func lightComicFromDomain(comic *comics.Comic) lightComic {
@@ -35,8 +35,7 @@ type createRequest struct {
 }
 
 type comicResponse struct {
-	ID           uuid.UUID          `json:"id"`
-	Artist       string             `json:"artist"`
+	Artist       string               `json:"artist"`
 	Type         sources.SeriesType   `json:"type"`
 	Description  string               `json:"description"`
 	Source       sources.SourceName   `json:"source"`
@@ -47,6 +46,7 @@ type comicResponse struct {
 	Genres       []string             `json:"genres"`
 	AltTitles    []string             `json:"alt_titles"`
 	ChapterCount int                  `json:"chapter_count"`
+	ID           uuid.UUID            `json:"id"`
 }
 
 func comicResponseFromDomain(comic *comics.Comic) comicResponse {

@@ -63,11 +63,7 @@ func NewService(deps Deps) (*Service, error) {
 func (s *Service) Create(ctx context.Context, opts CreateOpts) (*Comic, error) {
 	var comic *Comic
 
-	comic, err := s.deps.ComicsRepository.GetBySourceSlug(ctx, GetBySourceSlugOpts{
-		UserID: opts.UserID,
-		Slug:   opts.Slug,
-		Source: opts.Source,
-	})
+	comic, err := s.deps.ComicsRepository.GetBySourceSlug(ctx, GetBySourceSlugOpts(opts))
 
 	if err == nil {
 		return comic, nil
@@ -120,6 +116,10 @@ func (s *Service) Create(ctx context.Context, opts CreateOpts) (*Comic, error) {
 		return nil
 	})
 
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
+	}
+
 	return comic, nil
 }
 
@@ -159,5 +159,6 @@ func (s *Service) Delete(ctx context.Context, opts DeleteOpts) error {
 		return nil
 	})
 
+	//nolint:wrapcheck
 	return err
 }
