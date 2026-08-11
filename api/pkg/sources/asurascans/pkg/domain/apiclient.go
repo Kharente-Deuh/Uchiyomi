@@ -6,6 +6,8 @@ import (
 	"context"
 	"slices"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ApiClient interface {
@@ -22,7 +24,6 @@ const (
 	SeriesTypeMangatoon SeriesType = "mangatoon"
 	SeriesTypeManhua    SeriesType = "manhua"
 	SeriesTypeManhwa    SeriesType = "manhwa"
-	SeriesTypeNone      SeriesType = ""
 )
 
 func IsSeriesType(s string) bool {
@@ -31,7 +32,6 @@ func IsSeriesType(s string) bool {
 		SeriesTypeMangatoon,
 		SeriesTypeManhua,
 		SeriesTypeManhwa,
-		SeriesTypeNone,
 	}
 
 	return slices.Contains(values, SeriesType(s))
@@ -183,6 +183,19 @@ func IsSortOrder(s string) bool {
 	return slices.Contains(values, SortOrder(s))
 }
 
+type SearchCacheOpts struct {
+	Search      string
+	Sort        SortType
+	SortOrder   SortOrder
+	Status      SeriesStatus
+	Type        SeriesType
+	Artist      string
+	Genres      []SeriesGenre
+	Offset      int
+	Limit       int
+	MinChapters int
+}
+
 type SearchOpts struct {
 	Search      string
 	Sort        SortType
@@ -194,6 +207,12 @@ type SearchOpts struct {
 	Offset      int
 	Limit       int
 	MinChapters int
+	UserID      uuid.UUID
+}
+
+type SearchCacheResult struct {
+	Items []SearchCacheResultItem
+	Meta  SearchResultMeta
 }
 
 type SearchResult struct {
@@ -228,6 +247,56 @@ type SearchResultItem struct {
 	ID             int
 	Rating         float64
 	ReleaseYear    int
+	IsInLibrary    bool
+}
+
+type SearchCacheResultItem struct {
+	LastChapterAt  time.Time
+	UpdatedAt      time.Time
+	CreatedAt      time.Time
+	PublicURL      string
+	SourceURL      string
+	Cover          string
+	Status         SeriesStatus
+	Type           SeriesType
+	Author         string
+	Artist         string
+	Description    string
+	Slug           string
+	Title          string
+	AltTitles      []string
+	Genres         []SeriesGenre
+	LatestChapters []SearchResultItemChapter
+	ChapterCount   int
+	ID             int
+	Rating         float64
+	ReleaseYear    int
+}
+
+func (i *SearchCacheResultItem) Domain(isInLibrary bool) SearchResultItem {
+	return SearchResultItem{
+		LastChapterAt:  i.LastChapterAt,
+		UpdatedAt:      i.UpdatedAt,
+		CreatedAt:      i.CreatedAt,
+		PublicURL:      i.PublicURL,
+		SourceURL:      i.SourceURL,
+		Cover:          i.Cover,
+		Status:         i.Status,
+		Type:           i.Type,
+		Author:         i.Author,
+		Artist:         i.Artist,
+		Description:    i.Description,
+		Slug:           i.Slug,
+		Title:          i.Title,
+		AltTitles:      i.AltTitles,
+		Genres:         i.Genres,
+		LatestChapters: i.LatestChapters,
+		ChapterCount:   i.ChapterCount,
+		ID:             i.ID,
+		Rating:         i.Rating,
+		ReleaseYear:    i.ReleaseYear,
+		IsInLibrary:    isInLibrary,
+	}
 }
 
 type SearchResultItemChapter struct {

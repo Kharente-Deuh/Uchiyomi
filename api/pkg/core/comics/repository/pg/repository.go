@@ -59,7 +59,7 @@ func (r *PGComicsRepository) GetByID(ctx context.Context, id uuid.UUID) (*comics
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	ret := r.modelToDomain(model)
+	ret := model.Domain()
 
 	return &ret, nil
 }
@@ -74,7 +74,7 @@ func (r *PGComicsRepository) GetBySourceSlug(ctx context.Context, key comics.Sou
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
-	ret := r.modelToDomain(model)
+	ret := model.Domain()
 
 	return &ret, nil
 }
@@ -83,25 +83,21 @@ func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComic
 	now := time.Now()
 
 	model := &pgmodels.Comic{
-		ID:               uuid.New(),
-		Source:           opts.Source,
-		Slug:             opts.Slug,
-		Title:            opts.Title,
-		Status:           opts.Status,
-		ComicType:        opts.Type,
-		Genres:           pq.StringArray(opts.Genres),
-		ChapterCount:     opts.ChapterCount,
-		Author:           opts.Author,
-		Artist:           opts.Artist,
-		Description:      opts.Description,
-		AltTitles:        pq.StringArray(opts.AltTitles),
-		Rating:           opts.Rating,
-		ReleaseYear:      opts.ReleaseYear,
-		SourceURL:        opts.SourceURL,
-		ExternalCoverURL: opts.ExternalCoverURL,
-		LocalCoverPath:   opts.LocalCoverPath,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		ID:           uuid.New(),
+		Source:       opts.Source,
+		Slug:         opts.Slug,
+		Title:        opts.Title,
+		Status:       pgmodels.ComicStatusFromDomain(opts.Status),
+		ComicType:    pgmodels.ComicTypeFromDomain(opts.Type),
+		Genres:       pq.StringArray(opts.Genres),
+		ChapterCount: opts.ChapterCount,
+		Author:       opts.Author,
+		Artist:       opts.Artist,
+		Description:  opts.Description,
+		AltTitles:    pq.StringArray(opts.AltTitles),
+		CoverPath:    opts.CoverPath,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
 	err := r.db(ctx).Create(ctx, model)
@@ -113,31 +109,35 @@ func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComic
 		return nil, fmt.Errorf("r.db(ctx).Create: %w", err)
 	}
 
-	ret := r.modelToDomain(*model)
+	ret := model.Domain()
 
 	return &ret, nil
 }
 
-func (r *PGComicsRepository) modelToDomain(model pgmodels.Comic) comics.Comic {
-	return comics.Comic{
-		ID:               model.ID,
-		Source:           model.Source,
-		Slug:             model.Slug,
-		Title:            model.Title,
-		Status:           model.Status,
-		Type:             model.ComicType,
-		Genres:           model.Genres,
-		ChapterCount:     model.ChapterCount,
-		Author:           model.Author,
-		Artist:           model.Artist,
-		Description:      model.Description,
-		AltTitles:        model.AltTitles,
-		Rating:           model.Rating,
-		ReleaseYear:      model.ReleaseYear,
-		SourceURL:        model.SourceURL,
-		ExternalCoverURL: model.ExternalCoverURL,
-		LocalCoverPath:   model.LocalCoverPath,
-		CreatedAt:        model.CreatedAt,
-		UpdatedAt:        model.UpdatedAt,
+// nolint:lll
+func (r *PGComicsRepository) GetBySlugsAndSource(ctx context.Context, source string, slugs []string) ([]comics.Comic, error) {
+	models, err := r.db(ctx).Where("source = ? AND slug IN (?)", source, slugs).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
+
+	ret := make([]comics.Comic, len(models))
+	for i, model := range models {
+		ret[i] = model.Domain()
+	}
+
+	return ret, nil
+}
+
+func (r *PGComicsRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	affected, err := r.db(ctx).Where("id = ?", id).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	if affected == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }

@@ -10,26 +10,41 @@ import (
 )
 
 type Comic struct {
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	Artist           string
-	Type             string
-	Description      string
-	LocalCoverPath   string
-	ExternalCoverURL string
-	SourceURL        string
-	Source           string
-	Author           string
-	Status           string
-	Slug             string
-	Title            string
-	Genres           []string
-	AltTitles        []string
-	ChapterCount     int
-	ReleaseYear      int
-	Rating           float64
-	ID               uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Artist       string
+	Type         ComicType
+	Description  string
+	CoverPath    string
+	Source       string
+	Author       string
+	Status       ComicStatus
+	Slug         string
+	Title        string
+	Genres       []string
+	AltTitles    []string
+	ChapterCount int
+	ID           uuid.UUID
 }
+
+type ComicType string
+
+const (
+	ComicTypeManga     ComicType = "manga"
+	ComicTypeMangatoon ComicType = "mangatoon"
+	ComicTypeManhua    ComicType = "manhua"
+	ComicTypeManhwa    ComicType = "manhwa"
+)
+
+type ComicStatus string
+
+const (
+	ComicStatusOngoing   ComicStatus = "ongoing"
+	ComicStatusCompleted ComicStatus = "completed"
+	ComicStatusHiatus    ComicStatus = "hiatus"
+	ComicStatusCancelled ComicStatus = "cancelled"
+	ComicStatusDropped   ComicStatus = "dropped"
+)
 
 type SourceSlugKey struct {
 	Source string
@@ -40,23 +55,21 @@ type ComicsRepository interface {
 	GetByID(context.Context, uuid.UUID) (*Comic, error)
 	GetBySourceSlug(context.Context, SourceSlugKey) (*Comic, error)
 	Create(context.Context, CreateComicOpts) (*Comic, error)
+	GetBySlugsAndSource(context.Context, string, []string) ([]Comic, error)
+	Delete(context.Context, uuid.UUID) error
 }
 
 type CreateComicOpts struct {
-	Status           string
-	Type             string
-	Description      string
-	LocalCoverPath   string
-	ExternalCoverURL string
-	SourceURL        string
-	Source           string
-	Artist           string
-	Slug             string
-	Author           string
-	Title            string
-	AltTitles        []string
-	Genres           []string
-	ChapterCount     int
-	ReleaseYear      int
-	Rating           float64
+	Status       ComicStatus
+	Type         ComicType
+	Description  string
+	CoverPath    string
+	Source       string
+	Artist       string
+	Slug         string
+	Author       string
+	Title        string
+	AltTitles    []string
+	Genres       []string
+	ChapterCount int
 }
