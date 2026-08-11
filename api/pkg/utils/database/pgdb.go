@@ -107,10 +107,12 @@ func createPGDatabase(cfg PGConfig) (*gorm.DB, error) {
 func (pgdb *PGDB) Migrate() error {
 	models := []any{
 		&pgmodels.User{},
+		&pgmodels.Comic{},
 		&pgmodels.FederatedIdentity{},
 		&pgmodels.OIDCProvider{},
 		&pgmodels.Session{},
 		&pgmodels.PasswordCreds{},
+		&pgmodels.LibraryEntry{},
 	}
 
 	for _, m := range models {
