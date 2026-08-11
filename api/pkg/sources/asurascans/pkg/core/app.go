@@ -9,20 +9,35 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"golang.org/x/sync/errgroup"
 )
 
-type Dependencies struct {
+type Config struct {
+	SourceName string
+}
+
+func (c *Config) Validate() error {
+	if c.SourceName == "" {
+		return errors.New("sourceName is required")
+	}
+
+	return nil
+}
+
+type Deps struct {
 	Logger                       *slog.Logger
-	SearchCache                  *fncache.Cache[domain.SearchOpts, domain.SearchResult]
+	SearchCache                  *fncache.Cache[domain.SearchCacheOpts, domain.SearchCacheResult]
 	GetInfosBySlugCache          *fncache.Cache[string, domain.GetInfosBySlugResponse]
 	GetChaptersListBySeriesCache *fncache.Cache[string, []domain.Chapter]
 	GetImageURLsByChapter        *fncache.Cache[domain.GetImageURLsByChapterOpts, []string]
+	ComicsRepository             comics.ComicsRepository
 }
 
-func (deps *Dependencies) Validate() error {
+func (deps *Deps) Validate() error {
 	if deps.SearchCache == nil {
 		return errors.New("searchCache is required")
 	}
@@ -43,17 +58,24 @@ func (deps *Dependencies) Validate() error {
 }
 
 type App struct {
-	deps Dependencies
+	deps Deps
+	cfg  Config
 }
 
-func New(deps Dependencies) (*App, error) {
-	if err := deps.Validate(); err != nil {
+func New(cfg Config, deps Deps) (*App, error) {
+	var err error
+	if err = cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("cfg.Validate: %w", err)
+	}
+
+	if err = deps.Validate(); err != nil {
 		return nil, fmt.Errorf("deps.Validate: %w", err)
 	}
 
 	deps.Logger = deps.Logger.With("component", "sources.asurascans")
 
 	app := &App{
+		cfg:  cfg,
 		deps: deps,
 	}
 
@@ -79,8 +101,46 @@ func (a *App) Run(ctx context.Context) error {
 }
 
 func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.SearchResult, error) {
-	//nolint:wrapcheck
-	return a.deps.SearchCache.Get(ctx, opts)
+	res, err := a.deps.SearchCache.Get(ctx, domain.SearchCacheOpts{
+		Search:      opts.Search,
+		Sort:        opts.Sort,
+		SortOrder:   opts.SortOrder,
+		Status:      opts.Status,
+		Type:        opts.Type,
+		Artist:      opts.Artist,
+		Genres:      opts.Genres,
+		Offset:      opts.Offset,
+		Limit:       opts.Limit,
+		MinChapters: opts.MinChapters,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("a.deps.SearchCache.Get: %w", err)
+	}
+
+	slugs := make([]string, len(res.Items))
+	for i, item := range res.Items {
+		slugs[i] = item.Slug
+	}
+
+	foundComics, err := a.deps.ComicsRepository.GetBySlugsAndSource(ctx, a.cfg.SourceName, slugs)
+	if err != nil {
+		return nil, fmt.Errorf("a.deps.ComicsRepository.GetBySlugsAndSource: %w", err)
+	}
+
+	items := make([]domain.SearchResultItem, len(foundComics))
+	for i, item := range res.Items {
+		isInLibrary := utils.ContainsSlice(foundComics, func(c comics.Comic) bool {
+			return c.Slug == item.Slug
+		})
+
+		items[i] = item.Domain(isInLibrary)
+	}
+
+	return &domain.SearchResult{
+		Items: items,
+		Meta:  res.Meta,
+	}, nil
 }
 
 func (a *App) GetInfosBySlug(ctx context.Context, slug string) (*domain.GetInfosBySlugResponse, error) {

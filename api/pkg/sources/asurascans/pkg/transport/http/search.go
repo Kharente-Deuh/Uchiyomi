@@ -16,7 +16,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
-func (c *Client) Search(ctx context.Context, opts domain.SearchOpts) (*domain.SearchResult, error) {
+func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/series", c.cfg.AsuraURL), nil)
 	if err != nil {
 		return nil, fmt.Errorf("http.NewRequestWithContext: %w", err)
@@ -49,7 +49,7 @@ func (c *Client) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Se
 	return parsedResult.Domain(), nil
 }
 
-func (c *Client) builSearchQuery(opts domain.SearchOpts) string {
+func (c *Client) builSearchQuery(opts domain.SearchCacheOpts) string {
 	withDefaults := c.getSearchOptsWithDefaults(opts)
 	q := url.Values{}
 	q.Add("offset", strconv.Itoa(withDefaults.Offset))
@@ -85,7 +85,7 @@ func (c *Client) builSearchQuery(opts domain.SearchOpts) string {
 	return q.Encode()
 }
 
-func (c *Client) getSearchOptsWithDefaults(opts domain.SearchOpts) domain.SearchOpts {
+func (c *Client) getSearchOptsWithDefaults(opts domain.SearchCacheOpts) domain.SearchCacheOpts {
 	withDefaults := opts
 	if withDefaults.Limit == 0 {
 		withDefaults.Limit = 20
@@ -107,14 +107,14 @@ type searchHTTPResponse struct {
 	Meta searchHTTPResponseMeta   `json:"meta"`
 }
 
-func (r *searchHTTPResponse) Domain() *domain.SearchResult {
+func (r *searchHTTPResponse) Domain() *domain.SearchCacheResult {
 	meta := domain.SearchResultMeta{
 		Total:   r.Meta.Total,
 		PerPage: r.Meta.PerPage,
 		HasMore: r.Meta.HasMore,
 	}
 
-	items := make([]domain.SearchResultItem, len(r.Data))
+	items := make([]domain.SearchCacheResultItem, len(r.Data))
 	for i, data := range r.Data {
 		genres := make([]domain.SeriesGenre, len(data.Genres))
 		for j, g := range data.Genres {
@@ -132,7 +132,7 @@ func (r *searchHTTPResponse) Domain() *domain.SearchResult {
 			}
 		}
 
-		items[i] = domain.SearchResultItem{
+		items[i] = domain.SearchCacheResultItem{
 			ID:             data.ID,
 			Slug:           data.Slug,
 			Title:          data.Title,
@@ -152,11 +152,10 @@ func (r *searchHTTPResponse) Domain() *domain.SearchResult {
 			SourceURL:      data.SourceURL,
 			Genres:         genres,
 			LatestChapters: latestChapters,
-			ReleaseYear:    data.ReleaseYear,
 		}
 	}
 
-	return &domain.SearchResult{
+	return &domain.SearchCacheResult{
 		Meta:  meta,
 		Items: items,
 	}

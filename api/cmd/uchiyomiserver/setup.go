@@ -474,7 +474,7 @@ func setupAsura(logger *slog.Logger) (*asura.App, error) {
 	getImageURLsByChapterTTL := 2 * time.Hour
 
 	searchCache, err := fncache.New(
-		fncache.Config[asuradomain.SearchOpts, asuradomain.SearchResult]{
+		fncache.Config[asuradomain.SearchCacheOpts, asuradomain.SearchCacheResult]{
 			Fn:            apiClient.Search,
 			TTL:           searchTTL,
 			ErrorTTL:      errorTTL,
@@ -482,7 +482,7 @@ func setupAsura(logger *slog.Logger) (*asura.App, error) {
 			CleanInterval: searchTTL,
 			MaxEntries:    256,
 			Name:          "asurascans.search",
-			Key: func(opts asuradomain.SearchOpts) string {
+			Key: func(opts asuradomain.SearchCacheOpts) string {
 				return fmt.Sprintf(
 					"%s %s %s %s %s %s %v %d %d %d",
 					opts.Search,
@@ -561,13 +561,15 @@ func setupAsura(logger *slog.Logger) (*asura.App, error) {
 		return nil, fmt.Errorf("fncache.New (asura.GetChaptersListBySerie): %w", err)
 	}
 
-	a, err := asura.New(asura.Dependencies{
-		Logger:                       logger,
-		SearchCache:                  searchCache,
-		GetInfosBySlugCache:          getInfosBySlugCache,
-		GetChaptersListBySeriesCache: getChaptersListBySerieCache,
-		GetImageURLsByChapter:        getImageURLsByChapterCache,
-	})
+	a, err := asura.New(
+		asura.Config{SourceName: "asurascans"},
+		asura.Deps{
+			Logger:                       logger,
+			SearchCache:                  searchCache,
+			GetInfosBySlugCache:          getInfosBySlugCache,
+			GetChaptersListBySeriesCache: getChaptersListBySerieCache,
+			GetImageURLsByChapter:        getImageURLsByChapterCache,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("asura.New: %w", err)
 	}
