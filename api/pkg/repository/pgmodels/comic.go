@@ -19,14 +19,14 @@ type Comic struct {
 	CreatedAt time.Time   `gorm:"autoCreateTime"`
 	UpdatedAt time.Time   `gorm:"autoUpdateTime"`
 	Author    string      `gorm:"type:text"`
-	Status    ComicStatus `gorm:"type:enum('ongoing','completed','hiatus','cancelled','dropped')"`
+	Status    ComicStatus `gorm:"type:text"`
 	//nolint:lll
-	Source         sources.SourceName `gorm:"type:enum('asurascans');not null;uniqueIndex:idx_comic_source_slug,priority:1;"`
+	Source         sources.SourceName `gorm:"type:text;not null;uniqueIndex:idx_comic_source_slug,priority:1;"`
 	Description    string             `gorm:"type:text"`
 	Artist         string             `gorm:"type:text"`
 	Slug           string             `gorm:"type:text;not null;uniqueIndex:idx_comic_source_slug,priority:2"`
 	Title          string             `gorm:"type:text;not null"`
-	ComicType      ComicType          `gorm:"column:comic_type;type:enum('manga','mangatoon','manhua','manwha')"`
+	ComicType      ComicType          `gorm:"column:comic_type;type:text"`
 	Genres         pq.StringArray     `gorm:"type:text[];not null;default:'{}'"`
 	AltTitles      pq.StringArray     `gorm:"type:text[];not null;default:'{}'"`
 	LibraryEntries []LibraryEntry     `gorm:"foreignKey:ComicID"`
