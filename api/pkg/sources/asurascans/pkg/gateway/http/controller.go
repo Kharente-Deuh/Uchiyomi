@@ -147,6 +147,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 				ChapterCount:  i.ChapterCount,
 				Rating:        i.Rating,
 				ReleaseYear:   i.ReleaseYear,
+				IsInLibrary:   i.IsInLibrary,
 				LatestChapters: utils.MapSlice(i.LatestChapters, func(lc domain.SearchResultItemChapter) searchResItemChapterDTO {
 					return searchResItemChapterDTO{
 						EarlyAccessUntil: lc.EarlyAccessUntil,

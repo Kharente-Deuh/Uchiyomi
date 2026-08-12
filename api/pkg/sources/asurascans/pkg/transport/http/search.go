@@ -26,7 +26,8 @@ func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*doma
 	req.Header.Add("Accept", "application/json")
 	req.URL.RawQuery = c.builSearchQuery(opts)
 
-	fmt.Printf("[INFO] GET %s\n", req.URL.String())
+	c.deps.Logger.Debug("Search", "url", req.URL.String())
+
 	res, err := c.deps.Http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("c.deps.http: %w", err)
@@ -217,7 +218,7 @@ type searchHTTPResponseChapter struct {
 	Slug             string    `json:"slug"`
 	ID               int       `json:"id"`
 	SeriesID         int       `json:"series_id"`
-	Number           int       `json:"number"`
+	Number           float64   `json:"number"`
 	PageCount        int       `json:"page_count"`
 	ViewCount        int       `json:"view_count"`
 	IsPremium        bool      `json:"is_premium"`

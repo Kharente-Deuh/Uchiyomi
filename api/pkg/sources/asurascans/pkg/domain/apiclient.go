@@ -21,13 +21,12 @@ type ApiClient interface {
 type SortType string
 
 const (
-	SortTypePopular      SortType = "popular"
-	SortTypeLatest       SortType = "latest"
-	SortTypeRating       SortType = "rating"
-	SortTypeTitle        SortType = "title"
-	SortTypeNewest       SortType = "newest"
-	SortTypeLatestUpdate SortType = "latest"
-	SortTypeNone         SortType = ""
+	SortTypePopular SortType = "popular"
+	SortTypeLatest  SortType = "latest"
+	SortTypeRating  SortType = "rating"
+	SortTypeTitle   SortType = "title"
+	SortTypeNewest  SortType = "newest"
+	SortTypeNone    SortType = ""
 )
 
 func IsSeriesSortType(s string) bool {
@@ -37,7 +36,6 @@ func IsSeriesSortType(s string) bool {
 		SortTypeRating,
 		SortTypeTitle,
 		SortTypeNewest,
-		SortTypeLatestUpdate,
 		SortTypeNone,
 	}
 
@@ -183,7 +181,7 @@ type SearchResultItemChapter struct {
 	PublishedAt      time.Time
 	Title            string
 	ID               string
-	Number           int
+	Number           float64
 }
 
 type GetInfosBySlugResponse struct {
@@ -233,7 +231,7 @@ type Chapter struct {
 	PublishedAt      time.Time
 	ID               string
 	Title            string
-	Number           int
+	Number           float64
 }
 
 type GetImageURLsByChapterOpts struct {

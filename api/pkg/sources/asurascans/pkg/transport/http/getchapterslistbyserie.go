@@ -74,7 +74,7 @@ type getSeriesChaptersHttpChapter struct {
 	ViewCount        int       `json:"view_count"`
 	ID               int       `json:"id"`
 	PageCount        int       `json:"page_count"`
-	Number           int       `json:"number"`
+	Number           float64   `json:"number"`
 	SeriesID         int       `json:"series_id"`
 	CommentsEnabled  bool      `json:"comments_enabled"`
 	IsPremium        bool      `json:"is_premium"`

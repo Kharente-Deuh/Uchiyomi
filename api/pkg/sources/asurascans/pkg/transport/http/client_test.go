@@ -278,6 +278,40 @@ func TestSearchDecodesResponse(t *testing.T) {
 	}
 }
 
+func TestSearchFractionalChapterNumber(t *testing.T) {
+	t.Parallel()
+
+	const body = `{
+		"data": [{
+			"id": 1,
+			"slug": "test",
+			"title": "Test",
+			"description": "desc",
+			"cover": "cover.jpg",
+			"status": "ongoing",
+			"type": "manga",
+			"rating": 8,
+			"chapter_count": 1,
+			"genres": [],
+			"latest_chapters": [{"id": 1, "number": 112.7, "slug": "chapter-112-7"}]
+		}],
+		"meta": {"total": 1, "per_page": 20, "has_more": false}
+	}`
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(body))
+	})
+
+	res, err := c.Search(context.Background(), domain.SearchCacheOpts{})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+
+	if res.Items[0].LatestChapters[0].Number != 112.7 {
+		t.Errorf("chapter number = %v, want 112.7", res.Items[0].LatestChapters[0].Number)
+	}
+}
+
 func TestSearchServerErrors(t *testing.T) {
 	t.Parallel()
 

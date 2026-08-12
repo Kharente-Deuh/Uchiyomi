@@ -61,7 +61,7 @@ type getChapterHttpResponse struct {
 			Title           string    `json:"title,omitempty"`
 			ID              int       `json:"id"`
 			SeriesID        int       `json:"series_id"`
-			Number          int       `json:"number"`
+			Number          float64   `json:"number"`
 			PageCount       int       `json:"page_count"`
 			ViewCount       int       `json:"view_count"`
 			IsPremium       bool      `json:"is_premium"`
@@ -87,7 +87,7 @@ type getChapterHttpResponse struct {
 			Slug            string    `json:"slug"`
 			ID              int       `json:"id"`
 			SeriesID        int       `json:"series_id"`
-			Number          int       `json:"number"`
+			Number          float64   `json:"number"`
 			PageCount       int       `json:"page_count"`
 			ViewCount       int       `json:"view_count"`
 			IsPremium       bool      `json:"is_premium"`
@@ -98,7 +98,7 @@ type getChapterHttpResponse struct {
 			Slug            string    `json:"slug"`
 			ID              int       `json:"id"`
 			SeriesID        int       `json:"series_id"`
-			Number          int       `json:"number"`
+			Number          float64   `json:"number"`
 			PageCount       int       `json:"page_count"`
 			ViewCount       int       `json:"view_count"`
 			IsPremium       bool      `json:"is_premium"`
@@ -116,7 +116,7 @@ type getChapterHttpResponse struct {
 			} `json:"pages"`
 			ID              int  `json:"id"`
 			SeriesID        int  `json:"series_id"`
-			Number          int  `json:"number"`
+			Number          float64  `json:"number"`
 			PageCount       int  `json:"page_count"`
 			ViewCount       int  `json:"view_count"`
 			IsPremium       bool `json:"is_premium"`

@@ -38,6 +38,7 @@ type searchResItemDTO struct {
 	ChapterCount   int                       `json:"chapterCount"`
 	Rating         float64                   `json:"rating"`
 	ReleaseYear    int                       `json:"releaseYear"`
+	IsInLibrary    bool                      `json:"isInLibrary"`
 }
 
 type searchResItemChapterDTO struct {
@@ -45,7 +46,7 @@ type searchResItemChapterDTO struct {
 	PublishedAt      time.Time `json:"publishedAt"`
 	Title            string    `json:"title"`
 	ID               string    `json:"id"`
-	Number           int       `json:"number"`
+	Number           float64   `json:"number"`
 }
 
 func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
@@ -193,7 +194,7 @@ type getChaptersListBySeriesResItemDTO struct {
 	PublishedAt      time.Time `json:"publishedAt"`
 	ID               string    `json:"id"`
 	Title            string    `json:"title"`
-	Number           int       `json:"number"`
+	Number           float64   `json:"number"`
 }
 
 type getImageURLsByChapterResDTO struct {

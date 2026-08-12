@@ -5,6 +5,7 @@ package http
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -27,7 +28,8 @@ func (cfg *Config) Validate() error {
 }
 
 type Deps struct {
-	Http *http.Client
+	Http   *http.Client
+	Logger *slog.Logger
 }
 
 func (d *Deps) Validate() error {
@@ -53,6 +55,7 @@ func New(deps Deps, cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("cfg.Validate: %w", err)
 	}
 
+	deps.Logger = deps.Logger.With("component", "sources.asurascans.httpclient")
 	c := &Client{
 		deps: deps,
 		cfg:  cfg,

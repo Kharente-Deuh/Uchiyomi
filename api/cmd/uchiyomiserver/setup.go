@@ -490,8 +490,8 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 	}
 
 	apiClient, err := asuraclient.New(
-		asuraclient.Deps{Http: httpClient},
-		asuraclient.Config{AsuraURL: "https://api.asurascans.com"},
+		asuraclient.Deps{Http: httpClient, Logger: logger},
+		asuraclient.Config{AsuraURL: "https://api.asurascans.com/api"},
 	)
 
 	if err != nil {
