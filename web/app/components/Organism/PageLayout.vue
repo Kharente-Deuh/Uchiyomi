@@ -41,47 +41,48 @@ const isStickyHeader = computed(() => props.stickyHeader && mobile.value)
       class="position-absolute rounded-lg bottom-0 left-0 w-100"
     />
 
-    <slot name="header" />
-    <div
-      v-if="!slots.header"
-      ref="headerRef"
-      class="d-flex ga-3 align-center justify-space-between"
-      :class="[mobile ? 'px-6 py-3' : 'mb-8', { 'page-layout__sticky-header bg-background': isStickyHeader }]"
-    >
-      <div class="d-flex align-center ga-4 text-truncate">
-        <div v-if="backRoutes?.length" class="d-flex ga-4 align-center">
-          <AtomLink v-if="mobile" :to="backRoutes.at(-1)?.to">
-            <VIcon icon="fa6-solid:angle-left" size="large" />
-          </AtomLink>
-          <template v-else>
-            <template
-              v-for="({ to, name }, i) of backRoutes"
-              :key="i"
-            >
-              <AtomLink :to>
-                <span
-                  class="text-primary-hover text-underline-hover font-title"
-                  :class="{
-                    'text-title-large': !mobile,
-                    'text-title-medium': mobile,
-                  }"
-                >{{ name }}</span>
-              </AtomLink>
-              <span class="opacity-50 text-title-large">/</span>
+    <div class="d-flex flex-column ga-2" :class="{ 'page-layout__sticky-header bg-background': isStickyHeader }">
+      <div
+        ref="headerRef"
+        class="d-flex ga-3 align-center justify-space-between"
+        :class="[mobile ? 'px-6 py-3' : 'mb-8']"
+      >
+        <div class="d-flex align-center ga-4 text-truncate">
+          <div v-if="backRoutes?.length" class="d-flex ga-4 align-center">
+            <AtomLink v-if="mobile" :to="backRoutes.at(-1)?.to">
+              <VIcon icon="fa6-solid:angle-left" size="large" />
+            </AtomLink>
+            <template v-else>
+              <template
+                v-for="({ to, name }, i) of backRoutes"
+                :key="i"
+              >
+                <AtomLink :to>
+                  <span
+                    class="text-primary-hover text-underline-hover font-title"
+                    :class="{
+                      'text-title-large': !mobile,
+                      'text-title-medium': mobile,
+                    }"
+                  >{{ name }}</span>
+                </AtomLink>
+                <span class="opacity-50 text-title-large">/</span>
+              </template>
             </template>
-          </template>
+          </div>
+
+          <slot name="prepend-title" />
+
+          <div class="d-flex flex-column ga-3 text-truncate">
+            <span class="text-display-small font-title text-truncate">{{ title }}</span>
+            <span v-if="subtitle && !mobile && !slots.subtitle" class="text-title-small text-medium-emphasis">{{ subtitle }}</span>
+            <slot name="subtitle" />
+          </div>
         </div>
 
-        <slot name="prepend-title" />
-
-        <div class="d-flex flex-column ga-3 text-truncate">
-          <span class="text-display-small font-title text-truncate">{{ title }}</span>
-          <span v-if="subtitle && !mobile && !slots.subtitle" class="text-title-small text-medium-emphasis">{{ subtitle }}</span>
-          <slot name="subtitle" />
-        </div>
+        <slot name="append-title" />
       </div>
-
-      <slot name="append-title" />
+      <slot name="sub-header" />
     </div>
 
     <slot />
