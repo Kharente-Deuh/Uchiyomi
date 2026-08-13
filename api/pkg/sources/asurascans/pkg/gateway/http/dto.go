@@ -175,18 +175,19 @@ type getInfosBySlugResDTO struct {
 	LastChapterAt time.Time            `json:"lastChapterAt"`
 	UpdatedAt     time.Time            `json:"updatedAt"`
 	CreatedAt     time.Time            `json:"createdAt"`
-	Description   string               `json:"description"`
-	Title         string               `json:"title"`
-	Cover         string               `json:"cover"`
+	InternalURL   *uuid.UUID           `json:"internalUrl"`
+	Author        string               `json:"author"`
+	PublicURL     string               `json:"publicUrl"`
 	Status        sources.SeriesStatus `json:"status"`
 	Type          sources.SeriesType   `json:"type"`
-	Author        string               `json:"author"`
+	Title         string               `json:"title"`
 	Artist        string               `json:"artist"`
 	SourceURL     string               `json:"sourceUrl"`
-	PublicURL     string               `json:"publicUrl"`
+	Cover         string               `json:"cover"`
 	Slug          string               `json:"slug"`
-	AltTitles     []string             `json:"altTitles"`
+	Description   string               `json:"description"`
 	Genres        []string             `json:"genres"`
+	AltTitles     []string             `json:"altTitles"`
 	ChapterCount  int                  `json:"chapterCount"`
 	Rating        float64              `json:"rating"`
 }

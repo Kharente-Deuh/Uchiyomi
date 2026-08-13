@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type SourceMap map[SourceName]Source
@@ -82,6 +84,7 @@ type Source interface {
 
 type GetInfosBySlugResponse struct {
 	LastChapterAt time.Time
+	InternalURL   *uuid.UUID
 	UpdatedAt     time.Time
 	CreatedAt     time.Time
 	Description   string

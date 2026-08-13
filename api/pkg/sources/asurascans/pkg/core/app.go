@@ -164,7 +164,21 @@ func (a *App) GetInfosBySlug(ctx context.Context, slug string) (*sources.GetInfo
 		return nil, err
 	}
 
-	res := infos.Source()
+	comic, err := a.deps.ComicsRepository.GetBySourceSlug(ctx, comics.GetBySourceSlugOpts{
+		Source: a.cfg.SourceName,
+		Slug:   slug,
+	})
+
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, fmt.Errorf("a.deps.ComicsRepository.GetBySourceSlug: %w", err)
+	}
+
+	var internalURL *uuid.UUID = nil
+	if comic != nil {
+		internalURL = &comic.ID
+	}
+
+	res := infos.Source(internalURL)
 
 	return &res, nil
 }
