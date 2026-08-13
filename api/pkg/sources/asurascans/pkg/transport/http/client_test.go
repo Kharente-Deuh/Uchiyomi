@@ -102,7 +102,12 @@ func TestNewRejectsInvalidInput(t *testing.T) {
 		t.Error("New with empty config must fail")
 	}
 
-	if _, err := asurahttp.New(asurahttp.Deps{Http: http.DefaultClient}, asurahttp.Config{AsuraURL: "https://x.dev"}); err == nil {
+	_, err := asurahttp.New(
+		asurahttp.Deps{Http: http.DefaultClient},
+		asurahttp.Config{AsuraURL: "https://x.dev"},
+	)
+
+	if err == nil {
 		t.Error("New without logger must fail")
 	}
 }
