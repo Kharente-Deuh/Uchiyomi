@@ -18,7 +18,7 @@ const { smAndDown } = useDisplay()
       'remove-library-btn--label': mode === 'label',
     }"
   >
-    <div class="d-flex align-center transition-smooth ga-2">
+    <div class="d-flex align-center transition-smooth ga-1">
       <VIcon
         :icon
         size="x-small"
