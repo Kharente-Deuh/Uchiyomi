@@ -175,7 +175,7 @@ type getInfosBySlugResDTO struct {
 	LastChapterAt time.Time            `json:"lastChapterAt"`
 	UpdatedAt     time.Time            `json:"updatedAt"`
 	CreatedAt     time.Time            `json:"createdAt"`
-	InternalURL   *uuid.UUID           `json:"internalUrl"`
+	InternalID    *uuid.UUID           `json:"InternalId"`
 	Author        string               `json:"author"`
 	PublicURL     string               `json:"publicUrl"`
 	Status        sources.SeriesStatus `json:"status"`

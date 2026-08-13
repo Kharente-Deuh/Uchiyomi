@@ -69,4 +69,5 @@ export interface AsuraComicInfos {
   genres: string[]
   chapterCount: number
   rating: number
+  internalId?: string
 }

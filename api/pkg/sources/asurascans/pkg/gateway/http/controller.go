@@ -203,7 +203,7 @@ func (c *Controller) getInfosBySlug(w http.ResponseWriter, r *http.Request) {
 		Genres:        s.Genres,
 		ChapterCount:  s.ChapterCount,
 		Rating:        s.Rating,
-		InternalURL:   s.InternalURL,
+		InternalID:    s.InternalID,
 	})
 }
 

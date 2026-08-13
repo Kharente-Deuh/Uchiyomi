@@ -84,7 +84,7 @@ type Source interface {
 
 type GetInfosBySlugResponse struct {
 	LastChapterAt time.Time
-	InternalURL   *uuid.UUID
+	InternalID    *uuid.UUID
 	UpdatedAt     time.Time
 	CreatedAt     time.Time
 	Description   string

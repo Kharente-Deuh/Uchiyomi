@@ -223,7 +223,7 @@ func (r *GetInfosBySlugResponse) Source(internalURL *uuid.UUID) sources.GetInfos
 		Genres:        r.Genres,
 		ChapterCount:  r.ChapterCount,
 		Rating:        r.Rating,
-		InternalURL:   internalURL,
+		InternalID:    internalURL,
 	}
 }
 
