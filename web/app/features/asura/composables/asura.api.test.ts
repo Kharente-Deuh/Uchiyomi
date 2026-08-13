@@ -31,7 +31,7 @@ describe('createAsuraApi().search', () => {
 
     expect(call).toHaveBeenCalledWith('/search', {
       method: 'GET',
-      params: { sort: 'popular', sortOrder: 'desc', offset: 0, limit: 20 },
+      params: { sort: 'popular', offset: 0, limit: 20 },
     })
     expect(res).toEqual({ success: true, data: { items: [item], total: 1 } })
   })
