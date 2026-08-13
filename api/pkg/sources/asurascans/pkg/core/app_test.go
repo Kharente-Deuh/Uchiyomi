@@ -4,6 +4,7 @@ package core_test
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
 	"time"
@@ -44,6 +45,39 @@ func (stubComicsRepository) Delete(context.Context, uuid.UUID) error {
 }
 
 func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+type libraryComicsRepository struct {
+	err    error
+	comics []comics.Comic
+}
+
+func (r libraryComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (r libraryComicsRepository) GetBySourceSlug(
+	context.Context, comics.GetBySourceSlugOpts,
+) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (r libraryComicsRepository) Create(context.Context, comics.CreateComicOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (r libraryComicsRepository) GetBySlugsAndSource(
+	context.Context, sources.SourceName, []string,
+) ([]comics.Comic, error) {
+	return r.comics, r.err
+}
+
+func (r libraryComicsRepository) Delete(context.Context, uuid.UUID) error {
+	return coredomain.ErrNotFound
+}
+
+func (r libraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
 	return nil, nil
 }
 
@@ -292,6 +326,74 @@ func TestAppGetImageURLsByChapterReturnsACopy(t *testing.T) {
 
 	if second[0] != "https://example.test/1.jpg" {
 		t.Errorf("second[0] = %q: caller could modify cache entry", second[0])
+	}
+}
+
+func TestAppSearchAttachesLibraryInternalID(t *testing.T) {
+	t.Parallel()
+
+	libraryID := uuid.New()
+	inLibrarySlug := "solo-leveling"
+	otherSlug := "one-piece"
+
+	deps := fullDeps(t)
+	deps.SearchCache = newCache(t, searchCacheKey,
+		func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
+			return &domain.SearchCacheResult{
+				Items: []domain.SearchCacheResultItem{
+					{Slug: inLibrarySlug, Title: "Solo Leveling"},
+					{Slug: otherSlug, Title: "One Piece"},
+				},
+			}, nil
+		})
+	deps.ComicsRepository = libraryComicsRepository{comics: []comics.Comic{{
+		ID:   libraryID,
+		Slug: inLibrarySlug,
+	}}}
+
+	app, err := core.New(testConfig(), deps)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	res, err := app.Search(context.Background(), domain.SearchOpts{})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+
+	if len(res.Items) != 2 {
+		t.Fatalf("len(items) = %d, want 2", len(res.Items))
+	}
+
+	if res.Items[0].InternalID == nil || *res.Items[0].InternalID != libraryID {
+		t.Errorf("solo-leveling InternalID = %v, want %s", res.Items[0].InternalID, libraryID)
+	}
+
+	if res.Items[1].InternalID != nil {
+		t.Errorf("one-piece InternalID = %v, want nil", res.Items[1].InternalID)
+	}
+}
+
+func TestAppSearchLibraryLookupFailure(t *testing.T) {
+	t.Parallel()
+
+	deps := fullDeps(t)
+	deps.SearchCache = newCache(t, searchCacheKey,
+		func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
+			return &domain.SearchCacheResult{
+				Items: []domain.SearchCacheResultItem{{Slug: "solo-leveling"}},
+			}, nil
+		})
+	deps.ComicsRepository = libraryComicsRepository{err: errors.New("db down")}
+
+	app, err := core.New(testConfig(), deps)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	_, err = app.Search(context.Background(), domain.SearchOpts{})
+	if err == nil {
+		t.Fatal("Search must fail when the library lookup fails")
 	}
 }
 

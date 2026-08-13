@@ -260,6 +260,40 @@ func TestGetMany(t *testing.T) {
 	}
 }
 
+func TestGetBySlugsAndSource(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	id := uuid.New()
+	created := time.Now().UTC().Truncate(time.Second)
+	updated := created
+	otherSlug := "one-piece"
+
+	mock.ExpectQuery(`FROM "comics".*source = \$1 AND slug IN \(\$2,\$3\)`).
+		WithArgs(string(comicSource), comicSlug, otherSlug).
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"id", "source", "slug", "title", "status", "comic_type",
+				"chapter_count", "author", "artist", "description",
+				"genres", "alt_titles", "created_at", "updated_at",
+			}).AddRow(
+				id, string(comicSource), comicSlug, comicTitle, string(comicStatus), string(comicType),
+				200, "Chugong", "Dubu", "desc",
+				"{}", "{}", created, updated,
+			),
+		)
+
+	got, err := r.GetBySlugsAndSource(context.Background(), comicSource, []string{comicSlug, otherSlug})
+	if err != nil {
+		t.Fatalf("GetBySlugsAndSource: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != id || got[0].Slug != comicSlug {
+		t.Errorf("GetBySlugsAndSource() = %+v", got)
+	}
+}
+
 func TestDelete(t *testing.T) {
 	t.Parallel()
 
