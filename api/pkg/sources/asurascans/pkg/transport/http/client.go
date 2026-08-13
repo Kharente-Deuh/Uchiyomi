@@ -34,7 +34,11 @@ type Deps struct {
 
 func (d *Deps) Validate() error {
 	if d.Http == nil {
-		return errors.New("SearchCache is required")
+		return errors.New("http is required")
+	}
+
+	if d.Logger == nil {
+		return errors.New("logger is required")
 	}
 
 	return nil
