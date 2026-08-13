@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort } from '../types'
+import type { AsuraSearchItem, AsuraSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
 import { createComicsApi } from '~/features/comics/composables/comics.api'
 

@@ -1,59 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort } from '../types'
-import type { ComicStatus, ComicType } from '~/features/comics/types'
+import type { AsuraComicChapter, AsuraComicInfos, AsuraSearchParams, AsuraSearchResponse } from '../types'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
 
 export interface AsuraApi {
   search: (params: AsuraSearchParams) => Promise<ApiResponse<AsuraSearchResponse>>
-}
-
-export interface AsuraSearchParams {
-  search?: string
-  sort?: AsuraSort
-  status?: ComicStatus
-  type?: ComicType
-  artist?: string
-  offset: number
-  limit: number
-  minChapters?: number
-}
-
-export interface AsuraSearchResponse {
-  items: AsuraSearchItem[]
-  total: number
-}
-
-export interface AsuraSearchItem {
-  internalId?: string
-  lastChapterAt: Date
-  updatedAt: Date
-  createdAt: Date
-  publicUrl: string
-  sourceUrl: string
-  cover: string
-  status: ComicStatus
-  type: ComicType
-  author: string
-  artist: string
-  description: string
-  slug: string
-  title: string
-  altTitles: string[]
-  genres: string[]
-  latestChapters: AsuraSearchItemChapter[]
-  chapterCount: number
-  rating: number
-  releaseYear: number
-}
-
-export interface AsuraSearchItemChapter {
-  earlyAccessUntil: Date
-  publishedAt: Date
-  title: string
-  id: string
-  number: number
+  getInfosBySlug: (slug: string) => Promise<ApiResponse<AsuraComicInfos>>
+  getSeriesChapters: (slug: string) => Promise<ApiResponse<AsuraComicChapter[]>>
 }
 
 export function createAsuraApi(): AsuraApi {
@@ -72,11 +26,71 @@ export function createAsuraApi(): AsuraApi {
         ...(params.minChapters && params.minChapters > 0 && { minChapters: params.minChapters }),
       } })
 
-      return { success: true, data: response }
+      return {
+        success: true,
+        data: {
+          total: response.total,
+          items: response.items.map(({ lastChapterAt, updatedAt, createdAt, latestChapters, ...rest }) => ({
+            ...rest,
+            lastChapterAt: new Date(lastChapterAt),
+            updatedAt: new Date(updatedAt),
+            createdAt: new Date(createdAt),
+            latestChapters: latestChapters.map(({ earlyAccessUntil, publishedAt, ...rest }) => ({
+              ...rest,
+              earlyAccessUntil: new Date(earlyAccessUntil),
+              publishedAt: new Date(publishedAt),
+            })),
+          })),
+        },
+      }
     } catch (error) {
       return { success: false, error: ApiError.fromFetchError(error) }
     }
   }
 
-  return { search }
+  async function getInfosBySlug(slug: string): Promise<ApiResponse<AsuraComicInfos>> {
+    try {
+      const {
+        lastChapterAt,
+        updatedAt,
+        createdAt,
+        ...rest
+      } = await api<AsuraComicInfos>(`/series/${slug}`, { method: 'GET' })
+
+      return {
+        success: true,
+        data: {
+          ...rest,
+          lastChapterAt: new Date(lastChapterAt),
+          updatedAt: new Date(updatedAt),
+          createdAt: new Date(createdAt),
+        },
+      }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
+  async function getSeriesChapters(slug: string): Promise<ApiResponse<AsuraComicChapter[]>> {
+    try {
+      const response = await api<AsuraComicChapter[]>(`/series/${slug}/chapters`, { method: 'GET' })
+
+      return {
+        success: true,
+        data: response.map(({ earlyAccessUntil, publishedAt, ...rest }) => ({
+          ...rest,
+          earlyAccessUntil: new Date(earlyAccessUntil),
+          publishedAt: new Date(publishedAt),
+        })),
+      }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
+  return {
+    search,
+    getInfosBySlug,
+    getSeriesChapters,
+  }
 }

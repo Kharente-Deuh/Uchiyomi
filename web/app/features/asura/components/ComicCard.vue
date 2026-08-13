@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import type { AsuraSearchItem } from '../types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
 
 const props = defineProps<{

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
+import type { AsuraSearchItem } from '~/features/asura/types'
 import asuraImg from '~/assets/images/sources/asurascans.webp'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSearchItem } from '../composables/asura.api'
+import type { AsuraSearchItem } from '../types'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAsuraSearchStore } from './asura-search.store'
