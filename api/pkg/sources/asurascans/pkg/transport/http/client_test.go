@@ -127,7 +127,7 @@ func TestSearchRequestShape(t *testing.T) {
 		_, _ = w.Write([]byte(`{"data":[],"meta":{}}`))
 	})
 
-	if _, err := c.Search(context.Background(), domain.SearchCacheOpts{}); err != nil {
+	if _, err := c.Search(context.Background(), domain.SearchCacheOpts{Offset: 1}); err != nil {
 		t.Fatalf("Search: %v", err)
 	}
 
@@ -186,7 +186,8 @@ func TestSearchQueryParameters(t *testing.T) {
 	}
 
 	tests := map[string]string{
-		"offset": "40",
+		// Asura offset = items skipped; SearchCacheOpts.Offset is 1-based page → (40-1)*5
+		"offset": "195",
 		"limit":  "5",
 		"search": "one piece",
 		"sort":   "title",
