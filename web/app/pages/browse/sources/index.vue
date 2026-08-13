@@ -30,8 +30,8 @@ interface Source {
 
 const sources: Source[] = [
   {
-    to: '/browse/sources/asurascans',
-    title: 'Asura Scans',
+    to: '/browse/sources/asura',
+    title: t('sources.asurascans.title'),
     src: asuraImg,
   },
 ]

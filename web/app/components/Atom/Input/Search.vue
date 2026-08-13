@@ -17,6 +17,8 @@ const search = defineModel<string | undefined>({ required: true })
   <VTextField
     v-model.trim="search"
     :placeholder="placeholder || $t('fields.search')"
+    class="border-thin"
+    style="border-radius: 12px"
     hide-details
     density="compact"
     :autofocus

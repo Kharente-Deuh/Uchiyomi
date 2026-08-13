@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort, AsuraSortOrder, AsuraStatus, AsuraType } from '../types'
+import type { AsuraSort, AsuraSortOrder } from '../types'
+import type { ComicStatus, ComicType } from '~/features/comics/types'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
 
@@ -12,8 +13,8 @@ export interface AsuraSearchParams {
   search?: string
   sort?: AsuraSort
   sortOrder?: AsuraSortOrder
-  status?: AsuraStatus
-  type?: AsuraType
+  status?: ComicStatus
+  type?: ComicType
   artist?: string
   offset: number
   limit: number
@@ -26,14 +27,15 @@ export interface AsuraSearchResponse {
 }
 
 export interface AsuraSearchItem {
+  internalId?: string
   lastChapterAt: Date
   updatedAt: Date
   createdAt: Date
   publicUrl: string
   sourceUrl: string
   cover: string
-  status: AsuraStatus
-  type: AsuraType
+  status: ComicStatus
+  type: ComicType
   author: string
   artist: string
   description: string
@@ -45,7 +47,6 @@ export interface AsuraSearchItem {
   chapterCount: number
   rating: number
   releaseYear: number
-  isInLibrary: boolean
 }
 
 export interface AsuraSearchItemChapter {

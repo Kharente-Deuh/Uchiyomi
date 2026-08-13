@@ -207,9 +207,66 @@
     "user": "User"
   },
   "sources": {
-    "title": "Sources"
+    "title": "Sources",
+    "asurascans": {
+      "title": "Asura Scans",
+      "search": {
+        "error": "Failed to load series"
+      },
+      "comic": {
+        "chaptersCount": "No chapters | 1 Chapter | {count} Chapters"
+      }
+    },
+    "asura": {
+      "status": {
+        "ongoing": "Ongoing",
+        "completed": "Completed",
+        "hiatus": "Hiatus",
+        "cancelled": "Cancelled",
+        "label": "Status"
+      },
+      "sort": {
+        "popular": "Popular",
+        "latest": "Latest update",
+        "title": "Title",
+        "rating": "Rating",
+        "label": "Sort by"
+      },
+      "type": {
+        "manhwa": "Manhwa",
+        "mangatoon": "Mangatoon",
+        "manga": "Manga",
+        "manhua": "Manhua",
+        "label": "Type"
+      },
+      "delete": {
+        "confirmation": "You are about to remobe \"{name}\" from you library"
+      },
+      "label": {
+        "inLibrary": "In library"
+      }
+    },
+    "add": {
+      "title": "Add to library"
+    }
   },
   "browse": {
     "title": "Browse"
+  },
+  "fields": {
+    "search": "Search"
+  },
+  "errors": {
+    "noResults": "No results"
+  },
+  "comics": {
+    "remove": {
+      "title": "Remove from library"
+    },
+    "create": {
+      "error": {
+        "alreadyExists": "Comic already in library"
+      }
+    }
   }
 }

@@ -1,11 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort, AsuraSortOrder, AsuraStatus, AsuraType } from '../types'
+import type { AsuraSort, AsuraSortOrder } from '../types'
+import type { ComicStatus, ComicType } from '~/features/comics/types'
 
 const DEFAULT_SORT: AsuraSort = 'popular'
-const DEFAULT_SORT_ORDER: AsuraSortOrder = 'asc'
+const DEFAULT_SORT_ORDER: AsuraSortOrder = 'desc'
+const DEFAULT_OFFSET = 1
 
 export interface AsuraSearchStore {
+
+  comics: Ref<AsuraSearchItem[]>
+  setComics: (comics: AsuraSearchItem[]) => void
+  clearComics: () => void
+
+  accumulatedComics: Ref<AsuraSearchItem[]>
+  setAccumulatedComics: (comics: AsuraSearchItem[]) => void
+  clearAccumulatedComics: () => void
+
+  setComicInternalId: (slug: string, internalId: string | undefined) => void
+
+  loading: Ref<boolean>
+  setLoading: (isLoading: boolean) => void
+  clearLoading: () => void
+
   search: Ref<string | undefined>
   setSearch: (value: string) => void
   clearSearch: () => void
@@ -18,12 +35,12 @@ export interface AsuraSearchStore {
   setSortOrder: (value: AsuraSortOrder) => void
   clearSortOrder: () => void
 
-  status: Ref<AsuraStatus | undefined>
-  setStatus: (value: AsuraStatus) => void
+  status: Ref<ComicStatus | undefined>
+  setStatus: (value: ComicStatus) => void
   clearStatus: () => void
 
-  type: Ref<AsuraType | undefined>
-  setType: (value: AsuraType) => void
+  type: Ref<ComicType | undefined>
+  setType: (value: ComicType) => void
   clearType: () => void
 
   offset: Ref<number>
@@ -37,9 +54,55 @@ export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchSt
   const search = ref<string>()
   const sort = ref<AsuraSort>(DEFAULT_SORT)
   const sortOrder = ref<AsuraSortOrder>(DEFAULT_SORT_ORDER)
-  const status = ref<AsuraStatus>()
-  const type = ref<AsuraType>()
-  const offset = ref<number>(1)
+  const status = ref<ComicStatus>()
+  const type = ref<ComicType>()
+  const offset = ref<number>(DEFAULT_OFFSET)
+  const loading = ref<boolean>(false)
+
+  const comics = ref<AsuraSearchItem[]>([])
+  const accumulatedComics = ref<AsuraSearchItem[]>([])
+
+  function setComics(value: AsuraSearchItem[]): void {
+    comics.value = [...value]
+  }
+
+  function clearComics(): void {
+    comics.value = []
+  }
+
+  function setAccumulatedComics(value: AsuraSearchItem[]): void {
+    accumulatedComics.value = [...value]
+  }
+
+  function clearAccumulatedComics(): void {
+    accumulatedComics.value = []
+  }
+
+  function setLoading(isLoading: boolean): void {
+    loading.value = isLoading
+  }
+
+  function clearLoading(): void {
+    loading.value = false
+  }
+
+  function setComicInternalId(slug: string, internalId: string | undefined): void {
+    let i = comics.value.findIndex(c => c.slug === slug)
+    if (i === -1) {
+      return
+    }
+
+    const { internalId: _, ...comic } = comics.value[i]!
+
+    comics.value[i] = { ...comic, internalId }
+
+    i = accumulatedComics.value.findIndex(c => c.slug === slug)
+    if (i === -1) {
+      return
+    }
+
+    accumulatedComics.value[i] = { ...comic, internalId }
+  }
 
   function setSearch(value: string): void {
     search.value = value
@@ -65,7 +128,7 @@ export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchSt
     sortOrder.value = DEFAULT_SORT_ORDER
   }
 
-  function setStatus(value: AsuraStatus): void {
+  function setStatus(value: ComicStatus): void {
     status.value = value
   }
 
@@ -73,7 +136,7 @@ export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchSt
     status.value = undefined
   }
 
-  function setType(value: AsuraType): void {
+  function setType(value: ComicType): void {
     type.value = value
   }
 
@@ -86,7 +149,7 @@ export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchSt
   }
 
   function clearOffset(): void {
-    offset.value = 1
+    offset.value = DEFAULT_OFFSET
   }
 
   function invalidate(): void {
@@ -96,9 +159,26 @@ export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchSt
     clearStatus()
     clearType()
     clearOffset()
+    clearLoading()
+    clearComics()
+    clearAccumulatedComics()
   }
 
   return {
+    comics,
+    setComics,
+    clearComics,
+
+    accumulatedComics,
+    setAccumulatedComics,
+    clearAccumulatedComics,
+
+    setComicInternalId,
+
+    loading,
+    setLoading,
+    clearLoading,
+
     search,
     setSearch,
     clearSearch,
