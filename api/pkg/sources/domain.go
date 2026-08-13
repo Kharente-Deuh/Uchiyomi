@@ -79,7 +79,12 @@ func ParseSeriesStatus(s string) (SeriesStatus, error) {
 }
 
 type Source interface {
-	GetInfosBySlug(context.Context, string) (*GetInfosBySlugResponse, error)
+	GetInfosBySlug(context.Context, GetInfosBySlugOpts) (*GetInfosBySlugResponse, error)
+}
+
+type GetInfosBySlugOpts struct {
+	Slug   string
+	UserID uuid.UUID
 }
 
 type GetInfosBySlugResponse struct {

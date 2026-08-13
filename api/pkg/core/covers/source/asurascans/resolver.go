@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
@@ -18,7 +20,7 @@ import (
 const DefaultCDNBaseURL = "https://gg.asuracomic.net"
 
 type InfosBySlugGetter interface {
-	GetInfosBySlug(context.Context, string) (*sources.GetInfosBySlugResponse, error)
+	GetInfosBySlug(context.Context, sources.GetInfosBySlugOpts) (*sources.GetInfosBySlugResponse, error)
 }
 
 type Config struct {
@@ -75,7 +77,11 @@ func New(cfg Config, deps Deps) (*Resolver, error) {
 }
 
 func (r *Resolver) ResolveExternalURL(ctx context.Context, slug string) (string, error) {
-	infos, err := r.deps.Getter.GetInfosBySlug(ctx, slug)
+	infos, err := r.deps.Getter.GetInfosBySlug(ctx, sources.GetInfosBySlugOpts{
+		Slug:   slug,
+		UserID: uuid.Nil,
+	})
+
 	if err != nil {
 		if errors.Is(err, asuradomain.ErrNotFound) {
 			return "", covers.ErrSeriesNotFound

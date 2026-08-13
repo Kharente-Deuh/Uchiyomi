@@ -131,7 +131,11 @@ func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Searc
 		slugs[i] = item.Slug
 	}
 
-	foundComics, err := a.deps.ComicsRepository.GetBySlugsAndSource(ctx, a.cfg.SourceName, slugs)
+	foundComics, err := a.deps.ComicsRepository.GetBySlugsAndSource(ctx, comics.GetBySlugsAndSource{
+		Source: a.cfg.SourceName,
+		Slugs:  slugs,
+		UserID: opts.UserID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("a.deps.ComicsRepository.GetBySlugsAndSource: %w", err)
 	}
@@ -157,25 +161,28 @@ func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Searc
 	}, nil
 }
 
-func (a *App) GetInfosBySlug(ctx context.Context, slug string) (*sources.GetInfosBySlugResponse, error) {
-	infos, err := a.deps.GetInfosBySlugCache.Get(ctx, slug)
+func (a *App) GetInfosBySlug(ctx context.Context, opts sources.GetInfosBySlugOpts) (*sources.GetInfosBySlugResponse, error) {
+	infos, err := a.deps.GetInfosBySlugCache.Get(ctx, opts.Slug)
 	if err != nil {
 		//nolint:wrapcheck
 		return nil, err
 	}
 
-	comic, err := a.deps.ComicsRepository.GetBySourceSlug(ctx, comics.GetBySourceSlugOpts{
-		Source: a.cfg.SourceName,
-		Slug:   slug,
-	})
-
-	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return nil, fmt.Errorf("a.deps.ComicsRepository.GetBySourceSlug: %w", err)
-	}
-
 	var internalURL *uuid.UUID = nil
-	if comic != nil {
-		internalURL = &comic.ID
+	if opts.UserID != uuid.Nil {
+		comic, err := a.deps.ComicsRepository.GetBySourceSlug(ctx, comics.GetBySourceSlugOpts{
+			Source: a.cfg.SourceName,
+			Slug:   opts.Slug,
+			UserID: opts.UserID,
+		})
+
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return nil, fmt.Errorf("a.deps.ComicsRepository.GetBySourceSlug: %w", err)
+		}
+
+		if comic != nil {
+			internalURL = &comic.ID
+		}
 	}
 
 	res := infos.Source(internalURL)

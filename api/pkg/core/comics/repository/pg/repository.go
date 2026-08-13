@@ -12,7 +12,6 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgmodels"
-	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
@@ -155,12 +154,11 @@ func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpt
 }
 
 // nolint:lll
-func (r *PGComicsRepository) GetBySlugsAndSource(
-	ctx context.Context,
-	source sources.SourceName,
-	slugs []string,
-) ([]comics.Comic, error) {
-	models, err := r.db(ctx).Where("source = ? AND slug IN (?)", source, slugs).Find(ctx)
+func (r *PGComicsRepository) GetBySlugsAndSource(ctx context.Context, opts comics.GetBySlugsAndSource) ([]comics.Comic, error) {
+	models, err := r.db(ctx).Where(
+		`comics.source = ? AND comics.slug IN (?) AND "LibraryEntries"."user_id" = ?`,
+		opts.Source, opts.Slugs, opts.UserID,
+	).Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}

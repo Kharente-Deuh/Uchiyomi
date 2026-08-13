@@ -11,7 +11,9 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	httpsession "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
@@ -108,12 +110,22 @@ func (c *Controller) InitRouter(r chi.Router) {
 func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.ErrorContext(ctx, "user not found")
+		httputils.WriteError(w, c.deps.Logger, http.StatusUnauthorized, "user not found")
+
+		return
+	}
+
 	opts, err := parseSearchOpts(r.URL.Query())
 	if err != nil {
 		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, err.Error())
 
 		return
 	}
+
+	opts.UserID = user.ID
 
 	c.deps.Logger.Debug("parseSearchOpts", "opts", opts)
 
@@ -170,7 +182,18 @@ func (c *Controller) getInfosBySlug(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "seriesSlug")
 	ctx := r.Context()
 
-	s, err := c.deps.AsuraApp.GetInfosBySlug(ctx, slug)
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.ErrorContext(ctx, "user not found")
+		httputils.WriteError(w, c.deps.Logger, http.StatusUnauthorized, "user not found")
+
+		return
+	}
+
+	s, err := c.deps.AsuraApp.GetInfosBySlug(ctx, sources.GetInfosBySlugOpts{
+		Slug:   slug,
+		UserID: user.ID,
+	})
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			c.deps.Logger.ErrorContext(ctx, "series not found", "slug", slug)
