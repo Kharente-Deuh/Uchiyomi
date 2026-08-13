@@ -208,5 +208,64 @@
   },
   "browse": {
     "title": "Parcourir"
+  },
+  "sources": {
+    "asurascans": {
+      "title": "Asura Scans",
+      "search": {
+        "error": "Échec du chargement des séries"
+      },
+      "comic": {
+        "chaptersCount": "Aucun chapitre | \n1 Chapitre | \n{count} Chapitres"
+      }
+    },
+    "asura": {
+      "status": {
+        "ongoing": "En cours",
+        "completed": "Fini",
+        "hiatus": "Hiatus",
+        "cancelled": "Annulé",
+        "label": "Statut"
+      },
+      "sort": {
+        "popular": "Populaire",
+        "latest": "Dernière mise à jour",
+        "title": "Titre",
+        "rating": "Notation",
+        "label": "Trier par"
+      },
+      "type": {
+        "manhwa": "Manhwa",
+        "mangatoon": "Mangatoon",
+        "manga": "Manga",
+        "manhua": "Manhua",
+        "label": "Type"
+      },
+      "delete": {
+        "confirmation": "Vous êtes sur le point de supprimer \"{name}\" de votre bibliothèque"
+      },
+      "label": {
+        "inLibrary": "En bibliothèque"
+      }
+    },
+    "add": {
+      "title": "Ajouter à la bibliothèque"
+    }
+  },
+  "fields": {
+    "search": "Recherche"
+  },
+  "errors": {
+    "noResults": "Aucun résultat"
+  },
+  "comics": {
+    "remove": {
+      "title": "Supprimer de la bibliothèque"
+    },
+    "create": {
+      "error": {
+        "alreadyExists": " Série déjà en bibliothèque"
+      }
+    }
   }
 }

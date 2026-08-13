@@ -21,13 +21,12 @@ type ApiClient interface {
 type SortType string
 
 const (
-	SortTypePopular      SortType = "popular"
-	SortTypeLatest       SortType = "latest"
-	SortTypeRating       SortType = "rating"
-	SortTypeTitle        SortType = "title"
-	SortTypeNewest       SortType = "newest"
-	SortTypeLatestUpdate SortType = "latest"
-	SortTypeNone         SortType = ""
+	SortTypePopular SortType = "popular"
+	SortTypeLatest  SortType = "latest"
+	SortTypeRating  SortType = "rating"
+	SortTypeTitle   SortType = "title"
+	SortTypeNewest  SortType = "newest"
+	SortTypeNone    SortType = ""
 )
 
 func IsSeriesSortType(s string) bool {
@@ -37,7 +36,6 @@ func IsSeriesSortType(s string) bool {
 		SortTypeRating,
 		SortTypeTitle,
 		SortTypeNewest,
-		SortTypeLatestUpdate,
 		SortTypeNone,
 	}
 
@@ -109,24 +107,24 @@ type SearchResultItem struct {
 	LastChapterAt  time.Time
 	UpdatedAt      time.Time
 	CreatedAt      time.Time
+	InternalID     *uuid.UUID
+	Description    string
 	PublicURL      string
-	SourceURL      string
-	Cover          string
 	Status         sources.SeriesStatus
 	Type           sources.SeriesType
 	Author         string
 	Artist         string
-	Description    string
+	SourceURL      string
 	Slug           string
 	Title          string
+	Cover          string
 	AltTitles      []string
-	Genres         []string
 	LatestChapters []SearchResultItemChapter
+	Genres         []string
 	ChapterCount   int
 	ID             int
 	Rating         float64
 	ReleaseYear    int
-	IsInLibrary    bool
 }
 
 type SearchCacheResultItem struct {
@@ -152,7 +150,7 @@ type SearchCacheResultItem struct {
 	ReleaseYear    int
 }
 
-func (i *SearchCacheResultItem) Domain(isInLibrary bool) SearchResultItem {
+func (i *SearchCacheResultItem) Domain(internalID *uuid.UUID) SearchResultItem {
 	return SearchResultItem{
 		LastChapterAt:  i.LastChapterAt,
 		UpdatedAt:      i.UpdatedAt,
@@ -174,7 +172,7 @@ func (i *SearchCacheResultItem) Domain(isInLibrary bool) SearchResultItem {
 		ID:             i.ID,
 		Rating:         i.Rating,
 		ReleaseYear:    i.ReleaseYear,
-		IsInLibrary:    isInLibrary,
+		InternalID:     internalID,
 	}
 }
 
@@ -183,7 +181,7 @@ type SearchResultItemChapter struct {
 	PublishedAt      time.Time
 	Title            string
 	ID               string
-	Number           int
+	Number           float64
 }
 
 type GetInfosBySlugResponse struct {
@@ -233,7 +231,7 @@ type Chapter struct {
 	PublishedAt      time.Time
 	ID               string
 	Title            string
-	Number           int
+	Number           float64
 }
 
 type GetImageURLsByChapterOpts struct {

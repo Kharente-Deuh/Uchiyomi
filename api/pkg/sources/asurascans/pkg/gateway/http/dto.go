@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 )
@@ -22,19 +24,20 @@ type searchResItemDTO struct {
 	LastChapterAt  time.Time                 `json:"lastChapterAt"`
 	UpdatedAt      time.Time                 `json:"updatedAt"`
 	CreatedAt      time.Time                 `json:"createdAt"`
-	PublicURL      string                    `json:"publicUrl"`
-	SourceURL      string                    `json:"sourceUrl"`
-	Cover          string                    `json:"cover"`
+	InternalID     *uuid.UUID                `json:"internalId"`
+	Description    string                    `json:"description"`
+	Slug           string                    `json:"slug"`
 	Status         sources.SeriesStatus      `json:"status"`
 	Type           sources.SeriesType        `json:"type"`
 	Author         string                    `json:"author"`
 	Artist         string                    `json:"artist"`
-	Description    string                    `json:"description"`
-	Slug           string                    `json:"slug"`
+	SourceURL      string                    `json:"sourceUrl"`
+	Cover          string                    `json:"cover"`
 	Title          string                    `json:"title"`
-	AltTitles      []string                  `json:"altTitles"`
+	PublicURL      string                    `json:"publicUrl"`
 	Genres         []string                  `json:"genres"`
 	LatestChapters []searchResItemChapterDTO `json:"latestChapters"`
+	AltTitles      []string                  `json:"altTitles"`
 	ChapterCount   int                       `json:"chapterCount"`
 	Rating         float64                   `json:"rating"`
 	ReleaseYear    int                       `json:"releaseYear"`
@@ -45,7 +48,7 @@ type searchResItemChapterDTO struct {
 	PublishedAt      time.Time `json:"publishedAt"`
 	Title            string    `json:"title"`
 	ID               string    `json:"id"`
-	Number           int       `json:"number"`
+	Number           float64   `json:"number"`
 }
 
 func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
@@ -193,7 +196,7 @@ type getChaptersListBySeriesResItemDTO struct {
 	PublishedAt      time.Time `json:"publishedAt"`
 	ID               string    `json:"id"`
 	Title            string    `json:"title"`
-	Number           int       `json:"number"`
+	Number           float64   `json:"number"`
 }
 
 type getImageURLsByChapterResDTO struct {

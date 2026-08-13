@@ -43,8 +43,6 @@
     "@nuxt/fonts": "catalog:build",
     "@nuxt/test-utils": "catalog:dev",
     "@nuxtjs/i18n": "catalog:build",
-    "@pinia/colada": "catalog:dev",
-    "@pinia/colada-nuxt": "catalog:dev",
     "@pinia/nuxt": "catalog:build",
     "@types/node": "catalog:dev",
     "@vite-pwa/nuxt": "catalog:build",

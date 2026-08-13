@@ -84,13 +84,22 @@ describe('organismPageLayout', () => {
     expect(wrapper.text()).toContain('page body')
   })
 
-  it('lets a header slot replace the built-in header', async () => {
+  it('renders the prepend-title slot next to the title', async () => {
     const wrapper = await mountSuspended(wrap(
       { title: 'PocketID' },
-      { default: () => 'page body', header: () => 'custom header' },
+      { 'default': () => 'page body', 'prepend-title': () => 'logo' },
     ))
 
-    expect(wrapper.text()).toContain('custom header')
-    expect(wrapper.text()).not.toContain('PocketID')
+    expect(wrapper.text()).toContain('logo')
+    expect(wrapper.text()).toContain('PocketID')
+  })
+
+  it('renders the sub-header slot', async () => {
+    const wrapper = await mountSuspended(wrap(
+      { title: 'Asura Scans' },
+      { 'default': () => 'page body', 'sub-header': () => 'filters' },
+    ))
+
+    expect(wrapper.text()).toContain('filters')
   })
 })

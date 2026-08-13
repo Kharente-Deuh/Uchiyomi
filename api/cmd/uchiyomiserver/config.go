@@ -39,6 +39,10 @@ type cfg struct {
 		AllowedOrigins []string `env:"CORS_ORIGINS" envSeparator:","`
 		Port           int      `env:"PORT" envDefault:"3000"`
 	}
+	Runtime struct {
+		UID int `env:"PUID" envDefault:"65532"`
+		GID int `env:"PGID" envDefault:"65532"`
+	}
 }
 
 func newConfig() (*cfg, error) {

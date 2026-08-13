@@ -54,7 +54,7 @@ func (r *PGComicsRepository) db(ctx context.Context) gorm.Interface[pgmodels.Com
 func (r *PGComicsRepository) GetByID(ctx context.Context, opts comics.GetByIDOpts) (*comics.Comic, error) {
 	model, err := r.db(ctx).
 		Joins(clause.JoinTarget{Association: pgmodels.ComicLibraryEntries}, nil).
-		Where("comics.id = ? AND library_entries.user_id = ?", opts.ID, opts.UserID).
+		Where(`comics.id = ? AND "LibraryEntries"."user_id" = ?`, opts.ID, opts.UserID).
 		First(ctx)
 
 	if err != nil {
@@ -74,7 +74,7 @@ func (r *PGComicsRepository) GetByID(ctx context.Context, opts comics.GetByIDOpt
 func (r *PGComicsRepository) GetBySourceSlug(ctx context.Context, opts comics.GetBySourceSlugOpts) (*comics.Comic, error) {
 	model, err := r.db(ctx).
 		Joins(clause.JoinTarget{Association: pgmodels.ComicLibraryEntries}, nil).
-		Where("comics.slug = ? AND comics.source = ? AND library_entries.user_id = ?", opts.Slug, opts.Source, opts.UserID).
+		Where(`comics.slug = ? AND comics.source = ? AND "LibraryEntries"."user_id" = ?`, opts.Slug, opts.Source, opts.UserID).
 		First(ctx)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -126,7 +126,7 @@ func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComic
 func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpts) ([]comics.Comic, error) {
 	q := r.db(ctx).Joins(clause.JoinTarget{Association: pgmodels.ComicLibraryEntries}, nil).Order("comics.created_at DESC")
 	if opts.UserID != nil {
-		q = q.Where("library_entries.user_id = ?", opts.UserID)
+		q = q.Where(`"LibraryEntries"."user_id" = ?`, opts.UserID)
 	}
 
 	if opts.Source != nil {

@@ -61,7 +61,7 @@ type getChapterHttpResponse struct {
 			Title           string    `json:"title,omitempty"`
 			ID              int       `json:"id"`
 			SeriesID        int       `json:"series_id"`
-			Number          int       `json:"number"`
+			Number          float64   `json:"number"`
 			PageCount       int       `json:"page_count"`
 			ViewCount       int       `json:"view_count"`
 			IsPremium       bool      `json:"is_premium"`
@@ -87,7 +87,7 @@ type getChapterHttpResponse struct {
 			Slug            string    `json:"slug"`
 			ID              int       `json:"id"`
 			SeriesID        int       `json:"series_id"`
-			Number          int       `json:"number"`
+			Number          float64   `json:"number"`
 			PageCount       int       `json:"page_count"`
 			ViewCount       int       `json:"view_count"`
 			IsPremium       bool      `json:"is_premium"`
@@ -98,7 +98,7 @@ type getChapterHttpResponse struct {
 			Slug            string    `json:"slug"`
 			ID              int       `json:"id"`
 			SeriesID        int       `json:"series_id"`
-			Number          int       `json:"number"`
+			Number          float64   `json:"number"`
 			PageCount       int       `json:"page_count"`
 			ViewCount       int       `json:"view_count"`
 			IsPremium       bool      `json:"is_premium"`
@@ -114,13 +114,13 @@ type getChapterHttpResponse struct {
 				Width  int    `json:"width"`
 				Height int    `json:"height"`
 			} `json:"pages"`
-			ID              int  `json:"id"`
-			SeriesID        int  `json:"series_id"`
-			Number          int  `json:"number"`
-			PageCount       int  `json:"page_count"`
-			ViewCount       int  `json:"view_count"`
-			IsPremium       bool `json:"is_premium"`
-			CommentsEnabled bool `json:"comments_enabled"`
+			ID              int     `json:"id"`
+			SeriesID        int     `json:"series_id"`
+			Number          float64 `json:"number"`
+			PageCount       int     `json:"page_count"`
+			ViewCount       int     `json:"view_count"`
+			IsPremium       bool    `json:"is_premium"`
+			CommentsEnabled bool    `json:"comments_enabled"`
 		} `json:"chapter"`
 		CommentCount int  `json:"comment_count"`
 		IsLocked     bool `json:"is_locked"`

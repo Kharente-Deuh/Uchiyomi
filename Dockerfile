@@ -44,12 +44,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     -ldflags='-s -w' \
     -o /out/uchiyomiserver ./cmd/uchiyomiserver
 
-FROM gcr.io/distroless/static-debian13:nonroot
+FROM gcr.io/distroless/static-debian13
 
 COPY --from=build /out/uchiyomiserver /uchiyomiserver
 
 EXPOSE 3000
-
-USER nonroot:nonroot
 
 ENTRYPOINT ["/uchiyomiserver"]

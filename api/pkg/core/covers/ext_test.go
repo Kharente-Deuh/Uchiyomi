@@ -42,3 +42,27 @@ func TestResolveAbsoluteURL(t *testing.T) {
 		t.Errorf("absolute url = %q", got)
 	}
 }
+
+func TestMIMEForExtension(t *testing.T) {
+	t.Parallel()
+
+	if got := covers.MIMEForExtension(".webp"); got != "image/webp" {
+		t.Errorf("MIMEForExtension(.webp) = %q, want image/webp", got)
+	}
+
+	if got := covers.MIMEForExtension(".unknown"); got != "application/octet-stream" {
+		t.Errorf("MIMEForExtension(.unknown) = %q, want application/octet-stream", got)
+	}
+}
+
+func TestExtensionFromContentType(t *testing.T) {
+	t.Parallel()
+
+	if got := covers.ExtensionFromContentType("image/jpeg"); got == "" {
+		t.Error("ExtensionFromContentType(image/jpeg) was empty")
+	}
+
+	if got := covers.ExtensionFromContentType("not-a-type"); got != "" {
+		t.Errorf("ExtensionFromContentType(not-a-type) = %q, want empty", got)
+	}
+}
