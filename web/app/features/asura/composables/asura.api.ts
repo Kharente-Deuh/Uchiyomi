@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort, AsuraSortOrder } from '../types'
+import type { AsuraSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
@@ -12,7 +12,6 @@ export interface AsuraApi {
 export interface AsuraSearchParams {
   search?: string
   sort?: AsuraSort
-  sortOrder?: AsuraSortOrder
   status?: ComicStatus
   type?: ComicType
   artist?: string

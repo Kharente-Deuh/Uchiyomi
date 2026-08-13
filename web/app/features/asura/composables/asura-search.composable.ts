@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort, AsuraSortOrder } from '../types'
+import type { AsuraSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
 import { createComicsApi } from '~/features/comics/composables/comics.api'
 
@@ -10,7 +10,6 @@ const ASURA_SOURCE_NAME = 'asurascans'
 export interface AsuraSearchComposable {
   search: Ref<string | undefined>
   sort: Ref<AsuraSort>
-  sortOrder: Ref<AsuraSortOrder>
   status: Ref<ComicStatus | undefined>
   type: Ref<ComicType | undefined>
   page: Ref<number>
@@ -42,11 +41,6 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
   const sort = computed({
     get: () => store.sort,
     set: (value: AsuraSort) => store.setSort(value),
-  })
-
-  const sortOrder = computed({
-    get: () => store.sortOrder,
-    set: (value: AsuraSortOrder) => store.setSortOrder(value),
   })
 
   const status = computed({
@@ -92,7 +86,6 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     const res = await api.search({
       ...(debouncedSearch.value && { search: debouncedSearch.value }),
       ...(sort.value && { sort: sort.value }),
-      ...(sortOrder.value && { sortOrder: sortOrder.value }),
       ...(status.value && { status: status.value }),
       ...(type.value && { type: type.value }),
       offset: offset.value,
@@ -119,13 +112,13 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     comics.value = res.data.items
   }, 200)
 
-  watch([search, sort, sortOrder, status, type], () => {
+  watch([search, sort, status, type], () => {
     offset.value = 0
     accumulatedComics.value = []
     comics.value = []
   })
 
-  watch([search, sort, sortOrder, status, type, offset], () => {
+  watch([search, sort, status, type, offset], () => {
     if (opts.doSearch) {
       debouncedSearchFn()
     }
@@ -180,7 +173,6 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
   return {
     search: debouncedSearch,
     sort,
-    sortOrder,
     status,
     type,
     page: offset,

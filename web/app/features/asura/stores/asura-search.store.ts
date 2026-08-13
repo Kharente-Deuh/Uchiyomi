@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort, AsuraSortOrder } from '../types'
+import type { AsuraSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
 
 const DEFAULT_SORT: AsuraSort = 'popular'
-const DEFAULT_SORT_ORDER: AsuraSortOrder = 'desc'
 const DEFAULT_OFFSET = 1
 
 export interface AsuraSearchStore {
@@ -31,10 +30,6 @@ export interface AsuraSearchStore {
   setSort: (value: AsuraSort) => void
   clearSort: () => void
 
-  sortOrder: Ref<AsuraSortOrder>
-  setSortOrder: (value: AsuraSortOrder) => void
-  clearSortOrder: () => void
-
   status: Ref<ComicStatus | undefined>
   setStatus: (value: ComicStatus) => void
   clearStatus: () => void
@@ -53,7 +48,6 @@ export interface AsuraSearchStore {
 export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchStore => {
   const search = ref<string>()
   const sort = ref<AsuraSort>(DEFAULT_SORT)
-  const sortOrder = ref<AsuraSortOrder>(DEFAULT_SORT_ORDER)
   const status = ref<ComicStatus>()
   const type = ref<ComicType>()
   const offset = ref<number>(DEFAULT_OFFSET)
@@ -120,14 +114,6 @@ export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchSt
     sort.value = DEFAULT_SORT
   }
 
-  function setSortOrder(value: AsuraSortOrder): void {
-    sortOrder.value = value
-  }
-
-  function clearSortOrder(): void {
-    sortOrder.value = DEFAULT_SORT_ORDER
-  }
-
   function setStatus(value: ComicStatus): void {
     status.value = value
   }
@@ -155,7 +141,6 @@ export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchSt
   function invalidate(): void {
     clearSearch()
     clearSort()
-    clearSortOrder()
     clearStatus()
     clearType()
     clearOffset()
@@ -186,10 +171,6 @@ export const useAsuraSearchStore = defineStore('asura-search', (): AsuraSearchSt
     sort,
     setSort,
     clearSort,
-
-    sortOrder,
-    setSortOrder,
-    clearSortOrder,
 
     status,
     setStatus,
