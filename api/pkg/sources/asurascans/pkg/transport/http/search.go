@@ -23,6 +23,8 @@ func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*doma
 		return nil, fmt.Errorf("http.NewRequestWithContext: %w", err)
 	}
 
+	c.deps.Logger.Debug("domain.SearchCacheOpts", "opts", opts)
+
 	req.Header.Add("Accept", "application/json")
 	req.URL.RawQuery = c.builSearchQuery(opts)
 
@@ -54,7 +56,7 @@ func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*doma
 func (c *Client) builSearchQuery(opts domain.SearchCacheOpts) string {
 	withDefaults := c.getSearchOptsWithDefaults(opts)
 	q := url.Values{}
-	q.Add("offset", strconv.Itoa(withDefaults.Offset))
+	q.Add("offset", strconv.Itoa((withDefaults.Offset-1)*withDefaults.Limit))
 	q.Add("limit", strconv.Itoa(withDefaults.Limit))
 	q.Add("sort", string(withDefaults.Sort))
 	q.Add("order", string(withDefaults.SortOrder))

@@ -17,6 +17,7 @@ import (
 	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	asuraclient "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/database"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
@@ -56,6 +57,11 @@ const oidcCallbackPath = core.APIPrefix + "/auth/oidc/callback"
 func setupApp(cfg *cfg) (*core.App, error) {
 	logger := logging.New(logging.Config{Level: cfg.Logger.Level})
 
+	coversDir, err := utils.PrepareDataDir(logger, cfg.Covers.Dir, cfg.Runtime.UID, cfg.Runtime.GID)
+	if err != nil {
+		return nil, fmt.Errorf("utils.PrepareDataDir: %w", err)
+	}
+
 	dbr, err := setupDBRelated(cfg, logger)
 	if err != nil {
 		//nolint:wrapcheck
@@ -80,7 +86,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 
 	coversBundle, err := setupCovers(coversDeps{
 		Logger:    logger,
-		CoversDir: cfg.Covers.Dir,
+		CoversDir: coversDir,
 		AsuraApp:  asuraApp,
 	})
 	if err != nil {
@@ -751,7 +757,11 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 	}
 
 	comicsCtrl, err := httpcomics.New(
-		httpcomics.Config{Endpoint: "/comics"}, httpcomics.Deps{
+		httpcomics.Config{
+			Endpoint:    "/comics",
+			Middlewares: chi.Middlewares{authenticator.Middleware, authenticator.RequireAdmin},
+		},
+		httpcomics.Deps{
 			Logger:        deps.Logger,
 			ComicsService: deps.ComicsService,
 		})

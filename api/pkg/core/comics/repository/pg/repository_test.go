@@ -74,7 +74,7 @@ func TestGetByID(t *testing.T) {
 	created := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
 	updated := time.Now().UTC().Truncate(time.Second)
 
-	mock.ExpectQuery(`FROM "comics".*comics.id = \$1 AND library_entries.user_id = \$2`).
+	mock.ExpectQuery(`FROM "comics".*comics.id = \$1 AND "LibraryEntries"."user_id" = \$2`).
 		WithArgs(id, userID, 1).
 		WillReturnRows(
 			sqlmock.NewRows([]string{
@@ -105,7 +105,7 @@ func TestGetByIDNotFound(t *testing.T) {
 
 	userID := uuid.New()
 
-	mock.ExpectQuery(`FROM "comics".*comics.id = \$1 AND library_entries.user_id = \$2`).
+	mock.ExpectQuery(`FROM "comics".*comics.id = \$1 AND "LibraryEntries"."user_id" = \$2`).
 		WithArgs(sqlmock.AnyArg(), userID, 1).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
@@ -130,7 +130,7 @@ func TestGetBySourceSlug(t *testing.T) {
 	updated := created
 
 	mock.ExpectQuery(
-		`FROM "comics".*comics.slug = \$1 AND comics.source = \$2 AND library_entries.user_id = \$3`,
+		`FROM "comics".*comics.slug = \$1 AND comics.source = \$2 AND "LibraryEntries"."user_id" = \$3`,
 	).
 		WithArgs(comicSlug, string(comicSource), userID, 1).
 		WillReturnRows(
@@ -233,7 +233,7 @@ func TestGetMany(t *testing.T) {
 	created := time.Now().UTC().Truncate(time.Second)
 	updated := created
 
-	mock.ExpectQuery(`FROM "comics".*library_entries.user_id = \$1`).
+	mock.ExpectQuery(`FROM "comics".*"LibraryEntries"."user_id" = \$1`).
 		WithArgs(userID, 10).
 		WillReturnRows(
 			sqlmock.NewRows([]string{

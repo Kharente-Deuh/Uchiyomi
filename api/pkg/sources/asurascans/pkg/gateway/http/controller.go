@@ -115,6 +115,8 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	c.deps.Logger.Debug("parseSearchOpts", "opts", opts)
+
 	res, err := c.deps.AsuraApp.Search(ctx, opts)
 	if err != nil {
 		c.deps.Logger.ErrorContext(ctx, "failt to search", "error", err)
@@ -147,7 +149,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 				ChapterCount:  i.ChapterCount,
 				Rating:        i.Rating,
 				ReleaseYear:   i.ReleaseYear,
-				IsInLibrary:   i.IsInLibrary,
+				InternalID:    i.InternalID,
 				LatestChapters: utils.MapSlice(i.LatestChapters, func(lc domain.SearchResultItemChapter) searchResItemChapterDTO {
 					return searchResItemChapterDTO{
 						EarlyAccessUntil: lc.EarlyAccessUntil,

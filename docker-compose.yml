@@ -32,6 +32,8 @@ services:
     environment:
       DB_HOST: uchiyomi-db
       DB_PORT: 5432
+      PUID: ${PUID:-65532}
+      PGID: ${PGID:-65532}
       DB_USER: ${DB_USER:-uchiyomi}
       DB_PWD: ${DB_PWD:-uchiyomi}
       DB_NAME: ${DB_NAME:-uchiyomi}
@@ -51,10 +53,6 @@ services:
     read_only: true
     volumes:
       - covers:/covers
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
     stop_grace_period: 15s
 
 volumes:

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 )
@@ -22,23 +24,23 @@ type searchResItemDTO struct {
 	LastChapterAt  time.Time                 `json:"lastChapterAt"`
 	UpdatedAt      time.Time                 `json:"updatedAt"`
 	CreatedAt      time.Time                 `json:"createdAt"`
-	PublicURL      string                    `json:"publicUrl"`
-	SourceURL      string                    `json:"sourceUrl"`
-	Cover          string                    `json:"cover"`
+	InternalID     *uuid.UUID                `json:"internalId"`
+	Description    string                    `json:"description"`
+	Slug           string                    `json:"slug"`
 	Status         sources.SeriesStatus      `json:"status"`
 	Type           sources.SeriesType        `json:"type"`
 	Author         string                    `json:"author"`
 	Artist         string                    `json:"artist"`
-	Description    string                    `json:"description"`
-	Slug           string                    `json:"slug"`
+	SourceURL      string                    `json:"sourceUrl"`
+	Cover          string                    `json:"cover"`
 	Title          string                    `json:"title"`
-	AltTitles      []string                  `json:"altTitles"`
-	Genres         []string                  `json:"genres"`
+	PublicURL      string                    `json:"publicUrl"`
+	Genres         []string                  `json:"genearres"`
 	LatestChapters []searchResItemChapterDTO `json:"latestChapters"`
+	AltTitles      []string                  `json:"altTitles"`
 	ChapterCount   int                       `json:"chapterCount"`
 	Rating         float64                   `json:"rating"`
 	ReleaseYear    int                       `json:"releaseYear"`
-	IsInLibrary    bool                      `json:"isInLibrary"`
 }
 
 type searchResItemChapterDTO struct {

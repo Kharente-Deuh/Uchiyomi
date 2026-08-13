@@ -57,3 +57,22 @@ func TestEnsureDirFailsOnExistingFile(t *testing.T) {
 		t.Error("EnsureDir must fail when path is a file")
 	}
 }
+
+func TestPrepareDataDirAsUnprivilegedUser(t *testing.T) {
+	t.Parallel()
+
+	if os.Geteuid() == 0 {
+		t.Skip("skipped when running as root")
+	}
+
+	dir := filepath.Join(t.TempDir(), "covers")
+
+	got, err := utils.PrepareDataDir(nil, dir, 65532, 65532)
+	if err != nil {
+		t.Fatalf("PrepareDataDir: %v", err)
+	}
+
+	if got != dir {
+		t.Fatalf("got %q, want %q", got, dir)
+	}
+}

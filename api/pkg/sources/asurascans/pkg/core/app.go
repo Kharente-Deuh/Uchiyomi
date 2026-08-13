@@ -9,10 +9,10 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
-	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"golang.org/x/sync/errgroup"
 )
@@ -138,11 +138,17 @@ func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Searc
 
 	items := make([]domain.SearchResultItem, len(res.Items))
 	for i, item := range res.Items {
-		isInLibrary := utils.ContainsSlice(foundComics, func(c comics.Comic) bool {
-			return c.Slug == item.Slug
-		})
+		var internalID *uuid.UUID = nil
 
-		items[i] = item.Domain(isInLibrary)
+		for _, comic := range foundComics {
+			if comic.Slug == item.Slug {
+				internalID = &comic.ID
+
+				break
+			}
+		}
+
+		items[i] = item.Domain(internalID)
 	}
 
 	return &domain.SearchResult{
