@@ -39,7 +39,6 @@ describe('useAsuraSearchStore', () => {
     const store = useAsuraSearchStore()
 
     expect(store.sort).toBe('popular')
-    expect(store.sortOrder).toBe('desc')
     expect(store.offset).toBe(1)
     expect(store.comics).toEqual([])
   })

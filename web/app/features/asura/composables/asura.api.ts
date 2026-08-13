@@ -64,7 +64,6 @@ export function createAsuraApi(): AsuraApi {
       const response = await api<AsuraSearchResponse>('/search', { method: 'GET', params: {
         ...(params.search && { search: params.search }),
         ...(params.sort && { sort: params.sort }),
-        ...(params.sortOrder && { sortOrder: params.sortOrder }),
         ...(params.status && { status: params.status }),
         ...(params.type && { type: params.type }),
         ...(params.artist && { artist: params.artist }),

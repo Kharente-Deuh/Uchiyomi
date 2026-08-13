@@ -27,7 +27,7 @@ describe('createAsuraApi().search', () => {
   it('requests /search with pagination', async () => {
     call.mockResolvedValue({ items: [item], total: 1 })
 
-    const res = await createAsuraApi().search({ offset: 0, limit: 20, sort: 'popular', sortOrder: 'desc' })
+    const res = await createAsuraApi().search({ offset: 0, limit: 20, sort: 'popular' })
 
     expect(call).toHaveBeenCalledWith('/search', {
       method: 'GET',
