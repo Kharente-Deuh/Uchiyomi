@@ -29,6 +29,13 @@ const backRoutes = computed((): PageLayoutBackRoute[] => [
 
 const { isLoading, series, page, hasNextPage, addComicInLibrary, addComicInLibraryLoading } = useAsuraSearch({ doSearch: true })
 
+const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel')
+useIntersectionObserver(loadMoreSentinel, ([entry]) => {
+  if (entry?.isIntersecting && smAndDown.value && !isLoading.value && hasNextPage.value) {
+    page.value += 1
+  }
+})
+
 const showDeleteModal = ref(false)
 const comicToDelete = ref<AsuraSearchItem>()
 
@@ -79,7 +86,21 @@ async function doToggleComic(comic: AsuraSearchItem): Promise<void> {
       </div>
     </div>
 
+    <template v-if="smAndDown" #footer>
+      <div
+        ref="loadMoreSentinel"
+        class="d-flex justify-center py-4"
+      >
+        <VProgressCircular
+          v-if="isLoading && page > 1"
+          color="secondary"
+          indeterminate
+        />
+      </div>
+    </template>
+
     <MoleculePaginationFooter
+      v-if="!smAndDown"
       v-model="page"
       :has-next-page
       fixed
