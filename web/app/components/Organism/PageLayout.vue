@@ -44,6 +44,7 @@ const { height: headerHeight } = useElementSize(headerRef, undefined, { box: 'bo
     <div
       ref="headerRef"
       class="d-flex flex-column ga-2 pt-4 bg-background page-layout__sticky-header"
+      :class="{ 'pt-4': !smAndDown }"
     >
       <div
         class="d-flex ga-3 align-center justify-space-between"
