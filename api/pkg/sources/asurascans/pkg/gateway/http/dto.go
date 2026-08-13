@@ -35,7 +35,7 @@ type searchResItemDTO struct {
 	Cover          string                    `json:"cover"`
 	Title          string                    `json:"title"`
 	PublicURL      string                    `json:"publicUrl"`
-	Genres         []string                  `json:"genearres"`
+	Genres         []string                  `json:"genres"`
 	LatestChapters []searchResItemChapterDTO `json:"latestChapters"`
 	AltTitles      []string                  `json:"altTitles"`
 	ChapterCount   int                       `json:"chapterCount"`

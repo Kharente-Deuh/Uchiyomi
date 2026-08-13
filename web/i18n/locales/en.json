@@ -240,7 +240,7 @@
         "label": "Type"
       },
       "delete": {
-        "confirmation": "You are about to remobe \"{name}\" from you library"
+        "confirmation": "You are about to remove \"{name}\" from you library"
       },
       "label": {
         "inLibrary": "In library"

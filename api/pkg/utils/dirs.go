@@ -49,8 +49,6 @@ func ensureDirWritable(path string) error {
 	return nil
 }
 
-// PrepareDataDir creates path when running as root (e.g. fresh Docker volume), assigns ownership,
-// drops privileges, then verifies the directory is usable.
 func PrepareDataDir(logger *slog.Logger, path string, uid, gid int) (string, error) {
 	if os.Geteuid() == 0 {
 		if err := os.MkdirAll(path, 0o755); err != nil {

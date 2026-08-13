@@ -27,8 +27,8 @@ const backRoutes = computed((): PageLayoutBackRoute[] => [
   },
 ])
 
-const { isLoading, series, page, hasNextPage, addComicInLibrary, addComicInLibraryLoading } = useAsuraSearch({ doSearch: true })
-
+const { isLoading, series, page, maxPage, addComicInLibrary, addComicInLibraryLoading } = useAsuraSearch({ doSearch: true })
+const hasNextPage = computed(() => page.value < maxPage.value)
 const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel')
 useIntersectionObserver(loadMoreSentinel, ([entry]) => {
   if (entry?.isIntersecting && smAndDown.value && !isLoading.value && hasNextPage.value) {
@@ -102,6 +102,7 @@ async function doToggleComic(comic: AsuraSearchItem): Promise<void> {
     <MoleculePaginationFooter
       v-if="!smAndDown"
       v-model="page"
+      :pages-total="maxPage"
       :has-next-page
       fixed
     />

@@ -14,7 +14,7 @@ export interface AsuraSearchComposable {
   status: Ref<ComicStatus | undefined>
   type: Ref<ComicType | undefined>
   page: Ref<number>
-  hasNextPage: Ref<boolean>
+  maxPage: Ref<number>
   series: Ref<AsuraSearchItem[]>
   isLoading: Ref<boolean>
   resetFilters: () => void
@@ -83,7 +83,7 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     store.invalidate()
   }
 
-  const hasNextPage = ref(false)
+  const maxPage = ref(0)
   const addComicInLibraryLoading = ref<Record<string, boolean>>({})
 
   const debouncedSearchFn = useDebounceFn(async () => {
@@ -105,7 +105,7 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
       toast.error(t('sources.asurascans.search.error'))
 
       accumulatedComics.value = []
-      hasNextPage.value = false
+      maxPage.value = 0
       comics.value = []
 
       return
@@ -115,7 +115,7 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
       accumulatedComics.value = [...accumulatedComics.value, ...res.data.items]
     }
 
-    hasNextPage.value = res.data.total > comics.value.length + PAGE_SIZE
+    maxPage.value = Math.ceil(res.data.total / PAGE_SIZE)
     comics.value = res.data.items
   }, 200)
 
@@ -184,7 +184,7 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     status,
     type,
     page: offset,
-    hasNextPage,
+    maxPage,
     series: computed(() => smAndDown.value ? accumulatedComics.value : comics.value),
     isLoading,
     resetFilters,

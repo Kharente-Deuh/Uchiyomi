@@ -51,10 +51,8 @@ describe('atomInputSearch', () => {
 
   it('falls back to a non-empty i18n-resolved placeholder when no placeholder prop is given', async () => {
     const wrapper = await mountSuspended(wrap({ modelValue: undefined }))
-    // i18n is active in the nuxt test env and resolves 'fields.search'
     const placeholder = wrapper.find('input').attributes('placeholder') ?? ''
     expect(placeholder.length).toBeGreaterThan(0)
-    // The component uses $t('fields.search'), never the raw key as literal text
     expect(placeholder).not.toBe('')
   })
 
