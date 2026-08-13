@@ -43,14 +43,14 @@ const items: { value: ComicStatus, title: string }[] = [
   >
     <template v-if="status" #selection="{ item }">
       <div class="d-flex ga-4 align-center ga-3 text-truncate">
-        <AsuraIconStatus :status="item.value" />
+        <ComicsIconStatus :status="item.value" />
         <span class="text-body-medium text-truncate">{{ item.title }}</span>
       </div>
     </template>
     <template #item="{ item, props: itemProps }">
       <VListItem density="compact" v-bind="itemProps">
         <template #prepend>
-          <AsuraIconStatus :status="item.value" />
+          <ComicsIconStatus :status="item.value" />
         </template>
       </VListItem>
     </template>

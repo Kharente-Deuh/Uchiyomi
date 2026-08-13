@@ -35,7 +35,7 @@ watch(() => props.comic.cover, (newVal) => {
                 :class="{ 'add-library-btn-loading': loading }"
                 @click.prevent="$emit('toggle')"
               />
-              <AsuraIconStatus :status="comic.status" with-background />
+              <ComicsIconStatus :status="comic.status" with-background />
             </div>
 
             <VImg
