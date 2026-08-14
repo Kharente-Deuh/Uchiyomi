@@ -76,10 +76,13 @@ func (deps *Deps) Validate() error {
 }
 
 type Worker struct {
-	deps      Deps
-	queue     *queue
-	throttles map[sources.SourceName]*sourceThrottle
-	cfg       Config
+	deps           Deps
+	queue          *queue
+	throttles      map[sources.SourceName]*sourceThrottle
+	comicTrackers  map[uuid.UUID]*comicTracker
+	comicMu        sync.Mutex
+	comicCond      sync.Cond
+	cfg            Config
 }
 
 func New(cfg Config, deps Deps) (*Worker, error) {
@@ -101,12 +104,16 @@ func New(cfg Config, deps Deps) (*Worker, error) {
 
 	deps.Logger = deps.Logger.With("component", "chapters.download")
 
-	return &Worker{
-		cfg:       cfg,
-		deps:      deps,
-		queue:     newQueue(),
-		throttles: buildSourceThrottles(deps.Sources, cfg.RateLimit, cfg.SourceRateLimits),
-	}, nil
+	worker := &Worker{
+		cfg:           cfg,
+		deps:          deps,
+		queue:         newQueue(),
+		throttles:     buildSourceThrottles(deps.Sources, cfg.RateLimit, cfg.SourceRateLimits),
+		comicTrackers: make(map[uuid.UUID]*comicTracker),
+	}
+	worker.comicCond.L = &worker.comicMu
+
+	return worker, nil
 }
 
 func (w *Worker) Enqueue(ctx context.Context, chapterList []chapters.Chapter) error {
@@ -154,7 +161,7 @@ func (w *Worker) Resume(ctx context.Context, chapterID uuid.UUID) error {
 	return w.Enqueue(ctx, []chapters.Chapter{*chapter})
 }
 
-func (w *Worker) RemoveComicChapters(_ context.Context, comicID uuid.UUID, chapterList []chapters.Chapter) {
+func (w *Worker) CleanupComic(ctx context.Context, comicID uuid.UUID, chapterList []chapters.Chapter) error {
 	ids := make(map[uuid.UUID]struct{}, len(chapterList))
 	for _, chapter := range chapterList {
 		if chapter.ComicID != comicID {
@@ -165,6 +172,20 @@ func (w *Worker) RemoveComicChapters(_ context.Context, comicID uuid.UUID, chapt
 	}
 
 	w.queue.removeComicChapters(ids)
+	w.cancelComicWork(comicID)
+	w.waitComicWorkDone(comicID)
+
+	dir := comicDir(w.cfg.Dir, comicID)
+	if err := deleteComicDir(dir); err != nil {
+		w.deps.Logger.ErrorContext(
+			ctx,
+			"failed to delete comic download dir",
+			"comicID", comicID,
+			loggingErr(err),
+		)
+	}
+
+	return nil
 }
 
 func (w *Worker) Run(ctx context.Context) error {
@@ -205,44 +226,59 @@ func (w *Worker) processChapter(ctx context.Context, source sources.SourceName, 
 		return
 	}
 
+	comicCtx, releaseComic := w.beginComic(ctx, chapter.ComicID)
+	defer releaseComic()
+
+	if comicCtx.Err() != nil {
+		return
+	}
+
 	if chapter.Download >= 100 {
 		return
 	}
 
-	comic, err := w.deps.ComicsRepository.FindByID(ctx, chapter.ComicID)
+	comic, err := w.deps.ComicsRepository.FindByID(comicCtx, chapter.ComicID)
 	if err != nil {
-		w.deps.Logger.ErrorContext(ctx, "failed to load comic", "chapterID", chapterID, loggingErr(err))
+		w.deps.Logger.ErrorContext(comicCtx, "failed to load comic", "chapterID", chapterID, loggingErr(err))
 
 		return
 	}
 
 	src, ok := w.deps.Sources[source]
 	if !ok {
-		w.deps.Logger.ErrorContext(ctx, "source not configured", "source", source)
+		w.deps.Logger.ErrorContext(comicCtx, "source not configured", "source", source)
 
 		return
 	}
 
-	pageURLs, err := src.GetPageURLsByChapter(ctx, sources.GetPageURLsByChapterOpts{
+	pageURLs, err := src.GetPageURLsByChapter(comicCtx, sources.GetPageURLsByChapterOpts{
 		SeriesSlug:  comic.Slug,
 		ChapterSlug: chapter.SourceChapterSlug,
 	})
 	if err != nil {
-		w.markError(ctx, chapterID, err)
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+
+		w.markError(comicCtx, chapterID, err)
 
 		return
 	}
 
 	pagesNb := len(pageURLs)
 	if pagesNb == 0 {
-		w.markError(ctx, chapterID, errors.New("source returned no pages"))
+		w.markError(comicCtx, chapterID, errors.New("source returned no pages"))
 
 		return
 	}
 
 	if pagesNb != chapter.PagesNb {
-		if err = w.deps.ChaptersRepository.UpdatePagesNb(ctx, chapterID, pagesNb); err != nil {
-			w.deps.Logger.ErrorContext(ctx, "failed to update pages_nb", "chapterID", chapterID, loggingErr(err))
+		if err = w.deps.ChaptersRepository.UpdatePagesNb(comicCtx, chapterID, pagesNb); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+
+			w.deps.Logger.ErrorContext(comicCtx, "failed to update pages_nb", "chapterID", chapterID, loggingErr(err))
 
 			return
 		}
@@ -253,25 +289,29 @@ func (w *Worker) processChapter(ctx context.Context, source sources.SourceName, 
 	dir := chapterDir(w.cfg.Dir, chapter.ComicID, chapter.Number)
 	downloaded, err := listDownloadedPageIndices(dir)
 	if err != nil {
-		w.markError(ctx, chapterID, err)
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+
+		w.markError(comicCtx, chapterID, err)
 
 		return
 	}
 
 	if len(downloaded) == pagesNb {
-		w.markCompleted(ctx, chapterID)
+		w.markCompleted(comicCtx, chapterID)
 
 		return
 	}
 
-	if err = w.publishProgress(ctx, chapterID, progressPercent(len(downloaded), pagesNb)); err != nil {
+	if err = w.publishProgress(comicCtx, chapterID, progressPercent(len(downloaded), pagesNb)); err != nil {
 		return
 	}
 
 	throttle, ok := w.throttles[source]
 	if !ok {
-		w.deps.Logger.ErrorContext(ctx, "source throttle not configured", "source", source)
-		w.markError(ctx, chapterID, errors.New("source throttle not configured"))
+		w.deps.Logger.ErrorContext(comicCtx, "source throttle not configured", "source", source)
+		w.markError(comicCtx, chapterID, errors.New("source throttle not configured"))
 
 		return
 	}
@@ -286,7 +326,7 @@ func (w *Worker) processChapter(ctx context.Context, source sources.SourceName, 
 		}
 	}
 
-	errG, errCtx := errgroup.WithContext(ctx)
+	errG, errCtx := errgroup.WithContext(comicCtx)
 	for _, pageIndex := range missing {
 		errG.Go(func() error {
 			imageURL := pageURLs[pageIndex-1]
@@ -307,12 +347,16 @@ func (w *Worker) processChapter(ctx context.Context, source sources.SourceName, 
 	}
 
 	if err = errG.Wait(); err != nil {
-		w.markError(ctx, chapterID, err)
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+
+		w.markError(comicCtx, chapterID, err)
 
 		return
 	}
 
-	w.markCompleted(ctx, chapterID)
+	w.markCompleted(comicCtx, chapterID)
 }
 
 func (w *Worker) downloadPageWithRetries(
