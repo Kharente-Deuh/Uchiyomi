@@ -117,12 +117,16 @@ func (f *fakeComicsRepository) GetMany(_ context.Context, _ comics.GetManyOpts) 
 }
 
 type fakeLibraryRepository struct {
-	createErr   error
-	deleteErr   error
-	createCalls int
-	deleteCalls int
-	lastCreate  library.CreateOpts
-	lastDelete  library.DeleteOpts
+	createErr            error
+	deleteErr            error
+	existsByComicIDErr   error
+	existsByComicID      bool
+	createCalls          int
+	deleteCalls          int
+	existsByComicIDCalls int
+	lastCreate           library.CreateOpts
+	lastDelete           library.DeleteOpts
+	lastExistsComicID    uuid.UUID
 }
 
 func (f *fakeLibraryRepository) Create(_ context.Context, opts library.CreateOpts) (*library.Entry, error) {
@@ -145,6 +149,13 @@ func (f *fakeLibraryRepository) Delete(_ context.Context, opts library.DeleteOpt
 	f.lastDelete = opts
 
 	return f.deleteErr
+}
+
+func (f *fakeLibraryRepository) ExistsByComicID(_ context.Context, comicID uuid.UUID) (bool, error) {
+	f.existsByComicIDCalls++
+	f.lastExistsComicID = comicID
+
+	return f.existsByComicID, f.existsByComicIDErr
 }
 
 type fakeChaptersService struct {
@@ -672,6 +683,50 @@ func TestDeleteRemovesLibraryEntryAndComic(t *testing.T) {
 
 	if comicsRepo.deleteCalls != 1 || comicsRepo.lastDeleteID != comicID {
 		t.Errorf("ComicsRepository.Delete comic ID = %s, want %s", comicsRepo.lastDeleteID, comicID)
+	}
+
+	if libraryRepo.existsByComicIDCalls != 1 || libraryRepo.lastExistsComicID != comicID {
+		t.Errorf("ExistsByComicID comic ID = %s, want %s", libraryRepo.lastExistsComicID, comicID)
+	}
+}
+
+func TestDeleteKeepsComicWhenOtherUsersHaveLibraryEntry(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	comicsRepo := &fakeComicsRepository{}
+	libraryRepo := &fakeLibraryRepository{existsByComicID: true}
+	tx := &fakeTransactor{}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = comicsRepo
+	deps.LibraryRepository = libraryRepo
+	deps.Transactor = tx
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	err = svc.Delete(context.Background(), comics.DeleteOpts{
+		UserID: userID,
+		ID:     comicID,
+	})
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	if libraryRepo.deleteCalls != 1 {
+		t.Errorf("LibraryRepository.Delete called %d times, want 1", libraryRepo.deleteCalls)
+	}
+
+	if libraryRepo.existsByComicIDCalls != 1 {
+		t.Errorf("ExistsByComicID called %d times, want 1", libraryRepo.existsByComicIDCalls)
+	}
+
+	if comicsRepo.deleteCalls != 0 {
+		t.Errorf("ComicsRepository.Delete called %d times, want 0", comicsRepo.deleteCalls)
 	}
 }
 

@@ -208,8 +208,17 @@ func (s *Service) Delete(ctx context.Context, opts DeleteOpts) error {
 			UserID:  opts.UserID,
 			ComicID: opts.ID,
 		})
-		if err != nil && errors.Is(err, domain.ErrNotFound) {
+		if err != nil {
 			return fmt.Errorf("s.deps.LibraryRepository.Delete: %w", err)
+		}
+
+		hasEntries, err := s.deps.LibraryRepository.ExistsByComicID(ctx, opts.ID)
+		if err != nil {
+			return fmt.Errorf("s.deps.LibraryRepository.ExistsByComicID: %w", err)
+		}
+
+		if hasEntries {
+			return nil
 		}
 
 		err = s.deps.ComicsRepository.Delete(ctx, opts.ID)

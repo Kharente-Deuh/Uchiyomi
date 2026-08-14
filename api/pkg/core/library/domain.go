@@ -19,6 +19,7 @@ type Entry struct {
 type LibraryRepository interface {
 	Create(context.Context, CreateOpts) (*Entry, error)
 	Delete(context.Context, DeleteOpts) error
+	ExistsByComicID(context.Context, uuid.UUID) (bool, error)
 }
 
 type CreateOpts struct {

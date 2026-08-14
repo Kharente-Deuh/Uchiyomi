@@ -157,3 +157,45 @@ func TestLibraryDeleteNotFound(t *testing.T) {
 		t.Errorf("Delete = %v, want domain.ErrNotFound", err)
 	}
 }
+
+func TestLibraryExistsByComicID(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newLibraryRepo(t)
+
+	comicID := uuid.New()
+
+	mock.ExpectQuery(`SELECT count\(\*\) FROM "library_entries" WHERE comic_id = \$1`).
+		WithArgs(comicID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+
+	exists, err := r.ExistsByComicID(context.Background(), comicID)
+	if err != nil {
+		t.Fatalf("ExistsByComicID: %v", err)
+	}
+
+	if !exists {
+		t.Error("ExistsByComicID = false, want true")
+	}
+}
+
+func TestLibraryExistsByComicIDNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newLibraryRepo(t)
+
+	comicID := uuid.New()
+
+	mock.ExpectQuery(`SELECT count`).
+		WithArgs(comicID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+	exists, err := r.ExistsByComicID(context.Background(), comicID)
+	if err != nil {
+		t.Fatalf("ExistsByComicID: %v", err)
+	}
+
+	if exists {
+		t.Error("ExistsByComicID = true, want false")
+	}
+}

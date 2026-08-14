@@ -84,6 +84,15 @@ func (r *PGLibraryRepository) Delete(ctx context.Context, opts library.DeleteOpt
 	return nil
 }
 
+func (r *PGLibraryRepository) ExistsByComicID(ctx context.Context, comicID uuid.UUID) (bool, error) {
+	count, err := r.db(ctx).Where("comic_id = ?", comicID).Count(ctx, "*")
+	if err != nil {
+		return false, fmt.Errorf("r.db(ctx).Count: %w", err)
+	}
+
+	return count > 0, nil
+}
+
 // func (r *PGLibraryRepository) GetByID(ctx context.Context, id uuid.UUID) (*library.Entry, error) {
 // 	model, err := r.db(ctx).Where("id = ?", id).First(ctx)
 // 	if err != nil {
