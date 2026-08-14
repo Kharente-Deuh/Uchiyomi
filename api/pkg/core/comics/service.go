@@ -67,9 +67,12 @@ func NewService(deps Deps) (*Service, error) {
 }
 
 func (s *Service) Create(ctx context.Context, opts CreateOpts) (*Comic, error) {
-	comic, err := s.deps.ComicsRepository.GetBySourceSlug(ctx, GetBySourceSlugOpts(opts))
+	comic, err := s.deps.ComicsRepository.FindBySourceSlug(ctx, FindBySourceSlugOpts{
+		Source: opts.Source,
+		Slug:   opts.Slug,
+	})
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return nil, fmt.Errorf("s.deps.ComicsRepository.GetBySourceSlug: %w", err)
+		return nil, fmt.Errorf("s.deps.ComicsRepository.FindBySourceSlug: %w", err)
 	}
 
 	if comic != nil {

@@ -33,9 +33,15 @@ type GetBySourceSlugOpts struct {
 	UserID uuid.UUID
 }
 
+type FindBySourceSlugOpts struct {
+	Source sources.SourceName
+	Slug   string
+}
+
 type ComicsRepository interface {
 	GetByID(context.Context, GetByIDOpts) (*Comic, error)
 	GetBySourceSlug(context.Context, GetBySourceSlugOpts) (*Comic, error)
+	FindBySourceSlug(context.Context, FindBySourceSlugOpts) (*Comic, error)
 	Create(context.Context, CreateComicOpts) (*Comic, error)
 	GetBySlugsAndSource(context.Context, GetBySlugsAndSource) ([]Comic, error)
 	Delete(context.Context, uuid.UUID) error

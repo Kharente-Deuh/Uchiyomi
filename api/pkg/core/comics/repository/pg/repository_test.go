@@ -119,6 +119,44 @@ func TestGetByIDNotFound(t *testing.T) {
 	}
 }
 
+func TestFindBySourceSlug(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	id := uuid.New()
+	created := time.Now().UTC().Truncate(time.Second)
+	updated := created
+
+	mock.ExpectQuery(
+		`FROM "comics".*comics.slug = \$1 AND comics.source = \$2`,
+	).
+		WithArgs(comicSlug, string(comicSource), 1).
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"id", "source", "slug", "title", "status", "comic_type",
+				"chapter_count", "author", "artist", "description",
+				"genres", "alt_titles", "created_at", "updated_at",
+			}).AddRow(
+				id, string(comicSource), comicSlug, comicTitle, string(comicStatus), string(comicType),
+				200, "Chugong", "Dubu", "desc",
+				"{}", "{}", created, updated,
+			),
+		)
+
+	got, err := r.FindBySourceSlug(context.Background(), comics.FindBySourceSlugOpts{
+		Source: comicSource,
+		Slug:   comicSlug,
+	})
+	if err != nil {
+		t.Fatalf("FindBySourceSlug: %v", err)
+	}
+
+	if got.Slug != comicSlug {
+		t.Errorf("FindBySourceSlug() slug = %q, want %q", got.Slug, comicSlug)
+	}
+}
+
 func TestGetBySourceSlug(t *testing.T) {
 	t.Parallel()
 

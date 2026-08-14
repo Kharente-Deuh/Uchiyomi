@@ -91,6 +91,25 @@ func (r *PGComicsRepository) GetBySourceSlug(ctx context.Context, opts comics.Ge
 	return &ret, nil
 }
 
+func (r *PGComicsRepository) FindBySourceSlug(
+	ctx context.Context, opts comics.FindBySourceSlugOpts,
+) (*comics.Comic, error) {
+	model, err := r.db(ctx).
+		Where("comics.slug = ? AND comics.source = ?", opts.Slug, opts.Source).
+		First(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrNotFound
+		}
+
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := model.Domain()
+
+	return &ret, nil
+}
+
 func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComicOpts) (*comics.Comic, error) {
 	now := time.Now()
 

@@ -41,6 +41,12 @@ func (stubComicsRepository) GetBySourceSlug(
 	return nil, coredomain.ErrNotFound
 }
 
+func (stubComicsRepository) FindBySourceSlug(
+	context.Context, comics.FindBySourceSlugOpts,
+) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
 func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*comics.Comic, error) {
 	return nil, coredomain.ErrNotFound
 }

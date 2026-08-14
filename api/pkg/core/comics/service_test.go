@@ -40,16 +40,16 @@ func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn 
 
 type fakeComicsRepository struct {
 	getByIDErr            error
-	getBySourceSlugErr    error
+	findBySourceSlugErr   error
 	deleteErr             error
 	createErr             error
 	getManyErr            error
 	getByIDResult         *comics.Comic
-	getBySourceSlugResult *comics.Comic
+	findBySourceSlugResult *comics.Comic
 	createResult          *comics.Comic
 	getManyResult         []comics.Comic
 	lastCreateOpts        comics.CreateComicOpts
-	getBySourceSlugCalls  int
+	findBySourceSlugCalls int
 	createCalls           int
 	getByIDCalls          int
 	getManyCalls          int
@@ -63,10 +63,14 @@ func (f *fakeComicsRepository) GetByID(_ context.Context, _ comics.GetByIDOpts) 
 	return f.getByIDResult, f.getByIDErr
 }
 
-func (f *fakeComicsRepository) GetBySourceSlug(_ context.Context, _ comics.GetBySourceSlugOpts) (*comics.Comic, error) {
-	f.getBySourceSlugCalls++
+func (f *fakeComicsRepository) GetBySourceSlug(context.Context, comics.GetBySourceSlugOpts) (*comics.Comic, error) {
+	panic("GetBySourceSlug must not be called by the comics service")
+}
 
-	return f.getBySourceSlugResult, f.getBySourceSlugErr
+func (f *fakeComicsRepository) FindBySourceSlug(_ context.Context, _ comics.FindBySourceSlugOpts) (*comics.Comic, error) {
+	f.findBySourceSlugCalls++
+
+	return f.findBySourceSlugResult, f.findBySourceSlugErr
 }
 
 func (f *fakeComicsRepository) Create(_ context.Context, opts comics.CreateComicOpts) (*comics.Comic, error) {
@@ -310,7 +314,7 @@ func TestNewServiceRejectsMissingChaptersService(t *testing.T) {
 func TestCreateReturnsExistingComicAndAddsLibraryEntry(t *testing.T) {
 	t.Parallel()
 
-	userID := uuid.New()
+	userB := uuid.New()
 	existing := &comics.Comic{ID: uuid.New(), Slug: testSlug, Source: testSource}
 	existingChapters := []chapters.Chapter{
 		{
@@ -323,7 +327,7 @@ func TestCreateReturnsExistingComicAndAddsLibraryEntry(t *testing.T) {
 	}
 
 	comicsRepo := &fakeComicsRepository{
-		getBySourceSlugResult: existing,
+		findBySourceSlugResult: existing,
 	}
 	libraryRepo := &fakeLibraryRepository{}
 	chaptersSvc := &fakeChaptersService{listByComicIDResult: existingChapters}
@@ -340,7 +344,7 @@ func TestCreateReturnsExistingComicAndAddsLibraryEntry(t *testing.T) {
 	}
 
 	got, err := svc.Create(context.Background(), comics.CreateOpts{
-		UserID: userID,
+		UserID: userB,
 		Source: testSource,
 		Slug:   testSlug,
 	})
@@ -352,8 +356,8 @@ func TestCreateReturnsExistingComicAndAddsLibraryEntry(t *testing.T) {
 		t.Errorf("Create() = %+v, want existing comic %+v", got, existing)
 	}
 
-	if comicsRepo.getBySourceSlugCalls != 1 {
-		t.Errorf("GetBySourceSlug called %d times, want 1", comicsRepo.getBySourceSlugCalls)
+	if comicsRepo.findBySourceSlugCalls != 1 {
+		t.Errorf("FindBySourceSlug called %d times, want 1", comicsRepo.findBySourceSlugCalls)
 	}
 
 	if source.calls != 0 {
@@ -368,7 +372,15 @@ func TestCreateReturnsExistingComicAndAddsLibraryEntry(t *testing.T) {
 		t.Errorf("LibraryRepository.Create called %d times, want 1", libraryRepo.createCalls)
 	}
 
-	if libraryRepo.lastCreate.UserID != userID || libraryRepo.lastCreate.ComicID != existing.ID {
+	if comicsRepo.createCalls != 0 {
+		t.Errorf("ComicsRepository.Create called %d times, want 0", comicsRepo.createCalls)
+	}
+
+	if chaptersSvc.createAllCalls != 0 {
+		t.Errorf("ChaptersService.CreateAll called %d times, want 0", chaptersSvc.createAllCalls)
+	}
+
+	if libraryRepo.lastCreate.UserID != userB || libraryRepo.lastCreate.ComicID != existing.ID {
 		t.Errorf("library CreateOpts = %+v", libraryRepo.lastCreate)
 	}
 
@@ -389,7 +401,7 @@ func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
-	comicsRepo := &fakeComicsRepository{getBySourceSlugErr: domain.ErrNotFound}
+	comicsRepo := &fakeComicsRepository{findBySourceSlugErr: domain.ErrNotFound}
 	libraryRepo := &fakeLibraryRepository{}
 	chaptersSvc := &fakeChaptersService{}
 	tx := &fakeTransactor{}
@@ -487,7 +499,7 @@ func TestCreateUnknownSource(t *testing.T) {
 	t.Parallel()
 
 	deps := validServiceDeps()
-	deps.ComicsRepository = &fakeComicsRepository{getBySourceSlugErr: domain.ErrNotFound}
+	deps.ComicsRepository = &fakeComicsRepository{findBySourceSlugErr: domain.ErrNotFound}
 
 	svc, err := comics.NewService(deps)
 	if err != nil {
@@ -520,7 +532,7 @@ func TestCreatePropagatesChapterListError(t *testing.T) {
 		chaptersErr: sentinel,
 	}
 	deps := validServiceDeps()
-	deps.ComicsRepository = &fakeComicsRepository{getBySourceSlugErr: domain.ErrNotFound}
+	deps.ComicsRepository = &fakeComicsRepository{findBySourceSlugErr: domain.ErrNotFound}
 	deps.Sources = sources.SourceMap{testSource: source}
 
 	svc, err := comics.NewService(deps)
@@ -544,7 +556,7 @@ func TestCreatePropagatesSourceError(t *testing.T) {
 	sentinel := errors.New("upstream unavailable")
 	source := &fakeSource{err: sentinel}
 	deps := validServiceDeps()
-	deps.ComicsRepository = &fakeComicsRepository{getBySourceSlugErr: domain.ErrNotFound}
+	deps.ComicsRepository = &fakeComicsRepository{findBySourceSlugErr: domain.ErrNotFound}
 	deps.Sources = sources.SourceMap{testSource: source}
 
 	svc, err := comics.NewService(deps)
