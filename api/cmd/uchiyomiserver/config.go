@@ -18,7 +18,11 @@ type cfg struct {
 		Level logging.LogLevel `env:"LOG_LEVEL" envDefault:"info"`
 	}
 	Covers struct {
-		Dir string `env:"COVERS_DIR" envDefault:"covers"`
+		Dir string `env:"COVERS_DIR" envDefault:"data/cache/covers"`
+	}
+	Downloads struct {
+		Dir       string        `env:"DOWNLOADS_DIR" envDefault:"data/downloads"`
+		RateLimit time.Duration `env:"CHAPTER_DOWNLOAD_RATE_LIMIT" envDefault:"500ms"`
 	}
 	PG struct {
 		Host        string `env:"DB_HOST,required"`

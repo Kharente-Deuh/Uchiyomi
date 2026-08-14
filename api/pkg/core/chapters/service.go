@@ -15,12 +15,17 @@ import (
 var _ ChaptersService = (*Service)(nil)
 
 type Deps struct {
-	Repository ChaptersRepository
+	Repository       ChaptersRepository
+	ChapterDownloader ChapterDownloader
 }
 
 func (deps *Deps) Validate() error {
 	if deps.Repository == nil {
 		return errors.New("repository is required")
+	}
+
+	if deps.ChapterDownloader == nil {
+		return errors.New("chapterDownloader is required")
 	}
 
 	return nil
@@ -75,13 +80,23 @@ func (s *Service) ListByComicID(ctx context.Context, comicID uuid.UUID) ([]Chapt
 
 func (s *Service) EnqueueDownloadable(ctx context.Context, chapters []Chapter) error {
 	now := time.Now()
+	downloadable := make([]Chapter, 0, len(chapters))
 
 	for _, chapter := range chapters {
 		if !isDownloadable(chapter, now) {
 			continue
 		}
 
-		// TODO(#36): enqueue chapter in the per-source download queue.
+		downloadable = append(downloadable, chapter)
+	}
+
+	if len(downloadable) == 0 {
+		return nil
+	}
+
+	err := s.deps.ChapterDownloader.Enqueue(ctx, downloadable)
+	if err != nil {
+		return fmt.Errorf("s.deps.ChapterDownloader.Enqueue: %w", err)
 	}
 
 	return nil

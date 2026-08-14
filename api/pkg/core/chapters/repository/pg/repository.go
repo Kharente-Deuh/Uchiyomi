@@ -114,3 +114,44 @@ func (r *PGChaptersRepository) CreateMany(ctx context.Context, opts []chapters.C
 
 	return ret, nil
 }
+
+func (r *PGChaptersRepository) GetByID(ctx context.Context, id uuid.UUID) (*chapters.Chapter, error) {
+	model, err := r.db(ctx).Where("id = ?", id).First(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrNotFound
+		}
+
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := model.Domain()
+
+	return &ret, nil
+}
+
+func (r *PGChaptersRepository) UpdateDownload(ctx context.Context, id uuid.UUID, download int) error {
+	affected, err := r.db(ctx).Where("id = ?", id).Update(ctx, "download", download)
+	if err != nil {
+		return fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	if affected == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
+func (r *PGChaptersRepository) UpdatePagesNb(ctx context.Context, id uuid.UUID, pagesNb int) error {
+	affected, err := r.db(ctx).Where("id = ?", id).Update(ctx, "pages_nb", pagesNb)
+	if err != nil {
+		return fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	if affected == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}

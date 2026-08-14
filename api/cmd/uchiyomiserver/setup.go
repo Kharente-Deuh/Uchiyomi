@@ -39,6 +39,7 @@ import (
 	httpsession "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	pgsessions "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/download"
 	pgchapters "github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/repository/pg"
 	pgcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
@@ -59,10 +60,12 @@ const oidcCallbackPath = core.APIPrefix + "/auth/oidc/callback"
 func setupApp(cfg *cfg) (*core.App, error) {
 	logger := logging.New(logging.Config{Level: cfg.Logger.Level})
 
-	coversDir, err := utils.PrepareDataDir(logger, cfg.Covers.Dir, cfg.Runtime.UID, cfg.Runtime.GID)
-	if err != nil {
-		return nil, fmt.Errorf("utils.PrepareDataDir: %w", err)
+	if err := utils.PrepareDataDirs(logger, cfg.Runtime.UID, cfg.Runtime.GID, cfg.Covers.Dir, cfg.Downloads.Dir); err != nil {
+		return nil, fmt.Errorf("utils.PrepareDataDirs: %w", err)
 	}
+
+	coversDir := cfg.Covers.Dir
+	downloadsDir := cfg.Downloads.Dir
 
 	dbr, err := setupDBRelated(cfg, logger)
 	if err != nil {
@@ -108,11 +111,16 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, err
 	}
 
-	chaptersSvc, err := chapters.NewService(chapters.Deps{
-		Repository: dbr.ChaptersRepository,
+	chaptersSvc, downloadApp, err := setupChapters(chaptersDeps{
+		Logger:             logger,
+		ChaptersRepository: dbr.ChaptersRepository,
+		ComicsRepository:   dbr.ComicsRepository,
+		Sources:            sources.SourceMap{sources.SourceAsuraScans: asuraApp},
+		DownloadsDir:       downloadsDir,
+		RateLimit:          cfg.Downloads.RateLimit,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to init chaptersSvc: %w", err)
+		return nil, fmt.Errorf("failed to init chapters: %w", err)
 	}
 
 	comicsSvc, err := comics.NewService(comics.Deps{
@@ -167,6 +175,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			DB:               dbr.PGDB,
 			Asura:            apps.Asura,
 			Covers:           apps.Covers,
+			Downloads:        downloadApp,
 			Sessions:         apps.Sessions,
 			OIDCRevalidation: apps.OIDCRevalidation,
 		})
@@ -799,4 +808,58 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 	}
 
 	return c, nil
+}
+
+type chaptersDeps struct {
+	Logger             *slog.Logger
+	ChaptersRepository chapters.ChaptersRepository
+	ComicsRepository   comics.ComicsRepository
+	Sources            sources.SourceMap
+	DownloadsDir       string
+	RateLimit          time.Duration
+}
+
+func setupChapters(deps chaptersDeps) (*chapters.Service, *download.App, error) {
+	fetchTimeout := time.Minute
+
+	httpClient := &http.Client{
+		Timeout: fetchTimeout,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
+
+	worker, err := download.New(
+		download.Config{
+			Dir:       deps.DownloadsDir,
+			RateLimit: deps.RateLimit,
+		},
+		download.Deps{
+			ChaptersRepository: deps.ChaptersRepository,
+			ComicsRepository:   deps.ComicsRepository,
+			Sources:            deps.Sources,
+			HTTPClient:         httpClient,
+			Logger:             deps.Logger,
+		},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("download.New: %w", err)
+	}
+
+	app, err := download.NewApp(worker)
+	if err != nil {
+		return nil, nil, fmt.Errorf("download.NewApp: %w", err)
+	}
+
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        deps.ChaptersRepository,
+		ChapterDownloader: worker,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("chapters.NewService: %w", err)
+	}
+
+	return svc, app, nil
 }

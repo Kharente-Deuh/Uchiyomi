@@ -1,0 +1,163 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+package download
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
+)
+
+func chapterDir(baseDir string, comicID uuid.UUID, chapterNumber float64) string {
+	return filepath.Join(baseDir, comicID.String(), formatChapterNumber(chapterNumber))
+}
+
+func formatChapterNumber(number float64) string {
+	return strconv.FormatFloat(number, 'f', -1, 64)
+}
+
+func pageFilename(pageIndex int, ext string) string {
+	return fmt.Sprintf("%03d%s", pageIndex, ext)
+}
+
+func pageExtension(imageURL string) string {
+	parsed, err := url.Parse(imageURL)
+	if err != nil {
+		return ".webp"
+	}
+
+	ext := strings.ToLower(path.Ext(parsed.Path))
+	if ext == "" {
+		return ".webp"
+	}
+
+	return ext
+}
+
+func listDownloadedPageIndices(dir string) (map[int]struct{}, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[int]struct{}{}, nil
+		}
+
+		return nil, fmt.Errorf("os.ReadDir %s: %w", dir, err)
+	}
+
+	indices := make(map[int]struct{}, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		index, ok := parsePageIndex(entry.Name())
+		if !ok {
+			continue
+		}
+
+		indices[index] = struct{}{}
+	}
+
+	return indices, nil
+}
+
+func parsePageIndex(name string) (int, bool) {
+	if len(name) < 4 {
+		return 0, false
+	}
+
+	indexPart := name[:3]
+	extPart := name[3:]
+	if extPart == "" || !strings.HasPrefix(extPart, ".") {
+		return 0, false
+	}
+
+	index, err := strconv.Atoi(indexPart)
+	if err != nil || index <= 0 {
+		return 0, false
+	}
+
+	return index, true
+}
+
+func deleteChapterDir(dir string) error {
+	err := os.RemoveAll(dir)
+	if err != nil {
+		return fmt.Errorf("os.RemoveAll %s: %w", dir, err)
+	}
+
+	return nil
+}
+
+func downloadPage(ctx context.Context, client *http.Client, imageURL, destPath string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
+	if err != nil {
+		return fmt.Errorf("http.NewRequestWithContext: %w", err)
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("client.Do: %w", err)
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status %d", res.StatusCode)
+	}
+
+	if err = os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return fmt.Errorf("os.MkdirAll %s: %w", destPath, err)
+	}
+
+	tmp, err := os.CreateTemp(filepath.Dir(destPath), ".dl-*")
+	if err != nil {
+		return fmt.Errorf("os.CreateTemp %s: %w", destPath, err)
+	}
+
+	tmpName := tmp.Name()
+	defer func() {
+		tmp.Close()
+		os.Remove(tmpName)
+	}()
+
+	if _, err = io.Copy(tmp, res.Body); err != nil {
+		return fmt.Errorf("io.Copy %s: %w", tmpName, err)
+	}
+
+	if err = tmp.Sync(); err != nil {
+		return fmt.Errorf("tmp.Sync %s: %w", tmpName, err)
+	}
+
+	if err = tmp.Close(); err != nil {
+		return fmt.Errorf("tmp.Close %s: %w", tmpName, err)
+	}
+
+	if err = os.Rename(tmpName, destPath); err != nil {
+		return fmt.Errorf("os.Rename %s: %w", tmpName, err)
+	}
+
+	return nil
+}
+
+func progressPercent(downloadedPages, pagesNb int) int {
+	if pagesNb <= 0 {
+		return 0
+	}
+
+	progress := downloadedPages * 100 / pagesNb
+	if progress > 100 {
+		return 100
+	}
+
+	return progress
+}

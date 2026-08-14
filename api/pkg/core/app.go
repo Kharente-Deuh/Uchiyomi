@@ -79,6 +79,7 @@ type Deps struct {
 
 	Asura            *asura.App
 	Covers           *covers.App
+	Downloads        interface{ Run(context.Context) error }
 	Sessions         *sessions.App
 	OIDCRevalidation interface{ Run(context.Context) error }
 }
@@ -110,6 +111,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.Covers == nil {
 		return errors.New("covers is required")
+	}
+
+	if deps.Downloads == nil {
+		return errors.New("downloads is required")
 	}
 
 	if deps.Sessions == nil {
@@ -196,6 +201,7 @@ func (a *App) startup(ctx context.Context, errG *errgroup.Group) func() error {
 
 		errG.Go(a.runComponent(ctx, componentAsura, a.deps.Asura.Run))
 		errG.Go(a.runComponent(ctx, componentCovers, a.deps.Covers.Run))
+		errG.Go(a.runComponent(ctx, componentDownloads, a.deps.Downloads.Run))
 		errG.Go(a.runComponent(ctx, componentSessions, a.deps.Sessions.Run))
 		errG.Go(a.runComponent(ctx, componentOIDCRevalidation, a.deps.OIDCRevalidation.Run))
 

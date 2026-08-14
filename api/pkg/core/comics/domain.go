@@ -40,6 +40,7 @@ type FindBySourceSlugOpts struct {
 
 type ComicsRepository interface {
 	GetByID(context.Context, GetByIDOpts) (*Comic, error)
+	FindByID(context.Context, uuid.UUID) (*Comic, error)
 	GetBySourceSlug(context.Context, GetBySourceSlugOpts) (*Comic, error)
 	FindBySourceSlug(context.Context, FindBySourceSlugOpts) (*Comic, error)
 	Create(context.Context, CreateComicOpts) (*Comic, error)

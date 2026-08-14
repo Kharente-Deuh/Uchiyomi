@@ -63,6 +63,10 @@ func (f *fakeComicsRepository) GetByID(_ context.Context, _ comics.GetByIDOpts) 
 	return f.getByIDResult, f.getByIDErr
 }
 
+func (f *fakeComicsRepository) FindByID(context.Context, uuid.UUID) (*comics.Comic, error) {
+	panic("FindByID must not be called by the comics service")
+}
+
 func (f *fakeComicsRepository) GetBySourceSlug(context.Context, comics.GetBySourceSlugOpts) (*comics.Comic, error) {
 	panic("GetBySourceSlug must not be called by the comics service")
 }
@@ -258,6 +262,10 @@ func (f *fakeSource) GetChaptersBySlug(_ context.Context, slug string) ([]source
 	}
 
 	return f.chapters, nil
+}
+
+func (f *fakeSource) GetPageURLsByChapter(context.Context, sources.GetPageURLsByChapterOpts) ([]string, error) {
+	return nil, nil
 }
 
 func validServiceDeps() comics.Deps {
