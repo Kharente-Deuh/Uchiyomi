@@ -132,6 +132,57 @@ func TestChaptersCreateDuplicateKey(t *testing.T) {
 	}
 }
 
+func TestChaptersCreateMany(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	comicID := uuid.New()
+	publishedAt := time.Now().Add(-24 * time.Hour).UTC().Truncate(time.Second)
+	earlyAccessUntil := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "chapters"`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()).AddRow(uuid.New()))
+	mock.ExpectCommit()
+
+	got, err := r.CreateMany(context.Background(), []chapters.CreateOpts{
+		{
+			ComicID:           comicID,
+			SourceChapterSlug: chapterSlug,
+			Number:            1,
+			Title:             chapterTitle,
+			PagesNb:           42,
+			PublishedAt:       publishedAt,
+			EarlyAccessUntil:  earlyAccessUntil,
+		},
+		{
+			ComicID:           comicID,
+			SourceChapterSlug: "chapter-2",
+			Number:            2,
+			Title:             "Chapter 2",
+			PagesNb:           30,
+			PublishedAt:       publishedAt,
+			EarlyAccessUntil:  earlyAccessUntil,
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateMany: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("len(CreateMany()) = %d, want 2", len(got))
+	}
+
+	if got[0].ComicID != comicID || got[0].SourceChapterSlug != chapterSlug || got[0].PagesNb != 42 {
+		t.Errorf("CreateMany()[0] = %+v", got[0])
+	}
+
+	if got[1].Number != 2 || got[1].PagesNb != 30 {
+		t.Errorf("CreateMany()[1] = %+v", got[1])
+	}
+}
+
 func TestChaptersListByComicID(t *testing.T) {
 	t.Parallel()
 
