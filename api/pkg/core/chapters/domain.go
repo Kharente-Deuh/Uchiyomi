@@ -26,6 +26,8 @@ type ChaptersRepository interface {
 	Create(context.Context, CreateOpts) (*Chapter, error)
 	CreateMany(context.Context, []CreateOpts) ([]Chapter, error)
 	ListByComicID(context.Context, uuid.UUID) ([]Chapter, error)
+	ListResumable(context.Context) ([]Chapter, error)
+	ListEarlyAccessUnlocked(context.Context, time.Time) ([]Chapter, error)
 	GetByID(context.Context, uuid.UUID) (*Chapter, error)
 	UpdateDownload(context.Context, uuid.UUID, int) error
 	UpdatePagesNb(context.Context, uuid.UUID, int) error
@@ -40,6 +42,8 @@ type ChaptersService interface {
 	CreateAll(context.Context, uuid.UUID, []sources.SourceChapter) ([]Chapter, error)
 	ListByComicID(context.Context, uuid.UUID) ([]Chapter, error)
 	EnqueueDownloadable(context.Context, []Chapter) error
+	EnqueueResumable(context.Context) error
+	ScanEarlyAccess(context.Context) error
 	CleanupComic(context.Context, uuid.UUID, []Chapter) error
 }
 

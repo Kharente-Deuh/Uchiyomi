@@ -119,6 +119,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		Sources:            sources.SourceMap{sources.SourceAsuraScans: asuraApp},
 		DownloadsDir:       downloadsDir,
 		RateLimit:          cfg.Downloads.RateLimit,
+		ScanInterval:       cfg.Downloads.ScanInterval,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init chapters: %w", err)
@@ -818,6 +819,7 @@ type chaptersDeps struct {
 	Sources            sources.SourceMap
 	DownloadsDir       string
 	RateLimit          time.Duration
+	ScanInterval       time.Duration
 }
 
 func setupChapters(deps chaptersDeps) (*chapters.Service, *download.App, error) {
@@ -849,17 +851,24 @@ func setupChapters(deps chaptersDeps) (*chapters.Service, *download.App, error) 
 		return nil, nil, fmt.Errorf("download.New: %w", err)
 	}
 
-	app, err := download.NewApp(worker)
-	if err != nil {
-		return nil, nil, fmt.Errorf("download.NewApp: %w", err)
-	}
-
 	svc, err := chapters.NewService(chapters.Deps{
 		Repository:        deps.ChaptersRepository,
 		ChapterDownloader: worker,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("chapters.NewService: %w", err)
+	}
+
+	app, err := download.NewApp(
+		download.AppConfig{ScanInterval: deps.ScanInterval},
+		download.AppDeps{
+			Worker:          worker,
+			ChaptersService: svc,
+			Logger:          deps.Logger,
+		},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("download.NewApp: %w", err)
 	}
 
 	return svc, app, nil

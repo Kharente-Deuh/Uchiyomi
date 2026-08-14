@@ -40,6 +40,14 @@ func (f *fakeChaptersRepository) ListByComicID(context.Context, uuid.UUID) ([]ch
 	panic("not implemented")
 }
 
+func (f *fakeChaptersRepository) ListResumable(context.Context) ([]chapters.Chapter, error) {
+	panic("not implemented")
+}
+
+func (f *fakeChaptersRepository) ListEarlyAccessUnlocked(context.Context, time.Time) ([]chapters.Chapter, error) {
+	panic("not implemented")
+}
+
 func (f *fakeChaptersRepository) GetByID(_ context.Context, id uuid.UUID) (*chapters.Chapter, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

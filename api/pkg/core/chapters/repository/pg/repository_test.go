@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package pg_test
 
 import (
@@ -211,5 +212,66 @@ func TestChaptersListByComicID(t *testing.T) {
 
 	if len(got) != 1 || got[0].ID != id || got[0].ComicID != comicID {
 		t.Errorf("ListByComicID() = %+v", got)
+	}
+}
+
+func TestChaptersListResumable(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	comicID := uuid.New()
+	id := uuid.New()
+	publishedAt := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`FROM "chapters".*download > 0 AND download < 100\) OR download = -1`).
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"id", "comic_id", "source_chapter_slug", "number", "title",
+				"pages_nb", "published_at", "early_access_until", "download",
+			}).AddRow(
+				id, comicID, chapterSlug, 1.0, chapterTitle,
+				42, publishedAt, publishedAt, 42,
+			),
+		)
+
+	got, err := r.ListResumable(context.Background())
+	if err != nil {
+		t.Fatalf("ListResumable: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != id || got[0].Download != 42 {
+		t.Errorf("ListResumable() = %+v", got)
+	}
+}
+
+func TestChaptersListEarlyAccessUnlocked(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	comicID := uuid.New()
+	id := uuid.New()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`FROM "chapters".*download = 0 AND early_access_until <= \$1`).
+		WithArgs(now).
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"id", "comic_id", "source_chapter_slug", "number", "title",
+				"pages_nb", "published_at", "early_access_until", "download",
+			}).AddRow(
+				id, comicID, chapterSlug, 1.0, chapterTitle,
+				42, now, now.Add(-time.Hour), 0,
+			),
+		)
+
+	got, err := r.ListEarlyAccessUnlocked(context.Background(), now)
+	if err != nil {
+		t.Fatalf("ListEarlyAccessUnlocked: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != id || got[0].Download != 0 {
+		t.Errorf("ListEarlyAccessUnlocked() = %+v", got)
 	}
 }

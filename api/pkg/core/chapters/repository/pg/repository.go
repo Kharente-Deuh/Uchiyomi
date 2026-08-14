@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
@@ -75,6 +76,38 @@ func (r *PGChaptersRepository) Create(ctx context.Context, opts chapters.CreateO
 
 func (r *PGChaptersRepository) ListByComicID(ctx context.Context, comicID uuid.UUID) ([]chapters.Chapter, error) {
 	models, err := r.db(ctx).Where("comic_id = ?", comicID).Order("number ASC").Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := make([]chapters.Chapter, 0, len(models))
+	for _, model := range models {
+		ret = append(ret, model.Domain())
+	}
+
+	return ret, nil
+}
+
+func (r *PGChaptersRepository) ListResumable(ctx context.Context) ([]chapters.Chapter, error) {
+	models, err := r.db(ctx).
+		Where("(download > 0 AND download < 100) OR download = -1").
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := make([]chapters.Chapter, 0, len(models))
+	for _, model := range models {
+		ret = append(ret, model.Domain())
+	}
+
+	return ret, nil
+}
+
+func (r *PGChaptersRepository) ListEarlyAccessUnlocked(ctx context.Context, now time.Time) ([]chapters.Chapter, error) {
+	models, err := r.db(ctx).
+		Where("download = 0 AND early_access_until <= ?", now).
+		Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}

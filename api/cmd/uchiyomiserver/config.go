@@ -21,8 +21,9 @@ type cfg struct {
 		Dir string `env:"COVERS_DIR" envDefault:"data/cache/covers"`
 	}
 	Downloads struct {
-		Dir       string        `env:"DOWNLOADS_DIR" envDefault:"data/downloads"`
-		RateLimit time.Duration `env:"CHAPTER_DOWNLOAD_RATE_LIMIT" envDefault:"500ms"`
+		Dir          string        `env:"DOWNLOADS_DIR" envDefault:"data/downloads"`
+		RateLimit    time.Duration `env:"CHAPTER_DOWNLOAD_RATE_LIMIT" envDefault:"500ms"`
+		ScanInterval time.Duration `env:"CHAPTER_DOWNLOAD_SCAN_INTERVAL" envDefault:"15m"`
 	}
 	PG struct {
 		Host        string `env:"DB_HOST,required"`

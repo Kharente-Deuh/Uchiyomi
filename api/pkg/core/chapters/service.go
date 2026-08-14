@@ -102,6 +102,35 @@ func (s *Service) EnqueueDownloadable(ctx context.Context, chapters []Chapter) e
 	return nil
 }
 
+func (s *Service) EnqueueResumable(ctx context.Context) error {
+	chapterList, err := s.deps.Repository.ListResumable(ctx)
+	if err != nil {
+		return fmt.Errorf("s.deps.Repository.ListResumable: %w", err)
+	}
+
+	if len(chapterList) == 0 {
+		return nil
+	}
+
+	err = s.deps.ChapterDownloader.Enqueue(ctx, chapterList)
+	if err != nil {
+		return fmt.Errorf("s.deps.ChapterDownloader.Enqueue: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) ScanEarlyAccess(ctx context.Context) error {
+	now := time.Now()
+
+	chapterList, err := s.deps.Repository.ListEarlyAccessUnlocked(ctx, now)
+	if err != nil {
+		return fmt.Errorf("s.deps.Repository.ListEarlyAccessUnlocked: %w", err)
+	}
+
+	return s.EnqueueDownloadable(ctx, chapterList)
+}
+
 func (s *Service) CleanupComic(ctx context.Context, comicID uuid.UUID, chapterList []Chapter) error {
 	err := s.deps.ChapterDownloader.CleanupComic(ctx, comicID, chapterList)
 	if err != nil {
