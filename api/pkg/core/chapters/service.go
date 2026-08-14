@@ -43,7 +43,6 @@ func (s *Service) CreateAll(
 	comicID uuid.UUID,
 	srcChapters []sources.SourceChapter,
 ) ([]Chapter, error) {
-
 	opts := make([]CreateOpts, len(srcChapters))
 	for i, srcChapter := range srcChapters {
 		opts[i] = CreateOpts{

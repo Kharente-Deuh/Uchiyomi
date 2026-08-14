@@ -13,8 +13,8 @@ import (
 )
 
 type fakeChaptersRepository struct {
-	createManyCalls int
 	lastCreateMany  []chapters.CreateOpts
+	createManyCalls int
 }
 
 func (f *fakeChaptersRepository) Create(context.Context, chapters.CreateOpts) (*chapters.Chapter, error) {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//nolint:,goconst
 
+//nolint:goconst
 package comics_test
 
 import (
@@ -39,22 +39,22 @@ func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn 
 }
 
 type fakeComicsRepository struct {
-	getByIDErr            error
-	findBySourceSlugErr   error
-	deleteErr             error
-	createErr             error
-	getManyErr            error
-	getByIDResult         *comics.Comic
+	getByIDErr             error
+	findBySourceSlugErr    error
+	deleteErr              error
+	createErr              error
+	getManyErr             error
+	getByIDResult          *comics.Comic
 	findBySourceSlugResult *comics.Comic
-	createResult          *comics.Comic
-	getManyResult         []comics.Comic
-	lastCreateOpts        comics.CreateComicOpts
-	findBySourceSlugCalls int
-	createCalls           int
-	getByIDCalls          int
-	getManyCalls          int
-	deleteCalls           int
-	lastDeleteID          uuid.UUID
+	createResult           *comics.Comic
+	getManyResult          []comics.Comic
+	lastCreateOpts         comics.CreateComicOpts
+	findBySourceSlugCalls  int
+	createCalls            int
+	getByIDCalls           int
+	getManyCalls           int
+	deleteCalls            int
+	lastDeleteID           uuid.UUID
 }
 
 func (f *fakeComicsRepository) GetByID(_ context.Context, _ comics.GetByIDOpts) (*comics.Comic, error) {
@@ -67,7 +67,10 @@ func (f *fakeComicsRepository) GetBySourceSlug(context.Context, comics.GetBySour
 	panic("GetBySourceSlug must not be called by the comics service")
 }
 
-func (f *fakeComicsRepository) FindBySourceSlug(_ context.Context, _ comics.FindBySourceSlugOpts) (*comics.Comic, error) {
+func (f *fakeComicsRepository) FindBySourceSlug(
+	_ context.Context,
+	opts comics.FindBySourceSlugOpts,
+) (*comics.Comic, error) {
 	f.findBySourceSlugCalls++
 
 	return f.findBySourceSlugResult, f.findBySourceSlugErr
