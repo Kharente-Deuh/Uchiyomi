@@ -36,8 +36,6 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     set: (value?: string) => value ? store.setSearch(value) : store.clearSearch(),
   })
 
-  const debouncedSearch = useDebounce(search, 200)
-
   const sort = computed({
     get: () => store.sort,
     set: (value: AsuraSort) => store.setSort(value),
@@ -84,7 +82,7 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     isLoading.value = true
 
     const res = await api.search({
-      ...(debouncedSearch.value && { search: debouncedSearch.value }),
+      ...(search.value && { search: search.value }),
       ...(sort.value && { sort: sort.value }),
       ...(status.value && { status: status.value }),
       ...(type.value && { type: type.value }),
@@ -173,7 +171,7 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
   }
 
   return {
-    search: debouncedSearch,
+    search,
     sort,
     status,
     type,
