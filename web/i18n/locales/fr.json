@@ -200,7 +200,13 @@
   },
   "common": {
     "loading": "Chargement...",
-    "or": "Ou"
+    "or": "Ou",
+    "showLess": "Afficher moins",
+    "showMore": "Afficher plus",
+    "sort": {
+      "oldest": "Plus ancien",
+      "latest": "Plus récent"
+    }
   },
   "role": {
     "admin": "Administrateur",
@@ -216,7 +222,8 @@
         "error": "Échec du chargement des séries"
       },
       "comic": {
-        "chaptersCount": "Aucun chapitre | \n1 Chapitre | \n{count} Chapitres"
+        "chaptersCount": "Aucun chapitre | \n1 Chapitre | \n{count} Chapitres",
+        "chapter": "Chapitre {number}"
       }
     },
     "asura": {

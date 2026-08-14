@@ -200,7 +200,13 @@
   },
   "common": {
     "loading": "Loading...",
-    "or": "Or"
+    "or": "Or",
+    "showLess": "Show less",
+    "showMore": "Show more",
+    "sort": {
+      "latest": "Latest",
+      "oldest": "Oldest"
+    }
   },
   "role": {
     "admin": "Admin",
@@ -214,7 +220,8 @@
         "error": "Failed to load series"
       },
       "comic": {
-        "chaptersCount": "No chapters | 1 Chapter | {count} Chapters"
+        "chaptersCount": "No chapters | 1 Chapter | {count} Chapters",
+        "chapter": "Chapter {number}"
       }
     },
     "asura": {

@@ -102,6 +102,10 @@ input::-webkit-inner-spin-button {
   border: 1px solid rgb(var(--v-theme-warning), 0.5);
 }
 
+.border-thin-gold {
+  border: 1px solid rgb(var(--v-theme-gold), 0.5);
+}
+
 .gradient-background {
   background: linear-gradient(0deg, rgb(var(--v-theme-surface)) 50%, rgb(var(--v-theme-primary-darken-1)) 400%);
 }

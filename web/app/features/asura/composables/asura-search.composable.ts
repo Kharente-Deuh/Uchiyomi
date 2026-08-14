@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSearchItem, AsuraSort } from '../types'
+import type { AsuraComicInfos, AsuraSearchItem, AsuraSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
 import { ASURA_SOURCE_NAME } from '~/constants'
 import { createComicsApi } from '~/features/comics/composables/comics.api'
@@ -19,7 +19,7 @@ export interface AsuraSearchComposable {
   resetFilters: () => void
 
   removeComicFromLibrary: (comic: AsuraSearchItem) => Promise<boolean>
-  addComicInLibrary: (comic: AsuraSearchItem) => Promise<void>
+  addComicInLibrary: (comic: AsuraSearchItem | AsuraComicInfos) => Promise<string | undefined>
   addComicInLibraryLoading: Ref<Record<string, boolean>>
 }
 
@@ -140,7 +140,7 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     return true
   }
 
-  async function addComicInLibrary(comic: AsuraSearchItem): Promise<void> {
+  async function addComicInLibrary(comic: AsuraSearchItem | AsuraComicInfos): Promise<string | undefined> {
     if (Object.hasOwn(addComicInLibraryLoading.value, comic.slug) || comic.internalId) {
       return
     }
@@ -168,6 +168,8 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     store.setComicInternalId(comic.slug, res.data.id)
 
     delete addComicInLibraryLoading.value[comic.slug]
+
+    return res.data.id
   }
 
   return {

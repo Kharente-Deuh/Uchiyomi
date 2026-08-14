@@ -1,13 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import type { AsuraComicInfos } from '../../types'
-import { ASURA_SOURCE_NAME } from '~/constants'
 
 const comic = defineModel<AsuraComicInfos>({ required: true })
 
-const { t } = useI18n()
-const toast = useToast()
-const comicsApi = createComicsApi()
+const { addComicInLibrary } = useAsuraSearch({ doSearch: false })
 
 const showDeleteModal = ref(false)
 const addToLibraryLoading = ref(false)
@@ -31,12 +28,9 @@ async function addComicToLibrary(): Promise<void> {
 
   addToLibraryLoading.value = true
 
-  const res = await comicsApi.create({ source: ASURA_SOURCE_NAME, slug: comic.value.slug })
-  if (res.success) {
-    comic.value.internalId = res.data.id
-  } else {
-    console.error('comicsApi.create', res.error)
-    toast.error(t('error.unknown'))
+  const internalId = await addComicInLibrary(comic.value)
+  if (internalId) {
+    comic.value.internalId = internalId
   }
 
   addToLibraryLoading.value = false
@@ -52,11 +46,11 @@ async function addComicToLibrary(): Promise<void> {
   />
 
   <div
-    class="d-flex flex-column ga-4 pa-4 bg-surface border-thin"
+    class="d-flex flex-column ga-4 pa-4 bg-surface"
     style="border-radius: 12px"
   >
-    <div class="d-flex ga-4 flex-wrap align-center justify-space-between">
-      <div class="d-flex ga-4 flex-wrap">
+    <div class="d-flex flex-wrap align-center justify-space-between ga-4">
+      <div class="d-flex flex-wrap ga-4">
         <ComicsChipStatus :status="comic.status" />
         <ComicsChipType :type="comic.type" />
       </div>
