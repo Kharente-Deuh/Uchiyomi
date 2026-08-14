@@ -2,7 +2,7 @@
 // @vitest-environment nuxt
 
 import type { VueWrapper } from '@vue/test-utils'
-import type { AsuraSearchItem } from '../../types'
+import type { AsuraComicInfos, AsuraSearchItem } from '../../types'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
@@ -65,8 +65,8 @@ async function mount(): Promise<{ wrapper: VueWrapper, comic: ReturnType<typeof 
         'onUpdate:modelValue': (isShown: boolean) => {
           show.value = isShown
         },
-        'onUpdate:comic': (value: AsuraSearchItem | undefined) => {
-          comic.value = value
+        'onUpdate:comic': (value: AsuraSearchItem | AsuraComicInfos | undefined) => {
+          comic.value = value as AsuraSearchItem
         },
       })]),
     },
