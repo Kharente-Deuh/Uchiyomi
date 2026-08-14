@@ -14,13 +14,13 @@ import (
 )
 
 type fakeChaptersRepository struct {
+	lastListEarlyAccessUntil time.Time
 	lastCreateMany           []chapters.CreateOpts
-	createManyCalls          int
 	listResumableResult      []chapters.Chapter
 	listEarlyAccessResult    []chapters.Chapter
+	createManyCalls          int
 	listResumableCalls       int
 	listEarlyAccessCalls     int
-	lastListEarlyAccessUntil time.Time
 }
 
 func (f *fakeChaptersRepository) Create(context.Context, chapters.CreateOpts) (*chapters.Chapter, error) {

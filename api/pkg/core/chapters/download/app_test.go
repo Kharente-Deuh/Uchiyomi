@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package download_test
 
 import (
@@ -15,11 +16,11 @@ import (
 )
 
 type fakeChaptersService struct {
-	enqueueResumableCalls int
-	scanEarlyAccessCalls  int
 	enqueueResumableErr   error
 	scanEarlyAccessErr    error
 	scanDone              chan struct{}
+	enqueueResumableCalls int
+	scanEarlyAccessCalls  int
 }
 
 func (f *fakeChaptersService) CreateAll(context.Context, uuid.UUID, []sources.SourceChapter) ([]chapters.Chapter, error) {
