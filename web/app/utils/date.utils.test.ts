@@ -92,4 +92,41 @@ describe('formatRelativeTime', () => {
     expect(formatRelativeTime(value, { locale: 'en', now, timeZone: 'Asia/Tokyo' }))
       .toBe('6 hours ago')
   })
+
+  describe('direction: future', () => {
+    it('formats minutes until on the same calendar day', () => {
+      expect(formatRelativeTime(new Date('2026-06-28T12:05:00Z'), { locale: 'en', now: NOW, timeZone: TZ, direction: 'future' }))
+        .toBe('in 5 minutes')
+    })
+
+    it('clamps a past (negative) minute delta to 0', () => {
+      expect(formatRelativeTime(new Date('2026-06-28T11:55:00Z'), { locale: 'en', now: NOW, timeZone: TZ, direction: 'future' }))
+        .toBe('in 0 minutes')
+    })
+
+    it('formats hours until on the same calendar day', () => {
+      expect(formatRelativeTime(new Date('2026-06-28T15:00:00Z'), { locale: 'en', now: NOW, timeZone: TZ, direction: 'future' }))
+        .toBe('in 3 hours')
+    })
+
+    it('formats "tomorrow" for a one-day difference', () => {
+      expect(formatRelativeTime(new Date('2026-06-29T12:00:00Z'), { locale: 'en', now: NOW, timeZone: TZ, direction: 'future' }))
+        .toBe('tomorrow')
+    })
+
+    it('formats days until for a sub-week difference', () => {
+      expect(formatRelativeTime(new Date('2026-07-01T12:00:00Z'), { locale: 'en', now: NOW, timeZone: TZ, direction: 'future' }))
+        .toBe('in 3 days')
+    })
+
+    it('localises minutes to French', () => {
+      expect(formatRelativeTime(new Date('2026-06-28T12:05:00Z'), { locale: 'fr', now: NOW, timeZone: TZ, direction: 'future' }))
+        .toBe('dans 5 minutes')
+    })
+
+    it('localises "tomorrow" to French ("demain")', () => {
+      expect(formatRelativeTime(new Date('2026-06-29T12:00:00Z'), { locale: 'fr', now: NOW, timeZone: TZ, direction: 'future' }))
+        .toBe('demain')
+    })
+  })
 })

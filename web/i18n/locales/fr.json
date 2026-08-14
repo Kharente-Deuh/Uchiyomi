@@ -223,7 +223,8 @@
       },
       "comic": {
         "chaptersCount": "Aucun chapitre | \n1 Chapitre | \n{count} Chapitres",
-        "chapter": "Chapitre {number}"
+        "chapter": "Chapitre {number}",
+        "chapterUnlocksIn": "Accessible {time}"
       }
     },
     "asura": {

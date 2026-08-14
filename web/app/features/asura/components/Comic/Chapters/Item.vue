@@ -48,7 +48,7 @@ const isEarlyAccess = computed(() => props.chapter.earlyAccessUntil > new Date()
           v-else-if="isEarlyAccess"
           class="text-body-medium text-medium-emphasis text-truncate text-gold"
         >
-          {{ `Unlocks in ${formatRelativeTime(chapter.earlyAccessUntil, { locale })}` }}
+          {{ $t('sources.asurascans.comic.chapterUnlocksIn', { time: formatRelativeTime(chapter.earlyAccessUntil, { locale, direction: 'future' }) }) }}
         </span>
       </div>
     </div>

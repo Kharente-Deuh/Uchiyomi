@@ -221,7 +221,8 @@
       },
       "comic": {
         "chaptersCount": "No chapters | 1 Chapter | {count} Chapters",
-        "chapter": "Chapter {number}"
+        "chapter": "Chapter {number}",
+        "chapterUnlocksIn": "Unlocks {time}"
       }
     },
     "asura": {
