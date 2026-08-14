@@ -30,6 +30,7 @@ type Comic struct {
 	Genres         pq.StringArray     `gorm:"type:text[];not null;default:'{}'"`
 	AltTitles      pq.StringArray     `gorm:"type:text[];not null;default:'{}'"`
 	LibraryEntries []LibraryEntry     `gorm:"foreignKey:ComicID"`
+	Chapters       []Chapter          `gorm:"foreignKey:ComicID;constraint:OnDelete:CASCADE"`
 	ChapterCount   int
 	ID             uuid.UUID `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 }
