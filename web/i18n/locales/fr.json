@@ -246,10 +246,21 @@
       },
       "label": {
         "inLibrary": "En bibliothèque"
+      },
+      "comic": {
+        "notFound": "Serie introuvable",
+        "chapters": {
+          "error": {
+            "fetch": "Échec du chargement des chapitres"
+          }
+        }
       }
     },
     "add": {
       "title": "Ajouter à la bibliothèque"
+    },
+    "comic": {
+      "viewOnSource": "Voir sur le site d'origine"
     }
   },
   "fields": {

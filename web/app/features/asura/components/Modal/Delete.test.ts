@@ -78,7 +78,7 @@ async function mount(): Promise<{ wrapper: VueWrapper, comic: ReturnType<typeof 
 
 beforeEach(() => {
   removeComicFromLibrary.mockReset()
-  removeComicFromLibrary.mockResolvedValue(undefined)
+  removeComicFromLibrary.mockResolvedValue(true)
 })
 
 describe('asuraModalDelete', () => {

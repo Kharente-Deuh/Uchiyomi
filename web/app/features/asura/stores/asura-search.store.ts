@@ -7,7 +7,6 @@ const DEFAULT_SORT: AsuraSort = 'popular'
 const DEFAULT_OFFSET = 1
 
 export interface AsuraSearchStore {
-
   comics: Ref<AsuraSearchItem[]>
   setComics: (comics: AsuraSearchItem[]) => void
   clearComics: () => void

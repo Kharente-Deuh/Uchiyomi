@@ -244,10 +244,21 @@
       },
       "label": {
         "inLibrary": "In library"
+      },
+      "comic": {
+        "notFound": "Comic not found",
+        "chapters": {
+          "error": {
+            "fetch": "Failed to fetch chapters"
+          }
+        }
       }
     },
     "add": {
       "title": "Add to library"
+    },
+    "comic": {
+      "viewOnSource": "See on origin website"
     }
   },
   "browse": {
@@ -267,6 +278,12 @@
       "error": {
         "alreadyExists": "Comic already in library"
       }
+    }
+  },
+  "comic": {
+    "fields": {
+      "author": "Author",
+      "artist": "Artist"
     }
   }
 }

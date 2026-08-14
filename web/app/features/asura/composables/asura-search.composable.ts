@@ -2,10 +2,10 @@
 
 import type { AsuraSearchItem, AsuraSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
+import { ASURA_SOURCE_NAME } from '~/constants'
 import { createComicsApi } from '~/features/comics/composables/comics.api'
 
 const PAGE_SIZE = 20
-const ASURA_SOURCE_NAME = 'asurascans'
 
 export interface AsuraSearchComposable {
   search: Ref<string | undefined>
@@ -18,7 +18,7 @@ export interface AsuraSearchComposable {
   isLoading: Ref<boolean>
   resetFilters: () => void
 
-  removeComicFromLibrary: (comic: AsuraSearchItem) => Promise<void>
+  removeComicFromLibrary: (comic: AsuraSearchItem) => Promise<boolean>
   addComicInLibrary: (comic: AsuraSearchItem) => Promise<void>
   addComicInLibraryLoading: Ref<Record<string, boolean>>
 }
@@ -124,9 +124,9 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     }
   }, { immediate: true })
 
-  async function removeComicFromLibrary(comic: AsuraSearchItem): Promise<void> {
+  async function removeComicFromLibrary(comic: AsuraSearchItem): Promise<boolean> {
     if (!comic.internalId) {
-      return
+      return false
     }
 
     const res = await comicsApi.deleteById(comic.internalId)
@@ -134,10 +134,12 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
       console.error('comicsApi.deleteById failed', res.error)
       toast.error(t('error.unknown'))
 
-      return
+      return false
     }
 
     store.setComicInternalId(comic.slug, undefined)
+
+    return true
   }
 
   async function addComicInLibrary(comic: AsuraSearchItem): Promise<void> {
