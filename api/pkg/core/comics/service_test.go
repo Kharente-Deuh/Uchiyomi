@@ -233,6 +233,14 @@ func (f *fakeChaptersService) EnqueueDownloadable(_ context.Context, chapterList
 	return f.enqueueDownloadableErr
 }
 
+func (f *fakeChaptersService) EnqueueResumable(context.Context) error {
+	return nil
+}
+
+func (f *fakeChaptersService) ScanEarlyAccess(context.Context) error {
+	return nil
+}
+
 func (f *fakeChaptersService) CleanupComic(_ context.Context, comicID uuid.UUID, chapterList []chapters.Chapter) error {
 	f.cleanupComicCalls++
 	f.lastCleanupComicID = comicID

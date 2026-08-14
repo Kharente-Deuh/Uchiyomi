@@ -14,8 +14,13 @@ import (
 )
 
 type fakeChaptersRepository struct {
-	lastCreateMany  []chapters.CreateOpts
-	createManyCalls int
+	lastCreateMany           []chapters.CreateOpts
+	createManyCalls          int
+	listResumableResult      []chapters.Chapter
+	listEarlyAccessResult    []chapters.Chapter
+	listResumableCalls       int
+	listEarlyAccessCalls     int
+	lastListEarlyAccessUntil time.Time
 }
 
 func (f *fakeChaptersRepository) Create(context.Context, chapters.CreateOpts) (*chapters.Chapter, error) {
@@ -45,6 +50,19 @@ func (f *fakeChaptersRepository) CreateMany(_ context.Context, opts []chapters.C
 
 func (f *fakeChaptersRepository) ListByComicID(context.Context, uuid.UUID) ([]chapters.Chapter, error) {
 	panic("ListByComicID must not be called")
+}
+
+func (f *fakeChaptersRepository) ListResumable(context.Context) ([]chapters.Chapter, error) {
+	f.listResumableCalls++
+
+	return f.listResumableResult, nil
+}
+
+func (f *fakeChaptersRepository) ListEarlyAccessUnlocked(_ context.Context, now time.Time) ([]chapters.Chapter, error) {
+	f.listEarlyAccessCalls++
+	f.lastListEarlyAccessUntil = now
+
+	return f.listEarlyAccessResult, nil
 }
 
 func (f *fakeChaptersRepository) GetByID(context.Context, uuid.UUID) (*chapters.Chapter, error) {
@@ -153,6 +171,80 @@ func TestServiceEnqueueDownloadableRunsWithoutError(t *testing.T) {
 
 	if len(downloader.lastEnqueueChapters) != 1 {
 		t.Fatalf("enqueued chapters = %+v, want one downloadable chapter", downloader.lastEnqueueChapters)
+	}
+}
+
+func TestServiceEnqueueResumable(t *testing.T) {
+	t.Parallel()
+
+	downloader := &fakeChapterDownloader{}
+	repo := &fakeChaptersRepository{
+		listResumableResult: []chapters.Chapter{
+			{ID: uuid.New(), Download: 42},
+			{ID: uuid.New(), Download: -1},
+		},
+	}
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        repo,
+		ChapterDownloader: downloader,
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	err = svc.EnqueueResumable(context.Background())
+	if err != nil {
+		t.Fatalf("EnqueueResumable: %v", err)
+	}
+
+	if repo.listResumableCalls != 1 {
+		t.Errorf("ListResumable called %d times, want 1", repo.listResumableCalls)
+	}
+
+	if downloader.enqueueCalls != 1 {
+		t.Errorf("Enqueue called %d times, want 1", downloader.enqueueCalls)
+	}
+
+	if len(downloader.lastEnqueueChapters) != 2 {
+		t.Fatalf("enqueued chapters = %+v, want 2 resumable chapters", downloader.lastEnqueueChapters)
+	}
+}
+
+func TestServiceScanEarlyAccess(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	downloader := &fakeChapterDownloader{}
+	repo := &fakeChaptersRepository{
+		listEarlyAccessResult: []chapters.Chapter{
+			{Download: 100},
+			{EarlyAccessUntil: now.Add(time.Hour)},
+			{Download: 0, EarlyAccessUntil: now.Add(-time.Hour)},
+		},
+	}
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        repo,
+		ChapterDownloader: downloader,
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	err = svc.ScanEarlyAccess(context.Background())
+	if err != nil {
+		t.Fatalf("ScanEarlyAccess: %v", err)
+	}
+
+	if repo.listEarlyAccessCalls != 1 {
+		t.Errorf("ListEarlyAccessUnlocked called %d times, want 1", repo.listEarlyAccessCalls)
+	}
+
+	if downloader.enqueueCalls != 1 {
+		t.Errorf("Enqueue called %d times, want 1", downloader.enqueueCalls)
+	}
+
+	if len(downloader.lastEnqueueChapters) != 1 {
+		t.Fatalf("enqueued chapters = %+v, want one unlocked chapter", downloader.lastEnqueueChapters)
 	}
 }
 
