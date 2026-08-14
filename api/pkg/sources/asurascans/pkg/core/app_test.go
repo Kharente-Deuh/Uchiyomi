@@ -329,6 +329,27 @@ func TestAppGetImageURLsByChapterReturnsACopy(t *testing.T) {
 	}
 }
 
+func TestAppGetInfosBySlugWithoutLibraryEntry(t *testing.T) {
+	t.Parallel()
+
+	app, err := core.New(testConfig(), fullDeps(t))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	res, err := app.GetInfosBySlug(context.Background(), sources.GetInfosBySlugOpts{
+		Slug:   "nano-machine",
+		UserID: uuid.New(),
+	})
+	if err != nil {
+		t.Fatalf("GetInfosBySlug: %v", err)
+	}
+
+	if res.InternalID != nil {
+		t.Errorf("InternalID = %v, want nil when comic is not in library", res.InternalID)
+	}
+}
+
 func TestAppSearchAttachesLibraryInternalID(t *testing.T) {
 	t.Parallel()
 

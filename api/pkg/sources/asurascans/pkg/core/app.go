@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
+	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
@@ -176,7 +177,7 @@ func (a *App) GetInfosBySlug(ctx context.Context, opts sources.GetInfosBySlugOpt
 			UserID: opts.UserID,
 		})
 
-		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		if err != nil && !errors.Is(err, coredomain.ErrNotFound) {
 			return nil, fmt.Errorf("a.deps.ComicsRepository.GetBySourceSlug: %w", err)
 		}
 
