@@ -1,0 +1,164 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+package pg_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/repository/pg"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgtest"
+)
+
+const (
+	chapterSlug  = "chapter-1"
+	chapterTitle = "Chapter 1"
+)
+
+func duplicateChapterKeyErr() error {
+	return &pgconn.PgError{
+		Code:    "23505",
+		Message: `duplicate key value violates unique constraint "idx_chapter_comic_source_slug"`,
+	}
+}
+
+func newChaptersRepo(t *testing.T) (*pg.PGChaptersRepository, sqlmock.Sqlmock) {
+	t.Helper()
+
+	db, mock := pgtest.New(t)
+
+	r, err := pg.New(pg.Deps{DB: db})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	return r, mock
+}
+
+func TestChaptersNewValidatesDeps(t *testing.T) {
+	t.Parallel()
+
+	r, err := pg.New(pg.Deps{})
+	if err == nil {
+		t.Fatal("New without DB must fail")
+	}
+
+	if r != nil {
+		t.Error("New returned a repository in addition to the error")
+	}
+
+	if want := "deps.Validate: db is required"; err.Error() != want {
+		t.Errorf("err = %q, want %q", err.Error(), want)
+	}
+}
+
+func TestChaptersCreate(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	comicID := uuid.New()
+	publishedAt := time.Now().Add(-24 * time.Hour).UTC().Truncate(time.Second)
+	earlyAccessUntil := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "chapters"`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+	mock.ExpectCommit()
+
+	got, err := r.Create(context.Background(), chapters.CreateOpts{
+		ComicID:           comicID,
+		SourceChapterSlug: chapterSlug,
+		Number:            1,
+		Title:             chapterTitle,
+		PagesNb:           42,
+		PublishedAt:       publishedAt,
+		EarlyAccessUntil:  earlyAccessUntil,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if got.ComicID != comicID || got.SourceChapterSlug != chapterSlug {
+		t.Errorf("Create() = %+v", got)
+	}
+
+	if got.Number != 1 || got.Title != chapterTitle || got.PagesNb != 42 {
+		t.Errorf("Create() = %+v", got)
+	}
+
+	if got.PublishedAt != publishedAt || got.EarlyAccessUntil != earlyAccessUntil {
+		t.Errorf("Create() timestamps = published %v early %v", got.PublishedAt, got.EarlyAccessUntil)
+	}
+
+	if got.ID == uuid.Nil {
+		t.Error("Create did not generate ID")
+	}
+
+	if got.Download != 0 {
+		t.Errorf("Create() download = %d, want 0", got.Download)
+	}
+}
+
+func TestChaptersCreateDuplicateKey(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "chapters"`).WillReturnError(duplicateChapterKeyErr())
+	mock.ExpectRollback()
+
+	got, err := r.Create(context.Background(), chapters.CreateOpts{
+		ComicID:           uuid.New(),
+		SourceChapterSlug: chapterSlug,
+		Number:            1,
+		Title:             chapterTitle,
+		PublishedAt:       time.Now(),
+	})
+	if !errors.Is(err, domain.ErrAlreadyExists) {
+		t.Errorf("Create = %v, want domain.ErrAlreadyExists", err)
+	}
+
+	if got != nil {
+		t.Errorf("Create returned %+v in addition to the error", got)
+	}
+}
+
+func TestChaptersListByComicID(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	comicID := uuid.New()
+	id := uuid.New()
+	publishedAt := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`FROM "chapters".*comic_id = \$1`).
+		WithArgs(comicID).
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"id", "comic_id", "source_chapter_slug", "number", "title",
+				"pages_nb", "published_at", "early_access_until", "download",
+			}).AddRow(
+				id, comicID, chapterSlug, 1.0, chapterTitle,
+				42, publishedAt, publishedAt, 0,
+			),
+		)
+
+	got, err := r.ListByComicID(context.Background(), comicID)
+	if err != nil {
+		t.Fatalf("ListByComicID: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != id || got[0].ComicID != comicID {
+		t.Errorf("ListByComicID() = %+v", got)
+	}
+}

@@ -108,6 +108,7 @@ func (pgdb *PGDB) Migrate() error {
 	models := []any{
 		&pgmodels.User{},
 		&pgmodels.Comic{},
+		&pgmodels.Chapter{},
 		&pgmodels.FederatedIdentity{},
 		&pgmodels.OIDCProvider{},
 		&pgmodels.Session{},
