@@ -144,9 +144,12 @@ type fakeSource struct {
 	calls    int
 }
 
-func (f *fakeSource) GetInfosBySlug(_ context.Context, slug string) (*sources.GetInfosBySlugResponse, error) {
+func (f *fakeSource) GetInfosBySlug(
+	_ context.Context,
+	opts sources.GetInfosBySlugOpts,
+) (*sources.GetInfosBySlugResponse, error) {
 	f.calls++
-	f.lastSlug = slug
+	f.lastSlug = opts.Slug
 
 	if f.err != nil {
 		return nil, f.err

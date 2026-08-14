@@ -22,7 +22,10 @@ type fakeGetter struct {
 	infos *sources.GetInfosBySlugResponse
 }
 
-func (f fakeGetter) GetInfosBySlug(context.Context, string) (*sources.GetInfosBySlugResponse, error) {
+func (f fakeGetter) GetInfosBySlug(
+	_ context.Context,
+	opts sources.GetInfosBySlugOpts,
+) (*sources.GetInfosBySlugResponse, error) {
 	return f.infos, f.err
 }
 

@@ -162,7 +162,10 @@ func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Searc
 	}, nil
 }
 
-func (a *App) GetInfosBySlug(ctx context.Context, opts sources.GetInfosBySlugOpts) (*sources.GetInfosBySlugResponse, error) {
+func (a *App) GetInfosBySlug(
+	ctx context.Context,
+	opts sources.GetInfosBySlugOpts,
+) (*sources.GetInfosBySlugResponse, error) {
 	infos, err := a.deps.GetInfosBySlugCache.Get(ctx, opts.Slug)
 	if err != nil {
 		//nolint:wrapcheck

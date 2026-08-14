@@ -14,9 +14,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
+	sessionshttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
@@ -163,6 +166,13 @@ func coverURLBuilder(source, slug string) string {
 	return "/api/sources/cover/" + slug + "?source=" + source
 }
 
+func authenticatedRequest(method, target string) *http.Request {
+	req := httptest.NewRequest(method, target, nil)
+	user := &users.User{ID: uuid.New()}
+
+	return req.WithContext(sessionshttp.WithAuth(req.Context(), user, sessions.Session{}))
+}
+
 func TestSearchReturnsProxiedCoverURL(t *testing.T) {
 	t.Parallel()
 
@@ -182,7 +192,7 @@ func TestSearchReturnsProxiedCoverURL(t *testing.T) {
 	ctrl.InitRouter(r)
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/asura/search?sort=popular&order=desc", nil))
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, "/asura/search?sort=popular&order=desc"))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -232,7 +242,7 @@ func TestGetInfosBySlugReturnsProxiedCoverURL(t *testing.T) {
 	ctrl.InitRouter(r)
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/asura/series/solo-leveling", nil))
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, "/asura/series/solo-leveling"))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)

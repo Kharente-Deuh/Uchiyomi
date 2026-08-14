@@ -18,7 +18,6 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
-	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
 
