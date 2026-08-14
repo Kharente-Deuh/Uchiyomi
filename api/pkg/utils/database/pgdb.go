@@ -77,7 +77,7 @@ func NewPGDatabase(cfg PGConfig, deps PGDeps) (*PGDB, error) {
 	}
 
 	deps.Logger = deps.Logger.With("component", "db.postgres")
-	db, err := createPGDatabase(cfg)
+	db, err := createPGDatabase(cfg, deps.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("createPGDatabase: %w", err)
 	}
@@ -87,7 +87,7 @@ func NewPGDatabase(cfg PGConfig, deps PGDeps) (*PGDB, error) {
 	return &PGDB{DB: db, deps: deps}, nil
 }
 
-func createPGDatabase(cfg PGConfig) (*gorm.DB, error) {
+func createPGDatabase(cfg PGConfig, log *slog.Logger) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=%s",
 		cfg.Host,
 		cfg.Port,
@@ -96,7 +96,10 @@ func createPGDatabase(cfg PGConfig) (*gorm.DB, error) {
 		cfg.Password,
 		utils.Ternary(cfg.SSLRequired, "require", "disable"))
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		TranslateError: true,
+		Logger:         newGormLogger(log),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("gorm.Open: %w", err)
 	}

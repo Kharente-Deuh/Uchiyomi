@@ -49,18 +49,20 @@ func ensureDirWritable(path string) error {
 	return nil
 }
 
-func PrepareDataDir(logger *slog.Logger, path string, uid, gid int) (string, error) {
+func PrepareDataDirs(logger *slog.Logger, uid, gid int, paths ...string) error {
 	if os.Geteuid() == 0 {
-		if err := os.MkdirAll(path, 0o755); err != nil {
-			return "", fmt.Errorf("os.MkdirAll %s: %w", path, err)
-		}
+		for _, path := range paths {
+			if err := os.MkdirAll(path, 0o755); err != nil {
+				return fmt.Errorf("os.MkdirAll %s: %w", path, err)
+			}
 
-		if err := os.Chown(path, uid, gid); err != nil {
-			return "", fmt.Errorf("os.Chown %s: %w", path, err)
+			if err := os.Chown(path, uid, gid); err != nil {
+				return fmt.Errorf("os.Chown %s: %w", path, err)
+			}
 		}
 
 		if err := dropPrivileges(uid, gid); err != nil {
-			return "", fmt.Errorf("dropPrivileges: %w", err)
+			return fmt.Errorf("dropPrivileges: %w", err)
 		}
 
 		if logger != nil {
@@ -68,12 +70,22 @@ func PrepareDataDir(logger *slog.Logger, path string, uid, gid int) (string, err
 		}
 	}
 
-	if err := EnsureDir(path); err != nil {
-		return "", err
+	for _, path := range paths {
+		if err := EnsureDir(path); err != nil {
+			return err
+		}
+
+		if logger != nil {
+			logger.Debug("data directory ready", "dir", path)
+		}
 	}
 
-	if logger != nil {
-		logger.Debug("cache directory ready", "dir", path)
+	return nil
+}
+
+func PrepareDataDir(logger *slog.Logger, path string, uid, gid int) (string, error) {
+	if err := PrepareDataDirs(logger, uid, gid, path); err != nil {
+		return "", err
 	}
 
 	return path, nil

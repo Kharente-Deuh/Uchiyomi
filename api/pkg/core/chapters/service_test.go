@@ -46,11 +46,38 @@ func (f *fakeChaptersRepository) ListByComicID(context.Context, uuid.UUID) ([]ch
 	panic("ListByComicID must not be called")
 }
 
+func (f *fakeChaptersRepository) GetByID(context.Context, uuid.UUID) (*chapters.Chapter, error) {
+	panic("GetByID must not be called")
+}
+
+func (f *fakeChaptersRepository) UpdateDownload(context.Context, uuid.UUID, int) error {
+	panic("UpdateDownload must not be called")
+}
+
+func (f *fakeChaptersRepository) UpdatePagesNb(context.Context, uuid.UUID, int) error {
+	panic("UpdatePagesNb must not be called")
+}
+
+type fakeChapterDownloader struct {
+	lastEnqueueChapters []chapters.Chapter
+	enqueueCalls        int
+}
+
+func (f *fakeChapterDownloader) Enqueue(_ context.Context, chapterList []chapters.Chapter) error {
+	f.enqueueCalls++
+	f.lastEnqueueChapters = chapterList
+
+	return nil
+}
+
 func TestServiceCreateAll(t *testing.T) {
 	t.Parallel()
 
 	repo := &fakeChaptersRepository{}
-	svc, err := chapters.NewService(chapters.Deps{Repository: repo})
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        repo,
+		ChapterDownloader: &fakeChapterDownloader{},
+	})
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
 	}
@@ -87,8 +114,12 @@ func TestServiceCreateAll(t *testing.T) {
 func TestServiceEnqueueDownloadableRunsWithoutError(t *testing.T) {
 	t.Parallel()
 
+	downloader := &fakeChapterDownloader{}
 	repo := &fakeChaptersRepository{}
-	svc, err := chapters.NewService(chapters.Deps{Repository: repo})
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        repo,
+		ChapterDownloader: downloader,
+	})
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
 	}
@@ -102,5 +133,13 @@ func TestServiceEnqueueDownloadableRunsWithoutError(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("EnqueueDownloadable: %v", err)
+	}
+
+	if downloader.enqueueCalls != 1 {
+		t.Errorf("Enqueue called %d times, want 1", downloader.enqueueCalls)
+	}
+
+	if len(downloader.lastEnqueueChapters) != 1 {
+		t.Fatalf("enqueued chapters = %+v, want one downloadable chapter", downloader.lastEnqueueChapters)
 	}
 }

@@ -13,6 +13,7 @@ const (
 	componentMigrations       = "migrations"
 	componentAsura            = "asura"
 	componentCovers           = "covers"
+	componentDownloads        = "downloads"
 	componentSessions         = "sessions"
 	componentOIDCRevalidation = "oidc-revalidation"
 	componentDB               = "db"
@@ -25,6 +26,7 @@ func NewHealthRegistry(db Database) *health.Registry {
 		componentMigrations,
 		componentAsura,
 		componentCovers,
+		componentDownloads,
 		componentSessions,
 		componentOIDCRevalidation,
 	)

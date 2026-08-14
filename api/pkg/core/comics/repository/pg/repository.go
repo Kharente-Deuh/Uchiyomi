@@ -70,6 +70,21 @@ func (r *PGComicsRepository) GetByID(ctx context.Context, opts comics.GetByIDOpt
 	return &ret, nil
 }
 
+func (r *PGComicsRepository) FindByID(ctx context.Context, id uuid.UUID) (*comics.Comic, error) {
+	model, err := r.db(ctx).Where("comics.id = ?", id).First(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrNotFound
+		}
+
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := model.Domain()
+
+	return &ret, nil
+}
+
 //nolint:lll
 func (r *PGComicsRepository) GetBySourceSlug(ctx context.Context, opts comics.GetBySourceSlugOpts) (*comics.Comic, error) {
 	model, err := r.db(ctx).

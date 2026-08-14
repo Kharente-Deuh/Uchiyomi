@@ -243,3 +243,15 @@ func (a *App) GetImageURLsByChapter(ctx context.Context, opts domain.GetImageURL
 
 	return slices.Clone(*res), nil
 }
+
+func (a *App) GetPageURLsByChapter(ctx context.Context, opts sources.GetPageURLsByChapterOpts) ([]string, error) {
+	urls, err := a.GetImageURLsByChapter(ctx, domain.GetImageURLsByChapterOpts{
+		SeriesSlug: opts.SeriesSlug,
+		ChapterID:  opts.ChapterSlug,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("a.GetImageURLsByChapter: %w", err)
+	}
+
+	return urls, nil
+}

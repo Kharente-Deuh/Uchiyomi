@@ -42,7 +42,7 @@ services:
       PORT: 3000
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
-      COVERS_DIR: /covers
+      CHAPTER_DOWNLOAD_RATE_LIMIT: ${CHAPTER_DOWNLOAD_RATE_LIMIT:-500ms}
       OIDC_ENCRYPTION_KEY: "${OIDC_ENCRYPTION_KEY:?set OIDC_ENCRYPTION_KEY, e.g. openssl rand -base64 32}"
     healthcheck:
       test: ["CMD", "/uchiyomiserver", "-healthcheck"]
@@ -52,9 +52,8 @@ services:
       start_period: 15s
     read_only: true
     volumes:
-      - covers:/covers
+      - ./.data:/data
     stop_grace_period: 15s
 
 volumes:
   pgdata:
-  covers:

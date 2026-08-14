@@ -24,6 +24,10 @@ func (stubComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comic
 	return nil, coredomain.ErrNotFound
 }
 
+func (stubComicsRepository) FindByID(context.Context, uuid.UUID) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
 func (stubComicsRepository) GetBySourceSlug(
 	context.Context, comics.GetBySourceSlugOpts,
 ) (*comics.Comic, error) {
@@ -60,6 +64,10 @@ type libraryComicsRepository struct {
 }
 
 func (r libraryComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (r libraryComicsRepository) FindByID(context.Context, uuid.UUID) (*comics.Comic, error) {
 	return nil, coredomain.ErrNotFound
 }
 

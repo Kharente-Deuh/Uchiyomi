@@ -26,6 +26,13 @@ type ChaptersRepository interface {
 	Create(context.Context, CreateOpts) (*Chapter, error)
 	CreateMany(context.Context, []CreateOpts) ([]Chapter, error)
 	ListByComicID(context.Context, uuid.UUID) ([]Chapter, error)
+	GetByID(context.Context, uuid.UUID) (*Chapter, error)
+	UpdateDownload(context.Context, uuid.UUID, int) error
+	UpdatePagesNb(context.Context, uuid.UUID, int) error
+}
+
+type ChapterDownloader interface {
+	Enqueue(context.Context, []Chapter) error
 }
 
 type ChaptersService interface {

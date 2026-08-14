@@ -172,6 +172,14 @@ func (fakeOIDCRevalidationApp) Run(ctx context.Context) error {
 	return fmt.Errorf("context done: %w", ctx.Err())
 }
 
+type fakeDownloadsApp struct{}
+
+func (fakeDownloadsApp) Run(ctx context.Context) error {
+	<-ctx.Done()
+
+	return fmt.Errorf("context done: %w", ctx.Err())
+}
+
 func (fakeSessionsRepository) DeleteByUserAndProvider(context.Context, uuid.UUID, uuid.UUID) error {
 	return errors.New(notImplemented)
 }
@@ -255,6 +263,10 @@ func (fakeOIDCProvidersService) Probe(context.Context, string) (*oidcproviders.P
 type stubComicsRepository struct{}
 
 func (stubComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsRepository) FindByID(context.Context, uuid.UUID) (*comics.Comic, error) {
 	return nil, coredomain.ErrNotFound
 }
 
@@ -477,6 +489,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			Health:            registry,
 			Asura:             asuraApp,
 			Covers:            coversApp,
+			Downloads:         fakeDownloadsApp{},
 			Sessions:          sessionsApp,
 			OIDCRevalidation:  fakeOIDCRevalidationApp{},
 		})
