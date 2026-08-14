@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import type { AsuraComicChapter } from '../../../types'
 
-const props = defineProps<{ slug: string }>()
+const props = defineProps<{ slug: string, comicOriginUrl: string }>()
 
 const api = createAsuraApi()
 const toast = useToast()
@@ -68,7 +68,10 @@ const filteredChapters = computed(() => chapters.value.toSorted((a, b) => {
     </div>
     <VVirtualScroll :items="filteredChapters" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
       <template #default="{ item }">
-        <AsuraComicChaptersItem :chapter="item" />
+        <AsuraComicChaptersItem
+          :chapter="item"
+          :comic-origin-url="props.comicOriginUrl"
+        />
       </template>
     </VVirtualScroll>
   </div>

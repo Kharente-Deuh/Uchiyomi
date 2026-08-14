@@ -2,6 +2,8 @@
 <script setup lang="ts">
 import type { AsuraComicInfos } from '../../types'
 
+const props = defineProps<{ comicOriginUrl: string }>()
+
 const comic = defineModel<AsuraComicInfos>({ required: true })
 
 const { addComicInLibrary } = useAsuraSearch({ doSearch: false })
@@ -55,7 +57,7 @@ async function addComicToLibrary(): Promise<void> {
         <ComicsChipType :type="comic.type" />
       </div>
 
-      <AsuraComicLinkOriginalSite :public-url="comic.publicUrl" />
+      <AsuraComicLinkOriginalSite :to="`${props.comicOriginUrl}`" />
     </div>
 
     <VBtn

@@ -1,13 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { ASURA_SCANS_URL } from '~/constants'
-
-defineProps<{ publicUrl: string }>()
+defineProps<{ to: string }>()
 </script>
 
 <template>
   <AtomLink
-    :to="`${ASURA_SCANS_URL}${publicUrl}`"
+    :to
     new-tab
     external
     class="original-site-link-icon"

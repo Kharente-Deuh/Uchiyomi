@@ -3,6 +3,7 @@
 import type { AsuraComicInfos } from '~/features/asura/types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
 import asuraImg from '~/assets/images/sources/asurascans.webp'
+import { ASURA_SCANS_URL } from '~/constants'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
 definePageMeta({
@@ -44,6 +45,14 @@ async function fetchInfos(): Promise<void> {
 
   fetchInfosLoading.value = false
 }
+
+const comicOriginUrl = computed(() => {
+  if (!infos.value?.publicUrl) {
+    return ''
+  }
+
+  return `${ASURA_SCANS_URL}${infos.value?.publicUrl}`
+})
 </script>
 
 <template>
@@ -59,21 +68,25 @@ async function fetchInfos(): Promise<void> {
   >
     <div
       v-if="infos"
-      class="d-flex ga-8"
-      :class="{ 'comic-infos-grid': !smAndDown, 'px-6': smAndDown }"
+      :class="smAndDown ? 'd-flex flex-column ga-8 px-6' : 'comic-infos-grid'"
     >
-      <div v-if="!smAndDown" class="d-flex flex-column ga-6 w-100">
+      <div v-if="!smAndDown" class="d-flex flex-column ga-6">
         <VImg
           v-if="coverSrc"
           :src="coverSrc"
           rounded="lg"
+          :aspect-ratio="2 / 3"
           cover
           :lazy-src="defaultCover"
-          class="border-thin rounded-lg"
+          class="border-thin rounded-lg flex-grow-0"
           @error="coverSrc = defaultCover"
         />
 
-        <AsuraComicStatusInfos v-if="!smAndDown" v-model="infos" />
+        <AsuraComicStatusInfos
+          v-if="!smAndDown"
+          v-model="infos"
+          :comic-origin-url="comicOriginUrl"
+        />
       </div>
 
       <div class="d-flex flex-column ga-6 w-100">
@@ -82,18 +95,23 @@ async function fetchInfos(): Promise<void> {
             v-if="coverSrc && smAndDown"
             :src="coverSrc"
             rounded="lg"
+            :aspect-ratio="2 / 3"
             cover
+            :width="120"
             :lazy-src="defaultCover"
-            width="120"
-            class="border-thin rounded-lg"
+            class="border-thin rounded-lg flex-0-0"
             @error="coverSrc = defaultCover"
           />
 
           <span class="font-title font-weight-bold" :class="{ 'text-display-medium': !smAndDown, 'text-title-large': smAndDown }">{{ infos.title }}</span>
         </div>
-        <AsuraComicStatusInfos v-if="smAndDown" v-model="infos" />
+        <AsuraComicStatusInfos
+          v-if="smAndDown"
+          v-model="infos"
+          :comic-origin-url="comicOriginUrl"
+        />
         <AsuraComicGeneralInfos :comic="infos" />
-        <AsuraComicChapters :slug="route.params.slug" />
+        <AsuraComicChapters :slug="route.params.slug" :comic-origin-url="comicOriginUrl" />
       </div>
     </div>
   </OrganismPageLayout>
@@ -102,7 +120,8 @@ async function fetchInfos(): Promise<void> {
 <style scoped lang="scss">
 .comic-infos-grid {
   display: grid;
-  gap: 2rem;
-  grid-template-columns: 33% 66%;
+  align-items: start;
+  gap: 3rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
 }
 </style>
