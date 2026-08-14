@@ -37,7 +37,7 @@ type ComicsRepository interface {
 	GetByID(context.Context, GetByIDOpts) (*Comic, error)
 	GetBySourceSlug(context.Context, GetBySourceSlugOpts) (*Comic, error)
 	Create(context.Context, CreateComicOpts) (*Comic, error)
-	GetBySlugsAndSource(context.Context, sources.SourceName, []string) ([]Comic, error)
+	GetBySlugsAndSource(context.Context, GetBySlugsAndSource) ([]Comic, error)
 	Delete(context.Context, uuid.UUID) error
 	GetMany(context.Context, GetManyOpts) ([]Comic, error)
 }
@@ -55,6 +55,12 @@ type CreateComicOpts struct {
 	AltTitles    []string
 	Genres       []string
 	ChapterCount int
+}
+
+type GetBySlugsAndSource struct {
+	Source sources.SourceName
+	Slugs  []string
+	UserID uuid.UUID
 }
 
 type ComicsService interface {

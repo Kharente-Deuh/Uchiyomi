@@ -89,7 +89,7 @@ func (f *fakeComicsRepository) Create(_ context.Context, opts comics.CreateComic
 }
 
 //nolint:lll
-func (f *fakeComicsRepository) GetBySlugsAndSource(context.Context, sources.SourceName, []string) ([]comics.Comic, error) {
+func (f *fakeComicsRepository) GetBySlugsAndSource(context.Context, comics.GetBySlugsAndSource) ([]comics.Comic, error) {
 	panic("GetBySlugsAndSource must not be called by the comics service")
 }
 
@@ -144,9 +144,12 @@ type fakeSource struct {
 	calls    int
 }
 
-func (f *fakeSource) GetInfosBySlug(_ context.Context, slug string) (*sources.GetInfosBySlugResponse, error) {
+func (f *fakeSource) GetInfosBySlug(
+	_ context.Context,
+	opts sources.GetInfosBySlugOpts,
+) (*sources.GetInfosBySlugResponse, error) {
 	f.calls++
-	f.lastSlug = slug
+	f.lastSlug = opts.Slug
 
 	if f.err != nil {
 		return nil, f.err

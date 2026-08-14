@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort } from '../types'
+import type { AsuraComicInfos, AsuraSearchItem, AsuraSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
+import { ASURA_SOURCE_NAME } from '~/constants'
 import { createComicsApi } from '~/features/comics/composables/comics.api'
 
 const PAGE_SIZE = 20
-const ASURA_SOURCE_NAME = 'asurascans'
 
 export interface AsuraSearchComposable {
   search: Ref<string | undefined>
@@ -18,8 +18,8 @@ export interface AsuraSearchComposable {
   isLoading: Ref<boolean>
   resetFilters: () => void
 
-  removeComicFromLibrary: (comic: AsuraSearchItem) => Promise<void>
-  addComicInLibrary: (comic: AsuraSearchItem) => Promise<void>
+  removeComicFromLibrary: (comic: AsuraSearchItem) => Promise<boolean>
+  addComicInLibrary: (comic: AsuraSearchItem | AsuraComicInfos) => Promise<string | undefined>
   addComicInLibraryLoading: Ref<Record<string, boolean>>
 }
 
@@ -35,8 +35,6 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     get: () => store.search,
     set: (value?: string) => value ? store.setSearch(value) : store.clearSearch(),
   })
-
-  const debouncedSearch = useDebounce(search, 200)
 
   const sort = computed({
     get: () => store.sort,
@@ -84,7 +82,7 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     isLoading.value = true
 
     const res = await api.search({
-      ...(debouncedSearch.value && { search: debouncedSearch.value }),
+      ...(search.value && { search: search.value }),
       ...(sort.value && { sort: sort.value }),
       ...(status.value && { status: status.value }),
       ...(type.value && { type: type.value }),
@@ -124,9 +122,9 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     }
   }, { immediate: true })
 
-  async function removeComicFromLibrary(comic: AsuraSearchItem): Promise<void> {
+  async function removeComicFromLibrary(comic: AsuraSearchItem): Promise<boolean> {
     if (!comic.internalId) {
-      return
+      return false
     }
 
     const res = await comicsApi.deleteById(comic.internalId)
@@ -134,13 +132,15 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
       console.error('comicsApi.deleteById failed', res.error)
       toast.error(t('error.unknown'))
 
-      return
+      return false
     }
 
     store.setComicInternalId(comic.slug, undefined)
+
+    return true
   }
 
-  async function addComicInLibrary(comic: AsuraSearchItem): Promise<void> {
+  async function addComicInLibrary(comic: AsuraSearchItem | AsuraComicInfos): Promise<string | undefined> {
     if (Object.hasOwn(addComicInLibraryLoading.value, comic.slug) || comic.internalId) {
       return
     }
@@ -168,10 +168,12 @@ export function useAsuraSearch(opts: { doSearch: boolean }): AsuraSearchComposab
     store.setComicInternalId(comic.slug, res.data.id)
 
     delete addComicInLibraryLoading.value[comic.slug]
+
+    return res.data.id
   }
 
   return {
-    search: debouncedSearch,
+    search,
     sort,
     status,
     type,

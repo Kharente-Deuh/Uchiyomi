@@ -204,7 +204,7 @@ type GetInfosBySlugResponse struct {
 	Rating        float64
 }
 
-func (r *GetInfosBySlugResponse) Source() sources.GetInfosBySlugResponse {
+func (r *GetInfosBySlugResponse) Source(internalURL *uuid.UUID) sources.GetInfosBySlugResponse {
 	return sources.GetInfosBySlugResponse{
 		LastChapterAt: r.LastChapterAt,
 		UpdatedAt:     r.UpdatedAt,
@@ -223,6 +223,7 @@ func (r *GetInfosBySlugResponse) Source() sources.GetInfosBySlugResponse {
 		Genres:        r.Genres,
 		ChapterCount:  r.ChapterCount,
 		Rating:        r.Rating,
+		InternalID:    internalURL,
 	}
 }
 

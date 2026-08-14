@@ -5,6 +5,7 @@ import type { RouteLocationRaw } from 'vue-router'
 export interface PageLayoutBackRoute {
   to: RouteLocationRaw
   name: string
+  image?: string
 }
 
 const props = defineProps<{
@@ -57,17 +58,26 @@ const { height: headerHeight } = useElementSize(headerRef, undefined, { box: 'bo
             </AtomLink>
             <template v-else>
               <template
-                v-for="({ to, name }, i) of backRoutes"
+                v-for="({ to, name, image }, i) of backRoutes"
                 :key="i"
               >
                 <AtomLink :to>
-                  <span
-                    class="text-primary-hover text-underline-hover font-title"
-                    :class="{
-                      'text-title-large': !mobile,
-                      'text-title-medium': mobile,
-                    }"
-                  >{{ name }}</span>
+                  <div class="d-flex align-center ga-4 text-primary-hover text-underline-hover text-truncate">
+                    <img
+                      v-if="image"
+                      aspect-ratio="1"
+                      :src="image"
+                      class="border-thin rounded-lg"
+                      style="height: 42px;"
+                    >
+                    <span
+                      class="font-title text-truncate"
+                      :class="{
+                        'text-title-large': !mobile,
+                        'text-title-medium': mobile,
+                      }"
+                    >{{ name }}</span>
+                  </div>
                 </AtomLink>
                 <span class="opacity-50 text-title-large">/</span>
               </template>

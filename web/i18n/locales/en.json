@@ -200,7 +200,13 @@
   },
   "common": {
     "loading": "Loading...",
-    "or": "Or"
+    "or": "Or",
+    "showLess": "Show less",
+    "showMore": "Show more",
+    "sort": {
+      "latest": "Latest",
+      "oldest": "Oldest"
+    }
   },
   "role": {
     "admin": "Admin",
@@ -214,7 +220,9 @@
         "error": "Failed to load series"
       },
       "comic": {
-        "chaptersCount": "No chapters | 1 Chapter | {count} Chapters"
+        "chaptersCount": "No chapters | 1 Chapter | {count} Chapters",
+        "chapter": "Chapter {number}",
+        "chapterUnlocksIn": "Unlocks {time}"
       }
     },
     "asura": {
@@ -244,10 +252,21 @@
       },
       "label": {
         "inLibrary": "In library"
+      },
+      "comic": {
+        "notFound": "Comic not found",
+        "chapters": {
+          "error": {
+            "fetch": "Failed to fetch chapters"
+          }
+        }
       }
     },
     "add": {
       "title": "Add to library"
+    },
+    "comic": {
+      "viewOnSource": "See on origin website"
     }
   },
   "browse": {
@@ -267,6 +286,12 @@
       "error": {
         "alreadyExists": "Comic already in library"
       }
+    }
+  },
+  "comic": {
+    "fields": {
+      "author": "Author",
+      "artist": "Artist"
     }
   }
 }

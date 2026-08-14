@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { AsuraSort } from '../types'
+import type { AsuraSearchItem, AsuraSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
 
 const DEFAULT_SORT: AsuraSort = 'popular'
 const DEFAULT_OFFSET = 1
 
 export interface AsuraSearchStore {
-
   comics: Ref<AsuraSearchItem[]>
   setComics: (comics: AsuraSearchItem[]) => void
   clearComics: () => void

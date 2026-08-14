@@ -2,7 +2,7 @@
 // @vitest-environment nuxt
 
 import type { VueWrapper } from '@vue/test-utils'
-import type { AsuraSearchItem } from '../composables/asura.api'
+import type { AsuraSearchItem } from '../types'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
 import { h } from 'vue'

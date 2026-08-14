@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import type { RouteLocationNormalized } from 'vue-router'
 import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
+import type { AsuraSearchItem } from '~/features/asura/types'
 import asuraImg from '~/assets/images/sources/asurascans.webp'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
@@ -27,7 +29,15 @@ const backRoutes = computed((): PageLayoutBackRoute[] => [
   },
 ])
 
-const { isLoading, series, page, maxPage, addComicInLibrary, addComicInLibraryLoading } = useAsuraSearch({ doSearch: true })
+const {
+  isLoading,
+  series,
+  page,
+  maxPage,
+  addComicInLibrary,
+  addComicInLibraryLoading,
+  resetFilters,
+} = useAsuraSearch({ doSearch: true })
 const hasNextPage = computed(() => page.value < maxPage.value)
 const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel')
 useIntersectionObserver(loadMoreSentinel, ([entry]) => {
@@ -47,6 +57,12 @@ async function doToggleComic(comic: AsuraSearchItem): Promise<void> {
     await addComicInLibrary(comic)
   }
 }
+
+onBeforeRouteLeave((to: RouteLocationNormalized) => {
+  if (to.name !== 'browse-sources-asura-slug') {
+    resetFilters()
+  }
+})
 </script>
 
 <template>

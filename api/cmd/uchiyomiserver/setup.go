@@ -418,8 +418,9 @@ type coversBundle struct {
 }
 
 type coversDeps struct {
-	Logger    *slog.Logger
-	AsuraApp  *asura.App
+	Logger   *slog.Logger
+	AsuraApp *asura.App
+
 	CoversDir string
 }
 

@@ -18,7 +18,6 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
-	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
 
@@ -39,7 +38,7 @@ func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*co
 }
 
 func (stubComicsRepository) GetBySlugsAndSource(
-	context.Context, sources.SourceName, []string,
+	context.Context, comics.GetBySlugsAndSource,
 ) ([]comics.Comic, error) {
 	return nil, nil
 }

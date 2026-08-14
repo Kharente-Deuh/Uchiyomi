@@ -1,7 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import type { AsuraComicInfos, AsuraSearchItem } from '../../types'
+
 const show = defineModel<boolean>({ required: true })
-const comic = defineModel<AsuraSearchItem | undefined>('comic', { required: true })
+const comic = defineModel<AsuraSearchItem | AsuraComicInfos | undefined>('comic', { required: true })
 
 const { removeComicFromLibrary } = useAsuraSearch({ doSearch: false })
 
@@ -21,7 +23,7 @@ async function handleDelete(): Promise<void> {
 
   loading.value = true
 
-  await removeComicFromLibrary(comic.value)
+  await removeComicFromLibrary(comic.value as AsuraSearchItem)
 
   show.value = false
 }

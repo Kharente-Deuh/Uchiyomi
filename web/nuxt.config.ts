@@ -20,6 +20,7 @@ export default defineNuxtConfig({
     { path: '~/components', pathPrefix: true },
     { path: '~/features/auth/components', prefix: 'Auth' },
     { path: '~/features/oidc/components', prefix: 'Oidc' },
+    { path: '~/features/comics/components', prefix: 'Comics' },
     { path: '~/features/asura/components', prefix: 'Asura' },
   ],
 

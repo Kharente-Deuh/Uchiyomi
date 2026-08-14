@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type SourceMap map[SourceName]Source
@@ -77,11 +79,17 @@ func ParseSeriesStatus(s string) (SeriesStatus, error) {
 }
 
 type Source interface {
-	GetInfosBySlug(context.Context, string) (*GetInfosBySlugResponse, error)
+	GetInfosBySlug(context.Context, GetInfosBySlugOpts) (*GetInfosBySlugResponse, error)
+}
+
+type GetInfosBySlugOpts struct {
+	Slug   string
+	UserID uuid.UUID
 }
 
 type GetInfosBySlugResponse struct {
 	LastChapterAt time.Time
+	InternalID    *uuid.UUID
 	UpdatedAt     time.Time
 	CreatedAt     time.Time
 	Description   string

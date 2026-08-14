@@ -35,7 +35,7 @@ func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*co
 }
 
 func (stubComicsRepository) GetBySlugsAndSource(
-	context.Context, sources.SourceName, []string,
+	context.Context, comics.GetBySlugsAndSource,
 ) ([]comics.Comic, error) {
 	return nil, nil
 }
@@ -68,7 +68,7 @@ func (r libraryComicsRepository) Create(context.Context, comics.CreateComicOpts)
 }
 
 func (r libraryComicsRepository) GetBySlugsAndSource(
-	context.Context, sources.SourceName, []string,
+	context.Context, comics.GetBySlugsAndSource,
 ) ([]comics.Comic, error) {
 	return r.comics, r.err
 }
@@ -326,6 +326,27 @@ func TestAppGetImageURLsByChapterReturnsACopy(t *testing.T) {
 
 	if second[0] != "https://example.test/1.jpg" {
 		t.Errorf("second[0] = %q: caller could modify cache entry", second[0])
+	}
+}
+
+func TestAppGetInfosBySlugWithoutLibraryEntry(t *testing.T) {
+	t.Parallel()
+
+	app, err := core.New(testConfig(), fullDeps(t))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	res, err := app.GetInfosBySlug(context.Background(), sources.GetInfosBySlugOpts{
+		Slug:   "nano-machine",
+		UserID: uuid.New(),
+	})
+	if err != nil {
+		t.Fatalf("GetInfosBySlug: %v", err)
+	}
+
+	if res.InternalID != nil {
+		t.Errorf("InternalID = %v, want nil when comic is not in library", res.InternalID)
 	}
 }
 

@@ -4,6 +4,8 @@ export interface RelativeTimeOpts {
   locale: string
   now?: Date
   timeZone?: string
+  /** @default 'past' */
+  direction?: 'past' | 'future'
 }
 
 function ymdInTz(date: Date, timeZone?: string): string {
@@ -25,36 +27,39 @@ function calendarDayDiff(from: Date, to: Date, timeZone?: string): number {
 export function formatRelativeTime(value: Date | string | number, options: RelativeTimeOpts): string {
   const date = value instanceof Date ? value : new Date(value)
   const now = options.now ?? new Date()
+  const direction = options.direction ?? 'past'
+  const sign = direction === 'past' ? -1 : 1
+  const [earlier, later] = direction === 'past' ? [date, now] : [now, date]
 
   const auto = new Intl.RelativeTimeFormat(options.locale, { numeric: 'auto' })
   const always = new Intl.RelativeTimeFormat(options.locale, { numeric: 'always' })
 
-  const days = calendarDayDiff(date, now, options.timeZone)
+  const days = calendarDayDiff(earlier, later, options.timeZone)
 
   if (days <= 0) {
-    const minutes = Math.round((now.getTime() - date.getTime()) / 60_000)
+    const minutes = Math.round((later.getTime() - earlier.getTime()) / 60_000)
     if (minutes < 60) {
-      return always.format(-Math.max(minutes, 0), 'minute')
+      return always.format(sign * Math.max(minutes, 0), 'minute')
     }
 
-    return always.format(-Math.round(minutes / 60), 'hour')
+    return always.format(sign * Math.round(minutes / 60), 'hour')
   }
 
   if (days === 1) {
-    return auto.format(-1, 'day')
+    return auto.format(sign, 'day')
   }
 
   if (days < 7) {
-    return always.format(-days, 'day')
+    return always.format(sign * days, 'day')
   }
 
   if (days < 30) {
-    return always.format(-Math.floor(days / 7), 'week')
+    return always.format(sign * Math.floor(days / 7), 'week')
   }
 
   if (days < 365) {
-    return always.format(-Math.floor(days / 30), 'month')
+    return always.format(sign * Math.floor(days / 30), 'month')
   }
 
-  return always.format(-Math.floor(days / 365), 'year')
+  return always.format(sign * Math.floor(days / 365), 'year')
 }

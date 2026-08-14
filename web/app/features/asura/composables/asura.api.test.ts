@@ -10,13 +10,34 @@ vi.mock('~/utils/api', async importOriginal => ({
   initApi: () => call,
 }))
 
-const item = {
+const rawItem = {
   slug: 'solo-leveling',
   title: 'Solo Leveling',
   cover: '/api/sources/cover/solo-leveling?source=asurascans',
   status: 'ongoing',
   type: 'manhwa',
   chapterCount: 12,
+  lastChapterAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  publicUrl: '',
+  sourceUrl: '',
+  author: '',
+  artist: '',
+  description: '',
+  altTitles: [] as string[],
+  genres: [] as string[],
+  latestChapters: [] as [],
+  rating: 0,
+  releaseYear: 2020,
+}
+
+const item = {
+  ...rawItem,
+  lastChapterAt: new Date(rawItem.lastChapterAt),
+  updatedAt: new Date(rawItem.updatedAt),
+  createdAt: new Date(rawItem.createdAt),
+  latestChapters: [],
 }
 
 beforeEach(() => {
@@ -25,7 +46,7 @@ beforeEach(() => {
 
 describe('createAsuraApi().search', () => {
   it('requests /search with pagination', async () => {
-    call.mockResolvedValue({ items: [item], total: 1 })
+    call.mockResolvedValue({ items: [rawItem], total: 1 })
 
     const res = await createAsuraApi().search({ offset: 0, limit: 20, sort: 'popular' })
 

@@ -19,8 +19,8 @@ const { mdAndDown } = useDisplay()
 
     <div class="d-flex ga-4" :class="{ 'justify-space-between': mdAndDown }">
       <AsuraInputSort v-model="sort" :disabled="isLoading" />
-      <AsuraInputStatus v-model="status" :disabled="isLoading" />
-      <AsuraInputType v-model="type" :disabled="isLoading" />
+      <ComicsInputStatus v-model="status" :disabled="isLoading" />
+      <ComicsInputType v-model="type" :disabled="isLoading" />
     </div>
   </div>
 </template>

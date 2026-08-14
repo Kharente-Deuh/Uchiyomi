@@ -80,7 +80,10 @@ func (s *Service) Create(ctx context.Context, opts CreateOpts) (*Comic, error) {
 		return nil, fmt.Errorf("source %s not found", opts.Source)
 	}
 
-	item, err = src.GetInfosBySlug(ctx, opts.Slug)
+	item, err = src.GetInfosBySlug(ctx, sources.GetInfosBySlugOpts{
+		Slug:   opts.Slug,
+		UserID: opts.UserID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("src.GetInfosBySlug: %w", err)
 	}

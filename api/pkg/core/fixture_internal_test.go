@@ -269,7 +269,7 @@ func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*co
 }
 
 func (stubComicsRepository) GetBySlugsAndSource(
-	context.Context, sources.SourceName, []string,
+	context.Context, comics.GetBySlugsAndSource,
 ) ([]comics.Comic, error) {
 	return nil, nil
 }
