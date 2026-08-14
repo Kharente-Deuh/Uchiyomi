@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ import (
 
 type fakeChaptersRepository struct {
 	chapters map[uuid.UUID]chapters.Chapter
+	mu       sync.Mutex
 }
 
 func (f *fakeChaptersRepository) Create(context.Context, chapters.CreateOpts) (*chapters.Chapter, error) {
@@ -39,6 +41,9 @@ func (f *fakeChaptersRepository) ListByComicID(context.Context, uuid.UUID) ([]ch
 }
 
 func (f *fakeChaptersRepository) GetByID(_ context.Context, id uuid.UUID) (*chapters.Chapter, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	chapter, ok := f.chapters[id]
 	if !ok {
 		return nil, errors.New("not found")
@@ -48,6 +53,9 @@ func (f *fakeChaptersRepository) GetByID(_ context.Context, id uuid.UUID) (*chap
 }
 
 func (f *fakeChaptersRepository) UpdateDownload(_ context.Context, id uuid.UUID, value int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	chapter, ok := f.chapters[id]
 	if !ok {
 		return errors.New("not found")
@@ -60,6 +68,9 @@ func (f *fakeChaptersRepository) UpdateDownload(_ context.Context, id uuid.UUID,
 }
 
 func (f *fakeChaptersRepository) UpdatePagesNb(_ context.Context, id uuid.UUID, pagesNb int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	chapter, ok := f.chapters[id]
 	if !ok {
 		return errors.New("not found")
