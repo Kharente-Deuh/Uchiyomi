@@ -35,7 +35,7 @@ func (stubComicsRepository) Create(context.Context, comics.CreateComicOpts) (*co
 }
 
 func (stubComicsRepository) GetBySlugsAndSource(
-	context.Context, sources.SourceName, []string,
+	context.Context, comics.GetBySlugsAndSource,
 ) ([]comics.Comic, error) {
 	return nil, nil
 }
@@ -68,7 +68,7 @@ func (r libraryComicsRepository) Create(context.Context, comics.CreateComicOpts)
 }
 
 func (r libraryComicsRepository) GetBySlugsAndSource(
-	context.Context, sources.SourceName, []string,
+	context.Context, comics.GetBySlugsAndSource,
 ) ([]comics.Comic, error) {
 	return r.comics, r.err
 }

@@ -89,7 +89,7 @@ func (f *fakeComicsRepository) Create(_ context.Context, opts comics.CreateComic
 }
 
 //nolint:lll
-func (f *fakeComicsRepository) GetBySlugsAndSource(context.Context, sources.SourceName, []string) ([]comics.Comic, error) {
+func (f *fakeComicsRepository) GetBySlugsAndSource(context.Context, comics.GetBySlugsAndSource) ([]comics.Comic, error) {
 	panic("GetBySlugsAndSource must not be called by the comics service")
 }
 
