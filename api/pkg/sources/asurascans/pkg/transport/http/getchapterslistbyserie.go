@@ -58,6 +58,7 @@ func (r *getSeriesChaptersHttpResponse) Domain() []domain.Chapter {
 			EarlyAccessUntil: c.EarlyAccessUntil,
 			PublishedAt:      c.PublishedAt,
 			Title:            c.Title,
+			PageCount:        c.PageCount,
 		}
 	}
 

@@ -194,6 +194,28 @@ func (a *App) GetInfosBySlug(
 	return &res, nil
 }
 
+func (a *App) GetChaptersBySlug(ctx context.Context, slug string) ([]sources.SourceChapter, error) {
+	chs, err := a.GetChaptersListBySeries(ctx, slug)
+	if err != nil {
+		//nolint:wrapcheck
+		return nil, err
+	}
+
+	result := make([]sources.SourceChapter, len(chs))
+	for i, ch := range chs {
+		result[i] = sources.SourceChapter{
+			EarlyAccessUntil:  ch.EarlyAccessUntil,
+			PublishedAt:       ch.PublishedAt,
+			SourceChapterSlug: ch.ID,
+			Title:             ch.Title,
+			Number:            ch.Number,
+			PageCount:         ch.PageCount,
+		}
+	}
+
+	return result, nil
+}
+
 func (a *App) GetChaptersListBySeries(ctx context.Context, slug string) ([]domain.Chapter, error) {
 	res, err := a.deps.GetChaptersListBySeriesCache.Get(ctx, slug)
 	if err != nil {

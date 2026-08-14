@@ -80,6 +80,16 @@ func ParseSeriesStatus(s string) (SeriesStatus, error) {
 
 type Source interface {
 	GetInfosBySlug(context.Context, GetInfosBySlugOpts) (*GetInfosBySlugResponse, error)
+	GetChaptersBySlug(context.Context, string) ([]SourceChapter, error)
+}
+
+type SourceChapter struct {
+	EarlyAccessUntil  time.Time
+	PublishedAt       time.Time
+	SourceChapterSlug string
+	Title             string
+	Number            float64
+	PageCount         int
 }
 
 type GetInfosBySlugOpts struct {

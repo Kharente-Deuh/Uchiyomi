@@ -86,3 +86,31 @@ func (r *PGChaptersRepository) ListByComicID(ctx context.Context, comicID uuid.U
 
 	return ret, nil
 }
+
+func (r *PGChaptersRepository) CreateMany(ctx context.Context, opts []chapters.CreateOpts) ([]chapters.Chapter, error) {
+	models := make([]pgmodels.Chapter, len(opts))
+	for i, opt := range opts {
+		models[i] = pgmodels.Chapter{
+			ID:                uuid.New(),
+			ComicID:           opt.ComicID,
+			SourceChapterSlug: opt.SourceChapterSlug,
+			Number:            opt.Number,
+			Title:             opt.Title,
+			PagesNb:           opt.PagesNb,
+			PublishedAt:       opt.PublishedAt,
+			EarlyAccessUntil:  opt.EarlyAccessUntil,
+		}
+	}
+
+	err := r.db(ctx).CreateInBatches(ctx, &models, len(models))
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).CreateInBatches: %w", err)
+	}
+
+	ret := make([]chapters.Chapter, len(models))
+	for i, model := range models {
+		ret[i] = model.Domain()
+	}
+
+	return ret, nil
+}

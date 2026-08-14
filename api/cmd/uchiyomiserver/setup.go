@@ -39,6 +39,8 @@ import (
 	httpsession "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	pgsessions "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/repository/pg"
 	pgcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/repository/pg"
+	pgchapters "github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/repository/pg"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
@@ -106,10 +108,18 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, err
 	}
 
+	chaptersSvc, err := chapters.NewService(chapters.Deps{
+		Repository: dbr.ChaptersRepository,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init chaptersSvc: %w", err)
+	}
+
 	comicsSvc, err := comics.NewService(comics.Deps{
 		ComicsRepository:  dbr.ComicsRepository,
 		Transactor:        dbr.Txor,
 		LibraryRepository: dbr.LibraryRepository,
+		ChaptersService:   chaptersSvc,
 		Sources:           sources.SourceMap{sources.SourceAsuraScans: asuraApp},
 	})
 	if err != nil {
@@ -176,6 +186,7 @@ type dbRelated struct {
 	OIDCProvidersRepository       *pgoidcproviders.PGOIDCProvidersRepository
 	FederatedIdentitiesRepository *pgfederatedidentities.PGFederatedIdentitiesRepository
 	ComicsRepository              *pgcomics.PGComicsRepository
+	ChaptersRepository            *pgchapters.PGChaptersRepository
 	LibraryRepository             *pglibrary.PGLibraryRepository
 }
 
@@ -231,6 +242,11 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		return nil, fmt.Errorf("failed to init comicsRepository: %w", err)
 	}
 
+	chaptersRepository, err := pgchapters.New(pgchapters.Deps{DB: pgdb.DB})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init chaptersRepository: %w", err)
+	}
+
 	libraryRepository, err := pglibrary.New(pglibrary.Deps{DB: pgdb.DB})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init libraryRepository: %w", err)
@@ -245,6 +261,7 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		OIDCProvidersRepository:       oidcProvidersRepository,
 		FederatedIdentitiesRepository: federatedIdentitiesRepository,
 		ComicsRepository:              comicsRepository,
+		ChaptersRepository:            chaptersRepository,
 		LibraryRepository:             libraryRepository,
 	}
 

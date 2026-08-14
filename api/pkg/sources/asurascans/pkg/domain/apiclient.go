@@ -233,6 +233,7 @@ type Chapter struct {
 	ID               string
 	Title            string
 	Number           float64
+	PageCount        int
 }
 
 type GetImageURLsByChapterOpts struct {

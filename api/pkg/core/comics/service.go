@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
@@ -19,6 +20,7 @@ type Deps struct {
 	ComicsRepository  ComicsRepository
 	Transactor        transaction.Transactor
 	LibraryRepository library.LibraryRepository
+	ChaptersService   chapters.ChaptersService
 	Sources           sources.SourceMap
 }
 
@@ -33,6 +35,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.LibraryRepository == nil {
 		return errors.New("library repository is required")
+	}
+
+	if deps.ChaptersService == nil {
+		return errors.New("chapters service is required")
 	}
 
 	if deps.Sources == nil {
@@ -61,32 +67,67 @@ func NewService(deps Deps) (*Service, error) {
 }
 
 func (s *Service) Create(ctx context.Context, opts CreateOpts) (*Comic, error) {
-	var comic *Comic
-
 	comic, err := s.deps.ComicsRepository.GetBySourceSlug(ctx, GetBySourceSlugOpts(opts))
-
-	if err == nil {
-		return comic, nil
-	}
-
-	if !errors.Is(err, domain.ErrNotFound) {
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return nil, fmt.Errorf("s.deps.ComicsRepository.GetBySourceSlug: %w", err)
 	}
 
-	var item *sources.GetInfosBySlugResponse
+	if comic != nil {
+		return s.addExistingComicToLibrary(ctx, opts, comic)
+	}
 
+	return s.createNewComic(ctx, opts)
+}
+
+func (s *Service) addExistingComicToLibrary(ctx context.Context, opts CreateOpts, comic *Comic) (*Comic, error) {
+	err := s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
+		_, err := s.deps.LibraryRepository.Create(ctx, library.CreateOpts{
+			UserID:  opts.UserID,
+			ComicID: comic.ID,
+		})
+		if err != nil && !errors.Is(err, domain.ErrAlreadyExists) {
+			return fmt.Errorf("s.deps.LibraryRepository.Create: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
+	}
+
+	chapterList, err := s.deps.ChaptersService.ListByComicID(ctx, comic.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ChaptersService.ListByComicID: %w", err)
+	}
+
+	err = s.deps.ChaptersService.EnqueueDownloadable(ctx, chapterList)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ChaptersService.EnqueueDownloadable: %w", err)
+	}
+
+	return comic, nil
+}
+
+func (s *Service) createNewComic(ctx context.Context, opts CreateOpts) (*Comic, error) {
 	src, ok := s.deps.Sources[opts.Source]
 	if !ok {
 		return nil, fmt.Errorf("source %s not found", opts.Source)
 	}
 
-	item, err = src.GetInfosBySlug(ctx, sources.GetInfosBySlugOpts{
+	item, err := src.GetInfosBySlug(ctx, sources.GetInfosBySlugOpts{
 		Slug:   opts.Slug,
 		UserID: opts.UserID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("src.GetInfosBySlug: %w", err)
 	}
+
+	srcChapters, err := src.GetChaptersBySlug(ctx, opts.Slug)
+	if err != nil {
+		return nil, fmt.Errorf("src.GetChaptersBySlug: %w", err)
+	}
+
+	var comic *Comic
 
 	err = s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
 		created, err := s.deps.ComicsRepository.Create(ctx, CreateComicOpts{
@@ -114,13 +155,27 @@ func (s *Service) Create(ctx context.Context, opts CreateOpts) (*Comic, error) {
 			return fmt.Errorf("s.deps.LibraryRepository.Create: %w", err)
 		}
 
+		_, err = s.deps.ChaptersService.CreateAll(ctx, created.ID, srcChapters)
+		if err != nil {
+			return fmt.Errorf("s.deps.ChaptersService.CreateAll: %w", err)
+		}
+
 		comic = created
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
+	}
+
+	chapterList, err := s.deps.ChaptersService.ListByComicID(ctx, comic.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ChaptersService.ListByComicID: %w", err)
+	}
+
+	err = s.deps.ChaptersService.EnqueueDownloadable(ctx, chapterList)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ChaptersService.EnqueueDownloadable: %w", err)
 	}
 
 	return comic, nil

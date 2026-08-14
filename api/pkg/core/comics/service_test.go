@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//nolint:,goconst
 
 package comics_test
 
@@ -6,8 +7,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
@@ -137,11 +140,81 @@ func (f *fakeLibraryRepository) Delete(_ context.Context, opts library.DeleteOpt
 	return f.deleteErr
 }
 
+type fakeChaptersService struct {
+	createAllErr             error
+	listByComicIDErr         error
+	enqueueDownloadableErr   error
+	lastCreateAllChapters    []sources.SourceChapter
+	lastEnqueueChapters      []chapters.Chapter
+	listByComicIDResult      []chapters.Chapter
+	createAllResult          []chapters.Chapter
+	createAllCalls           int
+	listByComicIDCalls       int
+	enqueueDownloadableCalls int
+	lastCreateAllComicID     uuid.UUID
+	lastListByComicID        uuid.UUID
+}
+
+func (f *fakeChaptersService) CreateAll(
+	_ context.Context,
+	comicID uuid.UUID,
+	srcChapters []sources.SourceChapter,
+) ([]chapters.Chapter, error) {
+	f.createAllCalls++
+	f.lastCreateAllComicID = comicID
+	f.lastCreateAllChapters = srcChapters
+
+	if f.createAllErr != nil {
+		return nil, f.createAllErr
+	}
+
+	if f.createAllResult != nil {
+		return f.createAllResult, nil
+	}
+
+	created := make([]chapters.Chapter, len(srcChapters))
+	for i, srcChapter := range srcChapters {
+		created[i] = chapters.Chapter{
+			ID:                uuid.New(),
+			ComicID:           comicID,
+			SourceChapterSlug: srcChapter.SourceChapterSlug,
+			Number:            srcChapter.Number,
+			Title:             srcChapter.Title,
+			PagesNb:           srcChapter.PageCount,
+			PublishedAt:       srcChapter.PublishedAt,
+			EarlyAccessUntil:  srcChapter.EarlyAccessUntil,
+		}
+	}
+
+	return created, nil
+}
+
+func (f *fakeChaptersService) ListByComicID(_ context.Context, comicID uuid.UUID) ([]chapters.Chapter, error) {
+	f.listByComicIDCalls++
+	f.lastListByComicID = comicID
+
+	if f.listByComicIDErr != nil {
+		return nil, f.listByComicIDErr
+	}
+
+	return f.listByComicIDResult, nil
+}
+
+func (f *fakeChaptersService) EnqueueDownloadable(_ context.Context, chapterList []chapters.Chapter) error {
+	f.enqueueDownloadableCalls++
+	f.lastEnqueueChapters = chapterList
+
+	return f.enqueueDownloadableErr
+}
+
 type fakeSource struct {
-	err      error
-	infos    *sources.GetInfosBySlugResponse
-	lastSlug string
-	calls    int
+	err           error
+	chaptersErr   error
+	infos         *sources.GetInfosBySlugResponse
+	lastSlug      string
+	chapters      []sources.SourceChapter
+	calls         int
+	chaptersCalls int
 }
 
 func (f *fakeSource) GetInfosBySlug(
@@ -158,10 +231,22 @@ func (f *fakeSource) GetInfosBySlug(
 	return f.infos, nil
 }
 
+func (f *fakeSource) GetChaptersBySlug(_ context.Context, slug string) ([]sources.SourceChapter, error) {
+	f.chaptersCalls++
+	f.lastSlug = slug
+
+	if f.chaptersErr != nil {
+		return nil, f.chaptersErr
+	}
+
+	return f.chapters, nil
+}
+
 func validServiceDeps() comics.Deps {
 	return comics.Deps{
 		ComicsRepository:  &fakeComicsRepository{},
 		LibraryRepository: &fakeLibraryRepository{},
+		ChaptersService:   &fakeChaptersService{},
 		Transactor:        &fakeTransactor{},
 		Sources: sources.SourceMap{
 			testSource: &fakeSource{
@@ -171,6 +256,14 @@ func validServiceDeps() comics.Deps {
 					Status:       sources.SeriesStatusCompleted,
 					Type:         sources.SeriesTypeManhwa,
 					ChapterCount: 200,
+				},
+				chapters: []sources.SourceChapter{
+					{
+						SourceChapterSlug: "chapter-1",
+						Number:            1,
+						Title:             "Chapter 1",
+						PageCount:         42,
+					},
 				},
 			},
 		},
@@ -194,18 +287,51 @@ func TestNewServiceRejectsMissingDeps(t *testing.T) {
 	}
 }
 
-func TestCreateReturnsExistingComic(t *testing.T) {
+func TestNewServiceRejectsMissingChaptersService(t *testing.T) {
+	t.Parallel()
+
+	deps := validServiceDeps()
+	deps.ChaptersService = nil
+
+	svc, err := comics.NewService(deps)
+	if err == nil {
+		t.Fatal("NewService without chapters service must fail")
+	}
+
+	if svc != nil {
+		t.Errorf("NewService returned a service (%v) in addition to the error", svc)
+	}
+
+	if got := err.Error(); got != "deps.Validate: chapters service is required" {
+		t.Errorf("err = %q, want %q", got, "deps.Validate: chapters service is required")
+	}
+}
+
+func TestCreateReturnsExistingComicAndAddsLibraryEntry(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
 	existing := &comics.Comic{ID: uuid.New(), Slug: testSlug, Source: testSource}
+	existingChapters := []chapters.Chapter{
+		{
+			ID:                uuid.New(),
+			ComicID:           existing.ID,
+			SourceChapterSlug: "chapter-1",
+			Number:            1,
+			PagesNb:           42,
+		},
+	}
 
 	comicsRepo := &fakeComicsRepository{
 		getBySourceSlugResult: existing,
 	}
+	libraryRepo := &fakeLibraryRepository{}
+	chaptersSvc := &fakeChaptersService{listByComicIDResult: existingChapters}
 	source := &fakeSource{}
 	deps := validServiceDeps()
 	deps.ComicsRepository = comicsRepo
+	deps.LibraryRepository = libraryRepo
+	deps.ChaptersService = chaptersSvc
 	deps.Sources = sources.SourceMap{testSource: source}
 
 	svc, err := comics.NewService(deps)
@@ -233,6 +359,30 @@ func TestCreateReturnsExistingComic(t *testing.T) {
 	if source.calls != 0 {
 		t.Errorf("source.GetInfosBySlug called %d times, want 0", source.calls)
 	}
+
+	if source.chaptersCalls != 0 {
+		t.Errorf("source.GetChaptersBySlug called %d times, want 0", source.chaptersCalls)
+	}
+
+	if libraryRepo.createCalls != 1 {
+		t.Errorf("LibraryRepository.Create called %d times, want 1", libraryRepo.createCalls)
+	}
+
+	if libraryRepo.lastCreate.UserID != userID || libraryRepo.lastCreate.ComicID != existing.ID {
+		t.Errorf("library CreateOpts = %+v", libraryRepo.lastCreate)
+	}
+
+	if chaptersSvc.listByComicIDCalls != 1 || chaptersSvc.lastListByComicID != existing.ID {
+		t.Errorf("ListByComicID called %d times for comic %s", chaptersSvc.listByComicIDCalls, chaptersSvc.lastListByComicID)
+	}
+
+	if chaptersSvc.enqueueDownloadableCalls != 1 {
+		t.Errorf("EnqueueDownloadable called %d times, want 1", chaptersSvc.enqueueDownloadableCalls)
+	}
+
+	if len(chaptersSvc.lastEnqueueChapters) != 1 {
+		t.Errorf("enqueued chapters = %+v, want existing chapter list", chaptersSvc.lastEnqueueChapters)
+	}
 }
 
 func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
@@ -241,6 +391,7 @@ func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
 	userID := uuid.New()
 	comicsRepo := &fakeComicsRepository{getBySourceSlugErr: domain.ErrNotFound}
 	libraryRepo := &fakeLibraryRepository{}
+	chaptersSvc := &fakeChaptersService{}
 	tx := &fakeTransactor{}
 	source := &fakeSource{
 		infos: &sources.GetInfosBySlugResponse{
@@ -251,11 +402,21 @@ func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
 			ChapterCount: 200,
 			Author:       "Chugong",
 		},
+		chapters: []sources.SourceChapter{
+			{
+				SourceChapterSlug: "chapter-1",
+				Number:            1,
+				Title:             "Chapter 1",
+				PageCount:         42,
+				PublishedAt:       time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+		},
 	}
 
 	deps := validServiceDeps()
 	deps.ComicsRepository = comicsRepo
 	deps.LibraryRepository = libraryRepo
+	deps.ChaptersService = chaptersSvc
 	deps.Transactor = tx
 	deps.Sources = sources.SourceMap{testSource: source}
 
@@ -300,6 +461,26 @@ func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
 	if source.lastSlug != testSlug {
 		t.Errorf("source slug = %q, want %q", source.lastSlug, testSlug)
 	}
+
+	if source.chaptersCalls != 1 {
+		t.Errorf("source.GetChaptersBySlug called %d times, want 1", source.chaptersCalls)
+	}
+
+	if chaptersSvc.createAllCalls != 1 || chaptersSvc.lastCreateAllComicID != got.ID {
+		t.Errorf("CreateAll called %d times for comic %s", chaptersSvc.createAllCalls, chaptersSvc.lastCreateAllComicID)
+	}
+
+	if len(chaptersSvc.lastCreateAllChapters) != 1 || chaptersSvc.lastCreateAllChapters[0].PageCount != 42 {
+		t.Errorf("CreateAll chapters = %+v", chaptersSvc.lastCreateAllChapters)
+	}
+
+	if chaptersSvc.listByComicIDCalls != 1 {
+		t.Errorf("ListByComicID called %d times, want 1", chaptersSvc.listByComicIDCalls)
+	}
+
+	if chaptersSvc.enqueueDownloadableCalls != 1 {
+		t.Errorf("EnqueueDownloadable called %d times, want 1", chaptersSvc.enqueueDownloadableCalls)
+	}
 }
 
 func TestCreateUnknownSource(t *testing.T) {
@@ -324,6 +505,36 @@ func TestCreateUnknownSource(t *testing.T) {
 
 	if want := "source unknown not found"; err.Error() != want {
 		t.Errorf("err = %q, want %q", err.Error(), want)
+	}
+}
+
+func TestCreatePropagatesChapterListError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("chapters unavailable")
+	source := &fakeSource{
+		infos: &sources.GetInfosBySlugResponse{
+			Slug:  testSlug,
+			Title: "Solo Leveling",
+		},
+		chaptersErr: sentinel,
+	}
+	deps := validServiceDeps()
+	deps.ComicsRepository = &fakeComicsRepository{getBySourceSlugErr: domain.ErrNotFound}
+	deps.Sources = sources.SourceMap{testSource: source}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.Create(context.Background(), comics.CreateOpts{
+		UserID: uuid.New(),
+		Source: testSource,
+		Slug:   testSlug,
+	})
+	if !errors.Is(err, sentinel) {
+		t.Errorf("Create = %v, original error no longer reachable", err)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 )
 
 type Chapter struct {
@@ -23,7 +24,14 @@ type Chapter struct {
 
 type ChaptersRepository interface {
 	Create(context.Context, CreateOpts) (*Chapter, error)
+	CreateMany(context.Context, []CreateOpts) ([]Chapter, error)
 	ListByComicID(context.Context, uuid.UUID) ([]Chapter, error)
+}
+
+type ChaptersService interface {
+	CreateAll(context.Context, uuid.UUID, []sources.SourceChapter) ([]Chapter, error)
+	ListByComicID(context.Context, uuid.UUID) ([]Chapter, error)
+	EnqueueDownloadable(context.Context, []Chapter) error
 }
 
 type CreateOpts struct {
