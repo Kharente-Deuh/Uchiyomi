@@ -23,9 +23,9 @@ import (
 const defaultPageRetries = 3
 
 type Config struct {
-	Dir            string
-	RateLimit        time.Duration
 	SourceRateLimits map[sources.SourceName]time.Duration
+	Dir              string
+	RateLimit        time.Duration
 }
 
 func (cfg *Config) Validate() error {
@@ -78,8 +78,8 @@ func (deps *Deps) Validate() error {
 type Worker struct {
 	deps      Deps
 	queue     *queue
-	cfg       Config
 	throttles map[sources.SourceName]*sourceThrottle
+	cfg       Config
 }
 
 func New(cfg Config, deps Deps) (*Worker, error) {

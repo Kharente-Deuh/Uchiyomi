@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package download_test
 
 import (
@@ -213,10 +214,15 @@ func TestWorkerEnqueueIsIdempotent(t *testing.T) {
 		Slug:   "series-slug",
 	}
 
-	worker, _, _ := newTestWorker(t, chapter, comic, []string{""}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	}))
+	worker, _, _ := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{""},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		}))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

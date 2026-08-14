@@ -122,15 +122,6 @@ func (q *queue) removeComicChapters(chapterIDs map[uuid.UUID]struct{}) {
 	}
 }
 
-func (q *queue) contains(chapterID uuid.UUID) bool {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	_, ok := q.pending[chapterID]
-
-	return ok
-}
-
 func (q *queue) pendingCount() int {
 	q.mu.Lock()
 	defer q.mu.Unlock()

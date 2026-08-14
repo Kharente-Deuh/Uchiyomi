@@ -15,7 +15,7 @@ import (
 var _ ChaptersService = (*Service)(nil)
 
 type Deps struct {
-	Repository       ChaptersRepository
+	Repository        ChaptersRepository
 	ChapterDownloader ChapterDownloader
 }
 
