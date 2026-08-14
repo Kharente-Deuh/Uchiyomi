@@ -76,13 +76,13 @@ func (deps *Deps) Validate() error {
 }
 
 type Worker struct {
-	deps           Deps
-	queue          *queue
-	throttles      map[sources.SourceName]*sourceThrottle
-	comicTrackers  map[uuid.UUID]*comicTracker
-	comicMu        sync.Mutex
-	comicCond      sync.Cond
-	cfg            Config
+	deps          Deps
+	queue         *queue
+	throttles     map[sources.SourceName]*sourceThrottle
+	comicTrackers map[uuid.UUID]*comicTracker
+	comicCond     sync.Cond
+	cfg           Config
+	comicMu       sync.Mutex
 }
 
 func New(cfg Config, deps Deps) (*Worker, error) {

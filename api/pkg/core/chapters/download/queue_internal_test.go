@@ -72,8 +72,8 @@ func TestQueueRemoveComicChapters(t *testing.T) {
 	})
 
 	q.removeComicChapters(map[uuid.UUID]struct{}{
-		firstID:  struct{}{},
-		secondID: struct{}{},
+		firstID:  {},
+		secondID: {},
 	})
 
 	if q.pendingCount() != 1 {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package chapters_test
 
 import (
@@ -59,11 +60,11 @@ func (f *fakeChaptersRepository) UpdatePagesNb(context.Context, uuid.UUID, int) 
 }
 
 type fakeChapterDownloader struct {
-	lastEnqueueChapters  []chapters.Chapter
-	lastCleanupChapters  []chapters.Chapter
-	enqueueCalls         int
-	cleanupComicCalls    int
-	lastCleanupComicID   uuid.UUID
+	lastEnqueueChapters []chapters.Chapter
+	lastCleanupChapters []chapters.Chapter
+	enqueueCalls        int
+	cleanupComicCalls   int
+	lastCleanupComicID  uuid.UUID
 }
 
 func (f *fakeChapterDownloader) Enqueue(_ context.Context, chapterList []chapters.Chapter) error {
