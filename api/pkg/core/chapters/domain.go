@@ -33,12 +33,14 @@ type ChaptersRepository interface {
 
 type ChapterDownloader interface {
 	Enqueue(context.Context, []Chapter) error
+	CleanupComic(context.Context, uuid.UUID, []Chapter) error
 }
 
 type ChaptersService interface {
 	CreateAll(context.Context, uuid.UUID, []sources.SourceChapter) ([]Chapter, error)
 	ListByComicID(context.Context, uuid.UUID) ([]Chapter, error)
 	EnqueueDownloadable(context.Context, []Chapter) error
+	CleanupComic(context.Context, uuid.UUID, []Chapter) error
 }
 
 type CreateOpts struct {

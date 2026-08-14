@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package chapters_test
 
 import (
@@ -60,12 +61,23 @@ func (f *fakeChaptersRepository) UpdatePagesNb(context.Context, uuid.UUID, int) 
 
 type fakeChapterDownloader struct {
 	lastEnqueueChapters []chapters.Chapter
+	lastCleanupChapters []chapters.Chapter
 	enqueueCalls        int
+	cleanupComicCalls   int
+	lastCleanupComicID  uuid.UUID
 }
 
 func (f *fakeChapterDownloader) Enqueue(_ context.Context, chapterList []chapters.Chapter) error {
 	f.enqueueCalls++
 	f.lastEnqueueChapters = chapterList
+
+	return nil
+}
+
+func (f *fakeChapterDownloader) CleanupComic(_ context.Context, comicID uuid.UUID, chapterList []chapters.Chapter) error {
+	f.cleanupComicCalls++
+	f.lastCleanupComicID = comicID
+	f.lastCleanupChapters = chapterList
 
 	return nil
 }
@@ -141,5 +153,36 @@ func TestServiceEnqueueDownloadableRunsWithoutError(t *testing.T) {
 
 	if len(downloader.lastEnqueueChapters) != 1 {
 		t.Fatalf("enqueued chapters = %+v, want one downloadable chapter", downloader.lastEnqueueChapters)
+	}
+}
+
+func TestServiceCleanupComic(t *testing.T) {
+	t.Parallel()
+
+	downloader := &fakeChapterDownloader{}
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        &fakeChaptersRepository{},
+		ChapterDownloader: downloader,
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	comicID := uuid.New()
+	chapterList := []chapters.Chapter{
+		{ID: uuid.New(), ComicID: comicID, Number: 1},
+	}
+
+	err = svc.CleanupComic(context.Background(), comicID, chapterList)
+	if err != nil {
+		t.Fatalf("CleanupComic: %v", err)
+	}
+
+	if downloader.cleanupComicCalls != 1 || downloader.lastCleanupComicID != comicID {
+		t.Errorf("CleanupComic comic ID = %s, want %s", downloader.lastCleanupComicID, comicID)
+	}
+
+	if len(downloader.lastCleanupChapters) != 1 {
+		t.Errorf("CleanupComic chapters = %+v", downloader.lastCleanupChapters)
 	}
 }

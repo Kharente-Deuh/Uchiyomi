@@ -57,6 +57,35 @@ func TestQueueOrdersChaptersByNumber(t *testing.T) {
 	}
 }
 
+func TestQueueRemoveComicChapters(t *testing.T) {
+	t.Parallel()
+
+	q := newQueue()
+	firstID := uuid.New()
+	secondID := uuid.New()
+	otherComicChapterID := uuid.New()
+
+	q.enqueue(sources.SourceAsuraScans, []chapters.Chapter{
+		{ID: firstID, Number: 1},
+		{ID: secondID, Number: 2},
+		{ID: otherComicChapterID, Number: 3},
+	})
+
+	q.removeComicChapters(map[uuid.UUID]struct{}{
+		firstID:  {},
+		secondID: {},
+	})
+
+	if q.pendingCount() != 1 {
+		t.Fatalf("pending = %d, want 1", q.pendingCount())
+	}
+
+	item, ok := q.popNoWait(sources.SourceAsuraScans)
+	if !ok || item.ChapterID != otherComicChapterID {
+		t.Fatalf("remaining item = %+v, ok = %v", item, ok)
+	}
+}
+
 func (q *queue) popNoWait(source sources.SourceName) (queueItem, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()

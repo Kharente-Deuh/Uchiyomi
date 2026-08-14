@@ -102,6 +102,15 @@ func (s *Service) EnqueueDownloadable(ctx context.Context, chapters []Chapter) e
 	return nil
 }
 
+func (s *Service) CleanupComic(ctx context.Context, comicID uuid.UUID, chapterList []Chapter) error {
+	err := s.deps.ChapterDownloader.CleanupComic(ctx, comicID, chapterList)
+	if err != nil {
+		return fmt.Errorf("s.deps.ChapterDownloader.CleanupComic: %w", err)
+	}
+
+	return nil
+}
+
 func isDownloadable(chapter Chapter, now time.Time) bool {
 	if chapter.Download >= 100 {
 		return false

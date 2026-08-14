@@ -384,3 +384,133 @@ func TestWorkerResumesIncrementally(t *testing.T) {
 
 	t.Fatal("chapter was not completed")
 }
+
+func TestWorkerCleanupComicDeletesDownloadDir(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:      chapterID,
+		ComicID: comicID,
+		Number:  1,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	worker, dir, _ := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{""},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}),
+	)
+
+	chapterDir := filepath.Join(dir, comicID.String(), "1")
+	if err := os.MkdirAll(chapterDir, 0o755); err != nil {
+		t.Fatalf("os.MkdirAll: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(chapterDir, "001.webp"), []byte("page-1"), 0o644); err != nil {
+		t.Fatalf("os.WriteFile: %v", err)
+	}
+
+	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	err = worker.CleanupComic(context.Background(), comicID, []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("CleanupComic: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, comicID.String())); !os.IsNotExist(err) {
+		t.Fatalf("comic download dir still exists: %v", err)
+	}
+}
+
+func TestWorkerCleanupComicStopsInFlightDownloads(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: "chapter-1",
+		Number:            1,
+		PagesNb:           2,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	downloadStarted := make(chan struct{})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		select {
+		case downloadStarted <- struct{}{}:
+		default:
+		}
+
+		time.Sleep(200 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("page"))
+	})
+
+	worker, dir, chaptersRepo := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{"", ""},
+		handler,
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = worker.Run(ctx)
+	}()
+
+	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	select {
+	case <-downloadStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("download did not start")
+	}
+
+	err = worker.CleanupComic(context.Background(), comicID, []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("CleanupComic: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, comicID.String())); !os.IsNotExist(err) {
+		t.Fatalf("comic download dir still exists after cleanup: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
+		if err == nil && updated.Download == 100 {
+			t.Fatal("chapter was marked completed after cleanup")
+		}
+
+		if _, err := os.Stat(filepath.Join(dir, comicID.String())); err == nil {
+			t.Fatal("comic download dir was recreated by in-flight worker")
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+}

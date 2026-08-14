@@ -17,8 +17,12 @@ import (
 	"github.com/google/uuid"
 )
 
+func comicDir(baseDir string, comicID uuid.UUID) string {
+	return filepath.Join(baseDir, comicID.String())
+}
+
 func chapterDir(baseDir string, comicID uuid.UUID, chapterNumber float64) string {
-	return filepath.Join(baseDir, comicID.String(), formatChapterNumber(chapterNumber))
+	return filepath.Join(comicDir(baseDir, comicID), formatChapterNumber(chapterNumber))
 }
 
 func formatChapterNumber(number float64) string {
@@ -90,6 +94,15 @@ func parsePageIndex(name string) (int, bool) {
 }
 
 func deleteChapterDir(dir string) error {
+	err := os.RemoveAll(dir)
+	if err != nil {
+		return fmt.Errorf("os.RemoveAll %s: %w", dir, err)
+	}
+
+	return nil
+}
+
+func deleteComicDir(dir string) error {
 	err := os.RemoveAll(dir)
 	if err != nil {
 		return fmt.Errorf("os.RemoveAll %s: %w", dir, err)

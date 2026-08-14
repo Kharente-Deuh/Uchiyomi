@@ -166,15 +166,19 @@ type fakeChaptersService struct {
 	createAllErr             error
 	listByComicIDErr         error
 	enqueueDownloadableErr   error
+	cleanupComicErr          error
 	lastCreateAllChapters    []sources.SourceChapter
 	lastEnqueueChapters      []chapters.Chapter
+	lastCleanupChapters      []chapters.Chapter
 	listByComicIDResult      []chapters.Chapter
 	createAllResult          []chapters.Chapter
 	createAllCalls           int
 	listByComicIDCalls       int
 	enqueueDownloadableCalls int
+	cleanupComicCalls        int
 	lastCreateAllComicID     uuid.UUID
 	lastListByComicID        uuid.UUID
+	lastCleanupComicID       uuid.UUID
 }
 
 func (f *fakeChaptersService) CreateAll(
@@ -227,6 +231,14 @@ func (f *fakeChaptersService) EnqueueDownloadable(_ context.Context, chapterList
 	f.lastEnqueueChapters = chapterList
 
 	return f.enqueueDownloadableErr
+}
+
+func (f *fakeChaptersService) CleanupComic(_ context.Context, comicID uuid.UUID, chapterList []chapters.Chapter) error {
+	f.cleanupComicCalls++
+	f.lastCleanupComicID = comicID
+	f.lastCleanupChapters = chapterList
+
+	return f.cleanupComicErr
 }
 
 type fakeSource struct {
@@ -655,13 +667,19 @@ func TestDeleteRemovesLibraryEntryAndComic(t *testing.T) {
 
 	userID := uuid.New()
 	comicID := uuid.New()
+	chapterID := uuid.New()
+	comicChapters := []chapters.Chapter{
+		{ID: chapterID, ComicID: comicID, Number: 1},
+	}
 	comicsRepo := &fakeComicsRepository{}
 	libraryRepo := &fakeLibraryRepository{}
+	chaptersSvc := &fakeChaptersService{listByComicIDResult: comicChapters}
 	tx := &fakeTransactor{}
 
 	deps := validServiceDeps()
 	deps.ComicsRepository = comicsRepo
 	deps.LibraryRepository = libraryRepo
+	deps.ChaptersService = chaptersSvc
 	deps.Transactor = tx
 
 	svc, err := comics.NewService(deps)
@@ -689,12 +707,24 @@ func TestDeleteRemovesLibraryEntryAndComic(t *testing.T) {
 		t.Errorf("library DeleteOpts = %+v", libraryRepo.lastDelete)
 	}
 
+	if chaptersSvc.listByComicIDCalls != 1 || chaptersSvc.lastListByComicID != comicID {
+		t.Errorf("ListByComicID comic ID = %s, want %s", chaptersSvc.lastListByComicID, comicID)
+	}
+
 	if comicsRepo.deleteCalls != 1 || comicsRepo.lastDeleteID != comicID {
 		t.Errorf("ComicsRepository.Delete comic ID = %s, want %s", comicsRepo.lastDeleteID, comicID)
 	}
 
 	if libraryRepo.existsByComicIDCalls != 1 || libraryRepo.lastExistsComicID != comicID {
 		t.Errorf("ExistsByComicID comic ID = %s, want %s", libraryRepo.lastExistsComicID, comicID)
+	}
+
+	if chaptersSvc.cleanupComicCalls != 1 || chaptersSvc.lastCleanupComicID != comicID {
+		t.Errorf("CleanupComic comic ID = %s, want %s", chaptersSvc.lastCleanupComicID, comicID)
+	}
+
+	if len(chaptersSvc.lastCleanupChapters) != 1 || chaptersSvc.lastCleanupChapters[0].ID != chapterID {
+		t.Errorf("CleanupComic chapters = %+v", chaptersSvc.lastCleanupChapters)
 	}
 }
 
@@ -705,11 +735,13 @@ func TestDeleteKeepsComicWhenOtherUsersHaveLibraryEntry(t *testing.T) {
 	comicID := uuid.New()
 	comicsRepo := &fakeComicsRepository{}
 	libraryRepo := &fakeLibraryRepository{existsByComicID: true}
+	chaptersSvc := &fakeChaptersService{}
 	tx := &fakeTransactor{}
 
 	deps := validServiceDeps()
 	deps.ComicsRepository = comicsRepo
 	deps.LibraryRepository = libraryRepo
+	deps.ChaptersService = chaptersSvc
 	deps.Transactor = tx
 
 	svc, err := comics.NewService(deps)
@@ -735,6 +767,14 @@ func TestDeleteKeepsComicWhenOtherUsersHaveLibraryEntry(t *testing.T) {
 
 	if comicsRepo.deleteCalls != 0 {
 		t.Errorf("ComicsRepository.Delete called %d times, want 0", comicsRepo.deleteCalls)
+	}
+
+	if chaptersSvc.listByComicIDCalls != 0 {
+		t.Errorf("ListByComicID called %d times, want 0", chaptersSvc.listByComicIDCalls)
+	}
+
+	if chaptersSvc.cleanupComicCalls != 0 {
+		t.Errorf("CleanupComic called %d times, want 0", chaptersSvc.cleanupComicCalls)
 	}
 }
 

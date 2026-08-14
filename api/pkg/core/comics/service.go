@@ -203,6 +203,9 @@ func (s *Service) GetMany(ctx context.Context, opts GetManyOpts) ([]Comic, error
 }
 
 func (s *Service) Delete(ctx context.Context, opts DeleteOpts) error {
+	var comicDeleted bool
+	var chaptersToCleanup []chapters.Chapter
+
 	err := s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
 		err := s.deps.LibraryRepository.Delete(ctx, library.DeleteOpts{
 			UserID:  opts.UserID,
@@ -221,14 +224,32 @@ func (s *Service) Delete(ctx context.Context, opts DeleteOpts) error {
 			return nil
 		}
 
+		chapterList, err := s.deps.ChaptersService.ListByComicID(ctx, opts.ID)
+		if err != nil {
+			return fmt.Errorf("s.deps.ChaptersService.ListByComicID: %w", err)
+		}
+
 		err = s.deps.ComicsRepository.Delete(ctx, opts.ID)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return fmt.Errorf("s.deps.ComicsRepository.Delete: %w", err)
 		}
 
+		chaptersToCleanup = chapterList
+		comicDeleted = true
+
 		return nil
 	})
+	if err != nil {
+		//nolint:wrapcheck
+		return err
+	}
 
-	//nolint:wrapcheck
-	return err
+	if comicDeleted {
+		err = s.deps.ChaptersService.CleanupComic(ctx, opts.ID, chaptersToCleanup)
+		if err != nil {
+			return fmt.Errorf("s.deps.ChaptersService.CleanupComic: %w", err)
+		}
+	}
+
+	return nil
 }
