@@ -39,10 +39,8 @@ async function addComicToLibrary(): Promise<void> {
   addToLibraryLoading.value = false
 }
 
-watch(() => comic.value.internalId, (newValue, oldValue) => {
-  if (!newValue && oldValue) {
-    fetchChapters()
-  }
+watch(() => comic.value.internalId, () => {
+  fetchChapters()
 })
 </script>
 
