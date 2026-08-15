@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package core_test
 
 import (
@@ -150,8 +151,8 @@ func (r inLibraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) 
 }
 
 type libraryChaptersService struct {
-	chapters []chapters.Chapter
 	err      error
+	chapters []chapters.Chapter
 }
 
 func (s libraryChaptersService) CreateAll(

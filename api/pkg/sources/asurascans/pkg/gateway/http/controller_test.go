@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll,unparam
 package http_test
 
 import (
@@ -358,8 +359,10 @@ func newChaptersTestAsuraApp(t *testing.T, deps asura.Deps) *asura.App {
 	if deps.SearchCache == nil {
 		searchCache, err := fncache.New(
 			fncache.Config[domain.SearchCacheOpts, domain.SearchCacheResult]{
-				Name:          "search",
-				Fn:            func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) { return &domain.SearchCacheResult{}, nil },
+				Name: "search",
+				Fn: func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
+					return &domain.SearchCacheResult{}, nil
+				},
 				Key:           func(domain.SearchCacheOpts) string { return "k" },
 				TTL:           time.Minute,
 				ErrorTTL:      time.Minute,
@@ -379,8 +382,10 @@ func newChaptersTestAsuraApp(t *testing.T, deps asura.Deps) *asura.App {
 	if deps.GetInfosBySlugCache == nil {
 		infosCache, err := fncache.New(
 			fncache.Config[string, domain.GetInfosBySlugResponse]{
-				Name:          "infos",
-				Fn:            func(context.Context, string) (*domain.GetInfosBySlugResponse, error) { return &domain.GetInfosBySlugResponse{}, nil },
+				Name: "infos",
+				Fn: func(context.Context, string) (*domain.GetInfosBySlugResponse, error) {
+					return &domain.GetInfosBySlugResponse{}, nil
+				},
 				Key:           func(slug string) string { return slug },
 				TTL:           time.Minute,
 				ErrorTTL:      time.Minute,
@@ -499,9 +504,9 @@ func TestGetChaptersListBySeriesEnrichesLibraryChapters(t *testing.T) {
 	}
 
 	var body []struct {
-		ID         string  `json:"id"`
 		InternalID *string `json:"internalId"`
 		Download   *int    `json:"download"`
+		ID         string  `json:"id"`
 	}
 
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
@@ -575,9 +580,9 @@ func TestGetChaptersListBySeriesWithoutLibraryEntry(t *testing.T) {
 	}
 
 	var body []struct {
-		ID         string `json:"id"`
 		InternalID *string `json:"internalId"`
 		Download   *int    `json:"download"`
+		ID         string  `json:"id"`
 	}
 
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
