@@ -7,6 +7,7 @@ const props = defineProps<{ comicOriginUrl: string }>()
 const comic = defineModel<AsuraComicInfos>({ required: true })
 
 const { addComicInLibrary } = useAsuraSearch({ doSearch: false })
+const { fetchChapters } = useAsuraChapters()
 
 const showDeleteModal = ref(false)
 const addToLibraryLoading = ref(false)
@@ -37,6 +38,12 @@ async function addComicToLibrary(): Promise<void> {
 
   addToLibraryLoading.value = false
 }
+
+watch(() => comic.value.internalId, (newValue, oldValue) => {
+  if (!newValue && oldValue) {
+    fetchChapters()
+  }
+})
 </script>
 
 <template>
