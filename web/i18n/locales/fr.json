@@ -224,7 +224,10 @@
       "comic": {
         "chaptersCount": "Aucun chapitre | \n1 Chapitre | \n{count} Chapitres",
         "chapter": "Chapitre {number}",
-        "chapterUnlocksIn": "Accessible {time}"
+        "chapterUnlocksIn": "Accessible {time}",
+        "retryDownloadChapter": {
+          "tooltip": "Cliquez pour réessayer le téléchargement"
+        }
       }
     },
     "asura": {
@@ -259,7 +262,12 @@
         "notFound": "Serie introuvable",
         "chapters": {
           "error": {
-            "fetch": "Échec du chargement des chapitres"
+            "fetch": "Échec du chargement des chapitres",
+            "retry": {
+              "notFound": "Chapitre introuvable",
+              "forbidden": "Cette série n'est pas dans votre bibliothèque",
+              "conflict": "Ce chapitre est déjà téléchargé"
+            }
           }
         }
       }

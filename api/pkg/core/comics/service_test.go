@@ -162,6 +162,10 @@ func (f *fakeLibraryRepository) ExistsByComicID(_ context.Context, comicID uuid.
 	return f.existsByComicID, f.existsByComicIDErr
 }
 
+func (f *fakeLibraryRepository) ExistsByUserAndComic(_ context.Context, _, _ uuid.UUID) (bool, error) {
+	return true, nil
+}
+
 type fakeChaptersService struct {
 	createAllErr             error
 	listByComicIDErr         error
@@ -247,6 +251,10 @@ func (f *fakeChaptersService) CleanupComic(_ context.Context, comicID uuid.UUID,
 	f.lastCleanupChapters = chapterList
 
 	return f.cleanupComicErr
+}
+
+func (f *fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownloadOpts) error {
+	return nil
 }
 
 type fakeSource struct {

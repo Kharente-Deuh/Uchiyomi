@@ -222,7 +222,10 @@
       "comic": {
         "chaptersCount": "No chapters | 1 Chapter | {count} Chapters",
         "chapter": "Chapter {number}",
-        "chapterUnlocksIn": "Unlocks {time}"
+        "chapterUnlocksIn": "Unlocks {time}",
+        "retryDownloadChapter": {
+          "tooltip": "Click to retry download"
+        }
       }
     },
     "asura": {
@@ -257,7 +260,12 @@
         "notFound": "Comic not found",
         "chapters": {
           "error": {
-            "fetch": "Failed to fetch chapters"
+            "fetch": "Failed to fetch chapters",
+            "retry": {
+              "notFound": "Chapter not found",
+              "forbidden": "This comic is not in your library",
+              "conflict": "This chapter is already downloaded"
+            }
           }
         }
       }

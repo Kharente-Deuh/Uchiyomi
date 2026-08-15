@@ -10,8 +10,9 @@ import { useToast } from '~/composables/toast.composable'
 import { useAsuraChaptersStore } from '../stores/asura-chapters.store'
 import { isChapterDownloadInProgress, useAsuraChapters } from './asura-chapters.composable'
 
-const { getSeriesChapters } = vi.hoisted(() => ({
+const { getSeriesChapters, retryDownloadApi } = vi.hoisted(() => ({
   getSeriesChapters: vi.fn(),
+  retryDownloadApi: vi.fn(),
 }))
 
 vi.mock('./asura.api', () => ({
@@ -28,6 +29,7 @@ function routeStub(): { params: { slug: string } } {
 
 mockNuxtImport('useI18n', () => i18nStub)
 mockNuxtImport('useRoute', () => routeStub)
+mockNuxtImport('useChaptersApi', () => () => ({ retryDownload: retryDownloadApi }))
 
 function chapter(overrides: Partial<AsuraComicChapter> = {}): AsuraComicChapter {
   return {
@@ -62,6 +64,7 @@ beforeEach(() => {
   useToast().messages.value.length = 0
   vi.spyOn(console, 'error').mockImplementation(() => {})
   getSeriesChapters.mockReset()
+  retryDownloadApi.mockReset()
   vi.useFakeTimers()
 })
 
@@ -168,5 +171,78 @@ describe('useAsuraChapters polling', () => {
 
     poll.resolve({ success: true, data: [chapter({ download: 20 })] })
     await Promise.resolve()
+  })
+})
+
+describe('useAsuraChapters retryDownload', () => {
+  it('refetches chapters without loading and starts polling after success', async () => {
+    retryDownloadApi.mockResolvedValue({ success: true, data: undefined })
+    getSeriesChapters
+      .mockResolvedValueOnce({ success: true, data: [chapter({ internalId: 'ch-1', download: -1 })] })
+      .mockResolvedValueOnce({ success: true, data: [chapter({ internalId: 'ch-1', download: 0 })] })
+      .mockResolvedValueOnce({ success: true, data: [chapter({ internalId: 'ch-1', download: 20 })] })
+
+    const asura = setup()
+    await asura.fetchChapters()
+    await asura.retryDownload('ch-1')
+
+    expect(retryDownloadApi).toHaveBeenCalledWith('ch-1')
+    expect(getSeriesChapters).toHaveBeenCalledTimes(2)
+    expect(useAsuraChaptersStore().chapters[0]?.download).toBe(0)
+    expect(asura.loading.value).toBe(false)
+    expect(useToast().messages.value).toEqual([])
+
+    await vi.advanceTimersByTimeAsync(2000)
+
+    expect(getSeriesChapters).toHaveBeenCalledTimes(3)
+    expect(useAsuraChaptersStore().chapters[0]?.download).toBe(20)
+  })
+
+  it('toasts notFound on 404 and does not refetch', async () => {
+    retryDownloadApi.mockResolvedValue(apiError(404))
+    getSeriesChapters.mockResolvedValue({ success: true, data: [chapter({ download: -1 })] })
+
+    const asura = setup()
+    await asura.fetchChapters()
+    await asura.retryDownload('ch-1')
+
+    expect(getSeriesChapters).toHaveBeenCalledTimes(1)
+    expect(useToast().messages.value).toEqual([{
+      text: 'sources.asura.comic.chapters.error.retry.notFound',
+      color: 'error',
+    }])
+  })
+
+  it('toasts forbidden on 403', async () => {
+    retryDownloadApi.mockResolvedValue(apiError(403))
+    getSeriesChapters.mockResolvedValue({ success: true, data: [chapter({ download: -1 })] })
+
+    await setup().retryDownload('ch-1')
+
+    expect(useToast().messages.value).toEqual([{
+      text: 'sources.asura.comic.chapters.error.retry.forbidden',
+      color: 'error',
+    }])
+  })
+
+  it('toasts conflict on 409', async () => {
+    retryDownloadApi.mockResolvedValue(apiError(409))
+    getSeriesChapters.mockResolvedValue({ success: true, data: [chapter({ download: 100 })] })
+
+    await setup().retryDownload('ch-1')
+
+    expect(useToast().messages.value).toEqual([{
+      text: 'sources.asura.comic.chapters.error.retry.conflict',
+      color: 'error',
+    }])
+  })
+
+  it('toasts unknown on other errors', async () => {
+    retryDownloadApi.mockResolvedValue(apiError(500))
+    getSeriesChapters.mockResolvedValue({ success: true, data: [chapter({ download: -1 })] })
+
+    await setup().retryDownload('ch-1')
+
+    expect(useToast().messages.value).toEqual([{ text: 'error.unknown', color: 'error' }])
   })
 })

@@ -183,6 +183,10 @@ func (s libraryChaptersService) CleanupComic(context.Context, uuid.UUID, []chapt
 	return nil
 }
 
+func (s libraryChaptersService) RetryDownload(context.Context, chapters.RetryDownloadOpts) error {
+	return nil
+}
+
 func newCache[P any, T any](
 	t *testing.T, key func(P) string, fn func(context.Context, P) (*T, error),
 ) *fncache.Cache[P, T] {

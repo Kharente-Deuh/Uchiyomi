@@ -145,6 +145,10 @@ func (s libraryChaptersService) CleanupComic(context.Context, uuid.UUID, []chapt
 	return nil
 }
 
+func (s libraryChaptersService) RetryDownload(context.Context, chapters.RetryDownloadOpts) error {
+	return nil
+}
+
 func newTestAsuraApp(t *testing.T) *asura.App {
 	t.Helper()
 

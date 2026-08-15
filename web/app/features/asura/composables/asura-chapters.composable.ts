@@ -10,6 +10,8 @@ export interface AsuraChaptersComposable {
   chapters: Ref<AsuraComicChapter[]>
   loading: Ref<boolean>
   fetchChapters: () => Promise<void>
+  retryDownload: (chapterId: string) => Promise<void>
+  retryDownloadLoading: Ref<boolean>
 }
 
 export function isChapterDownloadInProgress(chapter: AsuraComicChapter): boolean {
@@ -19,6 +21,7 @@ export function isChapterDownloadInProgress(chapter: AsuraComicChapter): boolean
 export function useAsuraChapters(): AsuraChaptersComposable {
   const store = useAsuraChaptersStore()
   const api = createAsuraApi()
+  const chaptersApi = useChaptersApi()
   const toast = useToast()
   const { t } = useI18n()
   const route = useRoute('browse-sources-asura-slug')
@@ -55,6 +58,44 @@ export function useAsuraChapters(): AsuraChaptersComposable {
     } else {
       toast.error(t('error.unknown'))
     }
+  }
+
+  const retryDownloadLoading = ref(false)
+  async function retryDownload(chapterId: string): Promise<void> {
+    if (!chapterId) {
+      return
+    }
+
+    retryDownloadLoading.value = true
+
+    const res = await chaptersApi.retryDownload(chapterId)
+    if (res.success) {
+      await loadChapters(false)
+      syncPolling()
+
+      retryDownloadLoading.value = false
+
+      return
+    }
+
+    console.error('chaptersApi.retryDownload', res.error)
+
+    switch (res.error.status) {
+      case 404:
+        toast.error(t('sources.asura.comic.chapters.error.retry.notFound'))
+        break
+      case 403:
+        toast.error(t('sources.asura.comic.chapters.error.retry.forbidden'))
+        break
+      case 409:
+        toast.error(t('sources.asura.comic.chapters.error.retry.conflict'))
+        break
+      default:
+        toast.error(t('error.unknown'))
+        break
+    }
+
+    retryDownloadLoading.value = false
   }
 
   async function pollChapters(): Promise<void> {
@@ -97,5 +138,7 @@ export function useAsuraChapters(): AsuraChaptersComposable {
     chapters,
     loading,
     fetchChapters,
+    retryDownload,
+    retryDownloadLoading,
   }
 }
