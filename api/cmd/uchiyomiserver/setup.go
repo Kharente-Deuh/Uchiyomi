@@ -177,7 +177,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			UsersCtrl:         ctrls.Users,
 			OIDCProvidersCtrl: ctrls.OIDCProviders,
 			ComicsCtrl:        ctrls.Comics,
-			ChaptersCtrl:        ctrls.Chapters,
+			ChaptersCtrl:      ctrls.Chapters,
 
 			Health:           registry,
 			Logger:           logger,

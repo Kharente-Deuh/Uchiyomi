@@ -18,11 +18,11 @@ import (
 
 type fakeChaptersRepository struct {
 	lastListEarlyAccessUntil time.Time
+	getByIDErr               error
+	getByIDResult            *chapters.Chapter
 	lastCreateMany           []chapters.CreateOpts
 	listResumableResult      []chapters.Chapter
 	listEarlyAccessResult    []chapters.Chapter
-	getByIDResult            *chapters.Chapter
-	getByIDErr               error
 	createManyCalls          int
 	listResumableCalls       int
 	listEarlyAccessCalls     int
@@ -94,15 +94,15 @@ func (f *fakeChaptersRepository) UpdatePagesNb(context.Context, uuid.UUID, int) 
 }
 
 type fakeChapterDownloader struct {
-	lastEnqueueChapters   []chapters.Chapter
-	lastCleanupChapters   []chapters.Chapter
-	lastResetChapterID    uuid.UUID
-	lastResumeChapterID   uuid.UUID
-	enqueueCalls          int
-	cleanupComicCalls     int
-	resetAndEnqueueCalls  int
-	resumeCalls           int
-	lastCleanupComicID    uuid.UUID
+	lastEnqueueChapters  []chapters.Chapter
+	lastCleanupChapters  []chapters.Chapter
+	lastResetChapterID   uuid.UUID
+	lastResumeChapterID  uuid.UUID
+	enqueueCalls         int
+	cleanupComicCalls    int
+	resetAndEnqueueCalls int
+	resumeCalls          int
+	lastCleanupComicID   uuid.UUID
 }
 
 func (f *fakeChapterDownloader) Enqueue(_ context.Context, chapterList []chapters.Chapter) error {
@@ -135,10 +135,10 @@ func (f *fakeChapterDownloader) Resume(_ context.Context, chapterID uuid.UUID) e
 }
 
 type fakeLibraryRepository struct {
-	existsByUserAndComic bool
 	existsErr            error
 	lastUserID           uuid.UUID
 	lastComicID          uuid.UUID
+	existsByUserAndComic bool
 }
 
 func (f *fakeLibraryRepository) Create(context.Context, library.CreateOpts) (*library.Entry, error) {

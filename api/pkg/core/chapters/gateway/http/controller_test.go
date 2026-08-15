@@ -300,8 +300,8 @@ func TestDepsValidate(t *testing.T) {
 	logger := chaptersTestLogger()
 
 	tests := map[string]struct {
-		wantErr string
 		deps    chaptershttp.Deps
+		wantErr string
 	}{
 		"valid": {
 			deps: chaptershttp.Deps{
