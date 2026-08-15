@@ -73,7 +73,29 @@ const to = computed(() => {
         </div>
       </div>
 
-      <span class="text-body-medium text-medium-emphasis" :class="{ 'text-gold': isEarlyAccess }">{{ date }}</span>
+      <div class="d-flex align-center ga-3">
+        <VProgressCircular
+          v-if="chapter.internalId && chapter.download !== undefined && chapter.download >= 0 && chapter.download < 100"
+          :model-value="chapter.download"
+          size="18"
+          :indeterminate="chapter.download === 0"
+          width="2"
+          color="primary"
+        />
+        <VIcon
+          v-else-if="chapter.internalId && chapter.download === 100"
+          icon="fa6-solid:check"
+          size="x-small"
+          color="success"
+        />
+        <VIcon
+          v-else-if="chapter.internalId && chapter.download === -1"
+          icon="fa6-solid:exclamation"
+          size="x-small"
+          color="error"
+        />
+        <span class="text-body-medium text-medium-emphasis" :class="{ 'text-gold': isEarlyAccess }">{{ date }}</span>
+      </div>
     </div>
   </AtomLink>
 </template>

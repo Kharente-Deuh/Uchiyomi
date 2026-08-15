@@ -193,11 +193,13 @@ type getInfosBySlugResDTO struct {
 }
 
 type getChaptersListBySeriesResItemDTO struct {
-	EarlyAccessUntil time.Time `json:"earlyAccessUntil"`
-	PublishedAt      time.Time `json:"publishedAt"`
-	ID               string    `json:"id"`
-	Title            string    `json:"title"`
-	Number           float64   `json:"number"`
+	EarlyAccessUntil time.Time  `json:"earlyAccessUntil"`
+	PublishedAt      time.Time  `json:"publishedAt"`
+	InternalID       *uuid.UUID `json:"internalId,omitempty"`
+	Download         *int       `json:"download,omitempty"`
+	ID               string     `json:"id"`
+	Title            string     `json:"title"`
+	Number           float64    `json:"number"`
 }
 
 type getImageURLsByChapterResDTO struct {

@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import type AsuraComicChapters from '~/features/asura/components/Comic/Chapters/index.vue'
 import type { AsuraComicInfos } from '~/features/asura/types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
 import asuraImg from '~/assets/images/sources/asurascans.webp'
@@ -19,6 +20,7 @@ const api = createAsuraApi()
 
 const fetchInfosLoading = ref(false)
 const infos = ref<AsuraComicInfos>()
+const chaptersComponent = useTemplateRef<InstanceType<typeof AsuraComicChapters>>('chaptersComponent')
 
 const coverSrc = ref<string>()
 
@@ -111,7 +113,11 @@ const comicOriginUrl = computed(() => {
           :comic-origin-url="comicOriginUrl"
         />
         <AsuraComicGeneralInfos :comic="infos" />
-        <AsuraComicChapters :slug="route.params.slug" :comic-origin-url="comicOriginUrl" />
+        <AsuraComicChapters
+          ref="chaptersComponent"
+          :slug="route.params.slug"
+          :comic-origin-url="comicOriginUrl"
+        />
       </div>
     </div>
   </OrganismPageLayout>

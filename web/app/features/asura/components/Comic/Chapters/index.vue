@@ -1,46 +1,15 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { AsuraComicChapter } from '../../../types'
+const props = defineProps<{
+  slug: string
+  comicOriginUrl: string
+}>()
 
-const props = defineProps<{ slug: string, comicOriginUrl: string }>()
+const { sort, chapters, loading, fetchChapters } = useAsuraChapters()
 
-const api = createAsuraApi()
-const toast = useToast()
-const { t } = useI18n()
-
-const fetchChaptersLoading = ref(false)
-const chapters = ref<AsuraComicChapter[]>([])
-
-onMounted(() => {
+watch(() => props.slug, () => {
   fetchChapters()
-})
-
-async function fetchChapters(): Promise<void> {
-  fetchChaptersLoading.value = true
-
-  const res = await api.getSeriesChapters(props.slug as string)
-
-  if (res.success) {
-    chapters.value = res.data
-  } else {
-    console.error('api.getSeriesChapters', res.error)
-    toast.error(res.error.status === 404
-      ? t('sources.asura.comic.chapters.error.fetch')
-      : t('error.unknown'))
-  }
-
-  fetchChaptersLoading.value = false
-}
-
-const sort = ref<'asc' | 'desc'>('desc')
-
-const filteredChapters = computed(() => chapters.value.toSorted((a, b) => {
-  if (sort.value === 'asc') {
-    return a.number - b.number
-  }
-
-  return b.number - a.number
-}))
+}, { immediate: true })
 </script>
 
 <template>
@@ -57,16 +26,16 @@ const filteredChapters = computed(() => chapters.value.toSorted((a, b) => {
       />
     </div>
 
-    <div v-if="fetchChaptersLoading || filteredChapters.length === 0" class="d-flex justify-center align-center w-100 pa-4">
+    <div v-if="loading || chapters.length === 0" class="d-flex justify-center align-center w-100 pa-4">
       <VProgressCircular
-        v-if="fetchChaptersLoading"
+        v-if="loading"
         class="m-auto"
         indeterminate
         color="primary"
       />
       <span v-else class="text-medium-emphasis">{{ $t('sources.asurascans.comic.chaptersCount', { count: 0 }) }}</span>
     </div>
-    <VVirtualScroll :items="filteredChapters" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+    <VVirtualScroll :items="chapters" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
       <template #default="{ item }">
         <AsuraComicChaptersItem
           :chapter="item"

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package core_test
 
 import (
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
@@ -99,6 +101,86 @@ func (r libraryComicsRepository) Delete(context.Context, uuid.UUID) error {
 
 func (r libraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
 	return nil, nil
+}
+
+type inLibraryComicsRepository struct {
+	comic *comics.Comic
+	err   error
+}
+
+func (r inLibraryComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (r inLibraryComicsRepository) FindByID(context.Context, uuid.UUID) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (r inLibraryComicsRepository) GetBySourceSlug(
+	_ context.Context, _ comics.GetBySourceSlugOpts,
+) (*comics.Comic, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+
+	return r.comic, nil
+}
+
+func (r inLibraryComicsRepository) FindBySourceSlug(
+	context.Context, comics.FindBySourceSlugOpts,
+) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (r inLibraryComicsRepository) Create(context.Context, comics.CreateComicOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (r inLibraryComicsRepository) GetBySlugsAndSource(
+	context.Context, comics.GetBySlugsAndSource,
+) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (r inLibraryComicsRepository) Delete(context.Context, uuid.UUID) error {
+	return coredomain.ErrNotFound
+}
+
+func (r inLibraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+type libraryChaptersService struct {
+	err      error
+	chapters []chapters.Chapter
+}
+
+func (s libraryChaptersService) CreateAll(
+	context.Context, uuid.UUID, []sources.SourceChapter,
+) ([]chapters.Chapter, error) {
+	return nil, nil
+}
+
+func (s libraryChaptersService) ListByComicID(
+	context.Context, uuid.UUID,
+) ([]chapters.Chapter, error) {
+	return s.chapters, s.err
+}
+
+func (s libraryChaptersService) EnqueueDownloadable(context.Context, []chapters.Chapter) error {
+	return nil
+}
+
+func (s libraryChaptersService) EnqueueResumable(context.Context) error {
+	return nil
+}
+
+func (s libraryChaptersService) ScanEarlyAccess(context.Context) error {
+	return nil
+}
+
+func (s libraryChaptersService) CleanupComic(context.Context, uuid.UUID, []chapters.Chapter) error {
+	return nil
 }
 
 func newCache[P any, T any](
@@ -297,7 +379,7 @@ func TestAppGetChaptersListBySeriesReturnsACopy(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	first, err := app.GetChaptersListBySeries(context.Background(), "slug")
+	first, err := app.GetChaptersListBySeries(context.Background(), "slug", uuid.Nil)
 	if err != nil {
 		t.Fatalf("GetChaptersListBySeries: %v", err)
 	}
@@ -308,7 +390,7 @@ func TestAppGetChaptersListBySeriesReturnsACopy(t *testing.T) {
 
 	first[0].ID = "corrompu"
 
-	second, err := app.GetChaptersListBySeries(context.Background(), "slug")
+	second, err := app.GetChaptersListBySeries(context.Background(), "slug", uuid.Nil)
 	if err != nil {
 		t.Fatalf("GetChaptersListBySeries (2nd call): %v", err)
 	}
@@ -435,6 +517,106 @@ func TestAppSearchLibraryLookupFailure(t *testing.T) {
 	_, err = app.Search(context.Background(), domain.SearchOpts{})
 	if err == nil {
 		t.Fatal("Search must fail when the library lookup fails")
+	}
+}
+
+func TestAppGetChaptersListBySeriesEnrichesLibraryChapters(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	userID := uuid.New()
+	seriesSlug := "solo-leveling"
+	sourceChapterSlug := "solo-leveling-chapter-1"
+	download := 42
+
+	deps := fullDeps(t)
+	deps.GetChaptersListBySeriesCache = newCache(t, identityKey,
+		func(context.Context, string) (*[]domain.Chapter, error) {
+			chapterList := []domain.Chapter{{
+				ID:     sourceChapterSlug,
+				Number: 1,
+				Title:  "Chapter 1",
+			}, {
+				ID:     "unknown-chapter",
+				Number: 2,
+				Title:  "Chapter 2",
+			}}
+
+			return &chapterList, nil
+		})
+	deps.ComicsRepository = inLibraryComicsRepository{
+		comic: &comics.Comic{ID: comicID, Slug: seriesSlug},
+	}
+	deps.ChaptersService = libraryChaptersService{chapters: []chapters.Chapter{{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: sourceChapterSlug,
+		Download:          download,
+	}}}
+
+	app, err := core.New(testConfig(), deps)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	res, err := app.GetChaptersListBySeries(context.Background(), seriesSlug, userID)
+	if err != nil {
+		t.Fatalf("GetChaptersListBySeries: %v", err)
+	}
+
+	if len(res) != 2 {
+		t.Fatalf("len(chapters) = %d, want 2", len(res))
+	}
+
+	if res[0].InternalID == nil || *res[0].InternalID != chapterID {
+		t.Errorf("chapter[0].InternalID = %v, want %s", res[0].InternalID, chapterID)
+	}
+
+	if res[0].Download == nil || *res[0].Download != download {
+		t.Errorf("chapter[0].Download = %v, want %d", res[0].Download, download)
+	}
+
+	if res[1].InternalID != nil {
+		t.Errorf("chapter[1].InternalID = %v, want nil", res[1].InternalID)
+	}
+
+	if res[1].Download != nil {
+		t.Errorf("chapter[1].Download = %v, want nil", res[1].Download)
+	}
+}
+
+func TestAppGetChaptersListBySeriesWithoutLibraryEntry(t *testing.T) {
+	t.Parallel()
+
+	deps := fullDeps(t)
+	deps.GetChaptersListBySeriesCache = newCache(t, identityKey,
+		func(context.Context, string) (*[]domain.Chapter, error) {
+			chapterList := []domain.Chapter{{ID: "c1", Number: 1}}
+
+			return &chapterList, nil
+		})
+
+	app, err := core.New(testConfig(), deps)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	res, err := app.GetChaptersListBySeries(context.Background(), "solo-leveling", uuid.New())
+	if err != nil {
+		t.Fatalf("GetChaptersListBySeries: %v", err)
+	}
+
+	if len(res) != 1 {
+		t.Fatalf("len(chapters) = %d, want 1", len(res))
+	}
+
+	if res[0].InternalID != nil {
+		t.Errorf("InternalID = %v, want nil when comic is not in library", res[0].InternalID)
+	}
+
+	if res[0].Download != nil {
+		t.Errorf("Download = %v, want nil when comic is not in library", res[0].Download)
 	}
 }
 

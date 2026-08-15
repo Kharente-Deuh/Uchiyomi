@@ -230,6 +230,8 @@ func (r *GetInfosBySlugResponse) Source(internalURL *uuid.UUID) sources.GetInfos
 type Chapter struct {
 	EarlyAccessUntil time.Time
 	PublishedAt      time.Time
+	InternalID       *uuid.UUID
+	Download         *int
 	ID               string
 	Title            string
 	Number           float64
