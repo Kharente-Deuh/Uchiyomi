@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
@@ -40,6 +41,7 @@ type Deps struct {
 	GetChaptersListBySeriesCache *fncache.Cache[string, []domain.Chapter]
 	GetImageURLsByChapter        *fncache.Cache[domain.GetImageURLsByChapterOpts, []string]
 	ComicsRepository             comics.ComicsRepository
+	ChaptersService              chapters.ChaptersService
 }
 
 func (deps *Deps) Validate() error {
@@ -89,6 +91,10 @@ func New(cfg Config, deps Deps) (*App, error) {
 	}
 
 	return app, nil
+}
+
+func (a *App) BindChaptersService(svc chapters.ChaptersService) {
+	a.deps.ChaptersService = svc
 }
 
 func (a *App) Run(ctx context.Context) error {
@@ -195,7 +201,7 @@ func (a *App) GetInfosBySlug(
 }
 
 func (a *App) GetChaptersBySlug(ctx context.Context, slug string) ([]sources.SourceChapter, error) {
-	chs, err := a.GetChaptersListBySeries(ctx, slug)
+	chs, err := a.GetChaptersListBySeries(ctx, slug, uuid.Nil)
 	if err != nil {
 		//nolint:wrapcheck
 		return nil, err
@@ -216,7 +222,11 @@ func (a *App) GetChaptersBySlug(ctx context.Context, slug string) ([]sources.Sou
 	return result, nil
 }
 
-func (a *App) GetChaptersListBySeries(ctx context.Context, slug string) ([]domain.Chapter, error) {
+func (a *App) GetChaptersListBySeries(
+	ctx context.Context,
+	slug string,
+	userID uuid.UUID,
+) ([]domain.Chapter, error) {
 	res, err := a.deps.GetChaptersListBySeriesCache.Get(ctx, slug)
 	if err != nil {
 		//nolint:wrapcheck
@@ -227,7 +237,48 @@ func (a *App) GetChaptersListBySeries(ctx context.Context, slug string) ([]domai
 		return nil, nil
 	}
 
-	return slices.Clone(*res), nil
+	chapterList := slices.Clone(*res)
+
+	if userID == uuid.Nil || a.deps.ChaptersService == nil {
+		return chapterList, nil
+	}
+
+	comic, err := a.deps.ComicsRepository.GetBySourceSlug(ctx, comics.GetBySourceSlugOpts{
+		Source: a.cfg.SourceName,
+		Slug:   slug,
+		UserID: userID,
+	})
+	if err != nil && !errors.Is(err, coredomain.ErrNotFound) {
+		return nil, fmt.Errorf("a.deps.ComicsRepository.GetBySourceSlug: %w", err)
+	}
+
+	if comic == nil {
+		return chapterList, nil
+	}
+
+	dbChapters, err := a.deps.ChaptersService.ListByComicID(ctx, comic.ID)
+	if err != nil {
+		return nil, fmt.Errorf("a.deps.ChaptersService.ListByComicID: %w", err)
+	}
+
+	bySlug := make(map[string]chapters.Chapter, len(dbChapters))
+	for _, chapter := range dbChapters {
+		bySlug[chapter.SourceChapterSlug] = chapter
+	}
+
+	for i := range chapterList {
+		dbChapter, ok := bySlug[chapterList[i].ID]
+		if !ok {
+			continue
+		}
+
+		internalID := dbChapter.ID
+		download := dbChapter.Download
+		chapterList[i].InternalID = &internalID
+		chapterList[i].Download = &download
+	}
+
+	return chapterList, nil
 }
 
 func (a *App) GetImageURLsByChapter(ctx context.Context, opts domain.GetImageURLsByChapterOpts) ([]string, error) {

@@ -234,7 +234,15 @@ func (c *Controller) getChaptersListBySeries(w http.ResponseWriter, r *http.Requ
 	slug := chi.URLParam(r, "seriesSlug")
 	ctx := r.Context()
 
-	chapters, err := c.deps.AsuraApp.GetChaptersListBySeries(ctx, slug)
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.ErrorContext(ctx, "user not found")
+		httputils.WriteError(w, c.deps.Logger, http.StatusUnauthorized, "user not found")
+
+		return
+	}
+
+	chapters, err := c.deps.AsuraApp.GetChaptersListBySeries(ctx, slug, user.ID)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			c.deps.Logger.ErrorContext(ctx, "series not found", "slug", slug)
@@ -253,6 +261,8 @@ func (c *Controller) getChaptersListBySeries(w http.ResponseWriter, r *http.Requ
 		return getChaptersListBySeriesResItemDTO{
 			EarlyAccessUntil: ch.EarlyAccessUntil,
 			PublishedAt:      ch.PublishedAt,
+			InternalID:       ch.InternalID,
+			Download:         ch.Download,
 			ID:               ch.ID,
 			Title:            ch.Title,
 			Number:           ch.Number,

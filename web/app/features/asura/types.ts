@@ -49,6 +49,8 @@ export interface AsuraComicChapter {
   id: string
   title: string
   number: number
+  internalId?: string
+  download?: number
 }
 
 export interface AsuraComicInfos {

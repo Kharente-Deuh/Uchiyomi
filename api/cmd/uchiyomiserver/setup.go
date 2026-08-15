@@ -125,6 +125,8 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, fmt.Errorf("failed to init chapters: %w", err)
 	}
 
+	asuraApp.BindChaptersService(chaptersSvc)
+
 	comicsSvc, err := comics.NewService(comics.Deps{
 		ComicsRepository:  dbr.ComicsRepository,
 		Transactor:        dbr.Txor,
