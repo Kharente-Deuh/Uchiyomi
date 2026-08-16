@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst
 package pg_test
 
 import (
@@ -197,5 +198,49 @@ func TestLibraryExistsByComicIDNotFound(t *testing.T) {
 
 	if exists {
 		t.Error("ExistsByComicID = true, want false")
+	}
+}
+
+func TestLibraryExistsByUserAndComic(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newLibraryRepo(t)
+
+	userID := uuid.New()
+	comicID := uuid.New()
+
+	mock.ExpectQuery(`SELECT count\(\*\) FROM "library_entries" WHERE user_id = \$1 AND comic_id = \$2`).
+		WithArgs(userID, comicID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+	exists, err := r.ExistsByUserAndComic(context.Background(), userID, comicID)
+	if err != nil {
+		t.Fatalf("ExistsByUserAndComic: %v", err)
+	}
+
+	if !exists {
+		t.Error("ExistsByUserAndComic = false, want true")
+	}
+}
+
+func TestLibraryExistsByUserAndComicNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newLibraryRepo(t)
+
+	userID := uuid.New()
+	comicID := uuid.New()
+
+	mock.ExpectQuery(`SELECT count`).
+		WithArgs(userID, comicID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+	exists, err := r.ExistsByUserAndComic(context.Background(), userID, comicID)
+	if err != nil {
+		t.Fatalf("ExistsByUserAndComic: %v", err)
+	}
+
+	if exists {
+		t.Error("ExistsByUserAndComic = true, want false")
 	}
 }

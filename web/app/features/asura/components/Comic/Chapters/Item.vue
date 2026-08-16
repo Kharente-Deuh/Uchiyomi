@@ -8,6 +8,8 @@ const props = defineProps<{
   comicOriginUrl: string
 }>()
 
+const { retryDownload, retryDownloadLoading } = useAsuraChapters()
+
 const { locale } = useI18n()
 
 const date = computed(() => {
@@ -30,6 +32,10 @@ const to = computed(() => {
 
   return `${props.comicOriginUrl}/chapter/${props.chapter.number}`
 })
+
+const isChapterDownloading = computed(() => props.chapter.internalId && props.chapter.download !== undefined && props.chapter.download >= 0 && props.chapter.download < 100 && props.chapter.earlyAccessUntil < new Date())
+const isChapterDownloaded = computed(() => props.chapter.internalId && props.chapter.download === 100)
+const isChapterDownloadingError = computed(() => props.chapter.internalId && props.chapter.download === -1 && !retryDownloadLoading.value)
 </script>
 
 <template>
@@ -75,7 +81,7 @@ const to = computed(() => {
 
       <div class="d-flex align-center ga-3">
         <VProgressCircular
-          v-if="chapter.internalId && chapter.download !== undefined && chapter.download >= 0 && chapter.download < 100"
+          v-if="isChapterDownloading"
           :model-value="chapter.download"
           size="18"
           :indeterminate="chapter.download === 0"
@@ -83,15 +89,24 @@ const to = computed(() => {
           color="primary"
         />
         <VIcon
-          v-else-if="chapter.internalId && chapter.download === 100"
+          v-if="isChapterDownloaded"
           icon="fa6-solid:check"
           size="x-small"
           color="success"
         />
         <VIcon
-          v-else-if="chapter.internalId && chapter.download === -1"
+          v-if="isChapterDownloadingError && !retryDownloadLoading"
+          v-tooltip:bottom="$t('sources.asurascans.comic.retryDownloadChapter.tooltip')"
           icon="fa6-solid:exclamation"
           size="x-small"
+          color="error"
+          @click.prevent="retryDownload(chapter.internalId as string)"
+        />
+        <VProgressCircular
+          v-if="isChapterDownloadingError && retryDownloadLoading"
+          indeterminate
+          size="18"
+          width="2"
           color="error"
         />
         <span class="text-body-medium text-medium-emphasis" :class="{ 'text-gold': isEarlyAccess }">{{ date }}</span>

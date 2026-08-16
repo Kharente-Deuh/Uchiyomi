@@ -41,12 +41,14 @@ import (
 	pgsessions "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/download"
+	httpchapters "github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/gateway/http"
 	pgchapters "github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/repository/pg"
 	pgcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
 	pglibrary "github.com/kharente-deuh/uchiyomi-server/pkg/core/library/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
@@ -116,6 +118,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		Logger:             logger,
 		ChaptersRepository: dbr.ChaptersRepository,
 		ComicsRepository:   dbr.ComicsRepository,
+		LibraryRepository:  dbr.LibraryRepository,
 		Sources:            sources.SourceMap{sources.SourceAsuraScans: asuraApp},
 		DownloadsDir:       downloadsDir,
 		RateLimit:          cfg.Downloads.RateLimit,
@@ -146,6 +149,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	ctrls, err := setupCtrls(ctrlsDeps{
 		Logger:               logger,
 		ComicsService:        comicsSvc,
+		ChaptersService:      chaptersSvc,
 		SessionsService:      services.Sessions,
 		SetupService:         services.Setup,
 		AuthService:          services.Auth,
@@ -173,6 +177,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			UsersCtrl:         ctrls.Users,
 			OIDCProvidersCtrl: ctrls.OIDCProviders,
 			ComicsCtrl:        ctrls.Comics,
+			ChaptersCtrl:      ctrls.Chapters,
 
 			Health:           registry,
 			Logger:           logger,
@@ -655,6 +660,7 @@ type ctrls struct {
 	Users         *httpusers.Controller
 	OIDCProviders *httpoidcproviders.Controller
 	Comics        *httpcomics.Controller
+	Chapters      *httpchapters.Controller
 }
 
 type ctrlsDeps struct {
@@ -667,6 +673,7 @@ type ctrlsDeps struct {
 	AuthService          *auth.Service
 	OIDCProvidersService *oidcproviders.Service
 	ComicsService        *comics.Service
+	ChaptersService      *chapters.Service
 }
 
 func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
@@ -800,6 +807,20 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init comics controller: %w", err)
 	}
 
+	chaptersCtrl, err := httpchapters.New(
+		httpchapters.Config{
+			Endpoint:    "/chapters",
+			Middlewares: chi.Middlewares{authenticator.Middleware},
+		},
+		httpchapters.Deps{
+			Logger:          deps.Logger,
+			ChaptersService: deps.ChaptersService,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init chapters controller: %w", err)
+	}
+
 	c := &ctrls{
 		Asura:         asuraCtrl,
 		Covers:        coversCtrl,
@@ -809,6 +830,7 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		Users:         usersCtrl,
 		OIDCProviders: oidcProvidersCtrl,
 		Comics:        comicsCtrl,
+		Chapters:      chaptersCtrl,
 	}
 
 	return c, nil
@@ -818,6 +840,7 @@ type chaptersDeps struct {
 	Logger             *slog.Logger
 	ChaptersRepository chapters.ChaptersRepository
 	ComicsRepository   comics.ComicsRepository
+	LibraryRepository  library.LibraryRepository
 	Sources            sources.SourceMap
 	DownloadsDir       string
 	RateLimit          time.Duration
@@ -856,6 +879,7 @@ func setupChapters(deps chaptersDeps) (*chapters.Service, *download.App, error) 
 	svc, err := chapters.NewService(chapters.Deps{
 		Repository:        deps.ChaptersRepository,
 		ChapterDownloader: worker,
+		LibraryRepository: deps.LibraryRepository,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("chapters.NewService: %w", err)

@@ -55,6 +55,10 @@ func (f *fakeChaptersService) CleanupComic(context.Context, uuid.UUID, []chapter
 	panic("CleanupComic must not be called")
 }
 
+func (f *fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownloadOpts) error {
+	panic("RetryDownload must not be called")
+}
+
 type blockingWorker struct {
 	started chan struct{}
 }

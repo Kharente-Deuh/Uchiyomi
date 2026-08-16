@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 )
 
@@ -17,6 +19,7 @@ var _ ChaptersService = (*Service)(nil)
 type Deps struct {
 	Repository        ChaptersRepository
 	ChapterDownloader ChapterDownloader
+	LibraryRepository library.LibraryRepository
 }
 
 func (deps *Deps) Validate() error {
@@ -26,6 +29,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.ChapterDownloader == nil {
 		return errors.New("chapterDownloader is required")
+	}
+
+	if deps.LibraryRepository == nil {
+		return errors.New("libraryRepository is required")
 	}
 
 	return nil
@@ -135,6 +142,42 @@ func (s *Service) CleanupComic(ctx context.Context, comicID uuid.UUID, chapterLi
 	err := s.deps.ChapterDownloader.CleanupComic(ctx, comicID, chapterList)
 	if err != nil {
 		return fmt.Errorf("s.deps.ChapterDownloader.CleanupComic: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) RetryDownload(ctx context.Context, opts RetryDownloadOpts) error {
+	chapter, err := s.deps.Repository.GetByID(ctx, opts.ChapterID)
+	if err != nil {
+		return fmt.Errorf("s.deps.Repository.GetByID: %w", err)
+	}
+
+	inLibrary, err := s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, chapter.ComicID)
+	if err != nil {
+		return fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+	}
+
+	if !inLibrary {
+		return domain.ErrForbidden
+	}
+
+	if chapter.Download >= 100 {
+		return domain.ErrConflict
+	}
+
+	if chapter.Download == -1 {
+		err = s.deps.ChapterDownloader.ResetAndEnqueue(ctx, opts.ChapterID)
+		if err != nil {
+			return fmt.Errorf("s.deps.ChapterDownloader.ResetAndEnqueue: %w", err)
+		}
+
+		return nil
+	}
+
+	err = s.deps.ChapterDownloader.Resume(ctx, opts.ChapterID)
+	if err != nil {
+		return fmt.Errorf("s.deps.ChapterDownloader.Resume: %w", err)
 	}
 
 	return nil

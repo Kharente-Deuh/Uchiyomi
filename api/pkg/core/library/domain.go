@@ -20,6 +20,7 @@ type LibraryRepository interface {
 	Create(context.Context, CreateOpts) (*Entry, error)
 	Delete(context.Context, DeleteOpts) error
 	ExistsByComicID(context.Context, uuid.UUID) (bool, error)
+	ExistsByUserAndComic(context.Context, uuid.UUID, uuid.UUID) (bool, error)
 }
 
 type CreateOpts struct {

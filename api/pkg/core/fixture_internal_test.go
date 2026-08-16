@@ -23,6 +23,8 @@ import (
 	httpoidcproviders "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	sessionshttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
+	httpchapters "github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	httpcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
@@ -318,6 +320,38 @@ func (fakeComicsService) Delete(context.Context, comics.DeleteOpts) error {
 	return errors.New(notImplemented)
 }
 
+type fakeChaptersService struct{}
+
+func (fakeChaptersService) CreateAll(
+	context.Context, uuid.UUID, []sources.SourceChapter,
+) ([]chapters.Chapter, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeChaptersService) ListByComicID(context.Context, uuid.UUID) ([]chapters.Chapter, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeChaptersService) EnqueueDownloadable(context.Context, []chapters.Chapter) error {
+	return errors.New(notImplemented)
+}
+
+func (fakeChaptersService) EnqueueResumable(context.Context) error {
+	return errors.New(notImplemented)
+}
+
+func (fakeChaptersService) ScanEarlyAccess(context.Context) error {
+	return errors.New(notImplemented)
+}
+
+func (fakeChaptersService) CleanupComic(context.Context, uuid.UUID, []chapters.Chapter) error {
+	return errors.New(notImplemented)
+}
+
+func (fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownloadOpts) error {
+	return errors.New(notImplemented)
+}
+
 func newTestCache[P any, T any](t *testing.T, name string, logger *slog.Logger) *fncache.Cache[P, T] {
 	t.Helper()
 
@@ -473,6 +507,14 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("httpcomics.New: %v", err)
 	}
 
+	chaptersCtrl, err := httpchapters.New(
+		httpchapters.Config{Endpoint: "/chapters"},
+		httpchapters.Deps{Logger: logger, ChaptersService: fakeChaptersService{}},
+	)
+	if err != nil {
+		t.Fatalf("httpchapters.New: %v", err)
+	}
+
 	app, err := New(
 		Config{ServerPort: port, AllowedOrigins: []string{"*"}},
 		Deps{
@@ -485,6 +527,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			HealthCtrl:        healthCtrl,
 			OIDCProvidersCtrl: oidcProvidersCtrl,
 			ComicsCtrl:        comicsCtrl,
+			ChaptersCtrl:      chaptersCtrl,
 			Logger:            logger,
 			Health:            registry,
 			Asura:             asuraApp,

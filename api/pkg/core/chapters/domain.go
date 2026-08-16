@@ -36,6 +36,8 @@ type ChaptersRepository interface {
 type ChapterDownloader interface {
 	Enqueue(context.Context, []Chapter) error
 	CleanupComic(context.Context, uuid.UUID, []Chapter) error
+	ResetAndEnqueue(context.Context, uuid.UUID) error
+	Resume(context.Context, uuid.UUID) error
 }
 
 type ChaptersService interface {
@@ -45,6 +47,12 @@ type ChaptersService interface {
 	EnqueueResumable(context.Context) error
 	ScanEarlyAccess(context.Context) error
 	CleanupComic(context.Context, uuid.UUID, []Chapter) error
+	RetryDownload(context.Context, RetryDownloadOpts) error
+}
+
+type RetryDownloadOpts struct {
+	UserID    uuid.UUID
+	ChapterID uuid.UUID
 }
 
 type CreateOpts struct {
