@@ -55,7 +55,7 @@ type CreateComicOpts struct {
 	Status       sources.SeriesStatus
 	Type         sources.SeriesType
 	Description  string
-	CoverPath    string
+	ID           uuid.UUID
 	Source       sources.SourceName
 	Artist       string
 	Slug         string
