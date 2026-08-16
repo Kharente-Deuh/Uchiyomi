@@ -35,18 +35,18 @@ const (
 )
 
 type stubComicsService struct {
-	getManyResult    []comics.Comic
-	serveCoverPath   string
-	serveCoverType   string
-	lastServeCoverID uuid.UUID
-	createResult     *comics.Comic
-	getByIDResult    *comics.Comic
-	serveCoverCalls  int
 	createErr        error
 	getByIDErr       error
 	getManyErr       error
 	deleteErr        error
 	serveCoverErr    error
+	createResult     *comics.Comic
+	getByIDResult    *comics.Comic
+	serveCoverPath   string
+	serveCoverType   string
+	getManyResult    []comics.Comic
+	serveCoverCalls  int
+	lastServeCoverID uuid.UUID
 }
 
 func (s *stubComicsService) Create(_ context.Context, _ comics.CreateOpts) (*comics.Comic, error) {

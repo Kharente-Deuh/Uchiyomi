@@ -42,20 +42,20 @@ func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn 
 }
 
 type fakeLocalCoverStore struct {
-	obtainErr   error
-	serveErr    error
-	removeErr   error
-	obtainCalls int
-	removeCalls int
-	serveCalls  int
-	lastObtain  struct {
+	obtainErr  error
+	serveErr   error
+	removeErr  error
+	diskPath   string
+	mime       string
+	lastObtain struct {
 		source string
 		slug   string
 		id     uuid.UUID
 	}
-	lastRemove uuid.UUID
-	diskPath   string
-	mime       string
+	obtainCalls int
+	removeCalls int
+	serveCalls  int
+	lastRemove  uuid.UUID
 }
 
 func (f *fakeLocalCoverStore) ObtainLocal(_ context.Context, comicID uuid.UUID, source, slug string) error {
@@ -92,12 +92,11 @@ type fakeComicsRepository struct {
 	findBySourceSlugResult *comics.Comic
 	findBySourceSlugSecond *comics.Comic
 	createResult           *comics.Comic
-	getManyResult          []comics.Comic
-	listByStatusesResult   []comics.Comic
-	lastCreateOpts         comics.CreateComicOpts
 	lastListByStatuses     comics.ListByStatusesOpts
+	listByStatusesResult   []comics.Comic
+	getManyResult          []comics.Comic
 	lastUpdateStatus       comics.UpdateStatusAndChapterCountOpts
-	lastDeleteID           uuid.UUID
+	lastCreateOpts         comics.CreateComicOpts
 	findBySourceSlugCalls  int
 	createCalls            int
 	getByIDCalls           int
@@ -105,6 +104,7 @@ type fakeComicsRepository struct {
 	deleteCalls            int
 	listByStatusesCalls    int
 	updateStatusCalls      int
+	lastDeleteID           uuid.UUID
 }
 
 func (f *fakeComicsRepository) GetByID(_ context.Context, _ comics.GetByIDOpts) (*comics.Comic, error) {

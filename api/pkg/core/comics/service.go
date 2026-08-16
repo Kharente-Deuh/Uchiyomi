@@ -182,11 +182,10 @@ func (s *Service) createNewComic(ctx context.Context, opts CreateOpts) (*Comic, 
 
 		return nil
 	})
+
 	if err != nil {
-		if remErr := s.deps.LocalCoverStore.RemoveLocal(id); remErr != nil {
-			if s.deps.Logger != nil {
-				s.deps.Logger.ErrorContext(ctx, "failed to remove orphan cover", "comic_id", id, "error", remErr)
-			}
+		if remErr := s.deps.LocalCoverStore.RemoveLocal(id); remErr != nil && s.deps.Logger != nil {
+			s.deps.Logger.ErrorContext(ctx, "failed to remove orphan cover", "comic_id", id, "error", remErr)
 		}
 
 		if errors.Is(err, domain.ErrAlreadyExists) {

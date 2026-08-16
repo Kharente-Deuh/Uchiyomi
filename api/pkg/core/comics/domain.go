@@ -61,7 +61,6 @@ type CreateComicOpts struct {
 	Status       sources.SeriesStatus
 	Type         sources.SeriesType
 	Description  string
-	ID           uuid.UUID
 	Source       sources.SourceName
 	Artist       string
 	Slug         string
@@ -70,6 +69,7 @@ type CreateComicOpts struct {
 	AltTitles    []string
 	Genres       []string
 	ChapterCount int
+	ID           uuid.UUID
 }
 
 type GetBySlugsAndSource struct {
