@@ -484,7 +484,7 @@ type comicsCoverFinder struct {
 func (f comicsCoverFinder) FindBySourceSlug(ctx context.Context, source, slug string) (uuid.UUID, error) {
 	name, err := sources.ParseSourceName(source)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("sources.ParseSourceName: %w", err)
+		return uuid.Nil, fmt.Errorf("%w: %w", covers.ErrUnknownSource, err)
 	}
 
 	comic, err := f.repo.FindBySourceSlug(ctx, comics.FindBySourceSlugOpts{Source: name, Slug: slug})
