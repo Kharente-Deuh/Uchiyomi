@@ -16,6 +16,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
@@ -223,9 +224,11 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 	}
 
 	coversBundle, err := setupCovers(coversDeps{
-		Logger:    logger,
-		CoversDir: t.TempDir(),
-		AsuraApp:  asuraApp,
+		Logger:           logger,
+		CoversDir:        t.TempDir(),
+		DownloadsDir:     t.TempDir(),
+		AsuraApp:         asuraApp,
+		ComicsRepository: stubComicsRepository{},
 	})
 	if err != nil {
 		t.Fatalf("setupCovers: %v", err)
@@ -244,6 +247,44 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 	}
 
 	return c
+}
+
+func TestComicsCoverFinderUnknownSource(t *testing.T) {
+	t.Parallel()
+
+	finder := comicsCoverFinder{repo: stubComicsRepository{}}
+
+	_, err := finder.FindBySourceSlug(context.Background(), "unknown", "solo-leveling")
+	if !errors.Is(err, covers.ErrUnknownSource) {
+		t.Errorf("FindBySourceSlug = %v, want ErrUnknownSource", err)
+	}
+}
+
+func TestSetupCoversServeUnknownSource(t *testing.T) {
+	t.Parallel()
+
+	logger := slog.New(slog.DiscardHandler)
+
+	asuraApp, err := setupAsura(logger, stubComicsRepository{})
+	if err != nil {
+		t.Fatalf("setupAsura: %v", err)
+	}
+
+	bundle, err := setupCovers(coversDeps{
+		Logger:           logger,
+		CoversDir:        t.TempDir(),
+		DownloadsDir:     t.TempDir(),
+		AsuraApp:         asuraApp,
+		ComicsRepository: stubComicsRepository{},
+	})
+	if err != nil {
+		t.Fatalf("setupCovers: %v", err)
+	}
+
+	_, _, err = bundle.Service.Serve(context.Background(), "unknown", "solo-leveling")
+	if !errors.Is(err, covers.ErrUnknownSource) {
+		t.Errorf("Serve = %v, want ErrUnknownSource", err)
+	}
 }
 
 func TestOIDCProvidersController(t *testing.T) {

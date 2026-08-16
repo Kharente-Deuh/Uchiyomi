@@ -202,14 +202,17 @@ func TestCreate(t *testing.T) {
 
 	r, mock := newComicsRepo(t)
 
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
 	mock.ExpectBegin()
 	mock.ExpectQuery(`INSERT INTO "comics"`).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(id))
 	mock.ExpectCommit()
 
 	before := time.Now()
 
 	got, err := r.Create(context.Background(), comics.CreateComicOpts{
+		ID:           id,
 		Source:       comicSource,
 		Slug:         comicSlug,
 		Title:        comicTitle,
@@ -230,8 +233,8 @@ func TestCreate(t *testing.T) {
 		t.Errorf("Create() = %+v", got)
 	}
 
-	if got.ID == uuid.Nil {
-		t.Error("Create did not generate ID")
+	if got.ID != id {
+		t.Errorf("Create ID = %s, want %s", got.ID, id)
 	}
 
 	if got.CreatedAt.Before(before) || got.UpdatedAt.Before(before) {
@@ -250,6 +253,7 @@ func TestCreateDuplicate(t *testing.T) {
 	mock.ExpectRollback()
 
 	_, err := r.Create(context.Background(), comics.CreateComicOpts{
+		ID:     uuid.New(),
 		Source: comicSource,
 		Slug:   comicSlug,
 		Title:  comicTitle,

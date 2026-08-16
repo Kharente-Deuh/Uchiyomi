@@ -8,15 +8,18 @@ defineProps<{
 </script>
 
 <template>
-  <header class="position-fixed bottom-0 w-100 pa-4 nvagation-bottom">
-    <div class="w-100 h-100 bg-surface rounded-lg border-thin elevation-down d-flex justify-space-evenly">
+  <footer class="">
+    <div
+      class="position-fixed bottom-0 w-100 pa-4 nvagation-bottom h-100 bg-surface border-thin elevation-down d-flex justify-space-evenly"
+      style="border-top-left-radius: 12px; border-top-right-radius: 12px;"
+    >
       <OrganismBottomNavigationItem
         v-for="(item, index) in items"
         :key="index"
         v-bind="item"
       />
     </div>
-  </header>
+  </footer>
 </template>
 
 <style lang="scss">

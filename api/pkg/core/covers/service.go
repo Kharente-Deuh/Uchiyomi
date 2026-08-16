@@ -11,16 +11,22 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/imgcache"
 )
 
 type ServiceConfig struct {
 	ProxyPathPrefix string
+	DownloadsDir    string
 }
 
 func (cfg *ServiceConfig) Validate() error {
 	if cfg.ProxyPathPrefix == "" {
 		return errors.New("proxyPathPrefix is required")
+	}
+
+	if cfg.DownloadsDir == "" {
+		return errors.New("downloadsDir is required")
 	}
 
 	return nil
@@ -31,6 +37,7 @@ type ServiceDeps struct {
 	Resolvers  map[string]CoverResolver
 	HTTPClient *http.Client
 	Logger     *slog.Logger
+	Finder     LocalComicFinder
 }
 
 func (deps *ServiceDeps) Validate() error {
@@ -48,6 +55,10 @@ func (deps *ServiceDeps) Validate() error {
 
 	if deps.Logger == nil {
 		return errors.New("logger is required")
+	}
+
+	if deps.Finder == nil {
+		return errors.New("finder is required")
 	}
 
 	return nil
@@ -77,6 +88,15 @@ func (s *Service) BuildProxyURL(source, slug string) string {
 }
 
 func (s *Service) Serve(ctx context.Context, source, slug string) (string, string, error) {
+	id, err := s.deps.Finder.FindBySourceSlug(ctx, source, slug)
+	if err == nil {
+		return s.ServeLocal(ctx, id)
+	}
+
+	if !errors.Is(err, domain.ErrNotFound) {
+		return "", "", fmt.Errorf("finder.FindBySourceSlug: %w", err)
+	}
+
 	resolver, ok := s.deps.Resolvers[source]
 	if !ok {
 		return "", "", ErrUnknownSource

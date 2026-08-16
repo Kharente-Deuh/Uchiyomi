@@ -16,8 +16,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	covershttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
+	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/imgcache"
 )
 
@@ -45,11 +47,31 @@ func (f *fakeResolver) Fetch(ctx context.Context, externalURL string) (io.ReadCl
 	return io.NopCloser(bytes.NewReader([]byte("cover-bytes"))), nil
 }
 
-func newTestController(t *testing.T, resolvers map[string]covers.CoverResolver) *covershttp.Controller {
+type stubFinder struct {
+	err error
+	id  uuid.UUID
+}
+
+func (f stubFinder) FindBySourceSlug(context.Context, string, string) (uuid.UUID, error) {
+	if f.err != nil {
+		return uuid.Nil, f.err
+	}
+
+	return f.id, nil
+}
+
+func newTestControllerWithDirs(
+	t *testing.T,
+	resolvers map[string]covers.CoverResolver,
+	finder covers.LocalComicFinder,
+) (*covershttp.Controller, string, string) {
 	t.Helper()
 
+	cacheDir := t.TempDir()
+	downloadsDir := t.TempDir()
+
 	cache, err := imgcache.New(imgcache.Config{
-		Dir:           t.TempDir(),
+		Dir:           cacheDir,
 		FetchFn:       covers.NewFetchFn(resolvers),
 		ErrorCacheTTL: time.Minute,
 		MinInterval:   time.Millisecond,
@@ -76,12 +98,16 @@ func newTestController(t *testing.T, resolvers map[string]covers.CoverResolver) 
 	}
 
 	svc, err := covers.NewService(
-		covers.ServiceConfig{ProxyPathPrefix: "/api/sources/cover"},
+		covers.ServiceConfig{
+			ProxyPathPrefix: "/api/sources/cover",
+			DownloadsDir:    downloadsDir,
+		},
 		covers.ServiceDeps{
 			Cache:      cache,
 			Resolvers:  resolvers,
 			HTTPClient: &http.Client{Timeout: time.Second},
 			Logger:     slog.New(slog.DiscardHandler),
+			Finder:     finder,
 		},
 	)
 	if err != nil {
@@ -96,6 +122,14 @@ func newTestController(t *testing.T, resolvers map[string]covers.CoverResolver) 
 		t.Fatalf("covershttp.New: %v", err)
 	}
 
+	return ctrl, cacheDir, downloadsDir
+}
+
+func newTestController(t *testing.T, resolvers map[string]covers.CoverResolver) *covershttp.Controller {
+	t.Helper()
+
+	ctrl, _, _ := newTestControllerWithDirs(t, resolvers, stubFinder{err: coredomain.ErrNotFound})
+
 	return ctrl
 }
 
@@ -109,6 +143,61 @@ func serveCover(t *testing.T, ctrl *covershttp.Controller, path string) *httptes
 	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 
 	return rec
+}
+
+func TestServeCoverPrefersLocalWithoutFillingCache(t *testing.T) {
+	t.Parallel()
+
+	var fetchCount int
+	comicID := uuid.New()
+
+	resolvers := map[string]covers.CoverResolver{
+		covers.SourceAsuraScans: &fakeResolver{
+			url: testExternalCoverURL,
+			fetch: func(context.Context, string) (io.ReadCloser, error) {
+				fetchCount++
+
+				return io.NopCloser(bytes.NewReader([]byte("cdn"))), nil
+			},
+		},
+	}
+
+	ctrl, cacheDir, downloadsDir := newTestControllerWithDirs(t, resolvers, stubFinder{id: comicID})
+
+	coverPath := filepath.Join(downloadsDir, comicID.String(), "cover.webp")
+	if err := os.MkdirAll(filepath.Dir(coverPath), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	if err := os.WriteFile(coverPath, []byte("local-bytes"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	rec := serveCover(t, ctrl, "/cover/solo-leveling?source=asurascans")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	if ct := rec.Header().Get("Content-Type"); ct != "image/webp" {
+		t.Errorf("Content-Type = %q, want image/webp", ct)
+	}
+
+	if !bytes.Equal(rec.Body.Bytes(), []byte("local-bytes")) {
+		t.Errorf("body = %q, want local-bytes", rec.Body.Bytes())
+	}
+
+	if fetchCount != 0 {
+		t.Errorf("fetchCount = %d, want 0", fetchCount)
+	}
+
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+
+	if len(entries) != 0 {
+		t.Errorf("cache filled: %v", entries)
+	}
 }
 
 func TestServeCoverDownloadsAndCaches(t *testing.T) {
@@ -251,12 +340,16 @@ func TestServeCoverUsesDiskCachePath(t *testing.T) {
 	}
 
 	svc, err := covers.NewService(
-		covers.ServiceConfig{ProxyPathPrefix: "/api/sources/cover"},
+		covers.ServiceConfig{
+			ProxyPathPrefix: "/api/sources/cover",
+			DownloadsDir:    t.TempDir(),
+		},
 		covers.ServiceDeps{
 			Cache:      cache,
 			Resolvers:  resolvers,
 			HTTPClient: &http.Client{Timeout: time.Second},
 			Logger:     slog.New(slog.DiscardHandler),
+			Finder:     stubFinder{err: coredomain.ErrNotFound},
 		},
 	)
 	if err != nil {

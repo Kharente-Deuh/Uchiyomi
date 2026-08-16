@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
@@ -22,6 +23,7 @@ type Deps struct {
 	Transactor        transaction.Transactor
 	LibraryRepository library.LibraryRepository
 	ChaptersService   chapters.ChaptersService
+	LocalCoverStore   LocalCoverStore
 	Sources           sources.SourceMap
 	Logger            *slog.Logger
 }
@@ -41,6 +43,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.ChaptersService == nil {
 		return errors.New("chapters service is required")
+	}
+
+	if deps.LocalCoverStore == nil {
+		return errors.New("local cover store is required")
 	}
 
 	if deps.Sources == nil {
@@ -132,10 +138,17 @@ func (s *Service) createNewComic(ctx context.Context, opts CreateOpts) (*Comic, 
 		return nil, fmt.Errorf("src.GetChaptersBySlug: %w", err)
 	}
 
+	id := uuid.New()
+
+	if err = s.deps.LocalCoverStore.ObtainLocal(ctx, id, string(opts.Source), opts.Slug); err != nil {
+		return nil, fmt.Errorf("s.deps.LocalCoverStore.ObtainLocal: %w", err)
+	}
+
 	var comic *Comic
 
 	err = s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
 		created, err := s.deps.ComicsRepository.Create(ctx, CreateComicOpts{
+			ID:           id,
 			Status:       item.Status,
 			Type:         item.Type,
 			Description:  item.Description,
@@ -169,7 +182,24 @@ func (s *Service) createNewComic(ctx context.Context, opts CreateOpts) (*Comic, 
 
 		return nil
 	})
+
 	if err != nil {
+		if remErr := s.deps.LocalCoverStore.RemoveLocal(id); remErr != nil && s.deps.Logger != nil {
+			s.deps.Logger.ErrorContext(ctx, "failed to remove orphan cover", "comic_id", id, "error", remErr)
+		}
+
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			winner, findErr := s.deps.ComicsRepository.FindBySourceSlug(ctx, FindBySourceSlugOpts{
+				Source: opts.Source,
+				Slug:   opts.Slug,
+			})
+			if findErr != nil {
+				return nil, fmt.Errorf("s.deps.ComicsRepository.FindBySourceSlug: %w", findErr)
+			}
+
+			return s.addExistingComicToLibrary(ctx, opts, winner)
+		}
+
 		return nil, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
 	}
 
@@ -193,6 +223,20 @@ func (s *Service) GetByID(ctx context.Context, opts GetByIDOpts) (*Comic, error)
 	}
 
 	return comic, nil
+}
+
+func (s *Service) ServeCover(ctx context.Context, opts GetByIDOpts) (string, string, error) {
+	comic, err := s.GetByID(ctx, opts)
+	if err != nil {
+		return "", "", fmt.Errorf("s.GetByID: %w", err)
+	}
+
+	path, contentType, err := s.deps.LocalCoverStore.ServeLocal(ctx, comic.ID)
+	if err != nil {
+		return "", "", fmt.Errorf("s.deps.LocalCoverStore.ServeLocal: %w", err)
+	}
+
+	return path, contentType, nil
 }
 
 func (s *Service) GetMany(ctx context.Context, opts GetManyOpts) ([]Comic, error) {

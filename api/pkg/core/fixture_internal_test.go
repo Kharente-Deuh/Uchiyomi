@@ -111,6 +111,12 @@ func (fakeSessionsRepository) DeleteByTokenHash(context.Context, []byte) error {
 	return errors.New(notImplemented)
 }
 
+type stubCoverFinder struct{}
+
+func (stubCoverFinder) FindBySourceSlug(context.Context, string, string) (uuid.UUID, error) {
+	return uuid.Nil, coredomain.ErrNotFound
+}
+
 func newTestCoversBundle(t *testing.T, asuraApp *asura.App) (*covers.App, *covers.Service) {
 	t.Helper()
 
@@ -146,12 +152,16 @@ func newTestCoversBundle(t *testing.T, asuraApp *asura.App) (*covers.App, *cover
 	}
 
 	svc, err := covers.NewService(
-		covers.ServiceConfig{ProxyPathPrefix: APIPrefix + "/sources/cover"},
+		covers.ServiceConfig{
+			ProxyPathPrefix: APIPrefix + "/sources/cover",
+			DownloadsDir:    t.TempDir(),
+		},
 		covers.ServiceDeps{
 			Cache:      cache,
 			Resolvers:  resolvers,
 			HTTPClient: httpClient,
 			Logger:     logger,
+			Finder:     stubCoverFinder{},
 		},
 	)
 	if err != nil {
@@ -338,6 +348,10 @@ func (fakeComicsService) Delete(context.Context, comics.DeleteOpts) error {
 
 func (fakeComicsService) RefreshChapterLists(context.Context) error {
 	return errors.New(notImplemented)
+}
+
+func (fakeComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
+	return "", "", errors.New(notImplemented)
 }
 
 type fakeChaptersService struct{}

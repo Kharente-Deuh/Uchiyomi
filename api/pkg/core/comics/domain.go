@@ -38,6 +38,12 @@ type FindBySourceSlugOpts struct {
 	Slug   string
 }
 
+type LocalCoverStore interface {
+	ObtainLocal(ctx context.Context, comicID uuid.UUID, source, slug string) error
+	ServeLocal(ctx context.Context, comicID uuid.UUID) (diskPath, contentType string, err error)
+	RemoveLocal(comicID uuid.UUID) error
+}
+
 type ComicsRepository interface {
 	GetByID(context.Context, GetByIDOpts) (*Comic, error)
 	FindByID(context.Context, uuid.UUID) (*Comic, error)
@@ -55,7 +61,6 @@ type CreateComicOpts struct {
 	Status       sources.SeriesStatus
 	Type         sources.SeriesType
 	Description  string
-	CoverPath    string
 	Source       sources.SourceName
 	Artist       string
 	Slug         string
@@ -64,6 +69,7 @@ type CreateComicOpts struct {
 	AltTitles    []string
 	Genres       []string
 	ChapterCount int
+	ID           uuid.UUID
 }
 
 type GetBySlugsAndSource struct {
@@ -78,6 +84,7 @@ type ComicsService interface {
 	GetMany(context.Context, GetManyOpts) ([]Comic, error)
 	Delete(context.Context, DeleteOpts) error
 	RefreshChapterLists(context.Context) error
+	ServeCover(ctx context.Context, opts GetByIDOpts) (diskPath, contentType string, err error)
 }
 
 type CreateOpts struct {

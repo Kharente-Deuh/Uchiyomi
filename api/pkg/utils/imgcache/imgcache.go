@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
@@ -200,6 +201,98 @@ func (ic *Cache) Ensure(ctx context.Context, name string) (string, error) {
 		//nolint:wrapcheck
 		return "", ctx.Err()
 	}
+}
+
+func (ic *Cache) Take(ctx context.Context, name, dest string) (bool, error) {
+	key, err := safeKey(name)
+	if err != nil {
+		return false, err
+	}
+
+	if err = ic.waitIfProcessing(ctx, key); err != nil {
+		return false, err
+	}
+
+	src := filepath.Join(ic.cfg.Dir, filepath.FromSlash(key))
+	st, err := os.Stat(src)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("os.Stat %s: %w", src, err)
+	}
+
+	if !st.Mode().IsRegular() {
+		return false, nil
+	}
+
+	if err = os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return false, fmt.Errorf("os.MkdirAll %s: %w", dest, err)
+	}
+
+	if err = os.Rename(src, dest); err != nil {
+		if !errors.Is(err, syscall.EXDEV) {
+			return false, fmt.Errorf("os.Rename %s: %w", src, err)
+		}
+
+		if err = copyThenRemove(src, dest); err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
+}
+
+func (ic *Cache) waitIfProcessing(ctx context.Context, key string) error {
+	ic.mtx.Lock()
+	j, ok := ic.processing[key]
+	ic.mtx.Unlock()
+
+	if !ok {
+		return nil
+	}
+
+	select {
+	case <-j.done:
+		return nil
+	case <-ctx.Done():
+		//nolint:wrapcheck
+		return ctx.Err()
+	}
+}
+
+func copyThenRemove(src, dest string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("os.Open %s: %w", src, err)
+	}
+
+	defer in.Close()
+
+	out, err := os.Create(dest)
+	if err != nil {
+		return fmt.Errorf("os.Create %s: %w", dest, err)
+	}
+
+	if _, err = io.Copy(out, in); err != nil {
+		out.Close()
+		os.Remove(dest)
+
+		return fmt.Errorf("io.Copy %s: %w", dest, err)
+	}
+
+	if err = out.Close(); err != nil {
+		os.Remove(dest)
+
+		return fmt.Errorf("out.Close %s: %w", dest, err)
+	}
+
+	if err = os.Remove(src); err != nil {
+		return fmt.Errorf("os.Remove %s: %w", src, err)
+	}
+
+	return nil
 }
 
 func (ic *Cache) enqueue(ctx context.Context, key string, diskPath string) (*job, error) {

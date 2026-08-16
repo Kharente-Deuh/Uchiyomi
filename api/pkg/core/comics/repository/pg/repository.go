@@ -130,7 +130,7 @@ func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComic
 	now := time.Now()
 
 	model := &pgmodels.Comic{
-		ID:           uuid.New(),
+		ID:           opts.ID,
 		Source:       opts.Source,
 		Slug:         opts.Slug,
 		Title:        opts.Title,

@@ -536,6 +536,91 @@ func TestImageCacheProcessSkipsRateLimitWhenAlreadyOnDisk(t *testing.T) {
 	}
 }
 
+func TestImageCacheTakeMovesExistingFile(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	dir := t.TempDir()
+	ic := startCache(t, Config{
+		Dir:           dir,
+		ErrorCacheTTL: time.Minute,
+		MinInterval:   time.Millisecond,
+		FetchFn: func(context.Context, string) (io.ReadCloser, error) {
+			calls.Add(1)
+
+			return io.NopCloser(strings.NewReader("image-bytes")), nil
+		},
+	})
+
+	if _, err := ic.Ensure(context.Background(), "asurascans/solo-leveling.webp"); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+
+	destDir := t.TempDir()
+	dest := filepath.Join(destDir, "cover.webp")
+
+	moved, err := ic.Take(context.Background(), "asurascans/solo-leveling.webp", dest)
+	if err != nil {
+		t.Fatalf("Take: %v", err)
+	}
+
+	if !moved {
+		t.Fatal("Take returned false, want true")
+	}
+
+	content, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("os.ReadFile dest: %v", err)
+	}
+
+	if string(content) != "image-bytes" {
+		t.Errorf("dest content = %q", content)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "asurascans", "solo-leveling.webp")); !os.IsNotExist(err) {
+		t.Errorf("cache file still present: %v", err)
+	}
+
+	if got := calls.Load(); got != 1 {
+		t.Errorf("FetchFn called %d times, want 1", got)
+	}
+}
+
+func TestImageCacheTakeMissDoesNotFetch(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	ic := startCache(t, Config{
+		Dir:           t.TempDir(),
+		ErrorCacheTTL: time.Minute,
+		MinInterval:   time.Millisecond,
+		FetchFn: func(context.Context, string) (io.ReadCloser, error) {
+			calls.Add(1)
+
+			return io.NopCloser(strings.NewReader("nope")), nil
+		},
+	})
+
+	dest := filepath.Join(t.TempDir(), "cover.webp")
+
+	moved, err := ic.Take(context.Background(), "asurascans/missing.webp", dest)
+	if err != nil {
+		t.Fatalf("Take: %v", err)
+	}
+
+	if moved {
+		t.Fatal("Take returned true on miss")
+	}
+
+	if got := calls.Load(); got != 0 {
+		t.Errorf("FetchFn called %d times, want 0", got)
+	}
+
+	if _, err := os.Stat(dest); !os.IsNotExist(err) {
+		t.Errorf("dest created on miss: %v", err)
+	}
+}
+
 func TestImageCacheProcessDoesNotCacheContextErrors(t *testing.T) {
 	t.Parallel()
 
