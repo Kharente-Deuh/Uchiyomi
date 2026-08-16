@@ -30,8 +30,7 @@ server/utils/suwayomi/generated
 PROJECT_BRIEF.md
 ENGINEERING.md
 .env
-docs/superpowers
-docs/design
+docs
 .nuxtrc
 .superpowers
 .claude
