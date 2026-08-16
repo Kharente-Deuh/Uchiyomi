@@ -223,9 +223,10 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 	}
 
 	coversBundle, err := setupCovers(coversDeps{
-		Logger:    logger,
-		CoversDir: t.TempDir(),
-		AsuraApp:  asuraApp,
+		Logger:       logger,
+		CoversDir:    t.TempDir(),
+		DownloadsDir: t.TempDir(),
+		AsuraApp:     asuraApp,
 	})
 	if err != nil {
 		t.Fatalf("setupCovers: %v", err)

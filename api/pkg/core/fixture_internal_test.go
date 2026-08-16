@@ -146,7 +146,10 @@ func newTestCoversBundle(t *testing.T, asuraApp *asura.App) (*covers.App, *cover
 	}
 
 	svc, err := covers.NewService(
-		covers.ServiceConfig{ProxyPathPrefix: APIPrefix + "/sources/cover"},
+		covers.ServiceConfig{
+			ProxyPathPrefix: APIPrefix + "/sources/cover",
+			DownloadsDir:    t.TempDir(),
+		},
 		covers.ServiceDeps{
 			Cache:      cache,
 			Resolvers:  resolvers,

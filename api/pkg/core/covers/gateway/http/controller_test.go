@@ -76,7 +76,10 @@ func newTestController(t *testing.T, resolvers map[string]covers.CoverResolver) 
 	}
 
 	svc, err := covers.NewService(
-		covers.ServiceConfig{ProxyPathPrefix: "/api/sources/cover"},
+		covers.ServiceConfig{
+			ProxyPathPrefix: "/api/sources/cover",
+			DownloadsDir:    t.TempDir(),
+		},
 		covers.ServiceDeps{
 			Cache:      cache,
 			Resolvers:  resolvers,
@@ -251,7 +254,10 @@ func TestServeCoverUsesDiskCachePath(t *testing.T) {
 	}
 
 	svc, err := covers.NewService(
-		covers.ServiceConfig{ProxyPathPrefix: "/api/sources/cover"},
+		covers.ServiceConfig{
+			ProxyPathPrefix: "/api/sources/cover",
+			DownloadsDir:    t.TempDir(),
+		},
 		covers.ServiceDeps{
 			Cache:      cache,
 			Resolvers:  resolvers,

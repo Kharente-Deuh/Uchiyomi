@@ -94,9 +94,10 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	}
 
 	coversBundle, err := setupCovers(coversDeps{
-		Logger:    logger,
-		CoversDir: coversDir,
-		AsuraApp:  asuraApp,
+		Logger:       logger,
+		CoversDir:    coversDir,
+		DownloadsDir: downloadsDir,
+		AsuraApp:     asuraApp,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init covers: %w", err)
@@ -467,7 +468,8 @@ type coversDeps struct {
 	Logger   *slog.Logger
 	AsuraApp *asura.App
 
-	CoversDir string
+	CoversDir    string
+	DownloadsDir string
 }
 
 func setupCovers(deps coversDeps) (*coversBundle, error) {
@@ -510,7 +512,10 @@ func setupCovers(deps coversDeps) (*coversBundle, error) {
 	}
 
 	svc, err := covers.NewService(
-		covers.ServiceConfig{ProxyPathPrefix: core.APIPrefix + "/sources/cover"},
+		covers.ServiceConfig{
+			ProxyPathPrefix: core.APIPrefix + "/sources/cover",
+			DownloadsDir:    deps.DownloadsDir,
+		},
 		covers.ServiceDeps{
 			Cache:      cache,
 			Resolvers:  resolvers,

@@ -11,9 +11,10 @@ import (
 const SourceAsuraScans = "asurascans"
 
 var (
-	ErrUnknownSource  = errors.New("unknown source")
-	ErrSeriesNotFound = errors.New("series not found")
-	ErrDownloadFailed = errors.New("cover download failed")
+	ErrUnknownSource     = errors.New("unknown source")
+	ErrSeriesNotFound    = errors.New("series not found")
+	ErrDownloadFailed    = errors.New("cover download failed")
+	ErrLocalCoverMissing = errors.New("local cover missing")
 )
 
 type CoverResolver interface {

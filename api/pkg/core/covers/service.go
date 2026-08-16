@@ -16,11 +16,16 @@ import (
 
 type ServiceConfig struct {
 	ProxyPathPrefix string
+	DownloadsDir    string
 }
 
 func (cfg *ServiceConfig) Validate() error {
 	if cfg.ProxyPathPrefix == "" {
 		return errors.New("proxyPathPrefix is required")
+	}
+
+	if cfg.DownloadsDir == "" {
+		return errors.New("downloadsDir is required")
 	}
 
 	return nil
