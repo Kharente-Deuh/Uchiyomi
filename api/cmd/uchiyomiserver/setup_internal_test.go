@@ -61,6 +61,14 @@ func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comi
 	return nil, nil
 }
 
+func (stubComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	return nil
+}
+
 type emptyOIDCProvidersRepository struct{}
 
 func (emptyOIDCProvidersRepository) GetByID(

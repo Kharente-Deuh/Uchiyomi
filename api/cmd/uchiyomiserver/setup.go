@@ -14,6 +14,7 @@ import (
 	core "github.com/kharente-deuh/uchiyomi-server/pkg/core"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	httpcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/gateway/http"
+	comicrefresh "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/refresh"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
@@ -136,9 +137,18 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		LibraryRepository: dbr.LibraryRepository,
 		ChaptersService:   chaptersSvc,
 		Sources:           sources.SourceMap{sources.SourceAsuraScans: asuraApp},
+		Logger:            logger,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init comicsSvc: %w", err)
+	}
+
+	chapterListRefresh, err := comicrefresh.New(
+		comicrefresh.Config{Interval: cfg.ChapterListRefreshInterval},
+		comicrefresh.Deps{ComicsService: comicsSvc, Logger: logger},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init chapter list refresh: %w", err)
 	}
 
 	apps.Asura = asuraApp
@@ -179,14 +189,15 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			ComicsCtrl:        ctrls.Comics,
 			ChaptersCtrl:      ctrls.Chapters,
 
-			Health:           registry,
-			Logger:           logger,
-			DB:               dbr.PGDB,
-			Asura:            apps.Asura,
-			Covers:           apps.Covers,
-			Downloads:        downloadApp,
-			Sessions:         apps.Sessions,
-			OIDCRevalidation: apps.OIDCRevalidation,
+			Health:             registry,
+			Logger:             logger,
+			DB:                 dbr.PGDB,
+			Asura:              apps.Asura,
+			Covers:             apps.Covers,
+			Downloads:          downloadApp,
+			ChapterListRefresh: chapterListRefresh,
+			Sessions:           apps.Sessions,
+			OIDCRevalidation:   apps.OIDCRevalidation,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init main app: %w", err)

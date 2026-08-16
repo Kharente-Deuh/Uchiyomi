@@ -80,7 +80,7 @@ func ParseSeriesStatus(s string) (SeriesStatus, error) {
 
 type Source interface {
 	GetInfosBySlug(context.Context, GetInfosBySlugOpts) (*GetInfosBySlugResponse, error)
-	GetChaptersBySlug(context.Context, string) ([]SourceChapter, error)
+	GetChaptersBySlug(context.Context, GetChaptersBySlugOpts) ([]SourceChapter, error)
 	GetPageURLsByChapter(context.Context, GetPageURLsByChapterOpts) ([]string, error)
 }
 
@@ -100,7 +100,13 @@ type SourceChapter struct {
 
 type GetInfosBySlugOpts struct {
 	Slug   string
+	Fresh  bool
 	UserID uuid.UUID
+}
+
+type GetChaptersBySlugOpts struct {
+	Slug  string
+	Fresh bool
 }
 
 type GetInfosBySlugResponse struct {

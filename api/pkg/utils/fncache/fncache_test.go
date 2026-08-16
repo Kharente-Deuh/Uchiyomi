@@ -209,6 +209,35 @@ func TestFnCacheGetCachesResult(t *testing.T) {
 	}
 }
 
+func TestFnCacheFetchBypassesFreshEntry(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+
+	value := 7
+	c := newTestCache(t, func(context.Context, string) (*int, error) {
+		calls.Add(1)
+
+		return &value, nil
+	})
+
+	callWithTimeout(t, "Cache.Get", func() {
+		if _, err := c.Get(context.Background(), "same-key"); err != nil {
+			t.Errorf("Get: %v", err)
+		}
+	})
+
+	callWithTimeout(t, "Cache.Fetch", func() {
+		if _, err := c.Fetch(context.Background(), "same-key"); err != nil {
+			t.Errorf("Fetch: %v", err)
+		}
+	})
+
+	if got := calls.Load(); got != 2 {
+		t.Errorf("Fn called %d times after Get then Fetch, want 2", got)
+	}
+}
+
 func TestFnCacheGetDistinctKeys(t *testing.T) {
 	t.Parallel()
 

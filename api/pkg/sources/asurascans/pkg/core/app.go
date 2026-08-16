@@ -172,7 +172,16 @@ func (a *App) GetInfosBySlug(
 	ctx context.Context,
 	opts sources.GetInfosBySlugOpts,
 ) (*sources.GetInfosBySlugResponse, error) {
-	infos, err := a.deps.GetInfosBySlugCache.Get(ctx, opts.Slug)
+	var (
+		infos *domain.GetInfosBySlugResponse
+		err   error
+	)
+
+	if opts.Fresh {
+		infos, err = a.deps.GetInfosBySlugCache.Fetch(ctx, opts.Slug)
+	} else {
+		infos, err = a.deps.GetInfosBySlugCache.Get(ctx, opts.Slug)
+	}
 	if err != nil {
 		//nolint:wrapcheck
 		return nil, err
@@ -200,8 +209,11 @@ func (a *App) GetInfosBySlug(
 	return &res, nil
 }
 
-func (a *App) GetChaptersBySlug(ctx context.Context, slug string) ([]sources.SourceChapter, error) {
-	chs, err := a.GetChaptersListBySeries(ctx, slug, uuid.Nil)
+func (a *App) GetChaptersBySlug(
+	ctx context.Context,
+	opts sources.GetChaptersBySlugOpts,
+) ([]sources.SourceChapter, error) {
+	chs, err := a.chaptersListBySeries(ctx, opts.Slug, uuid.Nil, opts.Fresh)
 	if err != nil {
 		//nolint:wrapcheck
 		return nil, err
@@ -227,7 +239,25 @@ func (a *App) GetChaptersListBySeries(
 	slug string,
 	userID uuid.UUID,
 ) ([]domain.Chapter, error) {
-	res, err := a.deps.GetChaptersListBySeriesCache.Get(ctx, slug)
+	return a.chaptersListBySeries(ctx, slug, userID, false)
+}
+
+func (a *App) chaptersListBySeries(
+	ctx context.Context,
+	slug string,
+	userID uuid.UUID,
+	fresh bool,
+) ([]domain.Chapter, error) {
+	var (
+		res *[]domain.Chapter
+		err error
+	)
+
+	if fresh {
+		res, err = a.deps.GetChaptersListBySeriesCache.Fetch(ctx, slug)
+	} else {
+		res, err = a.deps.GetChaptersListBySeriesCache.Get(ctx, slug)
+	}
 	if err != nil {
 		//nolint:wrapcheck
 		return nil, err

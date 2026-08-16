@@ -19,8 +19,11 @@ import (
 )
 
 const (
-	testSlug   = "solo-leveling"
-	testSource = sources.SourceAsuraScans
+	testSlug         = "solo-leveling"
+	testSource       = sources.SourceAsuraScans
+	testChapterSlug  = "chapter-1"
+	testChapter2Slug = "chapter-2"
+	testChapterTitle = "Chapter 1"
 )
 
 type fakeTransactor struct {
@@ -44,17 +47,24 @@ type fakeComicsRepository struct {
 	deleteErr              error
 	createErr              error
 	getManyErr             error
+	listByStatusesErr      error
+	updateStatusErr        error
 	getByIDResult          *comics.Comic
 	findBySourceSlugResult *comics.Comic
 	createResult           *comics.Comic
 	getManyResult          []comics.Comic
+	listByStatusesResult   []comics.Comic
 	lastCreateOpts         comics.CreateComicOpts
+	lastListByStatuses     comics.ListByStatusesOpts
+	lastUpdateStatus       comics.UpdateStatusAndChapterCountOpts
+	lastDeleteID           uuid.UUID
 	findBySourceSlugCalls  int
 	createCalls            int
 	getByIDCalls           int
 	getManyCalls           int
 	deleteCalls            int
-	lastDeleteID           uuid.UUID
+	listByStatusesCalls    int
+	updateStatusCalls      int
 }
 
 func (f *fakeComicsRepository) GetByID(_ context.Context, _ comics.GetByIDOpts) (*comics.Comic, error) {
@@ -118,6 +128,26 @@ func (f *fakeComicsRepository) GetMany(_ context.Context, _ comics.GetManyOpts) 
 	f.getManyCalls++
 
 	return f.getManyResult, f.getManyErr
+}
+
+func (f *fakeComicsRepository) ListByStatuses(
+	_ context.Context,
+	opts comics.ListByStatusesOpts,
+) ([]comics.Comic, error) {
+	f.listByStatusesCalls++
+	f.lastListByStatuses = opts
+
+	return f.listByStatusesResult, f.listByStatusesErr
+}
+
+func (f *fakeComicsRepository) UpdateStatusAndChapterCount(
+	_ context.Context,
+	opts comics.UpdateStatusAndChapterCountOpts,
+) error {
+	f.updateStatusCalls++
+	f.lastUpdateStatus = opts
+
+	return f.updateStatusErr
 }
 
 type fakeLibraryRepository struct {
@@ -257,14 +287,17 @@ func (f *fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownl
 	return nil
 }
 
+//nolint:govet // fieldalignment on a test fake is not worth the unreadable field order
 type fakeSource struct {
-	err           error
-	chaptersErr   error
-	infos         *sources.GetInfosBySlugResponse
-	lastSlug      string
-	chapters      []sources.SourceChapter
-	calls         int
-	chaptersCalls int
+	infos             *sources.GetInfosBySlugResponse
+	err               error
+	chaptersErr       error
+	chapters          []sources.SourceChapter
+	lastSlug          string
+	calls             int
+	chaptersCalls     int
+	lastInfosFresh    bool
+	lastChaptersFresh bool
 }
 
 func (f *fakeSource) GetInfosBySlug(
@@ -273,6 +306,7 @@ func (f *fakeSource) GetInfosBySlug(
 ) (*sources.GetInfosBySlugResponse, error) {
 	f.calls++
 	f.lastSlug = opts.Slug
+	f.lastInfosFresh = opts.Fresh
 
 	if f.err != nil {
 		return nil, f.err
@@ -281,9 +315,13 @@ func (f *fakeSource) GetInfosBySlug(
 	return f.infos, nil
 }
 
-func (f *fakeSource) GetChaptersBySlug(_ context.Context, slug string) ([]sources.SourceChapter, error) {
+func (f *fakeSource) GetChaptersBySlug(
+	_ context.Context,
+	opts sources.GetChaptersBySlugOpts,
+) ([]sources.SourceChapter, error) {
 	f.chaptersCalls++
-	f.lastSlug = slug
+	f.lastSlug = opts.Slug
+	f.lastChaptersFresh = opts.Fresh
 
 	if f.chaptersErr != nil {
 		return nil, f.chaptersErr

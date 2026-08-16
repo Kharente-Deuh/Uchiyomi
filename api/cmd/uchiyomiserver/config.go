@@ -48,6 +48,7 @@ type cfg struct {
 		UID int `env:"PUID" envDefault:"65532"`
 		GID int `env:"PGID" envDefault:"65532"`
 	}
+	ChapterListRefreshInterval time.Duration `env:"CHAPTER_LIST_REFRESH_INTERVAL" envDefault:"3h"`
 }
 
 func newConfig() (*cfg, error) {

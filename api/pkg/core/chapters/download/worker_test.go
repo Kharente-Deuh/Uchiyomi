@@ -131,6 +131,14 @@ func (f *fakeComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]c
 	panic("not implemented")
 }
 
+func (f *fakeComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
+	panic("not implemented")
+}
+
+func (f *fakeComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	panic("not implemented")
+}
+
 type fakeSource struct {
 	pageURLs []string
 }
@@ -139,7 +147,7 @@ func (f *fakeSource) GetInfosBySlug(context.Context, sources.GetInfosBySlugOpts)
 	panic("not implemented")
 }
 
-func (f *fakeSource) GetChaptersBySlug(context.Context, string) ([]sources.SourceChapter, error) {
+func (f *fakeSource) GetChaptersBySlug(context.Context, sources.GetChaptersBySlugOpts) ([]sources.SourceChapter, error) {
 	panic("not implemented")
 }
 

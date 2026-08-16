@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
@@ -22,6 +23,7 @@ type Deps struct {
 	LibraryRepository library.LibraryRepository
 	ChaptersService   chapters.ChaptersService
 	Sources           sources.SourceMap
+	Logger            *slog.Logger
 }
 
 func (deps *Deps) Validate() error {
@@ -125,7 +127,7 @@ func (s *Service) createNewComic(ctx context.Context, opts CreateOpts) (*Comic, 
 		return nil, fmt.Errorf("src.GetInfosBySlug: %w", err)
 	}
 
-	srcChapters, err := src.GetChaptersBySlug(ctx, opts.Slug)
+	srcChapters, err := src.GetChaptersBySlug(ctx, sources.GetChaptersBySlugOpts{Slug: opts.Slug})
 	if err != nil {
 		return nil, fmt.Errorf("src.GetChaptersBySlug: %w", err)
 	}

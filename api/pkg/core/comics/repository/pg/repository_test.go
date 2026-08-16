@@ -298,6 +298,102 @@ func TestGetMany(t *testing.T) {
 	}
 }
 
+func TestListByStatuses(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	id := uuid.New()
+	created := time.Now().UTC().Truncate(time.Second)
+	updated := created
+
+	mock.ExpectQuery(`FROM "comics".*source = \$1 AND comics.status IN`).
+		WithArgs(string(comicSource), string(sources.SeriesStatusOngoing), string(sources.SeriesStatusHiatus)).
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"id", "source", "slug", "title", "status", "comic_type",
+				"chapter_count", "author", "artist", "description",
+				"genres", "alt_titles", "created_at", "updated_at",
+			}).AddRow(
+				id, string(comicSource), comicSlug, comicTitle, string(sources.SeriesStatusOngoing), string(comicType),
+				10, "Chugong", "Dubu", "desc",
+				"{}", "{}", created, updated,
+			),
+		)
+
+	got, err := r.ListByStatuses(context.Background(), comics.ListByStatusesOpts{
+		Source: comicSource,
+		Statuses: []sources.SeriesStatus{
+			sources.SeriesStatusOngoing,
+			sources.SeriesStatusHiatus,
+		},
+	})
+	if err != nil {
+		t.Fatalf("ListByStatuses: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != id {
+		t.Errorf("ListByStatuses() = %+v", got)
+	}
+}
+
+func TestListByStatusesEmptyStatuses(t *testing.T) {
+	t.Parallel()
+
+	r, _ := newComicsRepo(t)
+
+	got, err := r.ListByStatuses(context.Background(), comics.ListByStatusesOpts{
+		Source: comicSource,
+	})
+	if err != nil {
+		t.Fatalf("ListByStatuses: %v", err)
+	}
+
+	if got != nil {
+		t.Errorf("ListByStatuses() = %+v, want nil", got)
+	}
+}
+
+func TestUpdateStatusAndChapterCount(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "comics" SET`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := r.UpdateStatusAndChapterCount(context.Background(), comics.UpdateStatusAndChapterCountOpts{
+		ID:           id,
+		Status:       sources.SeriesStatusCompleted,
+		ChapterCount: 201,
+	})
+	if err != nil {
+		t.Fatalf("UpdateStatusAndChapterCount: %v", err)
+	}
+}
+
+func TestUpdateStatusAndChapterCountNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "comics" SET`).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	err := r.UpdateStatusAndChapterCount(context.Background(), comics.UpdateStatusAndChapterCountOpts{
+		ID:           uuid.New(),
+		Status:       sources.SeriesStatusCompleted,
+		ChapterCount: 1,
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("UpdateStatusAndChapterCount = %v, want domain.ErrNotFound", err)
+	}
+}
+
 func TestGetBySlugsAndSource(t *testing.T) {
 	t.Parallel()
 

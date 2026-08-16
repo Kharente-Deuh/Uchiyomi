@@ -71,6 +71,14 @@ func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comi
 	return nil, nil
 }
 
+func (stubComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	return nil
+}
+
 type inLibraryComicsRepository struct {
 	comic *comics.Comic
 }
@@ -111,6 +119,14 @@ func (r inLibraryComicsRepository) Delete(context.Context, uuid.UUID) error {
 
 func (r inLibraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
 	return nil, nil
+}
+
+func (r inLibraryComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (r inLibraryComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	return nil
 }
 
 type libraryChaptersService struct {
