@@ -64,6 +64,10 @@ func (f *fakeComicsService) RefreshChapterLists(ctx context.Context) error {
 	return f.refreshErr
 }
 
+func (f *fakeComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
+	panic("ServeCover must not be called")
+}
+
 func TestNewRejectsShortInterval(t *testing.T) {
 	t.Parallel()
 

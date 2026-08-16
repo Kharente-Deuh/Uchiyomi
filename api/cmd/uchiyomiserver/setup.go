@@ -140,6 +140,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		Transactor:        dbr.Txor,
 		LibraryRepository: dbr.LibraryRepository,
 		ChaptersService:   chaptersSvc,
+		LocalCoverStore:   coversBundle.Service,
 		Sources:           sources.SourceMap{sources.SourceAsuraScans: asuraApp},
 		Logger:            logger,
 	})

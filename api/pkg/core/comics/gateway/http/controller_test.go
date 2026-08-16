@@ -62,6 +62,10 @@ func (s *stubComicsService) RefreshChapterLists(context.Context) error {
 	return nil
 }
 
+func (s *stubComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
+	return "", "", nil
+}
+
 type stubSessionService struct {
 	result *sessions.AuthenticatedSession
 }

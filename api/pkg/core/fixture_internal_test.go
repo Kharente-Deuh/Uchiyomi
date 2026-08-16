@@ -350,6 +350,10 @@ func (fakeComicsService) RefreshChapterLists(context.Context) error {
 	return errors.New(notImplemented)
 }
 
+func (fakeComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
+	return "", "", errors.New(notImplemented)
+}
+
 type fakeChaptersService struct{}
 
 func (fakeChaptersService) CreateAll(

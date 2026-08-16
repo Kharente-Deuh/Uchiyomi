@@ -41,6 +41,45 @@ func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn 
 	return f.err
 }
 
+type fakeLocalCoverStore struct {
+	obtainErr   error
+	serveErr    error
+	removeErr   error
+	obtainCalls int
+	removeCalls int
+	serveCalls  int
+	lastObtain  struct {
+		source string
+		slug   string
+		id     uuid.UUID
+	}
+	lastRemove uuid.UUID
+	diskPath   string
+	mime       string
+}
+
+func (f *fakeLocalCoverStore) ObtainLocal(_ context.Context, comicID uuid.UUID, source, slug string) error {
+	f.obtainCalls++
+	f.lastObtain.id = comicID
+	f.lastObtain.source = source
+	f.lastObtain.slug = slug
+
+	return f.obtainErr
+}
+
+func (f *fakeLocalCoverStore) ServeLocal(context.Context, uuid.UUID) (string, string, error) {
+	f.serveCalls++
+
+	return f.diskPath, f.mime, f.serveErr
+}
+
+func (f *fakeLocalCoverStore) RemoveLocal(comicID uuid.UUID) error {
+	f.removeCalls++
+	f.lastRemove = comicID
+
+	return f.removeErr
+}
+
 type fakeComicsRepository struct {
 	getByIDErr             error
 	findBySourceSlugErr    error
@@ -51,6 +90,7 @@ type fakeComicsRepository struct {
 	updateStatusErr        error
 	getByIDResult          *comics.Comic
 	findBySourceSlugResult *comics.Comic
+	findBySourceSlugSecond *comics.Comic
 	createResult           *comics.Comic
 	getManyResult          []comics.Comic
 	listByStatusesResult   []comics.Comic
@@ -86,6 +126,10 @@ func (f *fakeComicsRepository) FindBySourceSlug(
 	opts comics.FindBySourceSlugOpts,
 ) (*comics.Comic, error) {
 	f.findBySourceSlugCalls++
+
+	if f.findBySourceSlugCalls > 1 && f.findBySourceSlugSecond != nil {
+		return f.findBySourceSlugSecond, nil
+	}
 
 	return f.findBySourceSlugResult, f.findBySourceSlugErr
 }
@@ -339,6 +383,7 @@ func validServiceDeps() comics.Deps {
 		ComicsRepository:  &fakeComicsRepository{},
 		LibraryRepository: &fakeLibraryRepository{},
 		ChaptersService:   &fakeChaptersService{},
+		LocalCoverStore:   &fakeLocalCoverStore{},
 		Transactor:        &fakeTransactor{},
 		Sources: sources.SourceMap{
 			testSource: &fakeSource{
@@ -419,11 +464,13 @@ func TestCreateReturnsExistingComicAndAddsLibraryEntry(t *testing.T) {
 	}
 	libraryRepo := &fakeLibraryRepository{}
 	chaptersSvc := &fakeChaptersService{listByComicIDResult: existingChapters}
+	coverStore := &fakeLocalCoverStore{}
 	source := &fakeSource{}
 	deps := validServiceDeps()
 	deps.ComicsRepository = comicsRepo
 	deps.LibraryRepository = libraryRepo
 	deps.ChaptersService = chaptersSvc
+	deps.LocalCoverStore = coverStore
 	deps.Sources = sources.SourceMap{testSource: source}
 
 	svc, err := comics.NewService(deps)
@@ -483,6 +530,10 @@ func TestCreateReturnsExistingComicAndAddsLibraryEntry(t *testing.T) {
 	if len(chaptersSvc.lastEnqueueChapters) != 1 {
 		t.Errorf("enqueued chapters = %+v, want existing chapter list", chaptersSvc.lastEnqueueChapters)
 	}
+
+	if coverStore.obtainCalls != 0 {
+		t.Errorf("ObtainLocal called %d times, want 0", coverStore.obtainCalls)
+	}
 }
 
 func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
@@ -492,6 +543,7 @@ func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
 	comicsRepo := &fakeComicsRepository{findBySourceSlugErr: domain.ErrNotFound}
 	libraryRepo := &fakeLibraryRepository{}
 	chaptersSvc := &fakeChaptersService{}
+	coverStore := &fakeLocalCoverStore{}
 	tx := &fakeTransactor{}
 	source := &fakeSource{
 		infos: &sources.GetInfosBySlugResponse{
@@ -517,6 +569,7 @@ func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
 	deps.ComicsRepository = comicsRepo
 	deps.LibraryRepository = libraryRepo
 	deps.ChaptersService = chaptersSvc
+	deps.LocalCoverStore = coverStore
 	deps.Transactor = tx
 	deps.Sources = sources.SourceMap{testSource: source}
 
@@ -580,6 +633,26 @@ func TestCreateFetchesSourceAndPersistsLibraryEntry(t *testing.T) {
 
 	if chaptersSvc.enqueueDownloadableCalls != 1 {
 		t.Errorf("EnqueueDownloadable called %d times, want 1", chaptersSvc.enqueueDownloadableCalls)
+	}
+
+	if coverStore.obtainCalls != 1 {
+		t.Errorf("ObtainLocal called %d times, want 1", coverStore.obtainCalls)
+	}
+
+	if coverStore.lastObtain.slug != testSlug {
+		t.Errorf("ObtainLocal slug = %q, want %q", coverStore.lastObtain.slug, testSlug)
+	}
+
+	if comicsRepo.lastCreateOpts.ID != coverStore.lastObtain.id {
+		t.Errorf("CreateComicOpts.ID = %s, want %s", comicsRepo.lastCreateOpts.ID, coverStore.lastObtain.id)
+	}
+
+	if comicsRepo.lastCreateOpts.ID == uuid.Nil {
+		t.Error("CreateComicOpts.ID must not be uuid.Nil")
+	}
+
+	if coverStore.removeCalls != 0 {
+		t.Errorf("RemoveLocal called %d times, want 0", coverStore.removeCalls)
 	}
 }
 
@@ -850,5 +923,190 @@ func TestDeleteReturnsWhenLibraryEntryMissing(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Delete = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestCreateDoesNotInsertWhenObtainLocalFails(t *testing.T) {
+	t.Parallel()
+
+	comicsRepo := &fakeComicsRepository{findBySourceSlugErr: domain.ErrNotFound}
+	libraryRepo := &fakeLibraryRepository{}
+	coverStore := &fakeLocalCoverStore{obtainErr: errors.New("cdn down")}
+	deps := validServiceDeps()
+	deps.ComicsRepository = comicsRepo
+	deps.LibraryRepository = libraryRepo
+	deps.LocalCoverStore = coverStore
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.Create(context.Background(), comics.CreateOpts{
+		UserID: uuid.New(),
+		Source: testSource,
+		Slug:   testSlug,
+	})
+	if err == nil {
+		t.Fatal("Create must fail when ObtainLocal fails")
+	}
+
+	if comicsRepo.createCalls != 0 {
+		t.Errorf("ComicsRepository.Create called %d times, want 0", comicsRepo.createCalls)
+	}
+
+	if libraryRepo.createCalls != 0 {
+		t.Errorf("LibraryRepository.Create called %d times, want 0", libraryRepo.createCalls)
+	}
+}
+
+func TestCreateUniqueRaceRemovesOrphanCoverAndAddsExisting(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	winner := &comics.Comic{ID: uuid.New(), Slug: testSlug, Source: testSource}
+	winnerChapters := []chapters.Chapter{
+		{ID: uuid.New(), ComicID: winner.ID, SourceChapterSlug: testChapterSlug, Number: 1},
+	}
+
+	comicsRepo := &fakeComicsRepository{
+		findBySourceSlugErr:    domain.ErrNotFound,
+		findBySourceSlugSecond: winner,
+		createErr:              domain.ErrAlreadyExists,
+	}
+	libraryRepo := &fakeLibraryRepository{}
+	chaptersSvc := &fakeChaptersService{listByComicIDResult: winnerChapters}
+	coverStore := &fakeLocalCoverStore{}
+	deps := validServiceDeps()
+	deps.ComicsRepository = comicsRepo
+	deps.LibraryRepository = libraryRepo
+	deps.ChaptersService = chaptersSvc
+	deps.LocalCoverStore = coverStore
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	got, err := svc.Create(context.Background(), comics.CreateOpts{
+		UserID: userID,
+		Source: testSource,
+		Slug:   testSlug,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if got != winner {
+		t.Errorf("Create() = %+v, want winner %+v", got, winner)
+	}
+
+	if coverStore.removeCalls != 1 {
+		t.Errorf("RemoveLocal called %d times, want 1", coverStore.removeCalls)
+	}
+
+	if coverStore.lastRemove != coverStore.lastObtain.id {
+		t.Errorf("RemoveLocal comic ID = %s, want %s", coverStore.lastRemove, coverStore.lastObtain.id)
+	}
+
+	if libraryRepo.lastCreate.ComicID != winner.ID {
+		t.Errorf("library CreateOpts.ComicID = %s, want %s", libraryRepo.lastCreate.ComicID, winner.ID)
+	}
+}
+
+func TestCreateRemovesCoverWhenTxFails(t *testing.T) {
+	t.Parallel()
+
+	comicsRepo := &fakeComicsRepository{
+		findBySourceSlugErr: domain.ErrNotFound,
+		createErr:           errors.New("db down"),
+	}
+	coverStore := &fakeLocalCoverStore{}
+	deps := validServiceDeps()
+	deps.ComicsRepository = comicsRepo
+	deps.LocalCoverStore = coverStore
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.Create(context.Background(), comics.CreateOpts{
+		UserID: uuid.New(),
+		Source: testSource,
+		Slug:   testSlug,
+	})
+	if err == nil {
+		t.Fatal("Create must fail when tx fails")
+	}
+
+	if coverStore.removeCalls != 1 {
+		t.Errorf("RemoveLocal called %d times, want 1", coverStore.removeCalls)
+	}
+}
+
+func TestServeCoverNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	comicsRepo := &fakeComicsRepository{getByIDErr: domain.ErrNotFound}
+	coverStore := &fakeLocalCoverStore{}
+	deps := validServiceDeps()
+	deps.ComicsRepository = comicsRepo
+	deps.LocalCoverStore = coverStore
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, _, err = svc.ServeCover(context.Background(), comics.GetByIDOpts{
+		UserID: uuid.New(),
+		ID:     uuid.New(),
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("ServeCover = %v, want domain.ErrNotFound", err)
+	}
+
+	if coverStore.serveCalls != 0 {
+		t.Errorf("ServeLocal called %d times, want 0", coverStore.serveCalls)
+	}
+}
+
+func TestServeCoverReturnsLocalPath(t *testing.T) {
+	t.Parallel()
+
+	comic := &comics.Comic{ID: uuid.New()}
+	comicsRepo := &fakeComicsRepository{getByIDResult: comic}
+	coverStore := &fakeLocalCoverStore{
+		diskPath: "/covers/abc.webp",
+		mime:     "image/webp",
+	}
+	deps := validServiceDeps()
+	deps.ComicsRepository = comicsRepo
+	deps.LocalCoverStore = coverStore
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	path, contentType, err := svc.ServeCover(context.Background(), comics.GetByIDOpts{
+		UserID: uuid.New(),
+		ID:     comic.ID,
+	})
+	if err != nil {
+		t.Fatalf("ServeCover: %v", err)
+	}
+
+	if path != coverStore.diskPath {
+		t.Errorf("disk path = %q, want %q", path, coverStore.diskPath)
+	}
+
+	if contentType != coverStore.mime {
+		t.Errorf("content type = %q, want %q", contentType, coverStore.mime)
+	}
+
+	if coverStore.serveCalls != 1 {
+		t.Errorf("ServeLocal called %d times, want 1", coverStore.serveCalls)
 	}
 }
