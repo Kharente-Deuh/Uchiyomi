@@ -11,6 +11,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -33,13 +35,18 @@ const (
 )
 
 type stubComicsService struct {
-	createErr     error
-	getByIDErr    error
-	getManyErr    error
-	deleteErr     error
-	createResult  *comics.Comic
-	getByIDResult *comics.Comic
-	getManyResult []comics.Comic
+	getManyResult    []comics.Comic
+	serveCoverPath   string
+	serveCoverType   string
+	lastServeCoverID uuid.UUID
+	createResult     *comics.Comic
+	getByIDResult    *comics.Comic
+	serveCoverCalls  int
+	createErr        error
+	getByIDErr       error
+	getManyErr       error
+	deleteErr        error
+	serveCoverErr    error
 }
 
 func (s *stubComicsService) Create(_ context.Context, _ comics.CreateOpts) (*comics.Comic, error) {
@@ -62,8 +69,11 @@ func (s *stubComicsService) RefreshChapterLists(context.Context) error {
 	return nil
 }
 
-func (s *stubComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
-	return "", "", nil
+func (s *stubComicsService) ServeCover(_ context.Context, opts comics.GetByIDOpts) (string, string, error) {
+	s.serveCoverCalls++
+	s.lastServeCoverID = opts.ID
+
+	return s.serveCoverPath, s.serveCoverType, s.serveCoverErr
 }
 
 type stubSessionService struct {
@@ -230,11 +240,17 @@ func TestCreateReturnsComic(t *testing.T) {
 	if got.ID != comic.ID || got.Slug != comic.Slug {
 		t.Errorf("response = %+v, want comic %+v", got, comic)
 	}
+
+	wantCover := "/api/comics/" + comic.ID.String() + "/cover"
+	if got.Cover != wantCover {
+		t.Errorf("cover = %q, want %q", got.Cover, wantCover)
+	}
 }
 
 type comicshttpLightComic struct {
 	Title        string               `json:"title"`
 	Slug         string               `json:"slug"`
+	Cover        string               `json:"cover"`
 	Source       sources.SourceName   `json:"source"`
 	Status       sources.SeriesStatus `json:"status"`
 	ChapterCount int                  `json:"chapter_count"`
@@ -291,6 +307,78 @@ func TestGetManyReturnsComics(t *testing.T) {
 
 	if len(got) != 1 || got[0].Slug != items[0].Slug {
 		t.Errorf("response = %+v, want %+v", got, items)
+	}
+
+	wantCover := "/api/comics/" + items[0].ID.String() + "/cover"
+	if got[0].Cover != wantCover {
+		t.Errorf("cover = %q, want %q", got[0].Cover, wantCover)
+	}
+}
+
+func TestServeCoverOK(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cover.webp")
+	if err := os.WriteFile(path, []byte("webp-bytes"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	r := newTestRouter(t, &stubComicsService{
+		serveCoverPath: path,
+		serveCoverType: "image/webp",
+	}, authenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, comicsEndpoint+"/"+comicID.String()+"/cover", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	if rec.Header().Get("Content-Type") != "image/webp" {
+		t.Errorf("Content-Type = %q", rec.Header().Get("Content-Type"))
+	}
+
+	if rec.Body.String() != "webp-bytes" {
+		t.Errorf("body = %q", rec.Body.String())
+	}
+}
+
+func TestServeCoverNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	r := newTestRouter(t, &stubComicsService{
+		serveCoverErr: fmt.Errorf("s.GetByID: %w", domain.ErrNotFound),
+	}, authenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, comicsEndpoint+"/"+comicID.String()+"/cover", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestServeCoverUnauthorized(t *testing.T) {
+	t.Parallel()
+
+	r := newTestRouter(t, &stubComicsService{}, authenticatorFor(t, &users.User{ID: uuid.New(), Name: testUsername}))
+
+	req := httptest.NewRequest(http.MethodGet, comicsEndpoint+"/"+uuid.New().String()+"/cover", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rec.Code)
 	}
 }
 

@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -88,6 +90,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 
 		r.Post("/", c.create)
 		r.Get("/", c.getMany)
+		r.Get("/{id}/cover", c.serveCover)
 		r.Get("/{id}", c.getByID)
 		r.Delete("/{id}", c.deleteByID)
 	})
@@ -320,4 +323,52 @@ func parseQueryOffset(q string) (int, error) {
 	}
 
 	return offset, nil
+}
+
+func (c *Controller) serveCover(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.Error("user not found in context")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "id must be a valid UUID")
+
+		return
+	}
+
+	diskPath, contentType, err := c.deps.ComicsService.ServeCover(ctx, comics.GetByIDOpts{
+		UserID: user.ID,
+		ID:     id,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "comic not found")
+
+			return
+		}
+
+		c.deps.Logger.Error("failed to serve comic cover", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+
+		return
+	}
+
+	f, err := os.Open(diskPath)
+	if err != nil {
+		c.deps.Logger.Error("failed to open local cover", "path", diskPath, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+
+		return
+	}
+
+	defer f.Close()
+
+	w.Header().Set("Content-Type", contentType)
+	http.ServeContent(w, r, diskPath, time.Time{}, f)
 }
