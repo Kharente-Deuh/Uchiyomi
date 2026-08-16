@@ -111,6 +111,12 @@ func (fakeSessionsRepository) DeleteByTokenHash(context.Context, []byte) error {
 	return errors.New(notImplemented)
 }
 
+type stubCoverFinder struct{}
+
+func (stubCoverFinder) FindBySourceSlug(context.Context, string, string) (uuid.UUID, error) {
+	return uuid.Nil, coredomain.ErrNotFound
+}
+
 func newTestCoversBundle(t *testing.T, asuraApp *asura.App) (*covers.App, *covers.Service) {
 	t.Helper()
 
@@ -155,6 +161,7 @@ func newTestCoversBundle(t *testing.T, asuraApp *asura.App) (*covers.App, *cover
 			Resolvers:  resolvers,
 			HTTPClient: httpClient,
 			Logger:     logger,
+			Finder:     stubCoverFinder{},
 		},
 	)
 	if err != nil {

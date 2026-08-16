@@ -108,6 +108,9 @@ func (c *Controller) serveCover(w http.ResponseWriter, r *http.Request) {
 			httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "series not found")
 		case errors.Is(err, covers.ErrDownloadFailed):
 			httputils.WriteError(w, c.deps.Logger, http.StatusBadGateway, "cover download failed")
+		case errors.Is(err, covers.ErrLocalCoverMissing):
+			c.deps.Logger.ErrorContext(ctx, "local cover missing", "source", source, "slug", slug, "error", err)
+			httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
 		default:
 			c.deps.Logger.ErrorContext(ctx, "failed to serve cover", "source", source, "slug", slug, "error", err)
 			httputils.WriteError(w, c.deps.Logger, http.StatusBadGateway, "cover download failed")

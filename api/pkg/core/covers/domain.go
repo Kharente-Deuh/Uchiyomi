@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"io"
+
+	"github.com/google/uuid"
 )
 
 const SourceAsuraScans = "asurascans"
@@ -20,4 +22,8 @@ var (
 type CoverResolver interface {
 	ResolveExternalURL(context.Context, string) (string, error)
 	Fetch(context.Context, string) (io.ReadCloser, error)
+}
+
+type LocalComicFinder interface {
+	FindBySourceSlug(ctx context.Context, source, slug string) (uuid.UUID, error)
 }

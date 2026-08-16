@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	core "github.com/kharente-deuh/uchiyomi-server/pkg/core"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	httpcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/gateway/http"
@@ -94,10 +96,11 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	}
 
 	coversBundle, err := setupCovers(coversDeps{
-		Logger:       logger,
-		CoversDir:    coversDir,
-		DownloadsDir: downloadsDir,
-		AsuraApp:     asuraApp,
+		Logger:           logger,
+		CoversDir:        coversDir,
+		DownloadsDir:     downloadsDir,
+		AsuraApp:         asuraApp,
+		ComicsRepository: dbr.ComicsRepository,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init covers: %w", err)
@@ -465,11 +468,30 @@ type coversBundle struct {
 }
 
 type coversDeps struct {
-	Logger   *slog.Logger
-	AsuraApp *asura.App
+	Logger           *slog.Logger
+	AsuraApp         *asura.App
+	ComicsRepository comics.ComicsRepository
 
 	CoversDir    string
 	DownloadsDir string
+}
+
+type comicsCoverFinder struct {
+	repo comics.ComicsRepository
+}
+
+func (f comicsCoverFinder) FindBySourceSlug(ctx context.Context, source, slug string) (uuid.UUID, error) {
+	name, err := sources.ParseSourceName(source)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("sources.ParseSourceName: %w", err)
+	}
+
+	comic, err := f.repo.FindBySourceSlug(ctx, comics.FindBySourceSlugOpts{Source: name, Slug: slug})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("repo.FindBySourceSlug: %w", err)
+	}
+
+	return comic.ID, nil
 }
 
 func setupCovers(deps coversDeps) (*coversBundle, error) {
@@ -521,6 +543,7 @@ func setupCovers(deps coversDeps) (*coversBundle, error) {
 			Resolvers:  resolvers,
 			HTTPClient: httpClient,
 			Logger:     deps.Logger,
+			Finder:     comicsCoverFinder{repo: deps.ComicsRepository},
 		},
 	)
 	if err != nil {
