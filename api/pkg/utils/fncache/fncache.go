@@ -175,14 +175,24 @@ func (c *Cache[P, T]) Run(ctx context.Context) error {
 }
 
 func (c *Cache[P, T]) Get(ctx context.Context, opts P) (*T, error) {
+	return c.load(ctx, opts, false)
+}
+
+func (c *Cache[P, T]) Fetch(ctx context.Context, opts P) (*T, error) {
+	return c.load(ctx, opts, true)
+}
+
+func (c *Cache[P, T]) load(ctx context.Context, opts P, fresh bool) (*T, error) {
 	key := c.cfg.Key(opts)
 
-	c.mtx.Lock()
-	value, ok := c.store[key]
-	c.mtx.Unlock()
+	if !fresh {
+		c.mtx.Lock()
+		value, ok := c.store[key]
+		c.mtx.Unlock()
 
-	if ok && c.fresh(value, time.Now()) {
-		return value.Result, value.Error
+		if ok && c.fresh(value, time.Now()) {
+			return value.Result, value.Error
+		}
 	}
 
 	ch := c.sf.DoChan(key, func() (any, error) {

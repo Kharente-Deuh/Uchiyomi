@@ -58,6 +58,10 @@ func (s *stubComicsService) Delete(_ context.Context, _ comics.DeleteOpts) error
 	return s.deleteErr
 }
 
+func (s *stubComicsService) RefreshChapterLists(context.Context) error {
+	return nil
+}
+
 type stubSessionService struct {
 	result *sessions.AuthenticatedSession
 }

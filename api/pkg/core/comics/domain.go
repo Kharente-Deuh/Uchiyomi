@@ -47,6 +47,8 @@ type ComicsRepository interface {
 	GetBySlugsAndSource(context.Context, GetBySlugsAndSource) ([]Comic, error)
 	Delete(context.Context, uuid.UUID) error
 	GetMany(context.Context, GetManyOpts) ([]Comic, error)
+	ListByStatuses(context.Context, ListByStatusesOpts) ([]Comic, error)
+	UpdateStatusAndChapterCount(context.Context, UpdateStatusAndChapterCountOpts) error
 }
 
 type CreateComicOpts struct {
@@ -75,6 +77,7 @@ type ComicsService interface {
 	GetByID(context.Context, GetByIDOpts) (*Comic, error)
 	GetMany(context.Context, GetManyOpts) ([]Comic, error)
 	Delete(context.Context, DeleteOpts) error
+	RefreshChapterLists(context.Context) error
 }
 
 type CreateOpts struct {
@@ -100,4 +103,15 @@ type GetManyOpts struct {
 type DeleteOpts struct {
 	UserID uuid.UUID
 	ID     uuid.UUID
+}
+
+type ListByStatusesOpts struct {
+	Source   sources.SourceName
+	Statuses []sources.SeriesStatus
+}
+
+type UpdateStatusAndChapterCountOpts struct {
+	Status       sources.SeriesStatus
+	ID           uuid.UUID
+	ChapterCount int
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var _ comics.ComicsRepository = (*PGComicsRepository)(nil)
@@ -191,6 +192,52 @@ func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpt
 	}
 
 	return ret, nil
+}
+
+func (r *PGComicsRepository) ListByStatuses(
+	ctx context.Context,
+	opts comics.ListByStatusesOpts,
+) ([]comics.Comic, error) {
+	if len(opts.Statuses) == 0 {
+		return nil, nil
+	}
+
+	models, err := r.db(ctx).
+		Where("comics.source = ? AND comics.status IN ?", opts.Source, opts.Statuses).
+		Order("comics.created_at ASC").
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := make([]comics.Comic, len(models))
+	for i, model := range models {
+		ret[i] = model.Domain()
+	}
+
+	return ret, nil
+}
+
+func (r *PGComicsRepository) UpdateStatusAndChapterCount(
+	ctx context.Context,
+	opts comics.UpdateStatusAndChapterCountOpts,
+) error {
+	values := map[string]any{
+		"status":        pgmodels.ComicStatusFromDomain(opts.Status),
+		"chapter_count": opts.ChapterCount,
+		"updated_at":    time.Now(),
+	}
+
+	rows, err := r.db(ctx).Where("id = ?", opts.ID).Set(clause.Assignments(values)).Update(ctx)
+	if err != nil {
+		return fmt.Errorf("r.db(ctx).Updates: %w", err)
+	}
+
+	if rows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }
 
 // nolint:lll

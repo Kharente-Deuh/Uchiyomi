@@ -182,6 +182,14 @@ func (fakeDownloadsApp) Run(ctx context.Context) error {
 	return fmt.Errorf("context done: %w", ctx.Err())
 }
 
+type fakeChapterListRefreshApp struct{}
+
+func (fakeChapterListRefreshApp) Run(ctx context.Context) error {
+	<-ctx.Done()
+
+	return fmt.Errorf("context done: %w", ctx.Err())
+}
+
 func (fakeSessionsRepository) DeleteByUserAndProvider(context.Context, uuid.UUID, uuid.UUID) error {
 	return errors.New(notImplemented)
 }
@@ -302,6 +310,14 @@ func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comi
 	return nil, nil
 }
 
+func (stubComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	return nil
+}
+
 type fakeComicsService struct{}
 
 func (fakeComicsService) Create(context.Context, comics.CreateOpts) (*comics.Comic, error) {
@@ -317,6 +333,10 @@ func (fakeComicsService) GetMany(context.Context, comics.GetManyOpts) ([]comics.
 }
 
 func (fakeComicsService) Delete(context.Context, comics.DeleteOpts) error {
+	return errors.New(notImplemented)
+}
+
+func (fakeComicsService) RefreshChapterLists(context.Context) error {
 	return errors.New(notImplemented)
 }
 
@@ -518,23 +538,24 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 	app, err := New(
 		Config{ServerPort: port, AllowedOrigins: []string{"*"}},
 		Deps{
-			DB:                db,
-			SetupCtrl:         setupCtrl,
-			AuthCtrl:          authCtrl,
-			UsersCtrl:         usersCtrl,
-			AsuraCtrl:         asuraCtrl,
-			CoversCtrl:        coversCtrl,
-			HealthCtrl:        healthCtrl,
-			OIDCProvidersCtrl: oidcProvidersCtrl,
-			ComicsCtrl:        comicsCtrl,
-			ChaptersCtrl:      chaptersCtrl,
-			Logger:            logger,
-			Health:            registry,
-			Asura:             asuraApp,
-			Covers:            coversApp,
-			Downloads:         fakeDownloadsApp{},
-			Sessions:          sessionsApp,
-			OIDCRevalidation:  fakeOIDCRevalidationApp{},
+			DB:                 db,
+			SetupCtrl:          setupCtrl,
+			AuthCtrl:           authCtrl,
+			UsersCtrl:          usersCtrl,
+			AsuraCtrl:          asuraCtrl,
+			CoversCtrl:         coversCtrl,
+			HealthCtrl:         healthCtrl,
+			OIDCProvidersCtrl:  oidcProvidersCtrl,
+			ComicsCtrl:         comicsCtrl,
+			ChaptersCtrl:       chaptersCtrl,
+			Logger:             logger,
+			Health:             registry,
+			Asura:              asuraApp,
+			Covers:             coversApp,
+			Downloads:          fakeDownloadsApp{},
+			ChapterListRefresh: fakeChapterListRefreshApp{},
+			Sessions:           sessionsApp,
+			OIDCRevalidation:   fakeOIDCRevalidationApp{},
 		})
 	if err != nil {
 		t.Fatalf("New: %v", err)

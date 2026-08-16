@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -60,6 +61,14 @@ func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comi
 	return nil, nil
 }
 
+func (stubComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	return nil
+}
+
 type libraryComicsRepository struct {
 	err    error
 	comics []comics.Comic
@@ -101,6 +110,14 @@ func (r libraryComicsRepository) Delete(context.Context, uuid.UUID) error {
 
 func (r libraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
 	return nil, nil
+}
+
+func (r libraryComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (r libraryComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	return nil
 }
 
 type inLibraryComicsRepository struct {
@@ -148,6 +165,14 @@ func (r inLibraryComicsRepository) Delete(context.Context, uuid.UUID) error {
 
 func (r inLibraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
 	return nil, nil
+}
+
+func (r inLibraryComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
+	return nil, nil
+}
+
+func (r inLibraryComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	return nil
 }
 
 type libraryChaptersService struct {
@@ -453,6 +478,38 @@ func TestAppGetInfosBySlugWithoutLibraryEntry(t *testing.T) {
 
 	if res.InternalID != nil {
 		t.Errorf("InternalID = %v, want nil when comic is not in library", res.InternalID)
+	}
+}
+
+func TestAppGetInfosBySlugFreshBypassesCache(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	deps := fullDeps(t)
+	deps.GetInfosBySlugCache = newCache(t, identityKey,
+		func(context.Context, string) (*domain.GetInfosBySlugResponse, error) {
+			calls.Add(1)
+
+			return &domain.GetInfosBySlugResponse{Title: "Nano"}, nil
+		})
+
+	app, err := core.New(testConfig(), deps)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	opts := sources.GetInfosBySlugOpts{Slug: "nano-machine"}
+	if _, err := app.GetInfosBySlug(context.Background(), opts); err != nil {
+		t.Fatalf("GetInfosBySlug: %v", err)
+	}
+
+	opts.Fresh = true
+	if _, err := app.GetInfosBySlug(context.Background(), opts); err != nil {
+		t.Fatalf("GetInfosBySlug fresh: %v", err)
+	}
+
+	if got := calls.Load(); got != 2 {
+		t.Errorf("cache Fn called %d times, want 2 (cached Get then Fresh Fetch)", got)
 	}
 }
 

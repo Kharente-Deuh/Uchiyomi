@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	componentMigrations       = "migrations"
-	componentAsura            = "asura"
-	componentCovers           = "covers"
-	componentDownloads        = "downloads"
-	componentSessions         = "sessions"
-	componentOIDCRevalidation = "oidc-revalidation"
-	componentDB               = "db"
+	componentMigrations         = "migrations"
+	componentAsura              = "asura"
+	componentCovers             = "covers"
+	componentDownloads          = "downloads"
+	componentChapterListRefresh = "chapter-list-refresh"
+	componentSessions           = "sessions"
+	componentOIDCRevalidation   = "oidc-revalidation"
+	componentDB                 = "db"
 )
 
 const notReadyMessage = "service is starting"
@@ -27,6 +28,7 @@ func NewHealthRegistry(db Database) *health.Registry {
 		componentAsura,
 		componentCovers,
 		componentDownloads,
+		componentChapterListRefresh,
 		componentSessions,
 		componentOIDCRevalidation,
 	)

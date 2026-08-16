@@ -46,6 +46,7 @@ func TestNewHealthRegistryDeclaresTheLatchesAndTheDBProbe(t *testing.T) {
 		componentAsura,
 		componentCovers,
 		componentDownloads,
+		componentChapterListRefresh,
 		componentSessions,
 		componentOIDCRevalidation,
 	}
