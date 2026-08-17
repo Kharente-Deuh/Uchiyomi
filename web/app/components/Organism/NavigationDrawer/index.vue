@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import type { NavigationDrawerListProps } from './List/index.vue'
+import { DEFAULT_PAGE } from '~/constants'
 
 defineProps<{
   logoutLoading: boolean
@@ -29,7 +30,7 @@ watch(compact, (value) => {
       style="border-radius: 16px;"
     >
       <div class="d-flex flex-column" :class="{ 'ga-6': !compact, 'ga-2': compact }">
-        <AtomLink to="/">
+        <AtomLink :to="DEFAULT_PAGE">
           <AtomProjectLogo :compact :class="{ 'mb-6': compact }" />
         </AtomLink>
 

@@ -5,6 +5,9 @@ import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 definePageMeta({
   layout: 'default',
   authGroups: [AUTHENTICATED_ROUTE_GROUP],
-  redirect: '/feed',
 })
 </script>
+
+<template>
+  <OrganismPageLayout :title="$t('feed.title')" />
+</template>
