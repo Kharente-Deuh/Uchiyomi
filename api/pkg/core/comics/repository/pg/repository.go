@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -160,30 +161,81 @@ func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComic
 	return &ret, nil
 }
 
-func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpts) (comics.Page, error) {
-	q := r.db(ctx).Order("comics.created_at DESC")
+func likeContains(q string) string {
+	q = strings.ReplaceAll(q, `\`, `\\`)
+	q = strings.ReplaceAll(q, `%`, `\%`)
+	q = strings.ReplaceAll(q, `_`, `\_`)
+
+	return `%` + q + `%`
+}
+
+func (r *PGComicsRepository) getManyQuery(ctx context.Context, opts comics.GetManyOpts) *gorm.DB {
+	db := pgtx.From(ctx, r.deps.DB).Model(&pgmodels.Comic{})
+
 	if opts.UserID != nil {
-		q = q.Where(`EXISTS (
-			SELECT 1 FROM library_entries
-			WHERE library_entries.comic_id = comics.id AND library_entries.user_id = ?
-		)`, opts.UserID)
+		db = db.Joins(
+			"JOIN library_entries ON library_entries.comic_id = comics.id AND library_entries.user_id = ?",
+			*opts.UserID,
+		)
 	}
 
 	if opts.Source != nil {
-		q = q.Where("comics.source = ?", opts.Source)
+		db = db.Where("comics.source = ?", *opts.Source)
 	}
 
 	if opts.Type != nil {
-		q = q.Where("comics.type = ?", opts.Type)
+		db = db.Where("comics.comic_type = ?", *opts.Type)
 	}
 
 	if opts.Status != nil {
-		q = q.Where("comics.status = ?", opts.Status)
+		db = db.Where("comics.status = ?", *opts.Status)
 	}
 
-	models, err := q.Offset(opts.Offset).Limit(opts.Limit).Find(ctx)
+	if opts.Search != "" {
+		pattern := likeContains(opts.Search)
+		//nolint:lll
+		db = db.Where(
+			`(comics.title ILIKE ? ESCAPE '\' OR EXISTS (
+				SELECT 1 FROM unnest(comics.alt_titles) AS alt(title)
+				WHERE alt.title ILIKE ? ESCAPE '\'
+			))`,
+			pattern,
+			pattern,
+		)
+	}
+
+	return db
+}
+
+func getManyOrderSQL(opts comics.GetManyOpts) string {
+	dir := "ASC"
+	if opts.Order == comics.ListOrderDesc {
+		dir = "DESC"
+	}
+
+	if opts.Sort == comics.ListSortAddedAt {
+		return "library_entries.added_at " + dir
+	}
+
+	return "LOWER(comics.title) " + dir
+}
+
+func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpts) (comics.Page, error) {
+	var total int64
+
+	if err := r.getManyQuery(ctx, opts).Count(&total).Error; err != nil {
+		return comics.Page{}, fmt.Errorf("r.getManyQuery.Count: %w", err)
+	}
+
+	var models []pgmodels.Comic
+
+	err := r.getManyQuery(ctx, opts).
+		Order(getManyOrderSQL(opts)).
+		Offset(opts.Offset).
+		Limit(opts.Limit).
+		Find(&models).Error
 	if err != nil {
-		return comics.Page{}, fmt.Errorf("r.db(ctx).Where: %w", err)
+		return comics.Page{}, fmt.Errorf("r.getManyQuery.Find: %w", err)
 	}
 
 	ret := make([]comics.Comic, len(models))
@@ -191,7 +243,7 @@ func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpt
 		ret[i] = model.Domain()
 	}
 
-	return comics.Page{Items: ret}, nil
+	return comics.Page{Items: ret, Total: total}, nil
 }
 
 func (r *PGComicsRepository) ListByStatuses(
