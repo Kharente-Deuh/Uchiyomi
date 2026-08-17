@@ -77,7 +77,7 @@ export function useLibrarySearch({ doSearch }: LibrarySearchOptions): LibrarySea
 
   const maxPage = ref(0)
 
-  const debouncedSearchFn = useDebounceFn(async () => {
+  const debouncedSearchFn = useDebounceFn(async (opts?: { clearAccumulated: boolean }) => {
     isLoading.value = true
 
     const res = await api.search({
@@ -104,7 +104,7 @@ export function useLibrarySearch({ doSearch }: LibrarySearchOptions): LibrarySea
     }
 
     if (smAndDown.value) {
-      accumulatedComics.value = [...accumulatedComics.value, ...res.data.items]
+      accumulatedComics.value = [...(opts?.clearAccumulated ? [] : accumulatedComics.value), ...res.data.items]
     }
 
     maxPage.value = Math.ceil(res.data.total / PAGE_SIZE)
@@ -115,10 +115,21 @@ export function useLibrarySearch({ doSearch }: LibrarySearchOptions): LibrarySea
     store.clearOffset()
   })
 
-  watch([search, sort, status, type, offset, source], () => {
-    if (doSearch) {
-      debouncedSearchFn()
+  watch([search, sort, status, type, offset, source], (newValues, oldValues) => {
+    if (!doSearch) {
+      return
     }
+
+    const [newSearch, newSort, newStatus, newType, _newOffset, newSource] = newValues
+    const [oldSearch, oldSort, oldStatus, oldType, _oldOffset, oldSource] = oldValues
+
+    debouncedSearchFn({
+      clearAccumulated: newSearch !== oldSearch
+        || newSort !== oldSort
+        || newStatus !== oldStatus
+        || newType !== oldType
+        || newSource !== oldSource,
+    })
   }, { immediate: true })
 
   return {
