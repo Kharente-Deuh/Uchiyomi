@@ -26,10 +26,13 @@ function displayStub(): { smAndDown: { value: boolean } } {
   return { smAndDown }
 }
 
+function debounceStub(fn: () => unknown): () => unknown {
+  return fn
+}
+
 mockNuxtImport('useI18n', () => i18nStub)
 mockNuxtImport('useDisplay', () => displayStub)
-// eslint-disable-next-line unicorn/consistent-function-scoping
-mockNuxtImport('useDebounceFn', () => (fn: () => unknown) => fn)
+mockNuxtImport('useDebounceFn', debounceStub)
 
 function comic(id = 'c1'): LightComic {
   return {
