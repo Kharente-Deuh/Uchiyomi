@@ -196,12 +196,7 @@ func (c *Controller) getMany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := make([]lightComic, len(page.Items))
-	for i, comic := range page.Items {
-		res[i] = lightComicFromDomain(&comic)
-	}
-
-	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, res)
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, comicListFromPage(page))
 }
 
 func (c *Controller) deleteByID(w http.ResponseWriter, r *http.Request) {
@@ -269,6 +264,28 @@ func (c *Controller) getManyQuery(r *http.Request) (*comics.GetManyOpts, error) 
 
 		opts.Status = &parsed
 	}
+
+	opts.Sort = comics.ListSortTitle
+	if raw := r.URL.Query().Get("sort"); raw != "" {
+		parsed, err := comics.ParseListSort(raw)
+		if err != nil {
+			return nil, fmt.Errorf("comics.ParseListSort: %w", err)
+		}
+
+		opts.Sort = parsed
+	}
+
+	opts.Order = comics.ListOrderAsc
+	if raw := r.URL.Query().Get("order"); raw != "" {
+		parsed, err := comics.ParseListOrder(raw)
+		if err != nil {
+			return nil, fmt.Errorf("comics.ParseListOrder: %w", err)
+		}
+
+		opts.Order = parsed
+	}
+
+	opts.Search = strings.TrimSpace(r.URL.Query().Get("search"))
 
 	limit, err := parseQueryLimit(r.URL.Query().Get("limit"))
 	if err != nil {
