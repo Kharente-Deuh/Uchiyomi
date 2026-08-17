@@ -53,3 +53,80 @@ describe('createComicsApi().deleteById', () => {
     expect(res.success === false && res.error.status).toBe(404)
   })
 })
+
+describe('createComicsApi().search', () => {
+  it('requests / with pagination', async () => {
+    call.mockResolvedValue({ items: [comic], total: 1 })
+
+    const res = await createComicsApi().search({
+      sort: 'title',
+      order: 'asc',
+      offset: 0,
+      limit: 20,
+    })
+
+    expect(call).toHaveBeenCalledWith('/', {
+      method: 'GET',
+      params: { sort: 'title', order: 'asc', offset: 0, limit: 20 },
+    })
+    expect(res).toEqual({ success: true, data: { items: [comic], total: 1 } })
+  })
+
+  it('omits empty optional filters', async () => {
+    call.mockResolvedValue({ items: [], total: 0 })
+
+    await createComicsApi().search({
+      sort: 'title',
+      order: 'asc',
+      offset: 0,
+      limit: 20,
+    })
+
+    expect(call).toHaveBeenCalledWith('/', {
+      method: 'GET',
+      params: { sort: 'title', order: 'asc', offset: 0, limit: 20 },
+    })
+  })
+
+  it('includes search, source, status and type when set', async () => {
+    call.mockResolvedValue({ items: [], total: 0 })
+
+    await createComicsApi().search({
+      search: 'solo',
+      source: 'asurascans',
+      status: 'ongoing',
+      type: 'manhwa',
+      sort: 'latest',
+      order: 'desc',
+      offset: 20,
+      limit: 20,
+    })
+
+    expect(call).toHaveBeenCalledWith('/', {
+      method: 'GET',
+      params: {
+        search: 'solo',
+        source: 'asurascans',
+        status: 'ongoing',
+        type: 'manhwa',
+        sort: 'latest',
+        order: 'desc',
+        offset: 20,
+        limit: 20,
+      },
+    })
+  })
+
+  it('surfaces a failure with its status', async () => {
+    call.mockRejectedValue({ statusCode: 502, data: {} })
+
+    const res = await createComicsApi().search({
+      sort: 'title',
+      order: 'asc',
+      offset: 0,
+      limit: 20,
+    })
+
+    expect(res.success === false && res.error.status).toBe(502)
+  })
+})
