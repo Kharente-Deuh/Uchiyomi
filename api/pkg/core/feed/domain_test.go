@@ -20,9 +20,9 @@ func TestIsUnlocked(t *testing.T) {
 		now   time.Time
 		want  bool
 	}{
-		"zero is unlocked":          {until: time.Time{}, now: now, want: true},
+		"zero is unlocked":           {until: time.Time{}, now: now, want: true},
 		"future early access locked": {until: aug20, now: now, want: false},
-		"equal now is unlocked":     {until: now, now: now, want: true},
+		"equal now is unlocked":      {until: now, now: now, want: true},
 		"past early access unlocked": {until: aug20, now: time.Date(2026, time.August, 21, 0, 0, 0, 0, time.UTC), want: true},
 	}
 
@@ -52,7 +52,11 @@ func TestAvailabilityAtAugustScenario(t *testing.T) {
 	}
 
 	if got := feed.AvailabilityAt(published10, early20, aug16); !got.Equal(published10) {
-		t.Errorf("ch11 still locked on 16 Aug availability = %v, want publishedAt (caller must not use this for ranking locked chapters)", got)
+		t.Errorf(
+			"ch11 still locked on 16 Aug availability = %v, want publishedAt "+
+				"(caller must not use this for ranking locked chapters)",
+			got,
+		)
 	}
 
 	if got := feed.AvailabilityAt(published10, early20, aug21); !got.Equal(early20) {

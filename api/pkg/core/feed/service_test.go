@@ -15,14 +15,14 @@ import (
 )
 
 type fakeFeedRepository struct {
-	page           feed.Page
-	pageErr        error
-	chapters       []feed.LatestChapter
-	chaptersErr    error
-	lastPageOpts   feed.ListPageOpts
-	lastChapters   feed.ListChaptersOpts
-	pageCalls      int
-	chaptersCalls  int
+	pageErr       error
+	chaptersErr   error
+	lastChapters  feed.ListChaptersOpts
+	chapters      []feed.LatestChapter
+	page          feed.Page
+	lastPageOpts  feed.ListPageOpts
+	pageCalls     int
+	chaptersCalls int
 }
 
 func (f *fakeFeedRepository) ListPage(_ context.Context, opts feed.ListPageOpts) (feed.Page, error) {
