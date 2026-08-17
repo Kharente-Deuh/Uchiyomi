@@ -6,6 +6,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { DEFAULT_PAGE } from '~/constants'
 import { safeRedirect } from './redirect'
 import { STATUS_PATH } from './routes'
 
@@ -55,46 +56,46 @@ describe('safeRedirect', () => {
     expect(safeRedirect('/library?page=2')).toBe('/library?page=2')
   })
 
-  it('falls back to / when the parameter is absent', () => {
-    expect(safeRedirect(undefined)).toBe('/')
+  it('falls back to the default page when the parameter is absent', () => {
+    expect(safeRedirect(undefined)).toBe(DEFAULT_PAGE)
   })
 
-  it('falls back to / when the key is repeated and vue-router returns an array', () => {
-    expect(safeRedirect(['/a', '/b'])).toBe('/')
+  it('falls back to the default page when the key is repeated and vue-router returns an array', () => {
+    expect(safeRedirect(['/a', '/b'])).toBe(DEFAULT_PAGE)
   })
 
   it('rejects an absolute URL', () => {
-    expect(safeRedirect('https://evil.com')).toBe('/')
+    expect(safeRedirect('https://evil.com')).toBe(DEFAULT_PAGE)
   })
 
   it('rejects a protocol-relative URL', () => {
-    expect(safeRedirect('//evil.com')).toBe('/')
+    expect(safeRedirect('//evil.com')).toBe(DEFAULT_PAGE)
   })
 
   it('rejects a backslash, which some browsers normalize to /', () => {
-    expect(safeRedirect(String.raw`/\evil.com`)).toBe('/')
+    expect(safeRedirect(String.raw`/\evil.com`)).toBe(DEFAULT_PAGE)
   })
 
   it('rejects a relative path without a leading /', () => {
-    expect(safeRedirect('library')).toBe('/')
+    expect(safeRedirect('library')).toBe(DEFAULT_PAGE)
   })
 
   it('rejects a path that matches no route', () => {
     resolve.fn = () => ({ matched: [] })
 
-    expect(safeRedirect('/nope')).toBe('/')
+    expect(safeRedirect('/nope')).toBe(DEFAULT_PAGE)
   })
 
   it('rejects /status, which would redirect to itself', () => {
-    expect(safeRedirect(STATUS_PATH)).toBe('/')
+    expect(safeRedirect(STATUS_PATH)).toBe(DEFAULT_PAGE)
   })
 
   it('rejects /status even when it carries a query string', () => {
-    expect(safeRedirect('/status?redirect=%2Flibrary')).toBe('/')
+    expect(safeRedirect('/status?redirect=%2Flibrary')).toBe(DEFAULT_PAGE)
   })
 
   it('rejects /status even when it carries a fragment', () => {
-    expect(safeRedirect('/status#bas')).toBe('/')
+    expect(safeRedirect('/status#bas')).toBe(DEFAULT_PAGE)
   })
 
   it('accepts a path only prefixed by /status', () => {
@@ -102,16 +103,16 @@ describe('safeRedirect', () => {
   })
 
   it('rejects /status with a trailing slash', () => {
-    expect(safeRedirect('/status/')).toBe('/')
+    expect(safeRedirect('/status/')).toBe(DEFAULT_PAGE)
   })
 
   it('rejects /status regardless of case', () => {
-    expect(safeRedirect('/Status')).toBe('/')
+    expect(safeRedirect('/Status')).toBe(DEFAULT_PAGE)
   })
 
   it('rejects /status carrying both a query and a fragment', () => {
-    expect(safeRedirect('/status?redirect=%2Fa#bas')).toBe('/')
-    expect(safeRedirect('/status#bas?redirect=%2Fa')).toBe('/')
+    expect(safeRedirect('/status?redirect=%2Fa#bas')).toBe(DEFAULT_PAGE)
+    expect(safeRedirect('/status#bas?redirect=%2Fa')).toBe(DEFAULT_PAGE)
   })
 })
 
@@ -144,10 +145,10 @@ describe('safeRedirect with router', () => {
   })
 
   it('rejects a missing parameter segment', () => {
-    expect(safeRedirect('/source')).toBe('/')
+    expect(safeRedirect('/source')).toBe(DEFAULT_PAGE)
   })
 
   it('rejects an absolute URL without even consulting the router', () => {
-    expect(safeRedirect('https://evil.com/x')).toBe('/')
+    expect(safeRedirect('https://evil.com/x')).toBe(DEFAULT_PAGE)
   })
 })

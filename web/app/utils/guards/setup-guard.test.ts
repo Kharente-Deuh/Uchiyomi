@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_PAGE } from '~/constants'
 import { routeStub } from './route.stub'
 import { requiresSetupCheck, resolveSetupGuard } from './setup-guard'
 
@@ -33,7 +34,7 @@ describe('resolveSetupGuard', () => {
   })
 
   it('redirects completed setup to home', () => {
-    expect(resolveSetupGuard(setup, 'done')).toBe('/')
+    expect(resolveSetupGuard(setup, 'done')).toBe(DEFAULT_PAGE)
   })
 
   it('redirects to /status when status is indeterminate', () => {

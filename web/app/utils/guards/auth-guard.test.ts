@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_PAGE } from '~/constants'
 import { ADMIN_ROUTE_GROUP, AUTHENTICATED_ROUTE_GROUP, NOT_AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 import { requiresAuthCheck, resolveAuthGuard } from './auth-guard'
 import { routeStub } from './route.stub'
@@ -44,7 +45,7 @@ describe('resolveAuthGuard', () => {
   it('redirects an authenticated user on /login back to home', () => {
     const login = routeStub({ name: 'login', fullPath: '/login', meta: { authGroups: [NOT_AUTHENTICATED_ROUTE_GROUP] } })
 
-    expect(resolveAuthGuard({ to: login, ...USER })).toBe('/')
+    expect(resolveAuthGuard({ to: login, ...USER })).toBe(DEFAULT_PAGE)
     expect(resolveAuthGuard({ to: login, ...ANONYMOUS })).toBeUndefined()
   })
 })
@@ -57,7 +58,7 @@ describe('resolveAuthGuard, admin group', () => {
   })
 
   it('redirects authenticated user without rights to home', () => {
-    expect(resolveAuthGuard({ to: admin, ...USER })).toBe('/')
+    expect(resolveAuthGuard({ to: admin, ...USER })).toBe(DEFAULT_PAGE)
   })
 
   it('allows an admin through', () => {
