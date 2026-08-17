@@ -33,6 +33,8 @@ const (
 	cookieName     = "uchiyomi_session"
 	testToken      = "letoken"
 	testUsername   = "alice"
+	testComicTitle = "Solo Leveling"
+	testComicSlug  = "solo-leveling"
 )
 
 type stubComicsService struct {
@@ -197,7 +199,7 @@ func TestCreateRequiresAuthentication(t *testing.T) {
 	req := httptest.NewRequest(
 		http.MethodPost,
 		comicsEndpoint+"/",
-		bytes.NewReader([]byte(`{"source":"asurascans","slug":"solo-leveling"}`)),
+		bytes.NewReader([]byte(`{"source":"asurascans","slug":"`+testComicSlug+`"}`)),
 	)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -213,8 +215,8 @@ func TestCreateReturnsComic(t *testing.T) {
 	user := &users.User{ID: uuid.New(), Name: testUsername}
 	comic := &comics.Comic{
 		ID:           uuid.New(),
-		Title:        "Solo Leveling",
-		Slug:         "solo-leveling",
+		Title:        testComicTitle,
+		Slug:         testComicSlug,
 		Source:       sources.SourceAsuraScans,
 		Status:       sources.SeriesStatusCompleted,
 		ChapterCount: 200,
@@ -225,7 +227,7 @@ func TestCreateReturnsComic(t *testing.T) {
 	req := httptest.NewRequest(
 		http.MethodPost,
 		comicsEndpoint+"/",
-		bytes.NewReader([]byte(`{"source":"asurascans","slug":"solo-leveling"}`)),
+		bytes.NewReader([]byte(`{"source":"asurascans","slug":"`+testComicSlug+`"}`)),
 	)
 
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
@@ -268,9 +270,9 @@ type comicshttpPage struct {
 }
 
 type comicshttpDetail struct {
+	Cover        string    `json:"cover"`
 	AltTitles    []string  `json:"altTitles"`
 	ChapterCount int       `json:"chapterCount"`
-	Cover        string    `json:"cover"`
 	ID           uuid.UUID `json:"id"`
 }
 
@@ -302,9 +304,9 @@ func TestGetManyReturnsComics(t *testing.T) {
 	getManyResult := comics.Page{
 		Items: []comics.Comic{{
 			ID:           comicID,
-			Slug:         "solo-leveling",
+			Slug:         testComicSlug,
 			Source:       sources.SourceAsuraScans,
-			Title:        "Solo Leveling",
+			Title:        testComicTitle,
 			Status:       sources.SeriesStatusCompleted,
 			Type:         sources.SeriesTypeManhwa,
 			ChapterCount: 200,
@@ -332,7 +334,7 @@ func TestGetManyReturnsComics(t *testing.T) {
 		t.Errorf("total = %d, want 42", got.Total)
 	}
 
-	if len(got.Items) != 1 || got.Items[0].Slug != "solo-leveling" {
+	if len(got.Items) != 1 || got.Items[0].Slug != testComicSlug {
 		t.Errorf("response = %+v, want %+v", got, getManyResult.Items)
 	}
 
@@ -438,8 +440,8 @@ func TestGetByIDCamelCaseJSON(t *testing.T) {
 	user := &users.User{ID: uuid.New(), Name: testUsername}
 	comic := &comics.Comic{
 		ID:           uuid.New(),
-		Title:        "Solo Leveling",
-		Slug:         "solo-leveling",
+		Title:        testComicTitle,
+		Slug:         testComicSlug,
 		AltTitles:    []string{"Na Honjaman Level-Up"},
 		ChapterCount: 200,
 		Source:       sources.SourceAsuraScans,
