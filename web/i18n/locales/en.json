@@ -309,7 +309,8 @@
     },
     "sort": {
       "title": "Title",
-      "latest": "Latest"
+      "latest": "Latest",
+      "addedAt": "Date added"
     }
   },
   "feed": {

@@ -21,7 +21,7 @@ export type SearchComicResponse = {
   items: LightComic[]
 }
 
-export type SearchComicSort = 'title' | 'latest'
+export type SearchComicSort = 'title' | 'addedAt'
 export type SearchComicOrder = 'asc' | 'desc'
 
 export type SearchComicParams = {

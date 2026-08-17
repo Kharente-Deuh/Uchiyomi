@@ -11,8 +11,8 @@ const items: { value: SearchComicSort, title: string }[] = [
     title: t('library.sort.title'),
   },
   {
-    value: 'latest',
-    title: t('library.sort.latest'),
+    value: 'addedAt',
+    title: t('library.sort.addedAt'),
   },
 ]
 </script>

@@ -299,7 +299,8 @@
     "title": "Bibliothèque",
     "sort": {
       "title": "Titre",
-      "latest": "Dernier"
+      "latest": "Dernier",
+      "addedAt": "Date d'ajout"
     }
   },
   "feed": {
