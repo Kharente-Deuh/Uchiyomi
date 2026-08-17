@@ -303,7 +303,15 @@
     }
   },
   "library": {
-    "title": "Library"
+    "title": "Library",
+    "source": {
+      "label": "Source"
+    },
+    "sort": {
+      "title": "Title",
+      "latest": "Latest",
+      "addedAt": "Date added"
+    }
   },
   "feed": {
     "title": "Feed"

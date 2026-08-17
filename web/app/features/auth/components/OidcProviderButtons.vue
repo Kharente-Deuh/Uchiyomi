@@ -9,7 +9,6 @@ interface Props {
 }
 
 defineProps<Props>()
-const { t } = useI18n()
 </script>
 
 <template>
@@ -22,7 +21,7 @@ const { t } = useI18n()
       size="large"
       class="w-100"
       :data-test="`login-oidc-${provider.id}`"
-      :text="t('login.oidc.button', { name: provider.displayName })"
+      :text="$t('login.oidc.button', { name: provider.displayName })"
     />
   </div>
 </template>

@@ -20,8 +20,18 @@ watch(() => props.comic.cover, (newVal) => {
     <template #default="{ isHovering, props: hoverProps }">
       <AtomLink :to="`/browse/sources/asura/${comic.slug}`" v-bind="hoverProps">
         <div class="d-flex flex-column comic-card w-100 h-100">
-          <div class="w-100 h-100 position-relative">
-            <div class="d-flex  w-100 justify-space-between position-absolute pa-2 top-0 lft-0" style="z-index: 1;">
+          <VImg
+            cover
+            :src
+            rounded="lg"
+            aspect-ratio="2/3"
+            :lazy-src="defaultCover"
+            width="100%"
+            class="border-thin rounded-lg position-relative"
+            :class="{ 'cover-in-library': comic.internalId }"
+            @error="src = defaultCover"
+          >
+            <div class="d-flex w-100 justify-space-between position-absolute pa-2 top-0 lft-0" style="z-index: 1;">
               <AsuraBtnDelete
                 v-if="comic.internalId"
                 :mode="isHovering ? 'btn' : 'label'"
@@ -37,19 +47,7 @@ watch(() => props.comic.cover, (newVal) => {
               />
               <ComicsIconStatus :status="comic.status" with-background />
             </div>
-
-            <VImg
-              cover
-              :src
-              rounded="lg"
-              height="100%"
-              :lazy-src="defaultCover"
-              width="100%"
-              class="border-thin rounded-lg"
-              :class="{ 'opacity-50': comic.internalId }"
-              @error="src = defaultCover"
-            />
-          </div>
+          </VImg>
           <span class="text-body-large font-weight-bold text-truncate mt-2 comic-card-title">{{ comic.title }}</span>
           <span class="text-body-medium text-medium-emphasis">{{ $t('sources.asurascans.comic.chaptersCount', { count: comic.chapterCount }) }}</span>
         </div>
@@ -75,6 +73,12 @@ watch(() => props.comic.cover, (newVal) => {
 
     &--compact {
       padding: 0.4rem;
+    }
+  }
+
+  .cover-in-library {
+    img {
+      opacity: 0.5;
     }
   }
 

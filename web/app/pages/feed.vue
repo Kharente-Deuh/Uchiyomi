@@ -9,5 +9,5 @@ definePageMeta({
 </script>
 
 <template>
-  <OrganismPageLayout :title="$t('feed.title')" />
+  <OrganismPageLayout />
 </template>

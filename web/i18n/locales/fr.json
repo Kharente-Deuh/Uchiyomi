@@ -296,7 +296,12 @@
     }
   },
   "library": {
-    "title": "Bibliothèque"
+    "title": "Bibliothèque",
+    "sort": {
+      "title": "Titre",
+      "latest": "Dernier",
+      "addedAt": "Date d'ajout"
+    }
   },
   "feed": {
     "title": "Flux"
