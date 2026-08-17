@@ -9,7 +9,6 @@ interface Props {
 }
 
 defineProps<Props>()
-const { t } = useI18n()
 </script>
 
 <template>

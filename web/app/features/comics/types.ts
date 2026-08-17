@@ -22,15 +22,13 @@ export type SearchComicResponse = {
 }
 
 export type SearchComicSort = 'title' | 'addedAt'
-export type SearchComicOrder = 'asc' | 'desc'
-
 export type SearchComicParams = {
   source?: ComicSource
   type?: ComicType
   status?: ComicStatus
   search?: string
   sort: SearchComicSort
-  order: SearchComicOrder
+  order: 'asc' | 'desc'
   limit: number
   offset: number
 }

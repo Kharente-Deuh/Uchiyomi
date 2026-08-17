@@ -86,7 +86,7 @@ export function useLibrarySearch({ doSearch }: LibrarySearchOptions): LibrarySea
       ...(type.value && { type: type.value }),
       ...(source.value && { source: source.value }),
       sort: sort.value,
-      order: sort.value === 'latest' ? 'desc' : 'asc',
+      order: sort.value === 'addedAt' ? 'desc' : 'asc',
       offset: (offset.value - 1) * PAGE_SIZE,
       limit: PAGE_SIZE,
     })

@@ -10,9 +10,9 @@ import { VApp, VSelect } from 'vuetify/components'
 import { ASURA_SOURCE_NAME } from '~/constants'
 import Source from './Source.vue'
 
-async function mount(source?: ComicSource, disabled = false): Promise<VueWrapper> {
+async function mount(source?: ComicSource, isDisabled = false): Promise<VueWrapper> {
   return mountSuspended({
-    render: () => h(VApp, () => [h(Source, { modelValue: source, disabled })]),
+    render: () => h(VApp, () => [h(Source, { modelValue: source, disabled: isDisabled })]),
   })
 }
 

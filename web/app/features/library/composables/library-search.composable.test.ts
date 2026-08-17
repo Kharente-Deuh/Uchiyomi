@@ -28,6 +28,7 @@ function displayStub(): { smAndDown: { value: boolean } } {
 
 mockNuxtImport('useI18n', () => i18nStub)
 mockNuxtImport('useDisplay', () => displayStub)
+// eslint-disable-next-line unicorn/consistent-function-scoping
 mockNuxtImport('useDebounceFn', () => (fn: () => unknown) => fn)
 
 function comic(id = 'c1'): LightComic {
@@ -83,11 +84,11 @@ describe('useLibrarySearch', () => {
     await vi.waitFor(() => expect(search).toHaveBeenCalled())
     search.mockClear()
 
-    library.sort.value = 'latest'
+    library.sort.value = 'addedAt'
     await vi.waitFor(() => expect(search).toHaveBeenCalled())
 
     expect(search).toHaveBeenCalledWith({
-      sort: 'latest',
+      sort: 'addedAt',
       order: 'desc',
       offset: 0,
       limit: 20,
@@ -164,7 +165,7 @@ describe('useLibrarySearch', () => {
     search.mockResolvedValue({ success: true, data: { items: [], total: 0 } })
     const library = useLibrarySearch({ doSearch: false })
     library.search.value = 'solo'
-    library.sort.value = 'latest'
+    library.sort.value = 'addedAt'
 
     library.resetFilters()
 

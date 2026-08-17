@@ -47,7 +47,7 @@ describe('useLibraryStore', () => {
   it('invalidate restores defaults', () => {
     const store = useLibraryStore()
     store.setSearch('solo')
-    store.setSort('latest')
+    store.setSort('addedAt')
     store.setStatus('ongoing')
     store.setType('manhwa')
     store.setSource('asurascans')

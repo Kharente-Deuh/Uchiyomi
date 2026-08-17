@@ -9,9 +9,9 @@ import { h } from 'vue'
 import { VApp, VSelect } from 'vuetify/components'
 import Sort from './Sort.vue'
 
-async function mount(sort: SearchComicSort = 'title', disabled = false): Promise<VueWrapper> {
+async function mount(sort: SearchComicSort = 'title', isDisabled = false): Promise<VueWrapper> {
   return mountSuspended({
-    render: () => h(VApp, () => [h(Sort, { modelValue: sort, disabled })]),
+    render: () => h(VApp, () => [h(Sort, { modelValue: sort, disabled: isDisabled })]),
   })
 }
 
@@ -20,12 +20,12 @@ describe('libraryInputSort', () => {
     const wrapper = await mount()
     const items = wrapper.findComponent(VSelect).props('items') as { value: string, title: string }[]
 
-    expect(items.map(i => i.value)).toEqual(['title', 'latest'])
+    expect(items.map(i => i.value)).toEqual(['title', 'addedAt'])
   })
 
   it('reflects the current sort', async () => {
-    const wrapper = await mount('latest')
-    expect(wrapper.findComponent(VSelect).props('modelValue')).toBe('latest')
+    const wrapper = await mount('addedAt')
+    expect(wrapper.findComponent(VSelect).props('modelValue')).toBe('addedAt')
   })
 
   it('disables the select while loading', async () => {
