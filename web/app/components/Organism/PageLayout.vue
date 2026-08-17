@@ -9,7 +9,7 @@ export interface PageLayoutBackRoute {
 }
 
 const props = defineProps<{
-  title: string
+  title?: string
   backRoutes?: PageLayoutBackRoute[]
   subtitle?: string
   loading?: boolean
@@ -48,6 +48,7 @@ const { height: headerHeight } = useElementSize(headerRef, undefined, { box: 'bo
       :class="{ 'pt-4': !smAndDown }"
     >
       <div
+        v-if="title"
         class="d-flex ga-3 align-center justify-space-between"
         :class="[smAndDown ? 'px-6 py-3' : 'mb-8']"
       >

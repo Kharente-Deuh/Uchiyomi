@@ -27,10 +27,7 @@ onBeforeRouteLeave((to: RouteLocationNormalized) => {
 </script>
 
 <template>
-  <OrganismPageLayout
-    :title="$t('library.title')"
-    :loading="isLoading"
-  >
+  <OrganismPageLayout :loading="isLoading">
     <template #sub-header>
       <LibraryHeader />
     </template>
