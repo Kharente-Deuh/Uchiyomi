@@ -160,7 +160,7 @@ func (r *PGComicsRepository) Create(ctx context.Context, opts comics.CreateComic
 	return &ret, nil
 }
 
-func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpts) ([]comics.Comic, error) {
+func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpts) (comics.Page, error) {
 	q := r.db(ctx).Order("comics.created_at DESC")
 	if opts.UserID != nil {
 		q = q.Where(`EXISTS (
@@ -183,7 +183,7 @@ func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpt
 
 	models, err := q.Offset(opts.Offset).Limit(opts.Limit).Find(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+		return comics.Page{}, fmt.Errorf("r.db(ctx).Where: %w", err)
 	}
 
 	ret := make([]comics.Comic, len(models))
@@ -191,7 +191,7 @@ func (r *PGComicsRepository) GetMany(ctx context.Context, opts comics.GetManyOpt
 		ret[i] = model.Domain()
 	}
 
-	return ret, nil
+	return comics.Page{Items: ret}, nil
 }
 
 func (r *PGComicsRepository) ListByStatuses(

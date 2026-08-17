@@ -297,7 +297,7 @@ func TestGetMany(t *testing.T) {
 		t.Fatalf("GetMany: %v", err)
 	}
 
-	if len(got) != 1 || got[0].ID != id {
+	if len(got.Items) != 1 || got.Items[0].ID != id {
 		t.Errorf("GetMany() = %+v", got)
 	}
 }

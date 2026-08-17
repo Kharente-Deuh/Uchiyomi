@@ -188,7 +188,7 @@ func (c *Controller) getMany(w http.ResponseWriter, r *http.Request) {
 
 	opts.UserID = &user.ID
 
-	comics, err := c.deps.ComicsService.GetMany(ctx, *opts)
+	page, err := c.deps.ComicsService.GetMany(ctx, *opts)
 	if err != nil {
 		c.deps.Logger.Error("failed to get many comics", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -196,8 +196,8 @@ func (c *Controller) getMany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := make([]lightComic, len(comics))
-	for i, comic := range comics {
+	res := make([]lightComic, len(page.Items))
+	for i, comic := range page.Items {
 		res[i] = lightComicFromDomain(&comic)
 	}
 

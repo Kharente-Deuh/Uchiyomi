@@ -239,13 +239,13 @@ func (s *Service) ServeCover(ctx context.Context, opts GetByIDOpts) (string, str
 	return path, contentType, nil
 }
 
-func (s *Service) GetMany(ctx context.Context, opts GetManyOpts) ([]Comic, error) {
-	comics, err := s.deps.ComicsRepository.GetMany(ctx, opts)
+func (s *Service) GetMany(ctx context.Context, opts GetManyOpts) (Page, error) {
+	page, err := s.deps.ComicsRepository.GetMany(ctx, opts)
 	if err != nil {
-		return nil, fmt.Errorf("s.deps.ComicsRepository.GetMany: %w", err)
+		return Page{}, fmt.Errorf("s.deps.ComicsRepository.GetMany: %w", err)
 	}
 
-	return comics, nil
+	return page, nil
 }
 
 func (s *Service) Delete(ctx context.Context, opts DeleteOpts) error {

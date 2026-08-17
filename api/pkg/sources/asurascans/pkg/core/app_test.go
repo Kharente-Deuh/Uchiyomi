@@ -57,8 +57,8 @@ func (stubComicsRepository) Delete(context.Context, uuid.UUID) error {
 	return coredomain.ErrNotFound
 }
 
-func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
-	return nil, nil
+func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) (comics.Page, error) {
+	return comics.Page{}, nil
 }
 
 func (stubComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
@@ -108,8 +108,8 @@ func (r libraryComicsRepository) Delete(context.Context, uuid.UUID) error {
 	return coredomain.ErrNotFound
 }
 
-func (r libraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
-	return nil, nil
+func (r libraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) (comics.Page, error) {
+	return comics.Page{}, nil
 }
 
 func (r libraryComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
@@ -163,8 +163,8 @@ func (r inLibraryComicsRepository) Delete(context.Context, uuid.UUID) error {
 	return coredomain.ErrNotFound
 }
 
-func (r inLibraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
-	return nil, nil
+func (r inLibraryComicsRepository) GetMany(context.Context, comics.GetManyOpts) (comics.Page, error) {
+	return comics.Page{}, nil
 }
 
 func (r inLibraryComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {

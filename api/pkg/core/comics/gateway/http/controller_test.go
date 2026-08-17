@@ -44,7 +44,7 @@ type stubComicsService struct {
 	getByIDResult    *comics.Comic
 	serveCoverPath   string
 	serveCoverType   string
-	getManyResult    []comics.Comic
+	getManyResult    comics.Page
 	serveCoverCalls  int
 	lastServeCoverID uuid.UUID
 }
@@ -57,7 +57,7 @@ func (s *stubComicsService) GetByID(_ context.Context, _ comics.GetByIDOpts) (*c
 	return s.getByIDResult, s.getByIDErr
 }
 
-func (s *stubComicsService) GetMany(_ context.Context, _ comics.GetManyOpts) ([]comics.Comic, error) {
+func (s *stubComicsService) GetMany(_ context.Context, _ comics.GetManyOpts) (comics.Page, error) {
 	return s.getManyResult, s.getManyErr
 }
 
@@ -289,7 +289,7 @@ func TestGetManyReturnsComics(t *testing.T) {
 		Status: sources.SeriesStatusCompleted,
 	}}
 
-	r := newTestRouter(t, &stubComicsService{getManyResult: items}, authenticatorFor(t, user))
+	r := newTestRouter(t, &stubComicsService{getManyResult: comics.Page{Items: items}}, authenticatorFor(t, user))
 
 	req := httptest.NewRequest(http.MethodGet, comicsEndpoint+"/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})

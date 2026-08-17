@@ -4,6 +4,7 @@ package comics
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,7 +53,7 @@ type ComicsRepository interface {
 	Create(context.Context, CreateComicOpts) (*Comic, error)
 	GetBySlugsAndSource(context.Context, GetBySlugsAndSource) ([]Comic, error)
 	Delete(context.Context, uuid.UUID) error
-	GetMany(context.Context, GetManyOpts) ([]Comic, error)
+	GetMany(context.Context, GetManyOpts) (Page, error)
 	ListByStatuses(context.Context, ListByStatusesOpts) ([]Comic, error)
 	UpdateStatusAndChapterCount(context.Context, UpdateStatusAndChapterCountOpts) error
 }
@@ -81,7 +82,7 @@ type GetBySlugsAndSource struct {
 type ComicsService interface {
 	Create(context.Context, CreateOpts) (*Comic, error)
 	GetByID(context.Context, GetByIDOpts) (*Comic, error)
-	GetMany(context.Context, GetManyOpts) ([]Comic, error)
+	GetMany(context.Context, GetManyOpts) (Page, error)
 	Delete(context.Context, DeleteOpts) error
 	RefreshChapterLists(context.Context) error
 	ServeCover(ctx context.Context, opts GetByIDOpts) (diskPath, contentType string, err error)
@@ -98,11 +99,55 @@ type GetByIDOpts struct {
 	ID     uuid.UUID
 }
 
+type Page struct {
+	Items []Comic
+	Total int64
+}
+
+type ListSort string
+
+const (
+	ListSortTitle   ListSort = "title"
+	ListSortAddedAt ListSort = "addedAt"
+)
+
+func ParseListSort(s string) (ListSort, error) {
+	switch s {
+	case string(ListSortTitle):
+		return ListSortTitle, nil
+	case string(ListSortAddedAt):
+		return ListSortAddedAt, nil
+	default:
+		return "", fmt.Errorf("invalid sort: %s", s)
+	}
+}
+
+type ListOrder string
+
+const (
+	ListOrderAsc  ListOrder = "asc"
+	ListOrderDesc ListOrder = "desc"
+)
+
+func ParseListOrder(s string) (ListOrder, error) {
+	switch s {
+	case string(ListOrderAsc):
+		return ListOrderAsc, nil
+	case string(ListOrderDesc):
+		return ListOrderDesc, nil
+	default:
+		return "", fmt.Errorf("invalid order: %s", s)
+	}
+}
+
 type GetManyOpts struct {
 	UserID *uuid.UUID
 	Source *sources.SourceName
 	Type   *sources.SeriesType
 	Status *sources.SeriesStatus
+	Search string
+	Sort   ListSort
+	Order  ListOrder
 	Limit  int
 	Offset int
 }
