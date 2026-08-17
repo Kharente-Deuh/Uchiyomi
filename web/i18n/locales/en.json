@@ -301,5 +301,14 @@
       "author": "Author",
       "artist": "Artist"
     }
+  },
+  "library": {
+    "title": "Library"
+  },
+  "feed": {
+    "title": "Feed"
+  },
+  "reading": {
+    "title": "Reading"
   }
 }

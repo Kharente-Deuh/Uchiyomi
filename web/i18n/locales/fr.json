@@ -294,5 +294,14 @@
         "alreadyExists": " Série déjà en bibliothèque"
       }
     }
+  },
+  "library": {
+    "title": "Bibliothèque"
+  },
+  "feed": {
+    "title": "Flux"
+  },
+  "reading": {
+    "title": "Lire"
   }
 }

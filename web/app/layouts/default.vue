@@ -40,6 +40,25 @@ const settingsNavItems = computed((): NavigationDrawerListItemProps[] => {
 
 const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
   {
+    title: t('reading.title'),
+    items: [
+      {
+        title: t('feed.title'),
+        to: '/feed',
+        icon: 'fa6-solid:clock-rotate-left',
+        isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/feed'),
+        baseRoute: '/feed',
+      },
+      {
+        title: t('library.title'),
+        to: '/library',
+        icon: 'fa6-solid:book',
+        isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/library'),
+        baseRoute: '/library',
+      },
+    ],
+  },
+  {
     title: t('browse.title'),
     items: [
       {
@@ -58,6 +77,18 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
 ])
 
 const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
+  {
+    to: '/feed',
+    icon: 'fa6-solid:clock-rotate-left',
+    isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/feed'),
+    baseRoute: '/feed',
+  },
+  {
+    to: '/library',
+    icon: 'fa6-solid:book',
+    isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/library'),
+    baseRoute: '/library',
+  },
   {
     to: '/browse',
     icon: 'fa6-solid:compass',
