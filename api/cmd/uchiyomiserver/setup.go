@@ -50,6 +50,9 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
+	httpfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/gateway/http"
+	pgfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/repository/pg"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
 	pglibrary "github.com/kharente-deuh/uchiyomi-server/pkg/core/library/repository/pg"
@@ -133,6 +136,11 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, fmt.Errorf("failed to init chapters: %w", err)
 	}
 
+	feedSvc, err := feed.NewService(feed.Deps{FeedRepository: dbr.FeedRepository, Now: time.Now})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init feedSvc: %w", err)
+	}
+
 	asuraApp.BindChaptersService(chaptersSvc)
 
 	comicsSvc, err := comics.NewService(comics.Deps{
@@ -165,6 +173,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		Logger:               logger,
 		ComicsService:        comicsSvc,
 		ChaptersService:      chaptersSvc,
+		FeedService:          feedSvc,
 		SessionsService:      services.Sessions,
 		SetupService:         services.Setup,
 		AuthService:          services.Auth,
@@ -193,6 +202,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			OIDCProvidersCtrl: ctrls.OIDCProviders,
 			ComicsCtrl:        ctrls.Comics,
 			ChaptersCtrl:      ctrls.Chapters,
+			FeedCtrl:          ctrls.Feed,
 
 			Health:             registry,
 			Logger:             logger,
@@ -222,6 +232,7 @@ type dbRelated struct {
 	ComicsRepository              *pgcomics.PGComicsRepository
 	ChaptersRepository            *pgchapters.PGChaptersRepository
 	LibraryRepository             *pglibrary.PGLibraryRepository
+	FeedRepository                *pgfeed.PGFeedRepository
 }
 
 func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
@@ -286,6 +297,11 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		return nil, fmt.Errorf("failed to init libraryRepository: %w", err)
 	}
 
+	feedRepository, err := pgfeed.New(pgfeed.Deps{DB: pgdb.DB})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init feedRepository: %w", err)
+	}
+
 	dbr := &dbRelated{
 		PGDB:                          pgdb,
 		Txor:                          txor,
@@ -297,6 +313,7 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		ComicsRepository:              comicsRepository,
 		ChaptersRepository:            chaptersRepository,
 		LibraryRepository:             libraryRepository,
+		FeedRepository:                feedRepository,
 	}
 
 	return dbr, nil
@@ -701,9 +718,11 @@ type ctrls struct {
 	OIDCProviders *httpoidcproviders.Controller
 	Comics        *httpcomics.Controller
 	Chapters      *httpchapters.Controller
+	Feed          *httpfeed.Controller
 }
 
 type ctrlsDeps struct {
+	FeedService          feed.FeedService
 	AsuraApp             *asura.App
 	CoversService        *covers.Service
 	SetupService         *setup.Service
@@ -861,6 +880,20 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init chapters controller: %w", err)
 	}
 
+	feedCtrl, err := httpfeed.New(
+		httpfeed.Config{
+			Endpoint:    "/feed",
+			Middlewares: chi.Middlewares{authenticator.Middleware},
+		},
+		httpfeed.Deps{
+			Logger:      deps.Logger,
+			FeedService: deps.FeedService,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init feed controller: %w", err)
+	}
+
 	c := &ctrls{
 		Asura:         asuraCtrl,
 		Covers:        coversCtrl,
@@ -871,6 +904,7 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		OIDCProviders: oidcProvidersCtrl,
 		Comics:        comicsCtrl,
 		Chapters:      chaptersCtrl,
+		Feed:          feedCtrl,
 	}
 
 	return c, nil

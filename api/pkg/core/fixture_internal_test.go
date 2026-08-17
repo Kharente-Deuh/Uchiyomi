@@ -31,6 +31,8 @@ import (
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
+	httpfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/gateway/http"
 	healthhttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
@@ -386,6 +388,12 @@ func (fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownload
 	return errors.New(notImplemented)
 }
 
+type fakeFeedService struct{}
+
+func (fakeFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {
+	return feed.Page{Items: []feed.Item{}, Total: 0}, nil
+}
+
 func newTestCache[P any, T any](t *testing.T, name string, logger *slog.Logger) *fncache.Cache[P, T] {
 	t.Helper()
 
@@ -549,6 +557,14 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("httpchapters.New: %v", err)
 	}
 
+	feedCtrl, err := httpfeed.New(
+		httpfeed.Config{Endpoint: "/feed"},
+		httpfeed.Deps{Logger: logger, FeedService: fakeFeedService{}},
+	)
+	if err != nil {
+		t.Fatalf("httpfeed.New: %v", err)
+	}
+
 	app, err := New(
 		Config{ServerPort: port, AllowedOrigins: []string{"*"}},
 		Deps{
@@ -562,6 +578,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			OIDCProvidersCtrl:  oidcProvidersCtrl,
 			ComicsCtrl:         comicsCtrl,
 			ChaptersCtrl:       chaptersCtrl,
+			FeedCtrl:           feedCtrl,
 			Logger:             logger,
 			Health:             registry,
 			Asura:              asuraApp,
