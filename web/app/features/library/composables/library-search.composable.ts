@@ -112,8 +112,6 @@ export function useLibrarySearch({ doSearch }: LibrarySearchOptions): LibrarySea
 
   watch([search, sort, status, type, source], () => {
     store.clearOffset()
-    store.clearAccumulatedComics()
-    store.clearComics()
   })
 
   watch([search, sort, status, type, offset, source], () => {
