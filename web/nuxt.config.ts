@@ -22,6 +22,7 @@ export default defineNuxtConfig({
     { path: '~/features/oidc/components', prefix: 'Oidc' },
     { path: '~/features/comics/components', prefix: 'Comics' },
     { path: '~/features/asura/components', prefix: 'Asura' },
+    { path: '~/features/library/components', prefix: 'Library' },
   ],
 
   imports: {
