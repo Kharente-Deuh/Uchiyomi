@@ -15,7 +15,8 @@ type lightComic struct {
 	Cover        string               `json:"cover"`
 	Source       sources.SourceName   `json:"source"`
 	Status       sources.SeriesStatus `json:"status"`
-	ChapterCount int                  `json:"chapter_count"`
+	Type         sources.SeriesType   `json:"type"`
+	ChapterCount int                  `json:"chapterCount"`
 	ID           uuid.UUID            `json:"id"`
 }
 
@@ -32,7 +33,22 @@ func lightComicFromDomain(comic *comics.Comic) lightComic {
 		Cover:        comicCoverURL(comic.ID),
 		Source:       comic.Source,
 		Status:       comic.Status,
+		Type:         comic.Type,
 	}
+}
+
+type comicListResponse struct {
+	Items []lightComic `json:"items"`
+	Total int64        `json:"total"`
+}
+
+func comicListFromPage(page comics.Page) comicListResponse {
+	items := make([]lightComic, len(page.Items))
+	for i := range page.Items {
+		items[i] = lightComicFromDomain(&page.Items[i])
+	}
+
+	return comicListResponse{Items: items, Total: page.Total}
 }
 
 type createRequest struct {
@@ -51,8 +67,8 @@ type comicResponse struct {
 	Title        string               `json:"title"`
 	Cover        string               `json:"cover"`
 	Genres       []string             `json:"genres"`
-	AltTitles    []string             `json:"alt_titles"`
-	ChapterCount int                  `json:"chapter_count"`
+	AltTitles    []string             `json:"altTitles"`
+	ChapterCount int                  `json:"chapterCount"`
 	ID           uuid.UUID            `json:"id"`
 }
 

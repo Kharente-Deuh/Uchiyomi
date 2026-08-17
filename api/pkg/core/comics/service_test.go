@@ -94,7 +94,7 @@ type fakeComicsRepository struct {
 	createResult           *comics.Comic
 	lastListByStatuses     comics.ListByStatusesOpts
 	listByStatusesResult   []comics.Comic
-	getManyResult          []comics.Comic
+	getManyResult          comics.Page
 	lastUpdateStatus       comics.UpdateStatusAndChapterCountOpts
 	lastCreateOpts         comics.CreateComicOpts
 	findBySourceSlugCalls  int
@@ -168,7 +168,7 @@ func (f *fakeComicsRepository) Delete(_ context.Context, id uuid.UUID) error {
 	return f.deleteErr
 }
 
-func (f *fakeComicsRepository) GetMany(_ context.Context, _ comics.GetManyOpts) ([]comics.Comic, error) {
+func (f *fakeComicsRepository) GetMany(_ context.Context, _ comics.GetManyOpts) (comics.Page, error) {
 	f.getManyCalls++
 
 	return f.getManyResult, f.getManyErr
@@ -770,7 +770,7 @@ func TestGetManyDelegatesToRepository(t *testing.T) {
 
 	userID := uuid.New()
 	items := []comics.Comic{{ID: uuid.New(), Slug: testSlug}}
-	repo := &fakeComicsRepository{getManyResult: items}
+	repo := &fakeComicsRepository{getManyResult: comics.Page{Items: items}}
 	deps := validServiceDeps()
 	deps.ComicsRepository = repo
 
@@ -784,8 +784,8 @@ func TestGetManyDelegatesToRepository(t *testing.T) {
 		t.Fatalf("GetMany: %v", err)
 	}
 
-	if len(got) != 1 || got[0].ID != items[0].ID {
-		t.Errorf("GetMany() = %+v, want %+v", got, items)
+	if len(got.Items) != 1 || got.Items[0].ID != items[0].ID {
+		t.Errorf("GetMany() = %+v, want %+v", got.Items, items)
 	}
 }
 

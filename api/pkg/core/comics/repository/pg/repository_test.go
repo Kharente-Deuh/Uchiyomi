@@ -47,6 +47,14 @@ func newComicsRepo(t *testing.T) (*pg.PGComicsRepository, sqlmock.Sqlmock) {
 	return r, mock
 }
 
+func comicSelectColumns() []string {
+	return []string{
+		"id", "source", "slug", "title", "status", "comic_type",
+		"chapter_count", "author", "artist", "description",
+		"genres", "alt_titles", "created_at", "updated_at",
+	}
+}
+
 func TestNewValidatesDeps(t *testing.T) {
 	t.Parallel()
 
@@ -269,36 +277,178 @@ func TestGetMany(t *testing.T) {
 	t.Parallel()
 
 	r, mock := newComicsRepo(t)
-
 	userID := uuid.New()
 	id := uuid.New()
 	created := time.Now().UTC().Truncate(time.Second)
-	updated := created
 
-	mock.ExpectQuery(`FROM "comics".*EXISTS`).
+	mock.ExpectQuery(`SELECT count\(\*\).*FROM "comics".*JOIN library_entries`).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(1)))
+
+	mock.ExpectQuery(`FROM "comics".*JOIN library_entries.*LOWER\(comics.title\)`).
 		WithArgs(userID, 10).
-		WillReturnRows(
-			sqlmock.NewRows([]string{
-				"id", "source", "slug", "title", "status", "comic_type",
-				"chapter_count", "author", "artist", "description",
-				"genres", "alt_titles", "created_at", "updated_at",
-			}).AddRow(
-				id, string(comicSource), comicSlug, comicTitle, string(comicStatus), string(comicType),
-				200, "Chugong", "Dubu", "desc",
-				"{}", "{}", created, updated,
-			),
-		)
+		WillReturnRows(sqlmock.NewRows(comicSelectColumns()).AddRow(
+			id, string(comicSource), comicSlug, comicTitle, string(comicStatus), string(comicType),
+			200, "Chugong", "Dubu", "desc",
+			"{}", "{}", created, created,
+		))
 
 	got, err := r.GetMany(context.Background(), comics.GetManyOpts{
 		UserID: &userID,
 		Limit:  10,
+		Sort:   comics.ListSortTitle,
+		Order:  comics.ListOrderAsc,
 	})
 	if err != nil {
 		t.Fatalf("GetMany: %v", err)
 	}
 
-	if len(got) != 1 || got[0].ID != id {
+	if got.Total != 1 || len(got.Items) != 1 || got.Items[0].ID != id {
 		t.Errorf("GetMany() = %+v", got)
+	}
+}
+
+func TestGetManyFiltersTypeOnComicTypeColumn(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+	userID := uuid.New()
+	typ := comicType
+
+	mock.ExpectQuery(`SELECT count\(\*\).*comic_type`).
+		WithArgs(userID, string(typ)).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(0)))
+
+	mock.ExpectQuery(`FROM "comics".*comic_type`).
+		WithArgs(userID, string(typ), 10).
+		WillReturnRows(sqlmock.NewRows(comicSelectColumns()))
+
+	got, err := r.GetMany(context.Background(), comics.GetManyOpts{
+		UserID: &userID,
+		Type:   &typ,
+		Limit:  10,
+		Sort:   comics.ListSortTitle,
+		Order:  comics.ListOrderAsc,
+	})
+	if err != nil {
+		t.Fatalf("GetMany: %v", err)
+	}
+
+	if got.Total != 0 || len(got.Items) != 0 {
+		t.Errorf("GetMany() = %+v", got)
+	}
+}
+
+func TestGetManySearchTitleOrAltTitles(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+	userID := uuid.New()
+	pattern := `%solo%`
+
+	mock.ExpectQuery(`SELECT count\(\*\).*ILIKE`).
+		WithArgs(userID, pattern, pattern).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(2)))
+
+	mock.ExpectQuery(`FROM "comics".*ILIKE.*unnest`).
+		WithArgs(userID, pattern, pattern, 10).
+		WillReturnRows(sqlmock.NewRows(comicSelectColumns()))
+
+	got, err := r.GetMany(context.Background(), comics.GetManyOpts{
+		UserID: &userID,
+		Search: "solo",
+		Limit:  10,
+		Sort:   comics.ListSortTitle,
+		Order:  comics.ListOrderAsc,
+	})
+	if err != nil {
+		t.Fatalf("GetMany: %v", err)
+	}
+
+	if got.Total != 2 {
+		t.Errorf("Total = %d, want 2", got.Total)
+	}
+}
+
+func TestGetManySearchEscapesLikeMetacharacters(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+	userID := uuid.New()
+	pattern := `%100\%%`
+
+	mock.ExpectQuery(`SELECT count\(\*\).*ILIKE`).
+		WithArgs(userID, pattern, pattern).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(0)))
+
+	mock.ExpectQuery(`FROM "comics".*ILIKE`).
+		WithArgs(userID, pattern, pattern, 10).
+		WillReturnRows(sqlmock.NewRows(comicSelectColumns()))
+
+	_, err := r.GetMany(context.Background(), comics.GetManyOpts{
+		UserID: &userID,
+		Search: "100%",
+		Limit:  10,
+		Sort:   comics.ListSortTitle,
+		Order:  comics.ListOrderAsc,
+	})
+	if err != nil {
+		t.Fatalf("GetMany: %v", err)
+	}
+}
+
+func TestGetManySortAddedAtDesc(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+	userID := uuid.New()
+
+	mock.ExpectQuery(`SELECT count\(\*\).*JOIN library_entries`).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(0)))
+
+	mock.ExpectQuery(`FROM "comics".*library_entries.added_at DESC`).
+		WithArgs(userID, 10).
+		WillReturnRows(sqlmock.NewRows(comicSelectColumns()))
+
+	_, err := r.GetMany(context.Background(), comics.GetManyOpts{
+		UserID: &userID,
+		Limit:  10,
+		Sort:   comics.ListSortAddedAt,
+		Order:  comics.ListOrderDesc,
+	})
+	if err != nil {
+		t.Fatalf("GetMany: %v", err)
+	}
+}
+
+func TestGetManyOffset(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+	userID := uuid.New()
+
+	mock.ExpectQuery(`SELECT count\(\*\)`).
+		WithArgs(userID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(40)))
+
+	mock.ExpectQuery(`FROM "comics".*JOIN library_entries`).
+		WithArgs(userID, 10, 20).
+		WillReturnRows(sqlmock.NewRows(comicSelectColumns()))
+
+	got, err := r.GetMany(context.Background(), comics.GetManyOpts{
+		UserID: &userID,
+		Limit:  10,
+		Offset: 20,
+		Sort:   comics.ListSortTitle,
+		Order:  comics.ListOrderAsc,
+	})
+	if err != nil {
+		t.Fatalf("GetMany: %v", err)
+	}
+
+	if got.Total != 40 {
+		t.Errorf("Total = %d, want 40", got.Total)
 	}
 }
 

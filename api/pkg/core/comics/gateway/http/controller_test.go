@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,8 @@ const (
 	cookieName     = "uchiyomi_session"
 	testToken      = "letoken"
 	testUsername   = "alice"
+	testComicTitle = "Solo Leveling"
+	testComicSlug  = "solo-leveling"
 )
 
 type stubComicsService struct {
@@ -44,7 +47,8 @@ type stubComicsService struct {
 	getByIDResult    *comics.Comic
 	serveCoverPath   string
 	serveCoverType   string
-	getManyResult    []comics.Comic
+	getManyResult    comics.Page
+	lastGetMany      comics.GetManyOpts
 	serveCoverCalls  int
 	lastServeCoverID uuid.UUID
 }
@@ -57,7 +61,9 @@ func (s *stubComicsService) GetByID(_ context.Context, _ comics.GetByIDOpts) (*c
 	return s.getByIDResult, s.getByIDErr
 }
 
-func (s *stubComicsService) GetMany(_ context.Context, _ comics.GetManyOpts) ([]comics.Comic, error) {
+func (s *stubComicsService) GetMany(_ context.Context, opts comics.GetManyOpts) (comics.Page, error) {
+	s.lastGetMany = opts
+
 	return s.getManyResult, s.getManyErr
 }
 
@@ -193,7 +199,7 @@ func TestCreateRequiresAuthentication(t *testing.T) {
 	req := httptest.NewRequest(
 		http.MethodPost,
 		comicsEndpoint+"/",
-		bytes.NewReader([]byte(`{"source":"asurascans","slug":"solo-leveling"}`)),
+		bytes.NewReader([]byte(`{"source":"asurascans","slug":"`+testComicSlug+`"}`)),
 	)
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -209,8 +215,8 @@ func TestCreateReturnsComic(t *testing.T) {
 	user := &users.User{ID: uuid.New(), Name: testUsername}
 	comic := &comics.Comic{
 		ID:           uuid.New(),
-		Title:        "Solo Leveling",
-		Slug:         "solo-leveling",
+		Title:        testComicTitle,
+		Slug:         testComicSlug,
 		Source:       sources.SourceAsuraScans,
 		Status:       sources.SeriesStatusCompleted,
 		ChapterCount: 200,
@@ -221,7 +227,7 @@ func TestCreateReturnsComic(t *testing.T) {
 	req := httptest.NewRequest(
 		http.MethodPost,
 		comicsEndpoint+"/",
-		bytes.NewReader([]byte(`{"source":"asurascans","slug":"solo-leveling"}`)),
+		bytes.NewReader([]byte(`{"source":"asurascans","slug":"`+testComicSlug+`"}`)),
 	)
 
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
@@ -253,8 +259,21 @@ type comicshttpLightComic struct {
 	Cover        string               `json:"cover"`
 	Source       sources.SourceName   `json:"source"`
 	Status       sources.SeriesStatus `json:"status"`
-	ChapterCount int                  `json:"chapter_count"`
+	Type         sources.SeriesType   `json:"type"`
+	ChapterCount int                  `json:"chapterCount"`
 	ID           uuid.UUID            `json:"id"`
+}
+
+type comicshttpPage struct {
+	Items []comicshttpLightComic `json:"items"`
+	Total int64                  `json:"total"`
+}
+
+type comicshttpDetail struct {
+	Cover        string    `json:"cover"`
+	AltTitles    []string  `json:"altTitles"`
+	ChapterCount int       `json:"chapterCount"`
+	ID           uuid.UUID `json:"id"`
 }
 
 func TestGetByIDNotFound(t *testing.T) {
@@ -281,15 +300,21 @@ func TestGetManyReturnsComics(t *testing.T) {
 	t.Parallel()
 
 	user := &users.User{ID: uuid.New(), Name: testUsername}
-	items := []comics.Comic{{
-		ID:     uuid.New(),
-		Slug:   "solo-leveling",
-		Source: sources.SourceAsuraScans,
-		Title:  "Solo Leveling",
-		Status: sources.SeriesStatusCompleted,
-	}}
+	comicID := uuid.New()
+	getManyResult := comics.Page{
+		Items: []comics.Comic{{
+			ID:           comicID,
+			Slug:         testComicSlug,
+			Source:       sources.SourceAsuraScans,
+			Title:        testComicTitle,
+			Status:       sources.SeriesStatusCompleted,
+			Type:         sources.SeriesTypeManhwa,
+			ChapterCount: 200,
+		}},
+		Total: 42,
+	}
 
-	r := newTestRouter(t, &stubComicsService{getManyResult: items}, authenticatorFor(t, user))
+	r := newTestRouter(t, &stubComicsService{getManyResult: getManyResult}, authenticatorFor(t, user))
 
 	req := httptest.NewRequest(http.MethodGet, comicsEndpoint+"/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
@@ -300,18 +325,147 @@ func TestGetManyReturnsComics(t *testing.T) {
 		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
-	var got []comicshttpLightComic
+	var got comicshttpPage
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if len(got) != 1 || got[0].Slug != items[0].Slug {
-		t.Errorf("response = %+v, want %+v", got, items)
+	if got.Total != 42 {
+		t.Errorf("total = %d, want 42", got.Total)
 	}
 
-	wantCover := "/api/comics/" + items[0].ID.String() + "/cover"
-	if got[0].Cover != wantCover {
-		t.Errorf("cover = %q, want %q", got[0].Cover, wantCover)
+	if len(got.Items) != 1 || got.Items[0].Slug != testComicSlug {
+		t.Errorf("response = %+v, want %+v", got, getManyResult.Items)
+	}
+
+	if got.Items[0].Type != sources.SeriesTypeManhwa {
+		t.Errorf("type = %q, want %q", got.Items[0].Type, sources.SeriesTypeManhwa)
+	}
+
+	if got.Items[0].ChapterCount != 200 {
+		t.Errorf("chapterCount = %d, want 200", got.Items[0].ChapterCount)
+	}
+
+	wantCover := "/api/comics/" + comicID.String() + "/cover"
+	if got.Items[0].Cover != wantCover {
+		t.Errorf("cover = %q, want %q", got.Items[0].Cover, wantCover)
+	}
+}
+
+func TestGetManyUnauthorized(t *testing.T) {
+	t.Parallel()
+
+	r := newTestRouter(t, &stubComicsService{}, nil)
+	req := httptest.NewRequest(http.MethodGet, comicsEndpoint+"/", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestGetManyInvalidQuery(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	r := newTestRouter(t, &stubComicsService{}, authenticatorFor(t, user))
+
+	queries := []string{
+		"?sort=created_at",
+		"?order=ASC",
+		"?source=not-a-source",
+		"?type=webtoon",
+		"?status=unknown",
+		"?limit=x",
+		"?offset=x",
+	}
+
+	for _, q := range queries {
+		t.Run(q, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, comicsEndpoint+"/?"+strings.TrimPrefix(q, "?"), nil)
+			req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400", rec.Code)
+			}
+		})
+	}
+}
+
+func TestGetManyPassesSearchSortAndUserID(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	svc := &stubComicsService{getManyResult: comics.Page{Items: []comics.Comic{}, Total: 0}}
+	r := newTestRouter(t, svc, authenticatorFor(t, user))
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		comicsEndpoint+"/?search=%20solo%20&sort=addedAt&order=desc&limit=5&offset=2",
+		nil,
+	)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	if svc.lastGetMany.Search != "solo" {
+		t.Errorf("Search = %q, want solo", svc.lastGetMany.Search)
+	}
+
+	if svc.lastGetMany.Sort != comics.ListSortAddedAt || svc.lastGetMany.Order != comics.ListOrderDesc {
+		t.Errorf("sort/order = %s %s", svc.lastGetMany.Sort, svc.lastGetMany.Order)
+	}
+
+	if svc.lastGetMany.UserID == nil || *svc.lastGetMany.UserID != user.ID {
+		t.Errorf("UserID = %v, want %s", svc.lastGetMany.UserID, user.ID)
+	}
+
+	if svc.lastGetMany.Limit != 5 || svc.lastGetMany.Offset != 2 {
+		t.Errorf("limit/offset = %d %d", svc.lastGetMany.Limit, svc.lastGetMany.Offset)
+	}
+}
+
+func TestGetByIDCamelCaseJSON(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comic := &comics.Comic{
+		ID:           uuid.New(),
+		Title:        testComicTitle,
+		Slug:         testComicSlug,
+		AltTitles:    []string{"Na Honjaman Level-Up"},
+		ChapterCount: 200,
+		Source:       sources.SourceAsuraScans,
+		Status:       sources.SeriesStatusCompleted,
+		Type:         sources.SeriesTypeManhwa,
+	}
+
+	r := newTestRouter(t, &stubComicsService{getByIDResult: comic}, authenticatorFor(t, user))
+	req := httptest.NewRequest(http.MethodGet, comicsEndpoint+"/"+comic.ID.String(), nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var got comicshttpDetail
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if got.ChapterCount != 200 || len(got.AltTitles) != 1 {
+		t.Errorf("detail = %+v", got)
 	}
 }
 

@@ -30,7 +30,7 @@ func (f *fakeComicsService) GetByID(context.Context, comics.GetByIDOpts) (*comic
 	panic("GetByID must not be called")
 }
 
-func (f *fakeComicsService) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+func (f *fakeComicsService) GetMany(context.Context, comics.GetManyOpts) (comics.Page, error) {
 	panic("GetMany must not be called")
 }
 

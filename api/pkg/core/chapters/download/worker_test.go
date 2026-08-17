@@ -127,7 +127,7 @@ func (f *fakeComicsRepository) Delete(context.Context, uuid.UUID) error {
 	panic("not implemented")
 }
 
-func (f *fakeComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
+func (f *fakeComicsRepository) GetMany(context.Context, comics.GetManyOpts) (comics.Page, error) {
 	panic("not implemented")
 }
 

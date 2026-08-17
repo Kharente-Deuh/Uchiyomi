@@ -58,8 +58,8 @@ func (stubComicsRepository) Delete(context.Context, uuid.UUID) error {
 	return coredomain.ErrNotFound
 }
 
-func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) ([]comics.Comic, error) {
-	return nil, nil
+func (stubComicsRepository) GetMany(context.Context, comics.GetManyOpts) (comics.Page, error) {
+	return comics.Page{}, nil
 }
 
 func (stubComicsRepository) ListByStatuses(context.Context, comics.ListByStatusesOpts) ([]comics.Comic, error) {
