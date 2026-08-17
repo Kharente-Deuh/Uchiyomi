@@ -119,6 +119,7 @@ const isChapterDownloadingError = computed(() => props.chapter.internalId && pro
 .readable-chapter {
   &:hover {
     color: rgb(var(--v-theme-primary));
+    background-color: rgba(var(--v-theme-surface-variant));
   }
 }
 
