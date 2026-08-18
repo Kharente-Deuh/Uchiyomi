@@ -185,7 +185,7 @@ func (meta *searchHTTPResponseMeta) Domain() domain.SearchResultMeta {
 }
 
 type searchHTTPResponseData struct {
-	LastChapterAt  *time.Time                  `json:"last_chapter_at"`
+	LastChapterAt  *time.Time                  `json:"last_chapter_at,omitempty"`
 	UpdatedAt      time.Time                   `json:"updated_at"`
 	CreatedAt      time.Time                   `json:"created_at"`
 	SourceURL      string                      `json:"source_url"`
