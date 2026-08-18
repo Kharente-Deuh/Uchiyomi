@@ -304,7 +304,10 @@
     }
   },
   "feed": {
-    "title": "Flux"
+    "title": "Flux",
+    "error": {
+      "fetch": "Récupérer pour charger le flux"
+    }
   },
   "reading": {
     "title": "Lire"

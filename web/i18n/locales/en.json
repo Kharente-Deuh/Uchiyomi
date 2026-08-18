@@ -314,7 +314,10 @@
     }
   },
   "feed": {
-    "title": "Feed"
+    "title": "Feed",
+    "error": {
+      "fetch": "Fetch to load feed"
+    }
   },
   "reading": {
     "title": "Reading"
