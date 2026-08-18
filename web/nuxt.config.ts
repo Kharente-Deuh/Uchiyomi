@@ -144,6 +144,9 @@ export default defineNuxtConfig({
   pwa,
 
   vuetify: {
+    moduleOptions: {
+      prefixComposables: ['useLayout'],
+    },
     vuetifyOptions: './vuetify.config.ts',
   },
 })
