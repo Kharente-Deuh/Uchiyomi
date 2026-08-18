@@ -12,12 +12,12 @@ import (
 )
 
 type latestChapterResponse struct {
-	PublishedAt      time.Time `json:"publishedAt"`
-	EarlyAccessUntil time.Time `json:"earlyAccessUntil"`
-	Title            string    `json:"title"`
-	Number           float64   `json:"number"`
-	Download         int       `json:"download"`
-	ID               uuid.UUID `json:"id"`
+	PublishedAt      time.Time  `json:"publishedAt"`
+	EarlyAccessUntil *time.Time `json:"earlyAccessUntil,omitempty"`
+	Title            string     `json:"title"`
+	Number           float64    `json:"number"`
+	Download         int        `json:"download"`
+	ID               uuid.UUID  `json:"id"`
 }
 
 type itemResponse struct {
@@ -34,6 +34,14 @@ type itemResponse struct {
 type listResponse struct {
 	Items []itemResponse `json:"items"`
 	Total int64          `json:"total"`
+}
+
+func optionalTime(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+
+	return &t
 }
 
 func comicCoverURL(id uuid.UUID) string {
@@ -58,7 +66,7 @@ func itemFromDomain(item *feed.Item) itemResponse {
 			Title:            ch.Title,
 			Number:           ch.Number,
 			PublishedAt:      ch.PublishedAt,
-			EarlyAccessUntil: ch.EarlyAccessUntil,
+			EarlyAccessUntil: optionalTime(ch.EarlyAccessUntil),
 			Download:         ch.Download,
 		})
 	}
