@@ -30,7 +30,7 @@ const show = ref(!mdAndDown.value)
         class="d-flex ga-4 flex-wrap"
         :class="{ 'justify-space-between': mdAndDown }"
       >
-        <LibraryInputSource v-model="source" :disabled="isLoading" />
+        <ComicsInputSource v-model="source" :disabled="isLoading" />
         <LibraryInputSort v-model="sort" :disabled="isLoading" />
         <ComicsInputStatus v-model="status" :disabled="isLoading" />
         <ComicsInputType v-model="type" :disabled="isLoading" />
