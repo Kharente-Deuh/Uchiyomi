@@ -275,9 +275,6 @@ type postListHTTPChapter struct {
 	ComicID           uuid.UUID  `json:"comicId"`
 }
 
-type postListHTTPResponse struct {
-	Chapters []postListHTTPChapter `json:"chapters"`
-}
 
 func TestPostListRequiresAuthentication(t *testing.T) {
 	t.Parallel()
@@ -406,16 +403,16 @@ func TestPostListReturnsChapters(t *testing.T) {
 		t.Errorf("GetByIds ids = %v, want [%s]", svc.lastGetByIdsOpts.IDs, chapterID)
 	}
 
-	var got postListHTTPResponse
+	var got []postListHTTPChapter
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if len(got.Chapters) != 2 {
-		t.Fatalf("len(chapters) = %d, want 2", len(got.Chapters))
+	if len(got) != 2 {
+		t.Fatalf("len(chapters) = %d, want 2", len(got))
 	}
 
-	first := got.Chapters[0]
+	first := got[0]
 	if first.ID != chapterID || first.ComicID != comicID || first.Title != "Chapter 1" {
 		t.Errorf("chapters[0] = %+v", first)
 	}
@@ -432,8 +429,8 @@ func TestPostListReturnsChapters(t *testing.T) {
 		t.Errorf("earlyAccessUntil = %v, want %v", first.EarlyAccessUntil, earlyAccessUntil)
 	}
 
-	if got.Chapters[1].EarlyAccessUntil != nil {
-		t.Errorf("chapters[1].earlyAccessUntil = %v, want nil", got.Chapters[1].EarlyAccessUntil)
+	if got[1].EarlyAccessUntil != nil {
+		t.Errorf("chapters[1].earlyAccessUntil = %v, want nil", got[1].EarlyAccessUntil)
 	}
 }
 
