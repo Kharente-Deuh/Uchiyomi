@@ -21,7 +21,7 @@ type searchResDTO struct {
 }
 
 type searchResItemDTO struct {
-	LastChapterAt  time.Time                 `json:"lastChapterAt"`
+	LastChapterAt  *time.Time                `json:"lastChapterAt"`
 	UpdatedAt      time.Time                 `json:"updatedAt"`
 	CreatedAt      time.Time                 `json:"createdAt"`
 	InternalID     *uuid.UUID                `json:"internalId"`
@@ -44,11 +44,11 @@ type searchResItemDTO struct {
 }
 
 type searchResItemChapterDTO struct {
-	EarlyAccessUntil time.Time `json:"earlyAccessUntil"`
-	PublishedAt      time.Time `json:"publishedAt"`
-	Title            string    `json:"title"`
-	ID               string    `json:"id"`
-	Number           float64   `json:"number"`
+	EarlyAccessUntil *time.Time `json:"earlyAccessUntil"`
+	PublishedAt      time.Time  `json:"publishedAt"`
+	Title            string     `json:"title"`
+	ID               string     `json:"id"`
+	Number           float64    `json:"number"`
 }
 
 func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
@@ -172,7 +172,7 @@ func parsePositiveInt(raw string) (int, error) {
 }
 
 type getInfosBySlugResDTO struct {
-	LastChapterAt time.Time            `json:"lastChapterAt"`
+	LastChapterAt *time.Time           `json:"lastChapterAt,omitempty"`
 	UpdatedAt     time.Time            `json:"updatedAt"`
 	CreatedAt     time.Time            `json:"createdAt"`
 	InternalID    *uuid.UUID           `json:"internalId"`
@@ -193,7 +193,7 @@ type getInfosBySlugResDTO struct {
 }
 
 type getChaptersListBySeriesResItemDTO struct {
-	EarlyAccessUntil time.Time  `json:"earlyAccessUntil"`
+	EarlyAccessUntil *time.Time `json:"earlyAccessUntil,omitempty"`
 	PublishedAt      time.Time  `json:"publishedAt"`
 	InternalID       *uuid.UUID `json:"internalId,omitempty"`
 	Download         *int       `json:"download,omitempty"`

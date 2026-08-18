@@ -11,6 +11,7 @@ import (
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 //nolint:lll
@@ -55,6 +56,11 @@ func (r *getInfosBySlugHttpResponse) Domain() *domain.GetInfosBySlugResponse {
 		genres[i] = g.Slug
 	}
 
+	var lastChapterAt *time.Time = nil
+	if r.Series.LastChapterAt != nil && !r.Series.LastChapterAt.IsZero() {
+		lastChapterAt = r.Series.LastChapterAt
+	}
+
 	return &domain.GetInfosBySlugResponse{
 		Slug:          r.Series.Slug,
 		Title:         r.Series.Title,
@@ -67,7 +73,7 @@ func (r *getInfosBySlugHttpResponse) Domain() *domain.GetInfosBySlugResponse {
 		Artist:        r.Series.Artist,
 		Rating:        r.Series.Rating,
 		ChapterCount:  r.Series.ChapterCount,
-		LastChapterAt: r.Series.LastChapterAt,
+		LastChapterAt: utils.OptionalTime(lastChapterAt),
 		CreatedAt:     r.Series.CreatedAt,
 		UpdatedAt:     r.Series.UpdatedAt,
 		PublicURL:     r.Series.PublicURL,
@@ -90,22 +96,22 @@ type getInfosBySlugHttpRecommendedSeries struct {
 }
 
 type getInfosBySlugHttpSeries struct {
-	LastChapterAt     time.Time `json:"last_chapter_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
-	CreatedAt         time.Time `json:"created_at"`
-	Author            string    `json:"author"`
-	AlternativeTitles string    `json:"alternative_titles"`
-	Description       string    `json:"description"`
-	Cover             string    `json:"cover"`
-	Banner            string    `json:"banner"`
-	Status            string    `json:"status"`
-	Type              string    `json:"type"`
-	SourceURL         string    `json:"source_url"`
-	Artist            string    `json:"artist"`
-	PublicURL         string    `json:"public_url"`
-	Slug              string    `json:"slug"`
-	Title             string    `json:"title"`
-	AltTitles         []string  `json:"alt_titles"`
+	LastChapterAt     *time.Time `json:"last_chapter_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+	CreatedAt         time.Time  `json:"created_at"`
+	Author            string     `json:"author"`
+	AlternativeTitles string     `json:"alternative_titles"`
+	Description       string     `json:"description"`
+	Cover             string     `json:"cover"`
+	Banner            string     `json:"banner"`
+	Status            string     `json:"status"`
+	Type              string     `json:"type"`
+	SourceURL         string     `json:"source_url"`
+	Artist            string     `json:"artist"`
+	PublicURL         string     `json:"public_url"`
+	Slug              string     `json:"slug"`
+	Title             string     `json:"title"`
+	AltTitles         []string   `json:"alt_titles"`
 	Genres            []struct {
 		Name string `json:"name"`
 		Slug string `json:"slug"`

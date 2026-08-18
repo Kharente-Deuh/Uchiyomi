@@ -9,6 +9,7 @@ import (
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 type latestChapterResponse struct {
@@ -36,14 +37,6 @@ type listResponse struct {
 	Total int64          `json:"total"`
 }
 
-func optionalTime(t time.Time) *time.Time {
-	if t.IsZero() {
-		return nil
-	}
-
-	return &t
-}
-
 func comicCoverURL(id uuid.UUID) string {
 	return "/api/comics/" + id.String() + "/cover"
 }
@@ -66,7 +59,7 @@ func itemFromDomain(item *feed.Item) itemResponse {
 			Title:            ch.Title,
 			Number:           ch.Number,
 			PublishedAt:      ch.PublishedAt,
-			EarlyAccessUntil: optionalTime(ch.EarlyAccessUntil),
+			EarlyAccessUntil: utils.OptionalTime(ch.EarlyAccessUntil),
 			Download:         ch.Download,
 		})
 	}

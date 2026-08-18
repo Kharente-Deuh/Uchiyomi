@@ -16,14 +16,16 @@ const date = computed(() => {
   const aMonthAgo = new Date()
   aMonthAgo.setMonth(aMonthAgo.getMonth() - 1)
 
-  if (props.chapter.publishedAt < aMonthAgo) {
-    return props.chapter.publishedAt.toLocaleDateString(locale.value, { dateStyle: 'medium' })
+  const d = props.chapter.earlyAccessUntil || props.chapter.publishedAt
+
+  if (d < aMonthAgo) {
+    return d.toLocaleDateString(locale.value, { dateStyle: 'medium' })
   }
 
-  return formatRelativeTime(props.chapter.publishedAt, { locale: locale.value })
+  return formatRelativeTime(d, { locale: locale.value })
 })
 
-const isEarlyAccess = computed(() => props.chapter.earlyAccessUntil > new Date())
+const isEarlyAccess = computed(() => props.chapter.earlyAccessUntil && props.chapter.earlyAccessUntil > new Date())
 
 const to = computed(() => {
   if (isEarlyAccess.value) {
@@ -33,7 +35,7 @@ const to = computed(() => {
   return `${props.comicOriginUrl}/chapter/${props.chapter.number}`
 })
 
-const isChapterDownloading = computed(() => props.chapter.internalId && props.chapter.download !== undefined && props.chapter.download >= 0 && props.chapter.download < 100 && props.chapter.earlyAccessUntil < new Date())
+const isChapterDownloading = computed(() => props.chapter.internalId && props.chapter.download !== undefined && props.chapter.download >= 0 && props.chapter.download < 100 && props.chapter.earlyAccessUntil && props.chapter.earlyAccessUntil < new Date())
 const isChapterDownloaded = computed(() => props.chapter.internalId && props.chapter.download === 100)
 const isChapterDownloadingError = computed(() => props.chapter.internalId && props.chapter.download === -1 && !retryDownloadLoading.value)
 </script>
@@ -74,7 +76,7 @@ const isChapterDownloadingError = computed(() => props.chapter.internalId && pro
             v-else-if="isEarlyAccess"
             class="text-body-medium text-medium-emphasis text-truncate text-gold"
           >
-            {{ $t('sources.asurascans.comic.chapterUnlocksIn', { time: formatRelativeTime(chapter.earlyAccessUntil, { locale, direction: 'future' }) }) }}
+            {{ $t('sources.asurascans.comic.chapterUnlocksIn', { time: formatRelativeTime(chapter.earlyAccessUntil as Date, { locale, direction: 'future' }) }) }}
           </span>
         </div>
       </div>

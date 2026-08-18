@@ -12,6 +12,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 var _ ChaptersService = (*Service)(nil)
@@ -64,7 +65,7 @@ func (s *Service) CreateAll(
 			Title:             srcChapter.Title,
 			PagesNb:           srcChapter.PageCount,
 			PublishedAt:       srcChapter.PublishedAt,
-			EarlyAccessUntil:  srcChapter.EarlyAccessUntil,
+			EarlyAccessUntil:  utils.OptionalTime(srcChapter.EarlyAccessUntil),
 		}
 	}
 
@@ -188,7 +189,7 @@ func isDownloadable(chapter Chapter, now time.Time) bool {
 		return false
 	}
 
-	if chapter.EarlyAccessUntil.After(now) {
+	if chapter.EarlyAccessUntil != nil && chapter.EarlyAccessUntil.After(now) {
 		return false
 	}
 

@@ -12,7 +12,7 @@ import (
 
 type Chapter struct {
 	PublishedAt       time.Time
-	EarlyAccessUntil  time.Time
+	EarlyAccessUntil  *time.Time
 	SourceChapterSlug string
 	Title             string
 	Number            float64
@@ -64,7 +64,7 @@ type GetByIdsOpts struct {
 
 type CreateOpts struct {
 	PublishedAt       time.Time
-	EarlyAccessUntil  time.Time
+	EarlyAccessUntil  *time.Time
 	SourceChapterSlug string
 	Title             string
 	Number            float64

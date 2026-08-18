@@ -244,11 +244,13 @@ func TestServiceEnqueueDownloadableRunsWithoutError(t *testing.T) {
 	svc := newTestService(repo, downloader, &fakeLibraryRepository{existsByUserAndComic: true})
 
 	now := time.Now()
+	lockedUntil := now.Add(time.Hour)
+	unlockedUntil := now.Add(-time.Hour)
 
 	err := svc.EnqueueDownloadable(context.Background(), []chapters.Chapter{
 		{Download: 100},
-		{EarlyAccessUntil: now.Add(time.Hour)},
-		{Download: 0, EarlyAccessUntil: now.Add(-time.Hour)},
+		{EarlyAccessUntil: &lockedUntil},
+		{Download: 0, EarlyAccessUntil: &unlockedUntil},
 	})
 	if err != nil {
 		t.Fatalf("EnqueueDownloadable: %v", err)
@@ -297,12 +299,14 @@ func TestServiceScanEarlyAccess(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
+	lockedUntil := now.Add(time.Hour)
+	unlockedUntil := now.Add(-time.Hour)
 	downloader := &fakeChapterDownloader{}
 	repo := &fakeChaptersRepository{
 		listEarlyAccessResult: []chapters.Chapter{
 			{Download: 100},
-			{EarlyAccessUntil: now.Add(time.Hour)},
-			{Download: 0, EarlyAccessUntil: now.Add(-time.Hour)},
+			{EarlyAccessUntil: &lockedUntil},
+			{Download: 0, EarlyAccessUntil: &unlockedUntil},
 		},
 	}
 	svc := newTestService(repo, downloader, &fakeLibraryRepository{existsByUserAndComic: true})

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package feed_test
 
 import (
@@ -16,14 +17,14 @@ func TestIsUnlocked(t *testing.T) {
 	aug20 := time.Date(2026, time.August, 20, 0, 0, 0, 0, time.UTC)
 
 	tests := map[string]struct {
-		until time.Time
+		until *time.Time
 		now   time.Time
 		want  bool
 	}{
-		"zero is unlocked":           {until: time.Time{}, now: now, want: true},
-		"future early access locked": {until: aug20, now: now, want: false},
-		"equal now is unlocked":      {until: now, now: now, want: true},
-		"past early access unlocked": {until: aug20, now: time.Date(2026, time.August, 21, 0, 0, 0, 0, time.UTC), want: true},
+		"nil is unlocked":            {until: nil, now: now, want: true},
+		"future early access locked": {until: &aug20, now: now, want: false},
+		"equal now is unlocked":      {until: &now, now: now, want: true},
+		"past early access unlocked": {until: &aug20, now: time.Date(2026, time.August, 21, 0, 0, 0, 0, time.UTC), want: true},
 	}
 
 	for name, tc := range tests {
@@ -47,11 +48,11 @@ func TestAvailabilityAtAugustScenario(t *testing.T) {
 	aug16 := time.Date(2026, time.August, 16, 12, 0, 0, 0, time.UTC)
 	aug21 := time.Date(2026, time.August, 21, 0, 0, 0, 0, time.UTC)
 
-	if got := feed.AvailabilityAt(published1, time.Time{}, aug16); !got.Equal(published1) {
+	if got := feed.AvailabilityAt(published1, nil, aug16); !got.Equal(published1) {
 		t.Errorf("ch10 on 16 Aug = %v, want publishedAt", got)
 	}
 
-	if got := feed.AvailabilityAt(published10, early20, aug16); !got.Equal(published10) {
+	if got := feed.AvailabilityAt(published10, &early20, aug16); !got.Equal(published10) {
 		t.Errorf(
 			"ch11 still locked on 16 Aug availability = %v, want publishedAt "+
 				"(caller must not use this for ranking locked chapters)",
@@ -59,7 +60,7 @@ func TestAvailabilityAtAugustScenario(t *testing.T) {
 		)
 	}
 
-	if got := feed.AvailabilityAt(published10, early20, aug21); !got.Equal(early20) {
+	if got := feed.AvailabilityAt(published10, &early20, aug21); !got.Equal(early20) {
 		t.Errorf("ch11 on 21 Aug = %v, want earlyAccessUntil 20 Aug", got)
 	}
 }

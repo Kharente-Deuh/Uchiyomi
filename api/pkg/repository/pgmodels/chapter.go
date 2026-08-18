@@ -7,11 +7,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 type Chapter struct {
 	PublishedAt      time.Time `gorm:"not null"`
-	EarlyAccessUntil time.Time `gorm:"not null"`
+	EarlyAccessUntil *time.Time
 	//nolint:lll
 	SourceChapterSlug string    `gorm:"column:source_chapter_slug;type:text;not null;uniqueIndex:idx_chapter_comic_source_slug,priority:2"`
 	Title             string    `gorm:"type:text"`
@@ -36,7 +37,7 @@ func (c *Chapter) Domain() chapters.Chapter {
 		Title:             c.Title,
 		PagesNb:           c.PagesNb,
 		PublishedAt:       c.PublishedAt,
-		EarlyAccessUntil:  c.EarlyAccessUntil,
+		EarlyAccessUntil:  utils.OptionalTime(c.EarlyAccessUntil),
 		Download:          c.Download,
 	}
 }

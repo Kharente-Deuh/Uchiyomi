@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 //nolint:lll
@@ -55,7 +56,7 @@ func (r *getSeriesChaptersHttpResponse) Domain() []domain.Chapter {
 		chapters[i] = domain.Chapter{
 			ID:               c.Slug,
 			Number:           c.Number,
-			EarlyAccessUntil: c.EarlyAccessUntil,
+			EarlyAccessUntil: utils.OptionalTime(c.EarlyAccessUntil),
 			PublishedAt:      c.PublishedAt,
 			Title:            c.Title,
 			PageCount:        c.PageCount,
@@ -66,18 +67,18 @@ func (r *getSeriesChaptersHttpResponse) Domain() []domain.Chapter {
 }
 
 type getSeriesChaptersHttpChapter struct {
-	EarlyAccessUntil time.Time `json:"early_access_until,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	PublishedAt      time.Time `json:"published_at"`
-	Title            string    `json:"title,omitempty"`
-	SeriesSlug       string    `json:"series_slug"`
-	Slug             string    `json:"slug"`
-	ViewCount        int       `json:"view_count"`
-	ID               int       `json:"id"`
-	PageCount        int       `json:"page_count"`
-	Number           float64   `json:"number"`
-	SeriesID         int       `json:"series_id"`
-	CommentsEnabled  bool      `json:"comments_enabled"`
-	IsPremium        bool      `json:"is_premium"`
-	IsLocked         bool      `json:"is_locked"`
+	EarlyAccessUntil *time.Time `json:"early_access_until,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	PublishedAt      time.Time  `json:"published_at"`
+	Title            string     `json:"title,omitempty"`
+	SeriesSlug       string     `json:"series_slug"`
+	Slug             string     `json:"slug"`
+	ViewCount        int        `json:"view_count"`
+	ID               int        `json:"id"`
+	PageCount        int        `json:"page_count"`
+	Number           float64    `json:"number"`
+	SeriesID         int        `json:"series_id"`
+	CommentsEnabled  bool       `json:"comments_enabled"`
+	IsPremium        bool       `json:"is_premium"`
+	IsLocked         bool       `json:"is_locked"`
 }

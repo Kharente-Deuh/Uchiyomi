@@ -364,7 +364,7 @@ func TestPostListReturnsChapters(t *testing.T) {
 		getByIdsResult: []chapters.Chapter{
 			{
 				PublishedAt:       publishedAt,
-				EarlyAccessUntil:  earlyAccessUntil,
+				EarlyAccessUntil:  &earlyAccessUntil,
 				SourceChapterSlug: "chapter-1",
 				Title:             "Chapter 1",
 				Number:            1.5,

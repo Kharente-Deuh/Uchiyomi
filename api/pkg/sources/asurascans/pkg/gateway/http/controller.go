@@ -143,7 +143,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 		Total: res.Meta.Total,
 		Items: utils.MapSlice(res.Items, func(i domain.SearchResultItem) searchResItemDTO {
 			return searchResItemDTO{
-				LastChapterAt: i.LastChapterAt,
+				LastChapterAt: utils.OptionalTime(i.LastChapterAt),
 				UpdatedAt:     i.UpdatedAt,
 				CreatedAt:     i.CreatedAt,
 				PublicURL:     i.PublicURL,
@@ -164,7 +164,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 				InternalID:    i.InternalID,
 				LatestChapters: utils.MapSlice(i.LatestChapters, func(lc domain.SearchResultItemChapter) searchResItemChapterDTO {
 					return searchResItemChapterDTO{
-						EarlyAccessUntil: lc.EarlyAccessUntil,
+						EarlyAccessUntil: utils.OptionalTime(lc.EarlyAccessUntil),
 						PublishedAt:      lc.PublishedAt,
 						Title:            lc.Title,
 						ID:               lc.ID,
@@ -209,7 +209,7 @@ func (c *Controller) getInfosBySlug(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, getInfosBySlugResDTO{
-		LastChapterAt: s.LastChapterAt,
+		LastChapterAt: utils.OptionalTime(s.LastChapterAt),
 		UpdatedAt:     s.UpdatedAt,
 		CreatedAt:     s.CreatedAt,
 		Description:   s.Description,
@@ -259,7 +259,7 @@ func (c *Controller) getChaptersListBySeries(w http.ResponseWriter, r *http.Requ
 
 	dto := utils.MapSlice(chapters, func(ch domain.Chapter) getChaptersListBySeriesResItemDTO {
 		return getChaptersListBySeriesResItemDTO{
-			EarlyAccessUntil: ch.EarlyAccessUntil,
+			EarlyAccessUntil: utils.OptionalTime(ch.EarlyAccessUntil),
 			PublishedAt:      ch.PublishedAt,
 			InternalID:       ch.InternalID,
 			Download:         ch.Download,

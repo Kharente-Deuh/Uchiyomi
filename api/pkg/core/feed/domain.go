@@ -12,7 +12,7 @@ import (
 
 type LatestChapter struct {
 	PublishedAt      time.Time
-	EarlyAccessUntil time.Time
+	EarlyAccessUntil *time.Time
 	Title            string
 	Number           float64
 	Download         int
@@ -66,13 +66,17 @@ type FeedService interface {
 	Get(context.Context, GetOpts) (Page, error)
 }
 
-func IsUnlocked(earlyAccessUntil, now time.Time) bool {
+func IsUnlocked(earlyAccessUntil *time.Time, now time.Time) bool {
+	if earlyAccessUntil == nil {
+		return true
+	}
+
 	return !earlyAccessUntil.After(now)
 }
 
-func AvailabilityAt(publishedAt, earlyAccessUntil, now time.Time) time.Time {
-	if !earlyAccessUntil.IsZero() && !earlyAccessUntil.After(now) {
-		return earlyAccessUntil
+func AvailabilityAt(publishedAt time.Time, earlyAccessUntil *time.Time, now time.Time) time.Time {
+	if earlyAccessUntil != nil && !earlyAccessUntil.After(now) {
+		return *earlyAccessUntil
 	}
 
 	return publishedAt

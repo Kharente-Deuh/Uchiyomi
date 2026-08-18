@@ -81,7 +81,7 @@ func TestChaptersCreate(t *testing.T) {
 		Title:             chapterTitle,
 		PagesNb:           42,
 		PublishedAt:       publishedAt,
-		EarlyAccessUntil:  earlyAccessUntil,
+		EarlyAccessUntil:  &earlyAccessUntil,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -95,7 +95,8 @@ func TestChaptersCreate(t *testing.T) {
 		t.Errorf("Create() = %+v", got)
 	}
 
-	if got.PublishedAt != publishedAt || got.EarlyAccessUntil != earlyAccessUntil {
+	if got.PublishedAt != publishedAt ||
+		got.EarlyAccessUntil == nil || !got.EarlyAccessUntil.Equal(earlyAccessUntil) {
 		t.Errorf("Create() timestamps = published %v early %v", got.PublishedAt, got.EarlyAccessUntil)
 	}
 
@@ -155,7 +156,7 @@ func TestChaptersCreateMany(t *testing.T) {
 			Title:             chapterTitle,
 			PagesNb:           42,
 			PublishedAt:       publishedAt,
-			EarlyAccessUntil:  earlyAccessUntil,
+			EarlyAccessUntil:  &earlyAccessUntil,
 		},
 		{
 			ComicID:           comicID,
@@ -164,7 +165,7 @@ func TestChaptersCreateMany(t *testing.T) {
 			Title:             "Chapter 2",
 			PagesNb:           30,
 			PublishedAt:       publishedAt,
-			EarlyAccessUntil:  earlyAccessUntil,
+			EarlyAccessUntil:  &earlyAccessUntil,
 		},
 	})
 	if err != nil {

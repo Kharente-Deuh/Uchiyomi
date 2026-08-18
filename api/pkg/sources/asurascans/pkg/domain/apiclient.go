@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 type ApiClient interface {
@@ -104,7 +105,7 @@ type SearchResultMeta struct {
 }
 
 type SearchResultItem struct {
-	LastChapterAt  time.Time
+	LastChapterAt  *time.Time
 	UpdatedAt      time.Time
 	CreatedAt      time.Time
 	InternalID     *uuid.UUID
@@ -128,7 +129,7 @@ type SearchResultItem struct {
 }
 
 type SearchCacheResultItem struct {
-	LastChapterAt  time.Time
+	LastChapterAt  *time.Time
 	UpdatedAt      time.Time
 	CreatedAt      time.Time
 	PublicURL      string
@@ -152,7 +153,7 @@ type SearchCacheResultItem struct {
 
 func (i *SearchCacheResultItem) Domain(internalID *uuid.UUID) SearchResultItem {
 	return SearchResultItem{
-		LastChapterAt:  i.LastChapterAt,
+		LastChapterAt:  utils.OptionalTime(i.LastChapterAt),
 		UpdatedAt:      i.UpdatedAt,
 		CreatedAt:      i.CreatedAt,
 		PublicURL:      i.PublicURL,
@@ -177,7 +178,7 @@ func (i *SearchCacheResultItem) Domain(internalID *uuid.UUID) SearchResultItem {
 }
 
 type SearchResultItemChapter struct {
-	EarlyAccessUntil time.Time
+	EarlyAccessUntil *time.Time
 	PublishedAt      time.Time
 	Title            string
 	ID               string
@@ -185,7 +186,7 @@ type SearchResultItemChapter struct {
 }
 
 type GetInfosBySlugResponse struct {
-	LastChapterAt time.Time
+	LastChapterAt *time.Time
 	UpdatedAt     time.Time
 	CreatedAt     time.Time
 	Description   string
@@ -206,7 +207,7 @@ type GetInfosBySlugResponse struct {
 
 func (r *GetInfosBySlugResponse) Source(internalURL *uuid.UUID) sources.GetInfosBySlugResponse {
 	return sources.GetInfosBySlugResponse{
-		LastChapterAt: r.LastChapterAt,
+		LastChapterAt: utils.OptionalTime(r.LastChapterAt),
 		UpdatedAt:     r.UpdatedAt,
 		CreatedAt:     r.CreatedAt,
 		Description:   r.Description,
@@ -228,7 +229,7 @@ func (r *GetInfosBySlugResponse) Source(internalURL *uuid.UUID) sources.GetInfos
 }
 
 type Chapter struct {
-	EarlyAccessUntil time.Time
+	EarlyAccessUntil *time.Time
 	PublishedAt      time.Time
 	InternalID       *uuid.UUID
 	Download         *int

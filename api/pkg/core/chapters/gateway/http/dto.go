@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 type postListBody struct {
@@ -18,14 +19,9 @@ type postListResponse struct {
 func postListResponseFromDomain(domain []chapters.Chapter) postListResponse {
 	chapters := make([]postListResponseChapter, 0, len(domain))
 	for _, chapter := range domain {
-		var earlyAccessUntil *time.Time = nil
-		if !chapter.EarlyAccessUntil.IsZero() {
-			earlyAccessUntil = &chapter.EarlyAccessUntil
-		}
-
 		chapters = append(chapters, postListResponseChapter{
 			PublishedAt:       chapter.PublishedAt,
-			EarlyAccessUntil:  earlyAccessUntil,
+			EarlyAccessUntil:  utils.OptionalTime(chapter.EarlyAccessUntil),
 			SourceChapterSlug: chapter.SourceChapterSlug,
 			Title:             chapter.Title,
 			Number:            chapter.Number,

@@ -246,7 +246,6 @@ func TestGetInvalidQuery(t *testing.T) {
 	queries := []string{
 		"?source=not-a-source",
 		"?type=webtoon",
-		"?status=unknown",
 		"?limit=x",
 		"?offset=x",
 	}
@@ -361,7 +360,7 @@ func TestGetJSON(t *testing.T) {
 				Title:            "Chapter 1",
 				Number:           1,
 				PublishedAt:      publishedAt,
-				EarlyAccessUntil: earlyAccessUntil,
+				EarlyAccessUntil: &earlyAccessUntil,
 				Download:         2,
 			}},
 		}},

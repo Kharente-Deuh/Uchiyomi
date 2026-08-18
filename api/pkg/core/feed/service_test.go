@@ -131,12 +131,13 @@ func TestGetAugustScenarioLatestChapters(t *testing.T) {
 		PublishedAt: time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC),
 		Download:    100,
 	}
+	early20 := time.Date(2026, time.August, 20, 0, 0, 0, 0, time.UTC)
 	ch11 := feed.LatestChapter{
 		ID:               ch11ID,
 		ComicID:          comicID,
 		Number:           11,
 		PublishedAt:      time.Date(2026, time.August, 10, 0, 0, 0, 0, time.UTC),
-		EarlyAccessUntil: time.Date(2026, time.August, 20, 0, 0, 0, 0, time.UTC),
+		EarlyAccessUntil: &early20,
 		Download:         0,
 	}
 
