@@ -18,6 +18,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
@@ -68,6 +69,12 @@ func (stubComicsRepository) ListByStatuses(context.Context, comics.ListByStatuse
 
 func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
 	return nil
+}
+
+type stubFeedService struct{}
+
+func (stubFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {
+	return feed.Page{Items: []feed.Item{}, Total: 0}, nil
 }
 
 type emptyOIDCProvidersRepository struct{}
@@ -241,6 +248,7 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 		Logger:               logger,
 		Registry:             health.NewRegistry(),
 		OIDCProvidersService: newTestOIDCProvidersService(t),
+		FeedService:          stubFeedService{},
 	})
 	if err != nil {
 		t.Fatalf("setupCtrls: %v", err)

@@ -30,6 +30,8 @@ services:
     ports:
       - "${API_EXPOSED_PORT:-3000}:3000"
     environment:
+      GOMEMLIMIT: 450MiB
+      GOMAXPROCS: "2"
       DB_HOST: uchiyomi-db
       DB_PORT: 5432
       PUID: ${PUID:-65532}
@@ -54,6 +56,14 @@ services:
     volumes:
       - ./.data:/data
     stop_grace_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M    
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 
 volumes:
   pgdata:
