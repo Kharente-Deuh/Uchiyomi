@@ -27,6 +27,7 @@ export function createFeedApi(): FeedApi {
             ...item,
             latestChapters: latestChapters.map(({ earlyAccessUntil, publishedAt, ...chapter }) => {
               const until = parseOptionalDate(earlyAccessUntil)
+
               return {
                 ...chapter,
                 publishedAt: new Date(publishedAt),

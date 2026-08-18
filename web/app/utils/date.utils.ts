@@ -26,7 +26,7 @@ function calendarDayDiff(from: Date, to: Date, timeZone?: string): number {
 
 /** Treats Go's zero time (`0001-01-01`) and unparseable values as absent. */
 export function parseOptionalDate(value: Date | string | number | null | undefined): Date | undefined {
-  if (value == null || value === '') {
+  if (!value) {
     return undefined
   }
 
