@@ -141,17 +141,6 @@ func (c *Controller) getQuery(r *http.Request) (feed.GetOpts, error) {
 		opts.Type = &parsed
 	}
 
-	comicStatus := r.URL.Query().Get("status")
-	if comicStatus != "" {
-		parsed, err := sources.ParseSeriesStatus(comicStatus)
-		if err != nil {
-			//nolint:wrapcheck
-			return feed.GetOpts{}, err
-		}
-
-		opts.Status = &parsed
-	}
-
 	limit, err := parseQueryLimit(r.URL.Query().Get("limit"))
 	if err != nil {
 		return feed.GetOpts{}, fmt.Errorf("parseQueryLimit: %w", err)

@@ -258,7 +258,6 @@ func TestGetPassesFiltersAndNow(t *testing.T) {
 
 	src := sources.SourceAsuraScans
 	typ := sources.SeriesTypeManhwa
-	st := sources.SeriesStatusOngoing
 	userID := uuid.New()
 	repo := &fakeFeedRepository{page: feed.Page{Items: nil, Total: 0}}
 	svc := newService(t, repo, frozenAug16)
@@ -267,7 +266,6 @@ func TestGetPassesFiltersAndNow(t *testing.T) {
 		UserID: userID,
 		Source: &src,
 		Type:   &typ,
-		Status: &st,
 		Limit:  5,
 		Offset: 2,
 	})
@@ -280,7 +278,7 @@ func TestGetPassesFiltersAndNow(t *testing.T) {
 		t.Errorf("ListPage opts = %+v", o)
 	}
 
-	if o.Type == nil || *o.Type != typ || o.Status == nil || *o.Status != st {
+	if o.Type == nil || *o.Type != typ {
 		t.Errorf("filters = %+v", o)
 	}
 

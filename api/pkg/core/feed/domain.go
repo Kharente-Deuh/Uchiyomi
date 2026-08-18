@@ -38,7 +38,6 @@ type Page struct {
 type GetOpts struct {
 	Source *sources.SourceName
 	Type   *sources.SeriesType
-	Status *sources.SeriesStatus
 	UserID uuid.UUID
 	Limit  int
 	Offset int
@@ -48,7 +47,6 @@ type ListPageOpts struct {
 	Now    time.Time
 	Source *sources.SourceName
 	Type   *sources.SeriesType
-	Status *sources.SeriesStatus
 	UserID uuid.UUID
 	Limit  int
 	Offset int

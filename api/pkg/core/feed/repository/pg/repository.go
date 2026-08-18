@@ -186,10 +186,5 @@ func appendPageFilters(sql string, args []any, opts feed.ListPageOpts) (string, 
 		args = append(args, *opts.Type)
 	}
 
-	if opts.Status != nil {
-		sql += " AND comics.status = ?"
-		args = append(args, *opts.Status)
-	}
-
 	return sql, args
 }

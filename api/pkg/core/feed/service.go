@@ -52,7 +52,6 @@ func (s *Service) Get(ctx context.Context, opts GetOpts) (Page, error) {
 		Now:    now,
 		Source: opts.Source,
 		Type:   opts.Type,
-		Status: opts.Status,
 		UserID: opts.UserID,
 		Limit:  opts.Limit,
 		Offset: opts.Offset,

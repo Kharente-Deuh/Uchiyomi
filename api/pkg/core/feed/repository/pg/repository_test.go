@@ -125,7 +125,6 @@ func TestListPageFilters(t *testing.T) {
 		Now:    now,
 		Source: &src,
 		Type:   &typ,
-		Status: &st,
 		UserID: userID,
 		Limit:  10,
 	})
