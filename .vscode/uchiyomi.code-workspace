@@ -32,8 +32,6 @@
             ".conductor": true,
             ".superpowers": true,
             ".nuxtrc": true,
-            "docs/superpowers/": true,
-            "docs/design/": true,
             "**/node_modules": true,
             "**/bower_components": true,
             "**/*.code-search": true,
