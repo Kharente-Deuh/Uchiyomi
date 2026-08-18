@@ -534,3 +534,119 @@ func TestWorkerCleanupComicStopsInFlightDownloads(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+func TestWorkerResetAndEnqueueClearsPagesAndResetsProgress(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: "chapter-1",
+		Number:            1,
+		PagesNb:           1,
+		Download:          -1,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	worker, dir, chaptersRepo := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{""},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		}),
+	)
+
+	chapterPath := filepath.Join(dir, comicID.String(), "1")
+	if err := os.MkdirAll(chapterPath, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	pagePath := filepath.Join(chapterPath, "001.webp")
+	if err := os.WriteFile(pagePath, []byte("page"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := worker.ResetAndEnqueue(context.Background(), chapterID); err != nil {
+		t.Fatalf("ResetAndEnqueue: %v", err)
+	}
+
+	if _, err := os.Stat(pagePath); !os.IsNotExist(err) {
+		t.Errorf("page still exists after ResetAndEnqueue: %v", err)
+	}
+
+	updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+
+	if updated.Download != 0 {
+		t.Errorf("download = %d, want 0", updated.Download)
+	}
+}
+
+func TestWorkerResumeEnqueuesWithoutClearingPages(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: "chapter-1",
+		Number:            1,
+		PagesNb:           1,
+		Download:          42,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	worker, dir, chaptersRepo := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{""},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		}),
+	)
+
+	chapterPath := filepath.Join(dir, comicID.String(), "1")
+	if err := os.MkdirAll(chapterPath, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	pagePath := filepath.Join(chapterPath, "001.webp")
+	if err := os.WriteFile(pagePath, []byte("page"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := worker.Resume(context.Background(), chapterID); err != nil {
+		t.Fatalf("Resume: %v", err)
+	}
+
+	if _, err := os.Stat(pagePath); err != nil {
+		t.Errorf("page must remain after Resume: %v", err)
+	}
+
+	updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+
+	if updated.Download != 42 {
+		t.Errorf("download = %d, want 42", updated.Download)
+	}
+}

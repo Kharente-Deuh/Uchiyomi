@@ -426,6 +426,29 @@ func newChaptersTestAsuraApp(t *testing.T, deps asura.Deps) *asura.App {
 		deps.GetInfosBySlugCache = infosCache
 	}
 
+	if deps.GetChaptersListBySeriesCache == nil {
+		chaptersCache, err := fncache.New(
+			fncache.Config[string, []domain.Chapter]{
+				Name: "chapters",
+				Fn: func(context.Context, string) (*[]domain.Chapter, error) {
+					return &[]domain.Chapter{}, nil
+				},
+				Key:           func(slug string) string { return slug },
+				TTL:           time.Minute,
+				ErrorTTL:      time.Minute,
+				FetchTimeout:  time.Minute,
+				CleanInterval: time.Minute,
+				MaxEntries:    1,
+			},
+			fncache.Deps{Logger: deps.Logger},
+		)
+		if err != nil {
+			t.Fatalf("fncache.New(chapters): %v", err)
+		}
+
+		deps.GetChaptersListBySeriesCache = chaptersCache
+	}
+
 	if deps.GetImageURLsByChapter == nil {
 		imagesCache, err := fncache.New(
 			fncache.Config[domain.GetImageURLsByChapterOpts, []string]{
@@ -627,5 +650,119 @@ func TestGetChaptersListBySeriesWithoutLibraryEntry(t *testing.T) {
 
 	if body[0].Download != nil {
 		t.Errorf("download = %v, want nil", body[0].Download)
+	}
+}
+
+func TestGetImageURLsByChapter(t *testing.T) {
+	t.Parallel()
+
+	imagesCache, err := fncache.New(
+		fncache.Config[domain.GetImageURLsByChapterOpts, []string]{
+			Name: "images",
+			Fn: func(context.Context, domain.GetImageURLsByChapterOpts) (*[]string, error) {
+				urls := []string{"https://cdn.example/1.webp", "https://cdn.example/2.webp"}
+
+				return &urls, nil
+			},
+			Key:           domain.GetImageURLsByChapterOpts.CacheKey,
+			TTL:           time.Minute,
+			ErrorTTL:      time.Minute,
+			FetchTimeout:  time.Minute,
+			CleanInterval: time.Minute,
+			MaxEntries:    1,
+		},
+		fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+	)
+	if err != nil {
+		t.Fatalf("fncache.New(images): %v", err)
+	}
+
+	ctrl, err := asurahttp.New(
+		asurahttp.Config{Endpoint: "/asura"},
+		asurahttp.Deps{
+			AsuraApp: newChaptersTestAsuraApp(t, asura.Deps{
+				GetImageURLsByChapter: imagesCache,
+			}),
+			Logger:          slog.New(slog.DiscardHandler),
+			CoverURLBuilder: coverURLBuilder,
+		},
+	)
+	if err != nil {
+		t.Fatalf("asurahttp.New: %v", err)
+	}
+
+	r := chi.NewRouter()
+	ctrl.InitRouter(r)
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, authenticatedRequest(
+		http.MethodGet,
+		"/asura/series/solo-leveling/chapters/chapter-1",
+	))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s, want %d", rec.Code, rec.Body.String(), http.StatusOK)
+	}
+
+	var body struct {
+		URLs []string `json:"urls"`
+	}
+
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+
+	if len(body.URLs) != 2 || body.URLs[0] != "https://cdn.example/1.webp" {
+		t.Errorf("urls = %v", body.URLs)
+	}
+}
+
+func TestGetImageURLsByChapterNotFound(t *testing.T) {
+	t.Parallel()
+
+	imagesCache, err := fncache.New(
+		fncache.Config[domain.GetImageURLsByChapterOpts, []string]{
+			Name: "images",
+			Fn: func(context.Context, domain.GetImageURLsByChapterOpts) (*[]string, error) {
+				return nil, domain.ErrNotFound
+			},
+			Key:           domain.GetImageURLsByChapterOpts.CacheKey,
+			TTL:           time.Minute,
+			ErrorTTL:      time.Minute,
+			FetchTimeout:  time.Minute,
+			CleanInterval: time.Minute,
+			MaxEntries:    1,
+		},
+		fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+	)
+	if err != nil {
+		t.Fatalf("fncache.New(images): %v", err)
+	}
+
+	ctrl, err := asurahttp.New(
+		asurahttp.Config{Endpoint: "/asura"},
+		asurahttp.Deps{
+			AsuraApp: newChaptersTestAsuraApp(t, asura.Deps{
+				GetImageURLsByChapter: imagesCache,
+			}),
+			Logger:          slog.New(slog.DiscardHandler),
+			CoverURLBuilder: coverURLBuilder,
+		},
+	)
+	if err != nil {
+		t.Fatalf("asurahttp.New: %v", err)
+	}
+
+	r := chi.NewRouter()
+	ctrl.InitRouter(r)
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, authenticatedRequest(
+		http.MethodGet,
+		"/asura/series/solo-leveling/chapters/missing",
+	))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }

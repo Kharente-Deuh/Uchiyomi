@@ -20,15 +20,19 @@ type fakeChaptersRepository struct {
 	lastListEarlyAccessUntil time.Time
 	getByIDErr               error
 	getByIdsErr              error
+	listByComicIDErr         error
 	getByIDResult            *chapters.Chapter
 	lastCreateMany           []chapters.CreateOpts
 	listResumableResult      []chapters.Chapter
 	listEarlyAccessResult    []chapters.Chapter
+	listByComicIDResult      []chapters.Chapter
 	getByIdsResult           []chapters.Chapter
 	lastGetByIds             []uuid.UUID
+	lastListByComicID        uuid.UUID
 	createManyCalls          int
 	listResumableCalls       int
 	listEarlyAccessCalls     int
+	listByComicIDCalls       int
 	getByIDCalls             int
 	getByIdsCalls            int
 }
@@ -58,8 +62,15 @@ func (f *fakeChaptersRepository) CreateMany(_ context.Context, opts []chapters.C
 	return created, nil
 }
 
-func (f *fakeChaptersRepository) ListByComicID(context.Context, uuid.UUID) ([]chapters.Chapter, error) {
-	panic("ListByComicID must not be called")
+func (f *fakeChaptersRepository) ListByComicID(_ context.Context, comicID uuid.UUID) ([]chapters.Chapter, error) {
+	f.listByComicIDCalls++
+	f.lastListByComicID = comicID
+
+	if f.listByComicIDErr != nil {
+		return nil, f.listByComicIDErr
+	}
+
+	return f.listByComicIDResult, nil
 }
 
 func (f *fakeChaptersRepository) ListResumable(context.Context) ([]chapters.Chapter, error) {
@@ -233,6 +244,45 @@ func TestServiceCreateAll(t *testing.T) {
 
 	if len(repo.lastCreateMany) != 1 || repo.lastCreateMany[0].PagesNb != 42 || repo.lastCreateMany[0].ComicID != comicID {
 		t.Errorf("CreateMany opts = %+v", repo.lastCreateMany)
+	}
+}
+
+func TestServiceListByComicID(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	want := []chapters.Chapter{{ID: uuid.New(), ComicID: comicID, Title: "Chapter 1"}}
+	repo := &fakeChaptersRepository{listByComicIDResult: want}
+	svc := newTestService(repo, &fakeChapterDownloader{}, &fakeLibraryRepository{})
+
+	got, err := svc.ListByComicID(context.Background(), comicID)
+	if err != nil {
+		t.Fatalf("ListByComicID: %v", err)
+	}
+
+	if repo.listByComicIDCalls != 1 || repo.lastListByComicID != comicID {
+		t.Errorf("ListByComicID comic = %s, calls = %d", repo.lastListByComicID, repo.listByComicIDCalls)
+	}
+
+	if len(got) != 1 || got[0].ID != want[0].ID {
+		t.Errorf("ListByComicID() = %+v, want %+v", got, want)
+	}
+}
+
+func TestServiceListByComicIDError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("db down")
+	repo := &fakeChaptersRepository{listByComicIDErr: sentinel}
+	svc := newTestService(repo, &fakeChapterDownloader{}, &fakeLibraryRepository{})
+
+	got, err := svc.ListByComicID(context.Background(), uuid.New())
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("ListByComicID = %v, want wrapped sentinel", err)
+	}
+
+	if got != nil {
+		t.Errorf("ListByComicID returned %+v in addition to the error", got)
 	}
 }
 

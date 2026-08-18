@@ -149,6 +149,27 @@ func TestDecodeJSONValidBody(t *testing.T) {
 	}
 }
 
+func TestTrimmedStringUnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	type payload struct {
+		Name httputils.TrimmedString `json:"name"`
+	}
+
+	got, err := decode[payload](t, `{"name":"  bob  "}`)
+	if err != nil {
+		t.Fatalf("DecodeJSON: %v", err)
+	}
+
+	if got.Name.String() != "bob" {
+		t.Errorf("Name = %q, want %q", got.Name.String(), "bob")
+	}
+
+	if _, err := decode[payload](t, `{"name":1}`); err == nil {
+		t.Fatal("DecodeJSON with a non-string name must fail")
+	}
+}
+
 func TestDecodeJSONRejectsMalformedBody(t *testing.T) {
 	t.Parallel()
 

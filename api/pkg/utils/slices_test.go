@@ -89,6 +89,26 @@ func TestFilterSlice(t *testing.T) {
 	}
 }
 
+func TestContainsSlice(t *testing.T) {
+	t.Parallel()
+
+	if !utils.ContainsSlice([]int{1, 2, 3}, func(i int) bool { return i == 2 }) {
+		t.Error("ContainsSlice must find a matching element")
+	}
+
+	if utils.ContainsSlice([]int{1, 2, 3}, func(i int) bool { return i == 9 }) {
+		t.Error("ContainsSlice must return false when nothing matches")
+	}
+
+	if utils.ContainsSlice([]int{}, func(int) bool { return true }) {
+		t.Error("ContainsSlice(empty) must return false")
+	}
+
+	if utils.ContainsSlice(nil, func(int) bool { return true }) {
+		t.Error("ContainsSlice(nil) must return false")
+	}
+}
+
 func TestFilterSliceDoesNotMutateInput(t *testing.T) {
 	t.Parallel()
 

@@ -284,6 +284,113 @@ func chapterSelectColumns() []string {
 	}
 }
 
+func TestChaptersGetByID(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	comicID := uuid.New()
+	id := uuid.New()
+	publishedAt := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`FROM "chapters".*id = \$1`).
+		WithArgs(id, 1).
+		WillReturnRows(
+			sqlmock.NewRows(chapterSelectColumns()).AddRow(
+				id, comicID, chapterSlug, 1.0, chapterTitle,
+				42, publishedAt, publishedAt, 80,
+			),
+		)
+
+	got, err := r.GetByID(context.Background(), id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+
+	if got.ID != id || got.ComicID != comicID || got.Download != 80 || got.PagesNb != 42 {
+		t.Errorf("GetByID() = %+v", got)
+	}
+}
+
+func TestChaptersGetByIDNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	mock.ExpectQuery(`FROM "chapters".*id = \$1`).
+		WithArgs(sqlmock.AnyArg(), 1).
+		WillReturnRows(sqlmock.NewRows(chapterSelectColumns()))
+
+	got, err := r.GetByID(context.Background(), uuid.New())
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetByID = %v, want domain.ErrNotFound", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetByID returned %+v in addition to the error", got)
+	}
+}
+
+func TestChaptersUpdateDownload(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "chapters" SET`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	if err := r.UpdateDownload(context.Background(), id, 42); err != nil {
+		t.Fatalf("UpdateDownload: %v", err)
+	}
+}
+
+func TestChaptersUpdateDownloadNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "chapters" SET`).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	err := r.UpdateDownload(context.Background(), uuid.New(), 42)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("UpdateDownload = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestChaptersUpdatePagesNb(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "chapters" SET`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	if err := r.UpdatePagesNb(context.Background(), id, 30); err != nil {
+		t.Fatalf("UpdatePagesNb: %v", err)
+	}
+}
+
+func TestChaptersUpdatePagesNbNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "chapters" SET`).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	err := r.UpdatePagesNb(context.Background(), uuid.New(), 30)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("UpdatePagesNb = %v, want domain.ErrNotFound", err)
+	}
+}
+
 func TestChaptersGetByIds(t *testing.T) {
 	t.Parallel()
 

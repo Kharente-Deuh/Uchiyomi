@@ -709,3 +709,118 @@ func TestAppRunReturnsOnContextCancel(t *testing.T) {
 		t.Fatal("Run never returned after context cancellation")
 	}
 }
+
+func TestAppGetChaptersBySlug(t *testing.T) {
+	t.Parallel()
+
+	publishedAt := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	early := time.Date(2024, 3, 2, 0, 0, 0, 0, time.UTC)
+	deps := fullDeps(t)
+	deps.GetChaptersListBySeriesCache = newCache(t, identityKey,
+		func(context.Context, string) (*[]domain.Chapter, error) {
+			chapterList := []domain.Chapter{{
+				ID:               "chapter-1",
+				Title:            "Chapter 1",
+				Number:           1,
+				PageCount:        20,
+				PublishedAt:      publishedAt,
+				EarlyAccessUntil: &early,
+			}}
+
+			return &chapterList, nil
+		})
+
+	app, err := core.New(testConfig(), deps)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	got, err := app.GetChaptersBySlug(context.Background(), sources.GetChaptersBySlugOpts{Slug: "solo-leveling"})
+	if err != nil {
+		t.Fatalf("GetChaptersBySlug: %v", err)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("len = %d, want 1", len(got))
+	}
+
+	if got[0].SourceChapterSlug != "chapter-1" || got[0].Title != "Chapter 1" || got[0].PageCount != 20 {
+		t.Errorf("GetChaptersBySlug() = %+v", got[0])
+	}
+
+	if !got[0].PublishedAt.Equal(publishedAt) || got[0].EarlyAccessUntil == nil {
+		t.Errorf("timestamps = %+v", got[0])
+	}
+}
+
+func TestAppGetPageURLsByChapter(t *testing.T) {
+	t.Parallel()
+
+	app, err := core.New(testConfig(), fullDeps(t))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	got, err := app.GetPageURLsByChapter(context.Background(), sources.GetPageURLsByChapterOpts{
+		SeriesSlug:  "solo-leveling",
+		ChapterSlug: "c1",
+	})
+	if err != nil {
+		t.Fatalf("GetPageURLsByChapter: %v", err)
+	}
+
+	if len(got) != 1 || got[0] != "https://example.test/1.jpg" {
+		t.Errorf("GetPageURLsByChapter() = %v", got)
+	}
+}
+
+func TestAppBindChaptersServiceEnrichesLibraryChapters(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	userID := uuid.New()
+	seriesSlug := "solo-leveling"
+	sourceChapterSlug := "solo-leveling-chapter-1"
+
+	deps := fullDeps(t)
+	deps.GetChaptersListBySeriesCache = newCache(t, identityKey,
+		func(context.Context, string) (*[]domain.Chapter, error) {
+			chapterList := []domain.Chapter{{ID: sourceChapterSlug, Number: 1, Title: "Chapter 1"}}
+
+			return &chapterList, nil
+		})
+	deps.ComicsRepository = inLibraryComicsRepository{
+		comic: &comics.Comic{ID: comicID, Slug: seriesSlug},
+	}
+
+	app, err := core.New(testConfig(), deps)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	before, err := app.GetChaptersListBySeries(context.Background(), seriesSlug, userID)
+	if err != nil {
+		t.Fatalf("GetChaptersListBySeries before bind: %v", err)
+	}
+
+	if before[0].InternalID != nil {
+		t.Errorf("InternalID before bind = %v, want nil", before[0].InternalID)
+	}
+
+	app.BindChaptersService(libraryChaptersService{chapters: []chapters.Chapter{{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: sourceChapterSlug,
+		Download:          7,
+	}}})
+
+	after, err := app.GetChaptersListBySeries(context.Background(), seriesSlug, userID)
+	if err != nil {
+		t.Fatalf("GetChaptersListBySeries after bind: %v", err)
+	}
+
+	if after[0].InternalID == nil || *after[0].InternalID != chapterID {
+		t.Errorf("InternalID after bind = %v, want %s", after[0].InternalID, chapterID)
+	}
+}
