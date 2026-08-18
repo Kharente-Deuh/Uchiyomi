@@ -275,7 +275,6 @@ type postListHTTPChapter struct {
 	ComicID           uuid.UUID  `json:"comicId"`
 }
 
-
 func TestPostListRequiresAuthentication(t *testing.T) {
 	t.Parallel()
 
