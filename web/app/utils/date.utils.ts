@@ -24,6 +24,20 @@ function calendarDayDiff(from: Date, to: Date, timeZone?: string): number {
   return Math.round((b - a) / 86_400_000)
 }
 
+/** Treats Go's zero time (`0001-01-01`) and unparseable values as absent. */
+export function parseOptionalDate(value: Date | string | number | null | undefined): Date | undefined {
+  if (value == null || value === '') {
+    return undefined
+  }
+
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime()) || date.getUTCFullYear() < 2) {
+    return undefined
+  }
+
+  return date
+}
+
 export function formatRelativeTime(value: Date | string | number, options: RelativeTimeOpts): string {
   const date = value instanceof Date ? value : new Date(value)
   const now = options.now ?? new Date()

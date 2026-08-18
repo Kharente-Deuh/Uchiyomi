@@ -15,7 +15,7 @@ export interface FeedChapter {
   id: string
   title?: string
   publishedAt: Date
-  earlyAccessUntil: Date
+  earlyAccessUntil?: Date
   number: number
   download: number
 }

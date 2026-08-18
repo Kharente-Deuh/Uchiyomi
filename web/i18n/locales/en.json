@@ -234,7 +234,8 @@
         "completed": "Completed",
         "hiatus": "Hiatus",
         "cancelled": "Cancelled",
-        "label": "Status"
+        "label": "Status",
+        "unknown": "Unknown"
       },
       "sort": {
         "popular": "Popular",
@@ -317,6 +318,9 @@
     "title": "Feed",
     "error": {
       "fetch": "Fetch to load feed"
+    },
+    "chapter": {
+      "number": "Chapter {number}"
     }
   },
   "reading": {
