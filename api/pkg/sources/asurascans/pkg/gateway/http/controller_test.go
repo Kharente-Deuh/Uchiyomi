@@ -165,6 +165,10 @@ func (s libraryChaptersService) RetryDownload(context.Context, chapters.RetryDow
 	return nil
 }
 
+func (s libraryChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts) ([]chapters.Chapter, error) {
+	return nil, nil
+}
+
 func newTestAsuraApp(t *testing.T) *asura.App {
 	t.Helper()
 

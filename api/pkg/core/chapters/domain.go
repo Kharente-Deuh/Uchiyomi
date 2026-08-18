@@ -31,6 +31,7 @@ type ChaptersRepository interface {
 	GetByID(context.Context, uuid.UUID) (*Chapter, error)
 	UpdateDownload(context.Context, uuid.UUID, int) error
 	UpdatePagesNb(context.Context, uuid.UUID, int) error
+	GetByIds(context.Context, []uuid.UUID) ([]Chapter, error)
 }
 
 type ChapterDownloader interface {
@@ -48,11 +49,17 @@ type ChaptersService interface {
 	ScanEarlyAccess(context.Context) error
 	CleanupComic(context.Context, uuid.UUID, []Chapter) error
 	RetryDownload(context.Context, RetryDownloadOpts) error
+	GetByIds(context.Context, GetByIdsOpts) ([]Chapter, error)
 }
 
 type RetryDownloadOpts struct {
 	UserID    uuid.UUID
 	ChapterID uuid.UUID
+}
+
+type GetByIdsOpts struct {
+	IDs    []uuid.UUID
+	UserID uuid.UUID
 }
 
 type CreateOpts struct {

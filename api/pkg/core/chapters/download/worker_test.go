@@ -48,6 +48,10 @@ func (f *fakeChaptersRepository) ListEarlyAccessUnlocked(context.Context, time.T
 	panic("not implemented")
 }
 
+func (f *fakeChaptersRepository) GetByIds(context.Context, []uuid.UUID) ([]chapters.Chapter, error) {
+	panic("GetByIds must not be called")
+}
+
 func (f *fakeChaptersRepository) GetByID(_ context.Context, id uuid.UUID) (*chapters.Chapter, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

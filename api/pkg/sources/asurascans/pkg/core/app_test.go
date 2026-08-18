@@ -212,6 +212,10 @@ func (s libraryChaptersService) RetryDownload(context.Context, chapters.RetryDow
 	return nil
 }
 
+func (s libraryChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts) ([]chapters.Chapter, error) {
+	return nil, nil
+}
+
 func newCache[P any, T any](
 	t *testing.T, key func(P) string, fn func(context.Context, P) (*T, error),
 ) *fncache.Cache[P, T] {

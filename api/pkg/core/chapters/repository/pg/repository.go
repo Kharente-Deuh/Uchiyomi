@@ -188,3 +188,17 @@ func (r *PGChaptersRepository) UpdatePagesNb(ctx context.Context, id uuid.UUID, 
 
 	return nil
 }
+
+func (r *PGChaptersRepository) GetByIds(ctx context.Context, ids []uuid.UUID) ([]chapters.Chapter, error) {
+	models, err := r.db(ctx).Where("id IN ?", ids).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := make([]chapters.Chapter, 0, len(models))
+	for _, model := range models {
+		ret = append(ret, model.Domain())
+	}
+
+	return ret, nil
+}

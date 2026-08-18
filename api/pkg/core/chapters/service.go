@@ -194,3 +194,33 @@ func isDownloadable(chapter Chapter, now time.Time) bool {
 
 	return true
 }
+
+func (s *Service) GetByIds(ctx context.Context, opts GetByIdsOpts) ([]Chapter, error) {
+	chapterList, err := s.deps.Repository.GetByIds(ctx, opts.IDs)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.GetByIds: %w", err)
+	}
+
+	accessibleComics := make(map[uuid.UUID]bool)
+	accessible := make([]Chapter, 0, len(chapterList))
+
+	for _, chapter := range chapterList {
+		inLibrary, known := accessibleComics[chapter.ComicID]
+		if !known {
+			inLibrary, err = s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, chapter.ComicID)
+			if err != nil {
+				return nil, fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+			}
+
+			accessibleComics[chapter.ComicID] = inLibrary
+		}
+
+		if !inLibrary {
+			continue
+		}
+
+		accessible = append(accessible, chapter)
+	}
+
+	return accessible, nil
+}

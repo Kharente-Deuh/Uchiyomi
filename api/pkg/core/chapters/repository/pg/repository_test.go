@@ -275,3 +275,72 @@ func TestChaptersListEarlyAccessUnlocked(t *testing.T) {
 		t.Errorf("ListEarlyAccessUnlocked() = %+v", got)
 	}
 }
+
+func chapterSelectColumns() []string {
+	return []string{
+		"id", "comic_id", "source_chapter_slug", "number", "title",
+		"pages_nb", "published_at", "early_access_until", "download",
+	}
+}
+
+func TestChaptersGetByIds(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	comicID := uuid.New()
+	id1 := uuid.New()
+	id2 := uuid.New()
+	publishedAt := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`FROM "chapters".*id IN`).
+		WithArgs(id1, id2).
+		WillReturnRows(
+			sqlmock.NewRows(chapterSelectColumns()).
+				AddRow(id1, comicID, chapterSlug, 1.0, chapterTitle, 42, publishedAt, publishedAt, 0).
+				AddRow(id2, comicID, "chapter-2", 2.0, "Chapter 2", 30, publishedAt, publishedAt, 80),
+		)
+
+	got, err := r.GetByIds(context.Background(), []uuid.UUID{id1, id2})
+	if err != nil {
+		t.Fatalf("GetByIds: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("len(GetByIds()) = %d, want 2", len(got))
+	}
+
+	if got[0].ID != id1 || got[0].ComicID != comicID || got[0].Title != chapterTitle || got[0].PagesNb != 42 {
+		t.Errorf("GetByIds()[0] = %+v", got[0])
+	}
+
+	if got[1].ID != id2 || got[1].Number != 2 || got[1].Download != 80 {
+		t.Errorf("GetByIds()[1] = %+v", got[1])
+	}
+}
+
+func TestChaptersGetByIdsError(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newChaptersRepo(t)
+
+	sentinel := errors.New("connection reset")
+	id := uuid.New()
+
+	mock.ExpectQuery(`FROM "chapters".*id IN`).
+		WithArgs(id).
+		WillReturnError(sentinel)
+
+	got, err := r.GetByIds(context.Background(), []uuid.UUID{id})
+	if errors.Is(err, domain.ErrNotFound) {
+		t.Error("SQL failure must not be translated to ErrNotFound")
+	}
+
+	if !errors.Is(err, sentinel) {
+		t.Errorf("err = %v, original error no longer reachable", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetByIds returned %+v in addition to the error", got)
+	}
+}

@@ -304,6 +304,10 @@ func (f *fakeChaptersService) ListByComicID(_ context.Context, comicID uuid.UUID
 	return f.listByComicIDResult, nil
 }
 
+func (f *fakeChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts) ([]chapters.Chapter, error) {
+	panic("GetByIds must not be called")
+}
+
 func (f *fakeChaptersService) EnqueueDownloadable(_ context.Context, chapterList []chapters.Chapter) error {
 	f.enqueueDownloadableCalls++
 	f.lastEnqueueChapters = chapterList
