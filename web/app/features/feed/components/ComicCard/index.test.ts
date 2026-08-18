@@ -40,6 +40,11 @@ describe('feedComicCard', () => {
     expect(wrapper.text()).toContain('Solo Leveling')
   })
 
+  it('links to the library comic page', async () => {
+    const wrapper = await mount()
+    expect(wrapper.find('a').attributes('href')).toBe('/comic/ch-1?from=feed')
+  })
+
   it('renders each latest chapter', async () => {
     const wrapper = await mount()
     expect(wrapper.text()).toContain('Chapter 12')
