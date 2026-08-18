@@ -311,7 +311,8 @@
     },
     "chapter": {
       "number": "Chapitre {number}"
-    }
+    },
+    "noResults": "Aucun résultat"
   },
   "reading": {
     "title": "Lire"

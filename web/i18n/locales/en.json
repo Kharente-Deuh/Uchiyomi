@@ -321,7 +321,8 @@
     },
     "chapter": {
       "number": "Chapter {number}"
-    }
+    },
+    "noResults": "No results"
   },
   "reading": {
     "title": "Reading"

@@ -39,7 +39,14 @@ useIntersectionObserver(loadMoreSentinel, ([entry]) => {
       </div>
     </template>
 
-    <div class="comics-grid w-100 pt-4" :class="{ 'px-8': smAndDown }">
+    <div v-if="items.length === 0 && !isLoading" class="d-flex justify-center py-4 px-8">
+      <span class="text-body-large font-weight-bold text-medium-emphasis">{{ $t('feed.noResults') }}</span>
+    </div>
+    <div
+      v-else
+      class="comics-grid w-100 pt-4"
+      :class="{ 'px-8': smAndDown }"
+    >
       <FeedComicCard
         v-for="(item, index) in items"
         :key="index"
