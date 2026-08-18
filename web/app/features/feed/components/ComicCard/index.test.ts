@@ -42,7 +42,7 @@ describe('feedComicCard', () => {
 
   it('links to the library comic page', async () => {
     const wrapper = await mount()
-    expect(wrapper.find('a').attributes('href')).toBe('/comic/ch-1?from=feed')
+    expect(wrapper.find('a').attributes('href')).toBe('/comic/c1?from=feed')
   })
 
   it('renders each latest chapter', async () => {
