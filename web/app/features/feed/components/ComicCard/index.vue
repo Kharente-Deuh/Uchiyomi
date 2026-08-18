@@ -12,8 +12,7 @@ watch(() => props.item.cover, () => {
 </script>
 
 <template>
-  <!-- <AtomLink :to="`/comic/${item.id}`"> -->
-  <AtomLink>
+  <AtomLink :to="`/comic/${item.id}?from=feed`">
     <div class="feed-comic-card text-truncate">
       <VImg
         cover

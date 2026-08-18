@@ -12,7 +12,7 @@ watch(() => props.comic.cover, (newVal) => {
 </script>
 
 <template>
-  <AtomLink :to="`/comic/${comic.id}`">
+  <AtomLink :to="`/comic/${comic.id}?from=library`">
     <div class="library-comic-card w-100 h-100 d-flex flex-column">
       <VImg
         cover
