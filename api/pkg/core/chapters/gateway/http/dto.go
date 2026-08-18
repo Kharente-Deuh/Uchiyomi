@@ -4,37 +4,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
-	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 type postListBody struct {
 	IDs []uuid.UUID `json:"ids" validate:"required,min=1,dive,required"`
-}
-
-type postListResponse struct {
-	Chapters []postListResponseChapter `json:"chapters"`
-}
-
-func postListResponseFromDomain(domain []chapters.Chapter) postListResponse {
-	chapters := make([]postListResponseChapter, 0, len(domain))
-	for _, chapter := range domain {
-		chapters = append(chapters, postListResponseChapter{
-			PublishedAt:       chapter.PublishedAt,
-			EarlyAccessUntil:  utils.OptionalTime(chapter.EarlyAccessUntil),
-			SourceChapterSlug: chapter.SourceChapterSlug,
-			Title:             chapter.Title,
-			Number:            chapter.Number,
-			PagesNb:           chapter.PagesNb,
-			Download:          chapter.Download,
-			ID:                chapter.ID,
-			ComicID:           chapter.ComicID,
-		})
-	}
-
-	return postListResponse{
-		Chapters: chapters,
-	}
 }
 
 type postListResponseChapter struct {

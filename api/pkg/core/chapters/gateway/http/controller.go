@@ -15,6 +15,7 @@ import (
 	httpsession "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/httputils"
 )
 
@@ -163,5 +164,20 @@ func (c *Controller) postList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, postListResponseFromDomain(res))
+	chapters := make([]postListResponseChapter, 0, len(res))
+	for _, chapter := range res {
+		chapters = append(chapters, postListResponseChapter{
+			PublishedAt:       chapter.PublishedAt,
+			EarlyAccessUntil:  utils.OptionalTime(chapter.EarlyAccessUntil),
+			SourceChapterSlug: chapter.SourceChapterSlug,
+			Title:             chapter.Title,
+			Number:            chapter.Number,
+			PagesNb:           chapter.PagesNb,
+			Download:          chapter.Download,
+			ID:                chapter.ID,
+			ComicID:           chapter.ComicID,
+		})
+	}
+
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, chapters)
 }

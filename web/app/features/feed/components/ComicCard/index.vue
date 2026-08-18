@@ -6,6 +6,9 @@ import defaultCover from '~/assets/images/default/comic-cover.webp'
 const props = defineProps<{ item: FeedItem }>()
 
 const src = ref<string>(props.item.cover)
+watch(() => props.item.cover, () => {
+  src.value = props.item.cover
+})
 </script>
 
 <template>

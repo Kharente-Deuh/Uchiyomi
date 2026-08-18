@@ -16,6 +16,8 @@ export interface FeedComposable {
 
 export function useFeed(): FeedComposable {
   const api = createFeedApi()
+  const chaptersApi = useChaptersApi()
+
   const { t } = useI18n()
   const toast = useToast()
   const { smAndDown } = useDisplay()
@@ -59,6 +61,8 @@ export function useFeed(): FeedComposable {
     maxPage.value = Math.ceil(res.data.total / DEFAULT_LIMIT)
 
     isLoading.value = false
+
+    syncPolling()
   }, 200)
 
   watch([type, source], () => {
@@ -73,6 +77,74 @@ export function useFeed(): FeedComposable {
       clearItems: oldType !== newType || oldSource !== newSource,
     })
   }, { immediate: true })
+
+  const isInFlight = ref(false)
+
+  const { pause, resume } = useIntervalFn(() => {
+    void pollChapters()
+  }, 2000, { immediate: false })
+
+  function syncPolling(): void {
+    if (getChaptersIdsToPoll().length > 0) {
+      resume()
+    } else {
+      pause()
+    }
+  }
+
+  async function pollChapters(): Promise<void> {
+    if (isInFlight.value || isLoading.value) {
+      return
+    }
+
+    const chaptersIds = getChaptersIdsToPoll()
+    if (chaptersIds.length === 0) {
+      return
+    }
+
+    isInFlight.value = true
+
+    const res = await chaptersApi.getByIds(chaptersIds)
+    if (res.success) {
+      for (const chapter of res.data) {
+        updateChapterDownload(chapter.comicId, chapter.id, chapter.download)
+      }
+    }
+
+    isInFlight.value = false
+    syncPolling()
+  }
+
+  function getChaptersIdsToPoll(): string[] {
+    const chaptersIds: string[] = []
+    for (const item of items.value) {
+      for (const chapter of item.latestChapters) {
+        if (chapter.download >= 0 && chapter.download < 100) {
+          chaptersIds.push(chapter.id)
+        }
+      }
+    }
+
+    return chaptersIds
+  }
+
+  function updateChapterDownload(comicId: string, chapterId: string, download: number): void {
+    const itemIdx = items.value.findIndex(item => item.id === comicId)
+    if (itemIdx === -1) {
+      return
+    }
+
+    const chapterIdx = items.value[itemIdx]!.latestChapters.findIndex(c => c.id === chapterId)
+    if (chapterIdx === -1) {
+      return
+    }
+
+    if (items.value[itemIdx]!.latestChapters[chapterIdx]!.download === download) {
+      return
+    }
+
+    items.value[itemIdx]!.latestChapters[chapterIdx]!.download = download
+  }
 
   return {
     items,
