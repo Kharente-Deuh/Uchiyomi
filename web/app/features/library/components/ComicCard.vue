@@ -21,9 +21,13 @@ watch(() => props.comic.cover, (newVal) => {
         :lazy-src="defaultCover"
         aspect-ratio="2/3"
         width="100%"
-        class="border-thin rounded-lg"
+        class="border-thin rounded-lg position-relative"
         @error="src = defaultCover"
-      />
+      >
+        <div class="d-fex justify-space-between position-absolute pa-2 top-0 right-0" style="z-index: 1;">
+          <ComicsIconStatus :status="comic.status" with-background />
+        </div>
+      </VImg>
       <span class="text-body-large font-weight-bold text-truncate mt-2 library-comic-card-title">{{ comic.title }}</span>
       <span class="text-body-medium text-medium-emphasis">{{ $t('sources.asurascans.comic.chaptersCount', { count: comic.chapterCount }) }}</span>
     </div>
