@@ -31,7 +31,7 @@ watch(() => props.comic.cover, (newVal) => {
             :class="{ 'cover-in-library': comic.internalId }"
             @error="src = defaultCover"
           >
-            <div class="d-flex w-100 justify-space-between position-absolute pa-2 top-0 lft-0" style="z-index: 1;">
+            <div class="d-flex w-100 justify-space-between position-absolute pa-2 top-0 left-0" style="z-index: 1;">
               <AsuraBtnDelete
                 v-if="comic.internalId"
                 :mode="isHovering ? 'btn' : 'label'"

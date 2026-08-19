@@ -5,11 +5,13 @@ package http_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,7 +34,10 @@ const (
 )
 
 type stubChaptersService struct {
-	retryErr error
+	retryErr         error
+	getByIdsErr      error
+	getByIdsResult   []chapters.Chapter
+	lastGetByIdsOpts chapters.GetByIdsOpts
 }
 
 func (s *stubChaptersService) CreateAll(
@@ -63,6 +68,12 @@ func (s *stubChaptersService) CleanupComic(context.Context, uuid.UUID, []chapter
 
 func (s *stubChaptersService) RetryDownload(_ context.Context, _ chapters.RetryDownloadOpts) error {
 	return s.retryErr
+}
+
+func (s *stubChaptersService) GetByIds(_ context.Context, opts chapters.GetByIdsOpts) ([]chapters.Chapter, error) {
+	s.lastGetByIdsOpts = opts
+
+	return s.getByIdsResult, s.getByIdsErr
 }
 
 type stubSessionService struct {
@@ -249,6 +260,176 @@ func TestRetryDownloadInternalError(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+}
+
+type postListHTTPChapter struct {
+	PublishedAt       time.Time  `json:"publishedAt"`
+	EarlyAccessUntil  *time.Time `json:"earlyAccessUntil"`
+	SourceChapterSlug string     `json:"sourceChapterSlug"`
+	Title             string     `json:"title"`
+	Number            float64    `json:"number"`
+	PagesNb           int        `json:"pagesNb"`
+	Download          int        `json:"download"`
+	ID                uuid.UUID  `json:"id"`
+	ComicID           uuid.UUID  `json:"comicId"`
+}
+
+func TestPostListRequiresAuthentication(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		chaptersEndpoint+"/list",
+		strings.NewReader(`{"ids":["`+uuid.New().String()+`"]}`),
+	)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestPostListInvalidBody(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodPost, chaptersEndpoint+"/list", strings.NewReader(`{`))
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestPostListEmptyIDs(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodPost, chaptersEndpoint+"/list", strings.NewReader(`{"ids":[]}`))
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestPostListServiceError(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		getByIdsErr: errors.New("db down"),
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		chaptersEndpoint+"/list",
+		strings.NewReader(`{"ids":["`+uuid.New().String()+`"]}`),
+	)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d body=%s", rec.Code, http.StatusInternalServerError, rec.Body.String())
+	}
+}
+
+func TestPostListReturnsChapters(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	chapterID := uuid.New()
+	comicID := uuid.New()
+	publishedAt := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	earlyAccessUntil := time.Date(2024, 2, 3, 4, 5, 6, 0, time.UTC)
+	svc := &stubChaptersService{
+		getByIdsResult: []chapters.Chapter{
+			{
+				PublishedAt:       publishedAt,
+				EarlyAccessUntil:  &earlyAccessUntil,
+				SourceChapterSlug: "chapter-1",
+				Title:             "Chapter 1",
+				Number:            1.5,
+				PagesNb:           42,
+				Download:          80,
+				ID:                chapterID,
+				ComicID:           comicID,
+			},
+			{
+				PublishedAt:       publishedAt,
+				SourceChapterSlug: "chapter-2",
+				Title:             "Chapter 2",
+				Number:            2,
+				ID:                uuid.New(),
+				ComicID:           comicID,
+			},
+		},
+	}
+	r := newChaptersTestRouter(t, svc, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		chaptersEndpoint+"/list",
+		strings.NewReader(`{"ids":["`+chapterID.String()+`"]}`),
+	)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	if svc.lastGetByIdsOpts.UserID != user.ID {
+		t.Errorf("GetByIds userID = %s, want %s", svc.lastGetByIdsOpts.UserID, user.ID)
+	}
+
+	if len(svc.lastGetByIdsOpts.IDs) != 1 || svc.lastGetByIdsOpts.IDs[0] != chapterID {
+		t.Errorf("GetByIds ids = %v, want [%s]", svc.lastGetByIdsOpts.IDs, chapterID)
+	}
+
+	var got []postListHTTPChapter
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("len(chapters) = %d, want 2", len(got))
+	}
+
+	first := got[0]
+	if first.ID != chapterID || first.ComicID != comicID || first.Title != "Chapter 1" {
+		t.Errorf("chapters[0] = %+v", first)
+	}
+
+	if first.Number != 1.5 || first.PagesNb != 42 || first.Download != 80 || first.SourceChapterSlug != "chapter-1" {
+		t.Errorf("chapters[0] fields = %+v", first)
+	}
+
+	if !first.PublishedAt.Equal(publishedAt) {
+		t.Errorf("publishedAt = %v, want %v", first.PublishedAt, publishedAt)
+	}
+
+	if first.EarlyAccessUntil == nil || !first.EarlyAccessUntil.Equal(earlyAccessUntil) {
+		t.Errorf("earlyAccessUntil = %v, want %v", first.EarlyAccessUntil, earlyAccessUntil)
+	}
+
+	if got[1].EarlyAccessUntil != nil {
+		t.Errorf("chapters[1].earlyAccessUntil = %v, want nil", got[1].EarlyAccessUntil)
 	}
 }
 

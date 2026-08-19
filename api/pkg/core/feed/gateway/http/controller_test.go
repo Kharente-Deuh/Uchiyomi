@@ -122,12 +122,12 @@ type feedItemResponse struct {
 }
 
 type feedChapterResponse struct {
-	PublishedAt      time.Time `json:"publishedAt"`
-	EarlyAccessUntil time.Time `json:"earlyAccessUntil"`
-	Title            string    `json:"title"`
-	Number           float64   `json:"number"`
-	Download         int       `json:"download"`
-	ID               uuid.UUID `json:"id"`
+	PublishedAt      time.Time  `json:"publishedAt"`
+	EarlyAccessUntil *time.Time `json:"earlyAccessUntil"`
+	Title            string     `json:"title"`
+	Number           float64    `json:"number"`
+	Download         int        `json:"download"`
+	ID               uuid.UUID  `json:"id"`
 }
 
 type feedPageResponse struct {
@@ -246,7 +246,6 @@ func TestGetInvalidQuery(t *testing.T) {
 	queries := []string{
 		"?source=not-a-source",
 		"?type=webtoon",
-		"?status=unknown",
 		"?limit=x",
 		"?offset=x",
 	}
@@ -361,7 +360,7 @@ func TestGetJSON(t *testing.T) {
 				Title:            "Chapter 1",
 				Number:           1,
 				PublishedAt:      publishedAt,
-				EarlyAccessUntil: earlyAccessUntil,
+				EarlyAccessUntil: &earlyAccessUntil,
 				Download:         2,
 			}},
 		}},
@@ -408,6 +407,61 @@ func TestGetJSON(t *testing.T) {
 
 	if item.LatestChapters[0].Download != 2 {
 		t.Errorf("download = %d, want 2", item.LatestChapters[0].Download)
+	}
+
+	if item.LatestChapters[0].EarlyAccessUntil == nil || !item.LatestChapters[0].EarlyAccessUntil.Equal(earlyAccessUntil) {
+		t.Errorf("earlyAccessUntil = %v, want %v", item.LatestChapters[0].EarlyAccessUntil, earlyAccessUntil)
+	}
+}
+
+func TestGetJSONOmitsZeroEarlyAccessUntil(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	publishedAt := time.Date(2026, time.March, 19, 1, 28, 20, 0, time.UTC)
+
+	r := newTestRouter(t, &stubFeedService{getResult: feed.Page{
+		Items: []feed.Item{{
+			ID:     comicID,
+			Slug:   "the-greatest-estate-developer",
+			Source: sources.SourceAsuraScans,
+			Status: sources.SeriesStatusCompleted,
+			Type:   sources.SeriesTypeManhwa,
+			LatestChapters: []feed.LatestChapter{{
+				ID:          chapterID,
+				ComicID:     comicID,
+				Title:       "Special Chapter [END]",
+				Number:      223,
+				PublishedAt: publishedAt,
+				Download:    100,
+			}},
+		}},
+		Total: 1,
+	}}, authenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, feedEndpoint+"/", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	body := rec.Body.String()
+	if strings.Contains(body, `"earlyAccessUntil"`) {
+		t.Errorf("body = %s, want earlyAccessUntil omitted", body)
+	}
+
+	var got feedPageResponse
+	if err := json.NewDecoder(strings.NewReader(body)).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if got.Items[0].LatestChapters[0].EarlyAccessUntil != nil {
+		t.Errorf("earlyAccessUntil = %v, want nil", got.Items[0].LatestChapters[0].EarlyAccessUntil)
 	}
 }
 

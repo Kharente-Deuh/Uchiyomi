@@ -32,12 +32,12 @@ export function createAsuraApi(): AsuraApi {
           total: response.total,
           items: response.items.map(({ lastChapterAt, updatedAt, createdAt, latestChapters, ...rest }) => ({
             ...rest,
-            lastChapterAt: new Date(lastChapterAt),
+            ...(lastChapterAt && { lastChapterAt: new Date(lastChapterAt) }),
             updatedAt: new Date(updatedAt),
             createdAt: new Date(createdAt),
             latestChapters: latestChapters.map(({ earlyAccessUntil, publishedAt, ...rest }) => ({
               ...rest,
-              earlyAccessUntil: new Date(earlyAccessUntil),
+              ...(earlyAccessUntil && { earlyAccessUntil: new Date(earlyAccessUntil) }),
               publishedAt: new Date(publishedAt),
             })),
           })),
@@ -61,7 +61,7 @@ export function createAsuraApi(): AsuraApi {
         success: true,
         data: {
           ...rest,
-          lastChapterAt: new Date(lastChapterAt),
+          ...(lastChapterAt && { lastChapterAt: new Date(lastChapterAt) }),
           updatedAt: new Date(updatedAt),
           createdAt: new Date(createdAt),
         },
@@ -79,7 +79,7 @@ export function createAsuraApi(): AsuraApi {
         success: true,
         data: response.map(({ earlyAccessUntil, publishedAt, ...rest }) => ({
           ...rest,
-          earlyAccessUntil: new Date(earlyAccessUntil),
+          ...(earlyAccessUntil && { earlyAccessUntil: new Date(earlyAccessUntil) }),
           publishedAt: new Date(publishedAt),
         })),
       }

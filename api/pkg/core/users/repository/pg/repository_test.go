@@ -30,6 +30,10 @@ func duplicateKeyErr() error {
 	return &pgconn.PgError{Code: "23505", Message: `duplicate key value violates unique constraint "idx_users_name"`}
 }
 
+func userSelectColumns() []string {
+	return []string{"id", colName, "is_admin", "created_at", "updated_at"}
+}
+
 func newRepo(t *testing.T) (*pg.PGUsersRepository, sqlmock.Sqlmock) {
 	t.Helper()
 
@@ -119,7 +123,7 @@ func TestCountAdminsError(t *testing.T) {
 	}
 }
 
-func TestGetByID(t *testing.T) {
+func TestGetByID(t *testing.T) { //nolint:dupl // same sqlmock shape as GetByUsername against id instead of name
 	t.Parallel()
 
 	r, mock := newRepo(t)
@@ -131,7 +135,7 @@ func TestGetByID(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM "users" WHERE id = \$1 ORDER BY "users"\."id" LIMIT \$2`).
 		WithArgs(id, 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", colName, "is_admin", "created_at", "updated_at"}).
+			sqlmock.NewRows(userSelectColumns()).
 				AddRow(id, userNameBob, true, created, updated),
 		)
 
@@ -179,6 +183,51 @@ func TestGetByIDError(t *testing.T) {
 
 	if !errors.Is(err, sentinel) {
 		t.Errorf("err = %v, original error no longer reachable", err)
+	}
+}
+
+func TestGetByUsername(t *testing.T) { //nolint:dupl // same sqlmock shape as GetByID against name instead of id
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id := uuid.New()
+	created := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+	updated := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`SELECT \* FROM "users" WHERE name = \$1 ORDER BY "users"\."id" LIMIT \$2`).
+		WithArgs(userNameBob, 1).
+		WillReturnRows(
+			sqlmock.NewRows(userSelectColumns()).
+				AddRow(id, userNameBob, true, created, updated),
+		)
+
+	got, err := r.GetByUsername(context.Background(), userNameBob)
+	if err != nil {
+		t.Fatalf("GetByUsername: %v", err)
+	}
+
+	want := users.User{ID: id, Name: userNameBob, IsAdmin: true, CreatedAt: created, UpdatedAt: updated}
+	if got == nil || *got != want {
+		t.Errorf("GetByUsername() = %+v, want %+v", got, want)
+	}
+}
+
+func TestGetByUsernameNotFound(t *testing.T) { //nolint:dupl // same not-found shape as GetByIDNotFound
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectQuery(`SELECT \* FROM "users"`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", colName}))
+
+	got, err := r.GetByUsername(context.Background(), userNameAlice)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetByUsername = %v, want domain.ErrNotFound", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetByUsername returned %+v in addition to the error", got)
 	}
 }
 
@@ -326,7 +375,7 @@ func TestUpdate(t *testing.T) {
 	mock.ExpectQuery(`SELECT \* FROM "users" WHERE id = \$1 ORDER BY "users"\."id" LIMIT \$2`).
 		WithArgs(id, 1).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", colName, "is_admin", "created_at", "updated_at"}).
+			sqlmock.NewRows(userSelectColumns()).
 				AddRow(id, userNameBob, true, created, updated),
 		)
 

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 	"gorm.io/gorm"
 )
@@ -61,7 +62,7 @@ type pageRow struct {
 
 type chapterRow struct {
 	PublishedAt      time.Time
-	EarlyAccessUntil time.Time
+	EarlyAccessUntil *time.Time
 	Title            string
 	Number           float64
 	Download         int
@@ -113,7 +114,7 @@ func (r *PGFeedRepository) ListUnlockedChapters(
 	const sql = `
 SELECT id, comic_id, title, number, published_at, early_access_until, download
 FROM chapters
-WHERE comic_id IN ? AND early_access_until <= ?
+WHERE comic_id IN ? AND (early_access_until IS NULL OR early_access_until <= ?)
 `
 
 	var rows []chapterRow
@@ -131,7 +132,7 @@ WHERE comic_id IN ? AND early_access_until <= ?
 			Title:            rows[i].Title,
 			Number:           rows[i].Number,
 			PublishedAt:      rows[i].PublishedAt,
-			EarlyAccessUntil: rows[i].EarlyAccessUntil,
+			EarlyAccessUntil: utils.OptionalTime(rows[i].EarlyAccessUntil),
 			Download:         rows[i].Download,
 		}
 	}
@@ -144,7 +145,8 @@ func listPageCountSQL(opts feed.ListPageOpts) (string, []any) {
 SELECT COUNT(DISTINCT comics.id)
 FROM comics
 INNER JOIN library_entries ON library_entries.comic_id = comics.id AND library_entries.user_id = ?
-INNER JOIN chapters ON chapters.comic_id = comics.id AND chapters.early_access_until <= ?
+INNER JOIN chapters ON chapters.comic_id = comics.id
+  AND (chapters.early_access_until IS NULL OR chapters.early_access_until <= ?)
 `
 
 	args := make([]any, 0, 5)
@@ -158,7 +160,8 @@ func listPageSQL(opts feed.ListPageOpts) (string, []any) {
 SELECT comics.id, comics.source, comics.slug, comics.title, comics.status, comics.comic_type
 FROM comics
 INNER JOIN library_entries ON library_entries.comic_id = comics.id AND library_entries.user_id = ?
-INNER JOIN chapters ON chapters.comic_id = comics.id AND chapters.early_access_until <= ?
+INNER JOIN chapters ON chapters.comic_id = comics.id
+  AND (chapters.early_access_until IS NULL OR chapters.early_access_until <= ?)
 `
 
 	args := make([]any, 0, 8)
@@ -184,11 +187,6 @@ func appendPageFilters(sql string, args []any, opts feed.ListPageOpts) (string, 
 	if opts.Type != nil {
 		sql += " AND comics.comic_type = ?"
 		args = append(args, *opts.Type)
-	}
-
-	if opts.Status != nil {
-		sql += " AND comics.status = ?"
-		args = append(args, *opts.Status)
 	}
 
 	return sql, args

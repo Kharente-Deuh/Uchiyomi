@@ -12,6 +12,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgmodels"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction/pgtx"
 	"gorm.io/gorm"
 )
@@ -57,7 +58,7 @@ func (r *PGChaptersRepository) Create(ctx context.Context, opts chapters.CreateO
 		Title:             opts.Title,
 		PagesNb:           opts.PagesNb,
 		PublishedAt:       opts.PublishedAt,
-		EarlyAccessUntil:  opts.EarlyAccessUntil,
+		EarlyAccessUntil:  utils.OptionalTime(opts.EarlyAccessUntil),
 	}
 
 	err := r.db(ctx).Create(ctx, model)
@@ -131,7 +132,7 @@ func (r *PGChaptersRepository) CreateMany(ctx context.Context, opts []chapters.C
 			Title:             opt.Title,
 			PagesNb:           opt.PagesNb,
 			PublishedAt:       opt.PublishedAt,
-			EarlyAccessUntil:  opt.EarlyAccessUntil,
+			EarlyAccessUntil:  utils.OptionalTime(opt.EarlyAccessUntil),
 		}
 	}
 
@@ -187,4 +188,18 @@ func (r *PGChaptersRepository) UpdatePagesNb(ctx context.Context, id uuid.UUID, 
 	}
 
 	return nil
+}
+
+func (r *PGChaptersRepository) GetByIds(ctx context.Context, ids []uuid.UUID) ([]chapters.Chapter, error) {
+	models, err := r.db(ctx).Where("id IN ?", ids).Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	ret := make([]chapters.Chapter, 0, len(models))
+	for _, model := range models {
+		ret = append(ret, model.Domain())
+	}
+
+	return ret, nil
 }

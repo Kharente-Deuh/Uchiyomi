@@ -59,6 +59,10 @@ func (f *fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownl
 	panic("RetryDownload must not be called")
 }
 
+func (f *fakeChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts) ([]chapters.Chapter, error) {
+	panic("GetByIds must not be called")
+}
+
 type blockingWorker struct {
 	started chan struct{}
 }

@@ -236,7 +236,8 @@
         "completed": "Fini",
         "hiatus": "Hiatus",
         "cancelled": "Annulé",
-        "label": "Statut"
+        "label": "Statut",
+        "unknown": "inconnu"
       },
       "sort": {
         "popular": "Populaire",
@@ -304,7 +305,14 @@
     }
   },
   "feed": {
-    "title": "Flux"
+    "title": "Flux",
+    "error": {
+      "fetch": "Récupérer pour charger le flux"
+    },
+    "chapter": {
+      "number": "Chapitre {number}"
+    },
+    "noResults": "Aucun résultat"
   },
   "reading": {
     "title": "Lire"

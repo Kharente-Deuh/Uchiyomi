@@ -131,12 +131,13 @@ func TestGetAugustScenarioLatestChapters(t *testing.T) {
 		PublishedAt: time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC),
 		Download:    100,
 	}
+	early20 := time.Date(2026, time.August, 20, 0, 0, 0, 0, time.UTC)
 	ch11 := feed.LatestChapter{
 		ID:               ch11ID,
 		ComicID:          comicID,
 		Number:           11,
 		PublishedAt:      time.Date(2026, time.August, 10, 0, 0, 0, 0, time.UTC),
-		EarlyAccessUntil: time.Date(2026, time.August, 20, 0, 0, 0, 0, time.UTC),
+		EarlyAccessUntil: &early20,
 		Download:         0,
 	}
 
@@ -258,7 +259,6 @@ func TestGetPassesFiltersAndNow(t *testing.T) {
 
 	src := sources.SourceAsuraScans
 	typ := sources.SeriesTypeManhwa
-	st := sources.SeriesStatusOngoing
 	userID := uuid.New()
 	repo := &fakeFeedRepository{page: feed.Page{Items: nil, Total: 0}}
 	svc := newService(t, repo, frozenAug16)
@@ -267,7 +267,6 @@ func TestGetPassesFiltersAndNow(t *testing.T) {
 		UserID: userID,
 		Source: &src,
 		Type:   &typ,
-		Status: &st,
 		Limit:  5,
 		Offset: 2,
 	})
@@ -280,7 +279,7 @@ func TestGetPassesFiltersAndNow(t *testing.T) {
 		t.Errorf("ListPage opts = %+v", o)
 	}
 
-	if o.Type == nil || *o.Type != typ || o.Status == nil || *o.Status != st {
+	if o.Type == nil || *o.Type != typ {
 		t.Errorf("filters = %+v", o)
 	}
 

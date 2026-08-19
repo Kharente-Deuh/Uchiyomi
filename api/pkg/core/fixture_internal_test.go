@@ -388,6 +388,10 @@ func (fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownload
 	return errors.New(notImplemented)
 }
 
+func (fakeChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts) ([]chapters.Chapter, error) {
+	return nil, errors.New(notImplemented)
+}
+
 type fakeFeedService struct{}
 
 func (fakeFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {

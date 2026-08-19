@@ -22,7 +22,7 @@ export interface AsuraSearchResponse {
 
 export interface AsuraSearchItem {
   internalId?: string
-  lastChapterAt: Date
+  lastChapterAt?: Date
   updatedAt: Date
   createdAt: Date
   publicUrl: string
@@ -44,7 +44,7 @@ export interface AsuraSearchItem {
 }
 
 export interface AsuraComicChapter {
-  earlyAccessUntil: Date
+  earlyAccessUntil?: Date
   publishedAt: Date
   id: string
   title: string
@@ -54,7 +54,7 @@ export interface AsuraComicChapter {
 }
 
 export interface AsuraComicInfos {
-  lastChapterAt: Date
+  lastChapterAt?: Date
   updatedAt: Date
   createdAt: Date
   description: string

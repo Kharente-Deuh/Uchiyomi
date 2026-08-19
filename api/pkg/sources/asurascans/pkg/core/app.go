@@ -15,6 +15,7 @@ import (
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"golang.org/x/sync/errgroup"
 )
@@ -222,7 +223,7 @@ func (a *App) GetChaptersBySlug(
 	result := make([]sources.SourceChapter, len(chs))
 	for i, ch := range chs {
 		result[i] = sources.SourceChapter{
-			EarlyAccessUntil:  ch.EarlyAccessUntil,
+			EarlyAccessUntil:  utils.OptionalTime(ch.EarlyAccessUntil),
 			PublishedAt:       ch.PublishedAt,
 			SourceChapterSlug: ch.ID,
 			Title:             ch.Title,

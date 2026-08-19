@@ -23,6 +23,7 @@ export default defineNuxtConfig({
     { path: '~/features/comics/components', prefix: 'Comics' },
     { path: '~/features/asura/components', prefix: 'Asura' },
     { path: '~/features/library/components', prefix: 'Library' },
+    { path: '~/features/feed/components', prefix: 'Feed' },
   ],
 
   imports: {
@@ -143,6 +144,9 @@ export default defineNuxtConfig({
   pwa,
 
   vuetify: {
+    moduleOptions: {
+      prefixComposables: ['useLayout'],
+    },
     vuetifyOptions: './vuetify.config.ts',
   },
 })

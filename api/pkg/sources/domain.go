@@ -90,7 +90,7 @@ type GetPageURLsByChapterOpts struct {
 }
 
 type SourceChapter struct {
-	EarlyAccessUntil  time.Time
+	EarlyAccessUntil  *time.Time
 	PublishedAt       time.Time
 	SourceChapterSlug string
 	Title             string
@@ -110,7 +110,7 @@ type GetChaptersBySlugOpts struct {
 }
 
 type GetInfosBySlugResponse struct {
-	LastChapterAt time.Time
+	LastChapterAt *time.Time
 	InternalID    *uuid.UUID
 	UpdatedAt     time.Time
 	CreatedAt     time.Time

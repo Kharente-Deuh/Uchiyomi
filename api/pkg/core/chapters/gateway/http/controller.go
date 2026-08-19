@@ -15,6 +15,7 @@ import (
 	httpsession "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/httputils"
 )
 
@@ -83,6 +84,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 		r.Use(c.cfg.Middlewares...)
 
 		r.Post("/{id}/retry", c.retryDownload)
+		r.Post("/list", c.postList)
 	})
 }
 
@@ -133,4 +135,49 @@ func (c *Controller) retryDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputils.WriteJSON(w, c.deps.Logger, http.StatusAccepted, "")
+}
+
+func (c *Controller) postList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.Error("user not found in context")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+		return
+	}
+
+	req, err := httputils.DecodeJSON[postListBody](r)
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "invalid request body")
+
+		return
+	}
+
+	res, err := c.deps.ChaptersService.GetByIds(ctx, chapters.GetByIdsOpts{
+		UserID: user.ID,
+		IDs:    req.IDs,
+	})
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "failed to get chapters")
+
+		return
+	}
+
+	chapters := make([]postListResponseChapter, 0, len(res))
+	for _, chapter := range res {
+		chapters = append(chapters, postListResponseChapter{
+			PublishedAt:       chapter.PublishedAt,
+			EarlyAccessUntil:  utils.OptionalTime(chapter.EarlyAccessUntil),
+			SourceChapterSlug: chapter.SourceChapterSlug,
+			Title:             chapter.Title,
+			Number:            chapter.Number,
+			PagesNb:           chapter.PagesNb,
+			Download:          chapter.Download,
+			ID:                chapter.ID,
+			ComicID:           chapter.ComicID,
+		})
+	}
+
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, chapters)
 }

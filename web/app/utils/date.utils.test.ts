@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
-import { formatRelativeTime } from './date.utils'
+import { formatRelativeTime, parseOptionalDate } from './date.utils'
 
 const NOW = new Date('2026-06-28T12:00:00Z')
 const TZ = 'UTC'
@@ -128,5 +128,22 @@ describe('formatRelativeTime', () => {
       expect(formatRelativeTime(new Date('2026-06-29T12:00:00Z'), { locale: 'fr', now: NOW, timeZone: TZ, direction: 'future' }))
         .toBe('demain')
     })
+  })
+})
+
+describe('parseOptionalDate', () => {
+  it('returns undefined for Go zero time', () => {
+    expect(parseOptionalDate('0001-01-01T00:00:00Z')).toBeUndefined()
+  })
+
+  it('returns undefined for empty and invalid values', () => {
+    expect(parseOptionalDate(undefined)).toBeUndefined()
+    expect(parseOptionalDate(null)).toBeUndefined()
+    expect(parseOptionalDate('')).toBeUndefined()
+    expect(parseOptionalDate('not-a-date')).toBeUndefined()
+  })
+
+  it('returns a Date for a real instant', () => {
+    expect(parseOptionalDate('2026-01-20T08:00:00Z')).toEqual(new Date('2026-01-20T08:00:00Z'))
   })
 })

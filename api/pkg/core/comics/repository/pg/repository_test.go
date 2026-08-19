@@ -127,6 +127,54 @@ func TestGetByIDNotFound(t *testing.T) {
 	}
 }
 
+func TestFindByID(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	id := uuid.New()
+	created := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+	updated := time.Now().UTC().Truncate(time.Second)
+
+	mock.ExpectQuery(`FROM "comics".*comics.id = \$1`).
+		WithArgs(id, 1).
+		WillReturnRows(
+			sqlmock.NewRows(comicSelectColumns()).AddRow(
+				id, string(comicSource), comicSlug, comicTitle, string(comicStatus), string(comicType),
+				200, "Chugong", "Dubu", "desc",
+				"{}", "{}", created, updated,
+			),
+		)
+
+	got, err := r.FindByID(context.Background(), id)
+	if err != nil {
+		t.Fatalf("FindByID: %v", err)
+	}
+
+	if got.ID != id || got.Source != comicSource || got.Slug != comicSlug || got.Title != comicTitle {
+		t.Errorf("FindByID() = %+v", got)
+	}
+}
+
+func TestFindByIDNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+
+	mock.ExpectQuery(`FROM "comics".*comics.id = \$1`).
+		WithArgs(sqlmock.AnyArg(), 1).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	got, err := r.FindByID(context.Background(), uuid.New())
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("FindByID = %v, want domain.ErrNotFound", err)
+	}
+
+	if got != nil {
+		t.Errorf("FindByID returned %+v in addition to the error", got)
+	}
+}
+
 func TestFindBySourceSlug(t *testing.T) {
 	t.Parallel()
 

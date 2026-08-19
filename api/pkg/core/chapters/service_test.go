@@ -19,14 +19,22 @@ import (
 type fakeChaptersRepository struct {
 	lastListEarlyAccessUntil time.Time
 	getByIDErr               error
+	getByIdsErr              error
+	listByComicIDErr         error
 	getByIDResult            *chapters.Chapter
 	lastCreateMany           []chapters.CreateOpts
 	listResumableResult      []chapters.Chapter
 	listEarlyAccessResult    []chapters.Chapter
+	listByComicIDResult      []chapters.Chapter
+	getByIdsResult           []chapters.Chapter
+	lastGetByIds             []uuid.UUID
+	lastListByComicID        uuid.UUID
 	createManyCalls          int
 	listResumableCalls       int
 	listEarlyAccessCalls     int
+	listByComicIDCalls       int
 	getByIDCalls             int
+	getByIdsCalls            int
 }
 
 func (f *fakeChaptersRepository) Create(context.Context, chapters.CreateOpts) (*chapters.Chapter, error) {
@@ -54,8 +62,15 @@ func (f *fakeChaptersRepository) CreateMany(_ context.Context, opts []chapters.C
 	return created, nil
 }
 
-func (f *fakeChaptersRepository) ListByComicID(context.Context, uuid.UUID) ([]chapters.Chapter, error) {
-	panic("ListByComicID must not be called")
+func (f *fakeChaptersRepository) ListByComicID(_ context.Context, comicID uuid.UUID) ([]chapters.Chapter, error) {
+	f.listByComicIDCalls++
+	f.lastListByComicID = comicID
+
+	if f.listByComicIDErr != nil {
+		return nil, f.listByComicIDErr
+	}
+
+	return f.listByComicIDResult, nil
 }
 
 func (f *fakeChaptersRepository) ListResumable(context.Context) ([]chapters.Chapter, error) {
@@ -91,6 +106,17 @@ func (f *fakeChaptersRepository) UpdateDownload(context.Context, uuid.UUID, int)
 
 func (f *fakeChaptersRepository) UpdatePagesNb(context.Context, uuid.UUID, int) error {
 	panic("UpdatePagesNb must not be called")
+}
+
+func (f *fakeChaptersRepository) GetByIds(_ context.Context, ids []uuid.UUID) ([]chapters.Chapter, error) {
+	f.getByIdsCalls++
+	f.lastGetByIds = ids
+
+	if f.getByIdsErr != nil {
+		return nil, f.getByIdsErr
+	}
+
+	return f.getByIdsResult, nil
 }
 
 type fakeChapterDownloader struct {
@@ -136,9 +162,11 @@ func (f *fakeChapterDownloader) Resume(_ context.Context, chapterID uuid.UUID) e
 
 type fakeLibraryRepository struct {
 	existsErr            error
+	inLibraryComicIDs    map[uuid.UUID]bool
 	lastUserID           uuid.UUID
 	lastComicID          uuid.UUID
 	existsByUserAndComic bool
+	existsCalls          int
 }
 
 func (f *fakeLibraryRepository) Create(context.Context, library.CreateOpts) (*library.Entry, error) {
@@ -156,8 +184,13 @@ func (f *fakeLibraryRepository) ExistsByComicID(context.Context, uuid.UUID) (boo
 func (f *fakeLibraryRepository) ExistsByUserAndComic(
 	_ context.Context, userID, comicID uuid.UUID,
 ) (bool, error) {
+	f.existsCalls++
 	f.lastUserID = userID
 	f.lastComicID = comicID
+
+	if f.inLibraryComicIDs != nil {
+		return f.inLibraryComicIDs[comicID], f.existsErr
+	}
 
 	return f.existsByUserAndComic, f.existsErr
 }
@@ -214,6 +247,45 @@ func TestServiceCreateAll(t *testing.T) {
 	}
 }
 
+func TestServiceListByComicID(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	want := []chapters.Chapter{{ID: uuid.New(), ComicID: comicID, Title: "Chapter 1"}}
+	repo := &fakeChaptersRepository{listByComicIDResult: want}
+	svc := newTestService(repo, &fakeChapterDownloader{}, &fakeLibraryRepository{})
+
+	got, err := svc.ListByComicID(context.Background(), comicID)
+	if err != nil {
+		t.Fatalf("ListByComicID: %v", err)
+	}
+
+	if repo.listByComicIDCalls != 1 || repo.lastListByComicID != comicID {
+		t.Errorf("ListByComicID comic = %s, calls = %d", repo.lastListByComicID, repo.listByComicIDCalls)
+	}
+
+	if len(got) != 1 || got[0].ID != want[0].ID {
+		t.Errorf("ListByComicID() = %+v, want %+v", got, want)
+	}
+}
+
+func TestServiceListByComicIDError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("db down")
+	repo := &fakeChaptersRepository{listByComicIDErr: sentinel}
+	svc := newTestService(repo, &fakeChapterDownloader{}, &fakeLibraryRepository{})
+
+	got, err := svc.ListByComicID(context.Background(), uuid.New())
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("ListByComicID = %v, want wrapped sentinel", err)
+	}
+
+	if got != nil {
+		t.Errorf("ListByComicID returned %+v in addition to the error", got)
+	}
+}
+
 func TestServiceEnqueueDownloadableRunsWithoutError(t *testing.T) {
 	t.Parallel()
 
@@ -222,11 +294,13 @@ func TestServiceEnqueueDownloadableRunsWithoutError(t *testing.T) {
 	svc := newTestService(repo, downloader, &fakeLibraryRepository{existsByUserAndComic: true})
 
 	now := time.Now()
+	lockedUntil := now.Add(time.Hour)
+	unlockedUntil := now.Add(-time.Hour)
 
 	err := svc.EnqueueDownloadable(context.Background(), []chapters.Chapter{
 		{Download: 100},
-		{EarlyAccessUntil: now.Add(time.Hour)},
-		{Download: 0, EarlyAccessUntil: now.Add(-time.Hour)},
+		{EarlyAccessUntil: &lockedUntil},
+		{Download: 0, EarlyAccessUntil: &unlockedUntil},
 	})
 	if err != nil {
 		t.Fatalf("EnqueueDownloadable: %v", err)
@@ -275,12 +349,14 @@ func TestServiceScanEarlyAccess(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
+	lockedUntil := now.Add(time.Hour)
+	unlockedUntil := now.Add(-time.Hour)
 	downloader := &fakeChapterDownloader{}
 	repo := &fakeChaptersRepository{
 		listEarlyAccessResult: []chapters.Chapter{
 			{Download: 100},
-			{EarlyAccessUntil: now.Add(time.Hour)},
-			{Download: 0, EarlyAccessUntil: now.Add(-time.Hour)},
+			{EarlyAccessUntil: &lockedUntil},
+			{Download: 0, EarlyAccessUntil: &unlockedUntil},
 		},
 	}
 	svc := newTestService(repo, downloader, &fakeLibraryRepository{existsByUserAndComic: true})
@@ -439,5 +515,119 @@ func TestServiceRetryDownloadResumesInterruptedChapter(t *testing.T) {
 
 	if downloader.resetAndEnqueueCalls != 0 {
 		t.Errorf("ResetAndEnqueue called %d times, want 0", downloader.resetAndEnqueueCalls)
+	}
+}
+
+func TestServiceGetByIds(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	ids := []uuid.UUID{uuid.New(), uuid.New()}
+	want := []chapters.Chapter{
+		{ID: ids[0], Title: "Chapter 1", Number: 1, ComicID: uuid.New()},
+		{ID: ids[1], Title: "Chapter 2", Number: 2, ComicID: uuid.New()},
+	}
+	repo := &fakeChaptersRepository{getByIdsResult: want}
+	libraryRepo := &fakeLibraryRepository{existsByUserAndComic: true}
+	svc := newTestService(repo, &fakeChapterDownloader{}, libraryRepo)
+
+	got, err := svc.GetByIds(context.Background(), chapters.GetByIdsOpts{UserID: userID, IDs: ids})
+	if err != nil {
+		t.Fatalf("GetByIds: %v", err)
+	}
+
+	if repo.getByIdsCalls != 1 {
+		t.Errorf("GetByIds called %d times, want 1", repo.getByIdsCalls)
+	}
+
+	if len(repo.lastGetByIds) != 2 || repo.lastGetByIds[0] != ids[0] || repo.lastGetByIds[1] != ids[1] {
+		t.Errorf("GetByIds ids = %v, want %v", repo.lastGetByIds, ids)
+	}
+
+	if libraryRepo.lastUserID != userID {
+		t.Errorf("ExistsByUserAndComic userID = %s, want %s", libraryRepo.lastUserID, userID)
+	}
+
+	if len(got) != 2 || got[0].ID != want[0].ID || got[1].Title != want[1].Title {
+		t.Errorf("GetByIds() = %+v, want %+v", got, want)
+	}
+}
+
+func TestServiceGetByIdsOmitsChaptersNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	inLibraryComic := uuid.New()
+	otherComic := uuid.New()
+	keptID := uuid.New()
+	omittedID := uuid.New()
+	repo := &fakeChaptersRepository{
+		getByIdsResult: []chapters.Chapter{
+			{ID: keptID, ComicID: inLibraryComic, Title: "Kept"},
+			{ID: omittedID, ComicID: otherComic, Title: "Omitted"},
+			{ID: uuid.New(), ComicID: inLibraryComic, Title: "Also kept"},
+		},
+	}
+	libraryRepo := &fakeLibraryRepository{
+		inLibraryComicIDs: map[uuid.UUID]bool{inLibraryComic: true},
+	}
+	svc := newTestService(repo, &fakeChapterDownloader{}, libraryRepo)
+
+	got, err := svc.GetByIds(context.Background(), chapters.GetByIdsOpts{
+		UserID: userID,
+		IDs:    []uuid.UUID{keptID, omittedID},
+	})
+	if err != nil {
+		t.Fatalf("GetByIds: %v", err)
+	}
+
+	if len(got) != 2 || got[0].ID != keptID || got[1].Title != "Also kept" {
+		t.Errorf("GetByIds() = %+v, want kept chapters only", got)
+	}
+
+	if libraryRepo.existsCalls != 2 {
+		t.Errorf("ExistsByUserAndComic called %d times, want 2 (once per comic)", libraryRepo.existsCalls)
+	}
+}
+
+func TestServiceGetByIdsError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("db down")
+	repo := &fakeChaptersRepository{getByIdsErr: sentinel}
+	svc := newTestService(repo, &fakeChapterDownloader{}, &fakeLibraryRepository{})
+
+	got, err := svc.GetByIds(context.Background(), chapters.GetByIdsOpts{
+		UserID: uuid.New(),
+		IDs:    []uuid.UUID{uuid.New()},
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("GetByIds = %v, want wrapped sentinel", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetByIds returned %+v in addition to the error", got)
+	}
+}
+
+func TestServiceGetByIdsLibraryError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("library down")
+	repo := &fakeChaptersRepository{
+		getByIdsResult: []chapters.Chapter{{ID: uuid.New(), ComicID: uuid.New()}},
+	}
+	svc := newTestService(repo, &fakeChapterDownloader{}, &fakeLibraryRepository{existsErr: sentinel})
+
+	got, err := svc.GetByIds(context.Background(), chapters.GetByIdsOpts{
+		UserID: uuid.New(),
+		IDs:    []uuid.UUID{uuid.New()},
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("GetByIds = %v, want wrapped library sentinel", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetByIds returned %+v in addition to the error", got)
 	}
 }

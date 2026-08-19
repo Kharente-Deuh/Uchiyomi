@@ -9,15 +9,16 @@ import (
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 type latestChapterResponse struct {
-	PublishedAt      time.Time `json:"publishedAt"`
-	EarlyAccessUntil time.Time `json:"earlyAccessUntil"`
-	Title            string    `json:"title"`
-	Number           float64   `json:"number"`
-	Download         int       `json:"download"`
-	ID               uuid.UUID `json:"id"`
+	PublishedAt      time.Time  `json:"publishedAt"`
+	EarlyAccessUntil *time.Time `json:"earlyAccessUntil,omitempty"`
+	Title            string     `json:"title"`
+	Number           float64    `json:"number"`
+	Download         int        `json:"download"`
+	ID               uuid.UUID  `json:"id"`
 }
 
 type itemResponse struct {
@@ -58,7 +59,7 @@ func itemFromDomain(item *feed.Item) itemResponse {
 			Title:            ch.Title,
 			Number:           ch.Number,
 			PublishedAt:      ch.PublishedAt,
-			EarlyAccessUntil: ch.EarlyAccessUntil,
+			EarlyAccessUntil: utils.OptionalTime(ch.EarlyAccessUntil),
 			Download:         ch.Download,
 		})
 	}

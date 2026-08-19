@@ -131,9 +131,14 @@ func (r *searchHTTPResponse) Domain() *domain.SearchCacheResult {
 				Number:           c.Number,
 				ID:               c.Slug,
 				Title:            c.Title,
-				EarlyAccessUntil: c.EarlyAccessUntil,
+				EarlyAccessUntil: utils.OptionalTime(c.EarlyAccessUntil),
 				PublishedAt:      c.PublishedAt,
 			}
+		}
+
+		var lastChapterAt *time.Time = nil
+		if data.LastChapterAt != nil && !data.LastChapterAt.IsZero() {
+			lastChapterAt = data.LastChapterAt
 		}
 
 		items[i] = domain.SearchCacheResultItem{
@@ -149,7 +154,7 @@ func (r *searchHTTPResponse) Domain() *domain.SearchCacheResult {
 			Artist:         data.Artist,
 			Rating:         data.Rating,
 			ChapterCount:   data.ChapterCount,
-			LastChapterAt:  data.LastChapterAt,
+			LastChapterAt:  utils.OptionalTime(lastChapterAt),
 			CreatedAt:      data.CreatedAt,
 			UpdatedAt:      data.UpdatedAt,
 			PublicURL:      data.PublicURL,
@@ -180,7 +185,7 @@ func (meta *searchHTTPResponseMeta) Domain() domain.SearchResultMeta {
 }
 
 type searchHTTPResponseData struct {
-	LastChapterAt  time.Time                   `json:"last_chapter_at"`
+	LastChapterAt  *time.Time                  `json:"last_chapter_at,omitempty"`
 	UpdatedAt      time.Time                   `json:"updated_at"`
 	CreatedAt      time.Time                   `json:"created_at"`
 	SourceURL      string                      `json:"source_url"`
@@ -213,16 +218,16 @@ type searchHTTPResponseGenre struct {
 }
 
 type searchHTTPResponseChapter struct {
-	EarlyAccessUntil time.Time `json:"early_access_until"`
-	PublishedAt      time.Time `json:"published_at"`
-	CreatedAt        time.Time `json:"created_at"`
-	Title            string    `json:"title"`
-	Slug             string    `json:"slug"`
-	ID               int       `json:"id"`
-	SeriesID         int       `json:"series_id"`
-	Number           float64   `json:"number"`
-	PageCount        int       `json:"page_count"`
-	ViewCount        int       `json:"view_count"`
-	IsPremium        bool      `json:"is_premium"`
-	CommentsEnabled  bool      `json:"comments_enabled"`
+	EarlyAccessUntil *time.Time `json:"early_access_until,omitempty"`
+	PublishedAt      time.Time  `json:"published_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	Title            string     `json:"title"`
+	Slug             string     `json:"slug"`
+	ID               int        `json:"id"`
+	SeriesID         int        `json:"series_id"`
+	Number           float64    `json:"number"`
+	PageCount        int        `json:"page_count"`
+	ViewCount        int        `json:"view_count"`
+	IsPremium        bool       `json:"is_premium"`
+	CommentsEnabled  bool       `json:"comments_enabled"`
 }

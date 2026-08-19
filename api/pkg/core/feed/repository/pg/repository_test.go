@@ -64,12 +64,12 @@ func TestListPageCountAndOrderSQL(t *testing.T) {
 	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 
 	// count: userID, now
-	mock.ExpectQuery(`COUNT\(DISTINCT comics.id\)`).
+	mock.ExpectQuery(`COUNT\(DISTINCT comics.id\).*early_access_until IS NULL OR chapters.early_access_until <=`).
 		WithArgs(userID, now).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(1)))
 
 	// page: userID, now (unlock join), now (availability CASE), limit, offset
-	mock.ExpectQuery(`early_access_until.*ORDER BY.*comics.title`).
+	mock.ExpectQuery(`early_access_until IS NULL OR chapters.early_access_until <=.*ORDER BY.*comics.title`).
 		WithArgs(userID, now, now, 10, 0).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "source", "slug", "title", "status", "comic_type",
@@ -107,16 +107,15 @@ func TestListPageFilters(t *testing.T) {
 	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 	src := comicSource
 	typ := comicType
-	st := comicStatus
 
-	// count: userID, now, source, type, status
-	mock.ExpectQuery(`COUNT\(DISTINCT comics.id\).*comics.source.*comic_type.*comics.status`).
-		WithArgs(userID, now, string(src), string(typ), string(st)).
+	// count: userID, now, source, type
+	mock.ExpectQuery(`COUNT\(DISTINCT comics.id\).*comics.source.*comic_type`).
+		WithArgs(userID, now, string(src), string(typ)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(0)))
 
-	// page: userID, now, source, type, status, now (CASE), limit, offset
-	mock.ExpectQuery(`comics.source.*comic_type.*comics.status`).
-		WithArgs(userID, now, string(src), string(typ), string(st), now, 10, 0).
+	// page: userID, now, source, type, now (CASE), limit, offset
+	mock.ExpectQuery(`comics.source.*comic_type`).
+		WithArgs(userID, now, string(src), string(typ), now, 10, 0).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "source", "slug", "title", "status", "comic_type",
 		}))
@@ -125,7 +124,6 @@ func TestListPageFilters(t *testing.T) {
 		Now:    now,
 		Source: &src,
 		Type:   &typ,
-		Status: &st,
 		UserID: userID,
 		Limit:  10,
 	})
@@ -146,11 +144,11 @@ func TestListPageOffsetLimit(t *testing.T) {
 	userID := uuid.New()
 	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 
-	mock.ExpectQuery(`COUNT\(DISTINCT comics.id\)`).
+	mock.ExpectQuery(`COUNT\(DISTINCT comics.id\).*early_access_until IS NULL`).
 		WithArgs(userID, now).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(40)))
 
-	mock.ExpectQuery(`early_access_until.*LIMIT`).
+	mock.ExpectQuery(`early_access_until IS NULL.*LIMIT`).
 		WithArgs(userID, now, now, 10, 20).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "source", "slug", "title", "status", "comic_type",
@@ -201,7 +199,7 @@ func TestListUnlockedChaptersFiltersLocked(t *testing.T) {
 	until := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
 
 	// GORM expands IN ? to ($1) with PreferSimpleProtocol: comicID, now
-	mock.ExpectQuery(`comic_id IN.*early_access_until <=`).
+	mock.ExpectQuery(`comic_id IN.*early_access_until IS NULL OR early_access_until <=`).
 		WithArgs(comicID, now).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "comic_id", "title", "number", "published_at", "early_access_until", "download",
@@ -222,7 +220,7 @@ func TestListUnlockedChaptersFiltersLocked(t *testing.T) {
 	ch := got[0]
 	if ch.ID != chapterID || ch.ComicID != comicID || ch.Title != "Ch 10" ||
 		ch.Number != 10.0 || ch.Download != 2 || !ch.PublishedAt.Equal(published) ||
-		!ch.EarlyAccessUntil.Equal(until) {
+		ch.EarlyAccessUntil == nil || !ch.EarlyAccessUntil.Equal(until) {
 		t.Errorf("LatestChapter = %+v", ch)
 	}
 }

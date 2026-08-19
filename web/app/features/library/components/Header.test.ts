@@ -45,7 +45,7 @@ const SearchStub = defineComponent({
 })
 
 const SourceStub = defineComponent({
-  name: 'LibraryInputSource',
+  name: 'ComicsInputSource',
   template: '<div data-test="source" />',
 })
 
@@ -71,7 +71,7 @@ async function mount(): Promise<VueWrapper> {
       global: {
         stubs: {
           AtomInputSearch: SearchStub,
-          LibraryInputSource: SourceStub,
+          ComicsInputSource: SourceStub,
           LibraryInputSort: SortStub,
           ComicsInputStatus: StatusStub,
           ComicsInputType: TypeStub,

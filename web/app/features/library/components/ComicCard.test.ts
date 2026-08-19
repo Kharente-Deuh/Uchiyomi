@@ -35,7 +35,7 @@ describe('libraryComicCard', () => {
 
   it('links to the library comic page', async () => {
     const wrapper = await mount()
-    expect(wrapper.find('a').attributes('href')).toBe('/comic/c1')
+    expect(wrapper.find('a').attributes('href')).toBe('/comic/c1?from=library')
   })
 
   it('shows the chapter count', async () => {

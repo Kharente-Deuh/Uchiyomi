@@ -12,6 +12,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
 var _ ChaptersService = (*Service)(nil)
@@ -64,7 +65,7 @@ func (s *Service) CreateAll(
 			Title:             srcChapter.Title,
 			PagesNb:           srcChapter.PageCount,
 			PublishedAt:       srcChapter.PublishedAt,
-			EarlyAccessUntil:  srcChapter.EarlyAccessUntil,
+			EarlyAccessUntil:  utils.OptionalTime(srcChapter.EarlyAccessUntil),
 		}
 	}
 
@@ -188,9 +189,39 @@ func isDownloadable(chapter Chapter, now time.Time) bool {
 		return false
 	}
 
-	if chapter.EarlyAccessUntil.After(now) {
+	if chapter.EarlyAccessUntil != nil && chapter.EarlyAccessUntil.After(now) {
 		return false
 	}
 
 	return true
+}
+
+func (s *Service) GetByIds(ctx context.Context, opts GetByIdsOpts) ([]Chapter, error) {
+	chapterList, err := s.deps.Repository.GetByIds(ctx, opts.IDs)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.GetByIds: %w", err)
+	}
+
+	accessibleComics := make(map[uuid.UUID]bool)
+	accessible := make([]Chapter, 0, len(chapterList))
+
+	for _, chapter := range chapterList {
+		inLibrary, known := accessibleComics[chapter.ComicID]
+		if !known {
+			inLibrary, err = s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, chapter.ComicID)
+			if err != nil {
+				return nil, fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+			}
+
+			accessibleComics[chapter.ComicID] = inLibrary
+		}
+
+		if !inLibrary {
+			continue
+		}
+
+		accessible = append(accessible, chapter)
+	}
+
+	return accessible, nil
 }
