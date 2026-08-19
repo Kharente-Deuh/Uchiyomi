@@ -58,6 +58,9 @@ import (
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/library"
 	pglibrary "github.com/kharente-deuh/uchiyomi-server/pkg/core/library/repository/pg"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings"
+	httpreadersettings "github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings/gateway/http"
+	pgreadersettings "github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
@@ -143,6 +146,11 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, fmt.Errorf("failed to init feedSvc: %w", err)
 	}
 
+	readerSettingsSvc, err := readersettings.NewService(readersettings.Deps{Repository: dbr.ReaderSettingsRepository})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init readerSettingsSvc: %w", err)
+	}
+
 	asuraApp.BindChaptersService(chaptersSvc)
 
 	comicsSvc, err := comics.NewService(comics.Deps{
@@ -172,17 +180,18 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	registry := core.NewHealthRegistry(dbr.PGDB)
 
 	ctrls, err := setupCtrls(ctrlsDeps{
-		Logger:               logger,
-		ComicsService:        comicsSvc,
-		ChaptersService:      chaptersSvc,
-		FeedService:          feedSvc,
-		SessionsService:      services.Sessions,
-		SetupService:         services.Setup,
-		AuthService:          services.Auth,
-		OIDCProvidersService: services.OIDCProviders,
-		AsuraApp:             asuraApp,
-		CoversService:        coversBundle.Service,
-		Registry:             registry,
+		Logger:                logger,
+		ComicsService:         comicsSvc,
+		ChaptersService:       chaptersSvc,
+		FeedService:           feedSvc,
+		ReaderSettingsService: readerSettingsSvc,
+		SessionsService:       services.Sessions,
+		SetupService:          services.Setup,
+		AuthService:           services.Auth,
+		OIDCProvidersService:  services.OIDCProviders,
+		AsuraApp:              asuraApp,
+		CoversService:         coversBundle.Service,
+		Registry:              registry,
 	})
 	if err != nil {
 		//nolint:wrapcheck
@@ -195,16 +204,17 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			AllowedOrigins: cfg.Http.AllowedOrigins,
 		},
 		core.Deps{
-			SetupCtrl:         ctrls.Setup,
-			AsuraCtrl:         ctrls.Asura,
-			CoversCtrl:        ctrls.Covers,
-			HealthCtrl:        ctrls.Health,
-			AuthCtrl:          ctrls.Auth,
-			UsersCtrl:         ctrls.Users,
-			OIDCProvidersCtrl: ctrls.OIDCProviders,
-			ComicsCtrl:        ctrls.Comics,
-			ChaptersCtrl:      ctrls.Chapters,
-			FeedCtrl:          ctrls.Feed,
+			SetupCtrl:          ctrls.Setup,
+			AsuraCtrl:          ctrls.Asura,
+			CoversCtrl:         ctrls.Covers,
+			HealthCtrl:         ctrls.Health,
+			AuthCtrl:           ctrls.Auth,
+			UsersCtrl:          ctrls.Users,
+			OIDCProvidersCtrl:  ctrls.OIDCProviders,
+			ComicsCtrl:         ctrls.Comics,
+			ChaptersCtrl:       ctrls.Chapters,
+			FeedCtrl:           ctrls.Feed,
+			ReaderSettingsCtrl: ctrls.ReaderSettings,
 
 			Health:             registry,
 			Logger:             logger,
@@ -235,6 +245,7 @@ type dbRelated struct {
 	ChaptersRepository            *pgchapters.PGChaptersRepository
 	LibraryRepository             *pglibrary.PGLibraryRepository
 	FeedRepository                *pgfeed.PGFeedRepository
+	ReaderSettingsRepository      *pgreadersettings.PGReaderSettingsRepository
 }
 
 func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
@@ -304,6 +315,11 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		return nil, fmt.Errorf("failed to init feedRepository: %w", err)
 	}
 
+	readerSettingsRepository, err := pgreadersettings.New(pgreadersettings.Deps{DB: pgdb.DB})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init readerSettingsRepository: %w", err)
+	}
+
 	dbr := &dbRelated{
 		PGDB:                          pgdb,
 		Txor:                          txor,
@@ -316,6 +332,7 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		ChaptersRepository:            chaptersRepository,
 		LibraryRepository:             libraryRepository,
 		FeedRepository:                feedRepository,
+		ReaderSettingsRepository:      readerSettingsRepository,
 	}
 
 	return dbr, nil
@@ -711,30 +728,32 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 }
 
 type ctrls struct {
-	Setup         *httpsetup.Controller
-	Asura         *httpasura.Controller
-	Covers        *httpcovers.Controller
-	Health        *httphealth.Controller
-	Auth          *httpauth.Controller
-	Users         *httpusers.Controller
-	OIDCProviders *httpoidcproviders.Controller
-	Comics        *httpcomics.Controller
-	Chapters      *httpchapters.Controller
-	Feed          *httpfeed.Controller
+	Setup          *httpsetup.Controller
+	Asura          *httpasura.Controller
+	Covers         *httpcovers.Controller
+	Health         *httphealth.Controller
+	Auth           *httpauth.Controller
+	Users          *httpusers.Controller
+	OIDCProviders  *httpoidcproviders.Controller
+	Comics         *httpcomics.Controller
+	Chapters       *httpchapters.Controller
+	Feed           *httpfeed.Controller
+	ReaderSettings *httpreadersettings.Controller
 }
 
 type ctrlsDeps struct {
-	FeedService          feed.FeedService
-	AsuraApp             *asura.App
-	CoversService        *covers.Service
-	SetupService         *setup.Service
-	SessionsService      *sessions.Service
-	Logger               *slog.Logger
-	Registry             *health.Registry
-	AuthService          *auth.Service
-	OIDCProvidersService *oidcproviders.Service
-	ComicsService        *comics.Service
-	ChaptersService      *chapters.Service
+	FeedService           feed.FeedService
+	ReaderSettingsService readersettings.ReaderSettingsService
+	AsuraApp              *asura.App
+	CoversService         *covers.Service
+	SetupService          *setup.Service
+	SessionsService       *sessions.Service
+	Logger                *slog.Logger
+	Registry              *health.Registry
+	AuthService           *auth.Service
+	OIDCProvidersService  *oidcproviders.Service
+	ComicsService         *comics.Service
+	ChaptersService       *chapters.Service
 }
 
 func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
@@ -896,17 +915,32 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init feed controller: %w", err)
 	}
 
+	readerSettingsCtrl, err := httpreadersettings.New(
+		httpreadersettings.Config{
+			Endpoint:    "/me",
+			Middlewares: chi.Middlewares{authenticator.Middleware},
+		},
+		httpreadersettings.Deps{
+			Logger:  deps.Logger,
+			Service: deps.ReaderSettingsService,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init reader settings controller: %w", err)
+	}
+
 	c := &ctrls{
-		Asura:         asuraCtrl,
-		Covers:        coversCtrl,
-		Setup:         setup,
-		Health:        healthCtrl,
-		Auth:          authCtrl,
-		Users:         usersCtrl,
-		OIDCProviders: oidcProvidersCtrl,
-		Comics:        comicsCtrl,
-		Chapters:      chaptersCtrl,
-		Feed:          feedCtrl,
+		Asura:          asuraCtrl,
+		Covers:         coversCtrl,
+		Setup:          setup,
+		Health:         healthCtrl,
+		Auth:           authCtrl,
+		Users:          usersCtrl,
+		OIDCProviders:  oidcProvidersCtrl,
+		Comics:         comicsCtrl,
+		Chapters:       chaptersCtrl,
+		Feed:           feedCtrl,
+		ReaderSettings: readerSettingsCtrl,
 	}
 
 	return c, nil

@@ -43,6 +43,21 @@ func TestRouterMountsTheFeedRoute(t *testing.T) {
 	}
 }
 
+func TestRouterMountsTheReaderSettingsRoute(t *testing.T) {
+	t.Parallel()
+
+	app, _ := newTestApp(t, &fakeDB{}, gatePort)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/me/reader-settings", nil)
+	rec := httptest.NewRecorder()
+
+	app.newRouter(nil).ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusNotFound {
+		t.Errorf("GET /api/me/reader-settings = 404, want the route to be mounted")
+	}
+}
+
 func TestRouterMountsTheOIDCCallbackAdvertisedAsRedirectURI(t *testing.T) {
 	t.Parallel()
 

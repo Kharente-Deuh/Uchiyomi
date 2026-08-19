@@ -22,6 +22,7 @@ import (
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	httpfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/gateway/http"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
+	httpreadersettings "github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings/gateway/http"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
@@ -67,16 +68,17 @@ type Database interface {
 type Deps struct {
 	DB Database
 
-	SetupCtrl         *httpsetup.Controller
-	AsuraCtrl         *httpasura.Controller
-	CoversCtrl        *httpcovers.Controller
-	HealthCtrl        *httphealth.Controller
-	AuthCtrl          *httpauth.Controller
-	UsersCtrl         *httpusers.Controller
-	ComicsCtrl        *httpcomics.Controller
-	ChaptersCtrl      *httpchapters.Controller
-	FeedCtrl          *httpfeed.Controller
-	OIDCProvidersCtrl *httpoidcproviders.Controller
+	SetupCtrl          *httpsetup.Controller
+	AsuraCtrl          *httpasura.Controller
+	CoversCtrl         *httpcovers.Controller
+	HealthCtrl         *httphealth.Controller
+	AuthCtrl           *httpauth.Controller
+	UsersCtrl          *httpusers.Controller
+	ComicsCtrl         *httpcomics.Controller
+	ChaptersCtrl       *httpchapters.Controller
+	FeedCtrl           *httpfeed.Controller
+	ReaderSettingsCtrl *httpreadersettings.Controller
+	OIDCProvidersCtrl  *httpoidcproviders.Controller
 
 	Logger *slog.Logger
 	Health *health.Registry
@@ -160,6 +162,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.FeedCtrl == nil {
 		return errors.New("feedCtrl is required")
+	}
+
+	if deps.ReaderSettingsCtrl == nil {
+		return errors.New("readerSettingsCtrl is required")
 	}
 
 	if deps.Health == nil {
@@ -300,6 +306,7 @@ func (a *App) newRouter(ui http.Handler) chi.Router {
 			a.deps.ComicsCtrl.InitRouter(r)
 			a.deps.ChaptersCtrl.InitRouter(r)
 			a.deps.FeedCtrl.InitRouter(r)
+			a.deps.ReaderSettingsCtrl.InitRouter(r)
 			r.Route("/sources", func(r chi.Router) {
 				a.deps.CoversCtrl.InitRouter(r)
 				a.deps.AsuraCtrl.InitRouter(r)
