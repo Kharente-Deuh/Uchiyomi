@@ -430,3 +430,312 @@ func TestRefreshComicConflictWhenNotPollable(t *testing.T) {
 		})
 	}
 }
+
+func TestRefreshComicCreatesMissingChaptersUpdatesStatusAndReturnsComic(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	existing := chapters.Chapter{
+		ID:                uuid.New(),
+		ComicID:           comicID,
+		SourceChapterSlug: testChapterSlug,
+		Number:            1,
+		Download:          100,
+	}
+	newSrc := sources.SourceChapter{
+		SourceChapterSlug: testChapter2Slug,
+		Number:            2,
+		Title:             "Chapter 2",
+		PageCount:         18,
+		PublishedAt:       time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
+	}
+	created := chapters.Chapter{
+		ID:                uuid.New(),
+		ComicID:           comicID,
+		SourceChapterSlug: newSrc.SourceChapterSlug,
+		Number:            newSrc.Number,
+		Title:             newSrc.Title,
+		PagesNb:           newSrc.PageCount,
+		PublishedAt:       newSrc.PublishedAt,
+	}
+
+	repo := &fakeComicsRepository{
+		findByIDResult: &comics.Comic{
+			ID:           comicID,
+			Source:       testSource,
+			Slug:         testSlug,
+			Status:       sources.SeriesStatusOngoing,
+			Title:        "Solo Leveling",
+			Type:         sources.SeriesTypeManhwa,
+			ChapterCount: 1,
+		},
+	}
+	chaptersSvc := &fakeChaptersService{
+		listByComicIDResult: []chapters.Chapter{existing},
+		createAllResult:     []chapters.Chapter{created},
+	}
+	source := &fakeSource{
+		infos: &sources.GetInfosBySlugResponse{
+			Status:       sources.SeriesStatusHiatus,
+			ChapterCount: 2,
+			Title:        "Must Not Be Written",
+		},
+		chapters: []sources.SourceChapter{
+			{
+				SourceChapterSlug: existing.SourceChapterSlug,
+				Number:            1,
+				Title:             testChapterTitle,
+			},
+			newSrc,
+		},
+	}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = repo
+	deps.ChaptersService = chaptersSvc
+	deps.LibraryRepository = &fakeLibraryRepository{inLibrary: true}
+	deps.Sources = sources.SourceMap{testSource: source}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	got, err := svc.RefreshComic(context.Background(), comics.RefreshComicOpts{
+		UserID: uuid.New(),
+		ID:     comicID,
+	})
+	if err != nil {
+		t.Fatalf("RefreshComic: %v", err)
+	}
+
+	if !source.lastInfosFresh || !source.lastChaptersFresh {
+		t.Errorf("fresh infos=%v chapters=%v, want both true", source.lastInfosFresh, source.lastChaptersFresh)
+	}
+
+	if chaptersSvc.createAllCalls != 1 {
+		t.Fatalf("CreateAll called %d times, want 1", chaptersSvc.createAllCalls)
+	}
+
+	if len(chaptersSvc.lastCreateAllChapters) != 1 ||
+		chaptersSvc.lastCreateAllChapters[0].SourceChapterSlug != testChapter2Slug {
+		t.Errorf("CreateAll chapters = %+v, want only %s", chaptersSvc.lastCreateAllChapters, testChapter2Slug)
+	}
+
+	if chaptersSvc.enqueueDownloadableCalls != 1 {
+		t.Fatalf("EnqueueDownloadable called %d times, want 1", chaptersSvc.enqueueDownloadableCalls)
+	}
+
+	if len(chaptersSvc.lastEnqueueChapters) != 1 || chaptersSvc.lastEnqueueChapters[0].ID != created.ID {
+		t.Errorf("enqueued = %+v, want created chapter", chaptersSvc.lastEnqueueChapters)
+	}
+
+	if repo.createCalls != 0 {
+		t.Errorf("ComicsRepository.Create called %d times, want 0", repo.createCalls)
+	}
+
+	if repo.updateStatusCalls != 1 {
+		t.Fatalf("UpdateStatusAndChapterCount called %d times, want 1", repo.updateStatusCalls)
+	}
+
+	if repo.lastUpdateStatus.ID != comicID ||
+		repo.lastUpdateStatus.Status != sources.SeriesStatusHiatus ||
+		repo.lastUpdateStatus.ChapterCount != 2 {
+		t.Errorf("update opts = %+v", repo.lastUpdateStatus)
+	}
+
+	if got == nil || got.ID != comicID || got.Title != "Solo Leveling" ||
+		got.Status != sources.SeriesStatusHiatus || got.ChapterCount != 2 {
+		t.Errorf("returned comic = %+v, want updated status/count and unchanged title", got)
+	}
+}
+
+func TestRefreshComicSkipsCreateWhenNoMissingChapters(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	repo := &fakeComicsRepository{
+		findByIDResult: &comics.Comic{
+			ID:     comicID,
+			Source: testSource,
+			Slug:   testSlug,
+			Status: sources.SeriesStatusHiatus,
+			Title:  "Solo Leveling",
+		},
+	}
+	chaptersSvc := &fakeChaptersService{
+		listByComicIDResult: []chapters.Chapter{{
+			ComicID:           comicID,
+			SourceChapterSlug: testChapterSlug,
+		}},
+	}
+	source := &fakeSource{
+		infos: &sources.GetInfosBySlugResponse{
+			Status:       sources.SeriesStatusHiatus,
+			ChapterCount: 1,
+		},
+		chapters: []sources.SourceChapter{{SourceChapterSlug: testChapterSlug, Number: 1}},
+	}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = repo
+	deps.ChaptersService = chaptersSvc
+	deps.LibraryRepository = &fakeLibraryRepository{inLibrary: true}
+	deps.Sources = sources.SourceMap{testSource: source}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.RefreshComic(context.Background(), comics.RefreshComicOpts{
+		UserID: uuid.New(),
+		ID:     comicID,
+	})
+	if err != nil {
+		t.Fatalf("RefreshComic: %v", err)
+	}
+
+	if chaptersSvc.createAllCalls != 0 {
+		t.Errorf("CreateAll called %d times, want 0", chaptersSvc.createAllCalls)
+	}
+
+	if chaptersSvc.enqueueDownloadableCalls != 0 {
+		t.Errorf("EnqueueDownloadable called %d times, want 0", chaptersSvc.enqueueDownloadableCalls)
+	}
+
+	if repo.updateStatusCalls != 1 {
+		t.Errorf("UpdateStatusAndChapterCount called %d times, want 1", repo.updateStatusCalls)
+	}
+}
+
+func TestRefreshComicSourceInfosErrorDoesNotWrite(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	repo := &fakeComicsRepository{
+		findByIDResult: &comics.Comic{
+			ID:     comicID,
+			Source: testSource,
+			Slug:   testSlug,
+			Status: sources.SeriesStatusOngoing,
+		},
+	}
+	chaptersSvc := &fakeChaptersService{}
+	source := &fakeSource{err: errors.New("asura down")}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = repo
+	deps.ChaptersService = chaptersSvc
+	deps.LibraryRepository = &fakeLibraryRepository{inLibrary: true}
+	deps.Sources = sources.SourceMap{testSource: source}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.RefreshComic(context.Background(), comics.RefreshComicOpts{
+		UserID: uuid.New(),
+		ID:     comicID,
+	})
+	if !errors.Is(err, comics.ErrSourceUnavailable) {
+		t.Fatalf("RefreshComic = %v, want comics.ErrSourceUnavailable", err)
+	}
+
+	if chaptersSvc.createAllCalls != 0 || repo.updateStatusCalls != 0 {
+		t.Errorf("writes CreateAll=%d UpdateStatus=%d, want 0", chaptersSvc.createAllCalls, repo.updateStatusCalls)
+	}
+}
+
+func TestRefreshComicSourceChaptersErrorDoesNotWrite(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	repo := &fakeComicsRepository{
+		findByIDResult: &comics.Comic{
+			ID:     comicID,
+			Source: testSource,
+			Slug:   testSlug,
+			Status: sources.SeriesStatusOngoing,
+		},
+	}
+	chaptersSvc := &fakeChaptersService{}
+	source := &fakeSource{
+		infos:       &sources.GetInfosBySlugResponse{Status: sources.SeriesStatusOngoing, ChapterCount: 1},
+		chaptersErr: errors.New("asura chapters down"),
+	}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = repo
+	deps.ChaptersService = chaptersSvc
+	deps.LibraryRepository = &fakeLibraryRepository{inLibrary: true}
+	deps.Sources = sources.SourceMap{testSource: source}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.RefreshComic(context.Background(), comics.RefreshComicOpts{
+		UserID: uuid.New(),
+		ID:     comicID,
+	})
+	if !errors.Is(err, comics.ErrSourceUnavailable) {
+		t.Fatalf("RefreshComic = %v, want comics.ErrSourceUnavailable", err)
+	}
+
+	if chaptersSvc.createAllCalls != 0 || repo.updateStatusCalls != 0 {
+		t.Errorf("writes CreateAll=%d UpdateStatus=%d, want 0", chaptersSvc.createAllCalls, repo.updateStatusCalls)
+	}
+}
+
+func TestRefreshComicCreateAllFailureDoesNotUpdateStatus(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	repo := &fakeComicsRepository{
+		findByIDResult: &comics.Comic{
+			ID:     comicID,
+			Source: testSource,
+			Slug:   testSlug,
+			Status: sources.SeriesStatusOngoing,
+		},
+	}
+	chaptersSvc := &fakeChaptersService{
+		createAllErr: errors.New("insert failed"),
+	}
+	source := &fakeSource{
+		infos: &sources.GetInfosBySlugResponse{Status: sources.SeriesStatusOngoing, ChapterCount: 2},
+		chapters: []sources.SourceChapter{
+			{SourceChapterSlug: testChapter2Slug, Number: 2},
+		},
+	}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = repo
+	deps.ChaptersService = chaptersSvc
+	deps.LibraryRepository = &fakeLibraryRepository{inLibrary: true}
+	deps.Sources = sources.SourceMap{testSource: source}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.RefreshComic(context.Background(), comics.RefreshComicOpts{
+		UserID: uuid.New(),
+		ID:     comicID,
+	})
+	if err == nil {
+		t.Fatal("RefreshComic = nil, want CreateAll error")
+	}
+
+	if repo.updateStatusCalls != 0 {
+		t.Errorf("UpdateStatusAndChapterCount called %d times, want 0", repo.updateStatusCalls)
+	}
+
+	if chaptersSvc.enqueueDownloadableCalls != 0 {
+		t.Errorf("EnqueueDownloadable called %d times, want 0", chaptersSvc.enqueueDownloadableCalls)
+	}
+}
