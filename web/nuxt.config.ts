@@ -24,6 +24,7 @@ export default defineNuxtConfig({
     { path: '~/features/asura/components', prefix: 'Asura' },
     { path: '~/features/library/components', prefix: 'Library' },
     { path: '~/features/feed/components', prefix: 'Feed' },
+    { path: '~/features/reader/components', prefix: 'Reader' },
   ],
 
   imports: {

@@ -186,6 +186,10 @@
         "notFound": "Fournisseur introuvable"
       },
       "description": "Gérer les fournisseurs OIDC"
+    },
+    "reader": {
+      "title": "Lecteur",
+      "description": "Configurez votre lecteur comme vous le souhaitez"
     }
   },
   "error": {
@@ -196,7 +200,8 @@
     "save": "Sauvegarder",
     "create": "Créer",
     "delete": "Supprimer",
-    "continue": "Continuer"
+    "continue": "Continuer",
+    "reset": "Réinitialiser"
   },
   "common": {
     "loading": "Chargement...",
@@ -319,5 +324,23 @@
   },
   "reading": {
     "title": "Lire"
+  },
+  "reader": {
+    "mode": {
+      "pagedRtl": "De droite à gauche",
+      "pagedLtr": "De gauche à droite",
+      "webtoon": "Défilement continu"
+    },
+    "pageScale": {
+      "fitWidth": "Ajuster la largeur",
+      "fitHeight": "Hauteur d'ajustement",
+      "fitScreen": "Ajuster l'écran",
+      "title": "Mise à l'échelle des pages"
+    },
+    "pageMode": {
+      "doublePage": "Double-page",
+      "singlePage": "Page unique",
+      "title": "Mode page"
+    }
   }
 }

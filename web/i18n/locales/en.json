@@ -186,6 +186,10 @@
         "success": "Provider updated !"
       },
       "description": "Manage OIDC providers"
+    },
+    "reader": {
+      "title": "Reader",
+      "description": "Setup your reader as you like"
     }
   },
   "error": {
@@ -196,7 +200,8 @@
     "save": "Save",
     "create": "Create",
     "delete": "Delete",
-    "continue": "Continue"
+    "continue": "Continue",
+    "reset": "Reset"
   },
   "common": {
     "loading": "Loading...",
@@ -329,5 +334,24 @@
   },
   "reading": {
     "title": "Reading"
+  },
+  "reader": {
+    "mode": {
+      "pagedRtl": "Right to left",
+      "pagedLtr": "Left to right",
+      "webtoon": "Continous scroll",
+      "title": "Reading direction"
+    },
+    "pageScale": {
+      "fitWidth": "Fit width",
+      "fitHeight": "Fit height",
+      "fitScreen": "Fit screen",
+      "title": "Page scaling"
+    },
+    "pageMode": {
+      "singlePage": "Single page",
+      "doublePage": "Double page",
+      "title": "Page mode"
+    }
   }
 }
