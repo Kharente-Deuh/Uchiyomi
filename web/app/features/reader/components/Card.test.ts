@@ -103,7 +103,7 @@ describe('readerCard', () => {
       pageScale: 'fit-width',
       doublePage: false,
     }))
-    expect(model.value.readingMode).toBe('paged-ltr')
+    expect(model.value?.readingMode).toBe('paged-ltr')
   })
 
   it('toasts when save fails', async () => {
