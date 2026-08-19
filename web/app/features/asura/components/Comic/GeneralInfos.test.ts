@@ -3,11 +3,23 @@
 
 import type { VueWrapper } from '@vue/test-utils'
 import type { AsuraComicInfos } from '../../types'
-import { mountSuspended } from '@nuxt/test-utils/runtime'
-import { describe, expect, it } from 'vitest'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 import { VApp } from 'vuetify/components'
 import GeneralInfos from './GeneralInfos.vue'
+
+const { smAndDown } = await vi.hoisted(async () => {
+  const { ref } = await import('vue')
+
+  return { smAndDown: ref(true) }
+})
+
+function displayStub(): { smAndDown: typeof smAndDown } {
+  return { smAndDown }
+}
+
+mockNuxtImport('useDisplay', () => displayStub)
 
 function comic(overrides: Partial<AsuraComicInfos> = {}): AsuraComicInfos {
   return {
@@ -37,6 +49,10 @@ async function mount(value: AsuraComicInfos = comic()): Promise<VueWrapper> {
   })
 }
 
+beforeEach(() => {
+  smAndDown.value = true
+})
+
 describe('asuraComicGeneralInfos', () => {
   it('strips HTML and newlines from the description', async () => {
     const wrapper = await mount()
@@ -47,6 +63,18 @@ describe('asuraComicGeneralInfos', () => {
   it('joins alternate titles', async () => {
     const wrapper = await mount()
     expect(wrapper.text()).toContain('나 혼자만 레벨업, Only I Level Up')
+  })
+
+  it('renders genres', async () => {
+    const wrapper = await mount()
+    expect(wrapper.text()).toContain('action')
+  })
+
+  it('starts expanded on desktop', async () => {
+    smAndDown.value = false
+    const wrapper = await mount()
+    expect(wrapper.text()).toContain('Show less')
+    expect(wrapper.find('.text-truncate').exists()).toBe(false)
   })
 
   it('expands truncated text when show more is clicked', async () => {

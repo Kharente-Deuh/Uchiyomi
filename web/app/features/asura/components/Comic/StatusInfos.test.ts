@@ -79,15 +79,14 @@ async function mount(comic: AsuraComicInfos): Promise<{ wrapper: VueWrapper, com
 }
 
 describe('asuraComicStatusInfos', () => {
-  it('renders status, type, author, artist and genres', async () => {
+  it('renders status, type, author and artist', async () => {
     const { wrapper } = await mount(infos())
 
     expect(wrapper.text()).toContain('Ongoing')
     expect(wrapper.text()).toContain('Manhwa')
     expect(wrapper.text()).toContain('Chugong')
     expect(wrapper.text()).toContain('Jang')
-    expect(wrapper.text()).toContain('action')
-    expect(wrapper.text()).toContain('fantasy')
+    expect(wrapper.text()).not.toContain('action')
     expect(wrapper.find('[data-test="origin"]').attributes('href')).toBe('https://asurascans.com/series/solo-leveling')
   })
 

@@ -54,6 +54,26 @@ describe('createComicsApi().deleteById', () => {
   })
 })
 
+describe('createComicsApi().getById', () => {
+  it('gets the comic by id', async () => {
+    const full = { ...comic, title: 'Solo Leveling', author: 'Chugong', artist: 'Jang', type: 'manhwa', description: '', cover: '/cover', genres: [], altTitles: [] }
+    call.mockResolvedValue(full)
+
+    const res = await createComicsApi().getById('c1')
+
+    expect(call).toHaveBeenCalledWith('/c1', { method: 'GET' })
+    expect(res).toEqual({ success: true, data: full })
+  })
+
+  it('surfaces a 404 with its status', async () => {
+    call.mockRejectedValue({ statusCode: 404, data: {} })
+
+    const res = await createComicsApi().getById('missing')
+
+    expect(res.success === false && res.error.status).toBe(404)
+  })
+})
+
 describe('createComicsApi().search', () => {
   it('requests / with pagination', async () => {
     call.mockResolvedValue({ items: [comic], total: 1 })
