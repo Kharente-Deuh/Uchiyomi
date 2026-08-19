@@ -27,10 +27,17 @@ function routeStub(): { params: { slug: string } } {
   return { params: { slug: 'solo-leveling' } }
 }
 
+function createChaptersApiStub(): ChaptersApi {
+  return {
+    retryDownload: retryDownloadApi,
+    getByIds: vi.fn(),
+    getByComicId: vi.fn(),
+  }
+}
+
 mockNuxtImport('useI18n', () => i18nStub)
 mockNuxtImport('useRoute', () => routeStub)
-// eslint-disable-next-line unicorn/consistent-function-scoping
-mockNuxtImport('createChaptersApi', () => () => ({ retryDownload: retryDownloadApi }))
+mockNuxtImport('createChaptersApi', () => createChaptersApiStub)
 
 function chapter(overrides: Partial<AsuraComicChapter> = {}): AsuraComicChapter {
   return {
