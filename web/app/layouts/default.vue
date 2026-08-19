@@ -80,13 +80,13 @@ const bottomNavigationItems = computed((): BottomNavigationItemProps[] => [
   {
     to: '/feed',
     icon: 'fa6-solid:newspaper',
-    isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/feed'),
+    isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/feed') || route.query.from === 'feed',
     baseRoute: '/feed',
   },
   {
     to: '/library',
     icon: 'fa6-solid:book',
-    isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/library'),
+    isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/library') || route.query.from === 'library',
     baseRoute: '/library',
   },
   {

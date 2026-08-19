@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { LightComic, SearchComicParams, SearchComicResponse } from '../types'
+import type { Comic, LightComic, SearchComicParams, SearchComicResponse } from '../types'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
 
@@ -8,6 +8,7 @@ export interface ComicsApi {
   create: (params: CreateComicParams) => Promise<ApiResponse<LightComic>>
   deleteById: (id: string) => Promise<ApiResponse<void>>
   search: (params: SearchComicParams) => Promise<ApiResponse<SearchComicResponse>>
+  getById: (id: string) => Promise<ApiResponse<Comic>>
 }
 
 export interface CreateComicParams {
@@ -59,9 +60,20 @@ export function createComicsApi(): ComicsApi {
     }
   }
 
+  async function getById(id: string): Promise<ApiResponse<Comic>> {
+    try {
+      const response = await api<Comic>(`/${id}`, { method: 'GET' })
+
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
   return {
     create,
     deleteById,
     search,
+    getById,
   }
 }

@@ -16,7 +16,7 @@ export interface FeedComposable {
 
 export function useFeed(): FeedComposable {
   const api = createFeedApi()
-  const chaptersApi = useChaptersApi()
+  const chaptersApi = createChaptersApi()
 
   const { t } = useI18n()
   const toast = useToast()

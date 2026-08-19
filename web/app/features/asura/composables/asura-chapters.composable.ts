@@ -21,7 +21,7 @@ export function isChapterDownloadInProgress(chapter: AsuraComicChapter): boolean
 export function useAsuraChapters(): AsuraChaptersComposable {
   const store = useAsuraChaptersStore()
   const api = createAsuraApi()
-  const chaptersApi = useChaptersApi()
+  const chaptersApi = createChaptersApi()
   const toast = useToast()
   const { t } = useI18n()
   const route = useRoute('browse-sources-asura-slug')

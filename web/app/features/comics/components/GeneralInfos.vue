@@ -1,19 +1,16 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { AsuraComicInfos } from '../../types'
+import type { Comic } from '../types'
 
-const props = defineProps<{
-  comic: AsuraComicInfos
-}>()
+const props = defineProps<{ comic: Comic }>()
 
-const { smAndDown } = useDisplay()
-const showMore = ref(!smAndDown.value)
+const showMore = ref(false)
 
 const sanitzedDescription = computed(() => props.comic.description.replace(/<[^>]*>?/g, '').replaceAll('\n', ' '))
 </script>
 
 <template>
-  <div class="d-flex flex-column ga-4 transition-smooth pa-4 bg-surface w-100" style="border-radius: 12px;">
+  <div class="d-flex flex-column ga-3 transition-smooth pa-4 bg-surface w-100" style="border-radius: 12px;">
     <span
       v-if="sanitzedDescription"
       class="text-body-large transition-smooth"
@@ -26,7 +23,7 @@ const sanitzedDescription = computed(() => props.comic.description.replace(/<[^>
       :class="{ 'text-truncate': !showMore }"
     >{{ comic.altTitles.join(', ') }}</span>
 
-    <div v-if="comic.genres.length" class="d-flex flex-wrap ga-3">
+    <div v-if="comic.genres.length && showMore" class="d-flex flex-wrap ga-3">
       <span
         v-for="(genre, i) in comic.genres"
         :key="i"

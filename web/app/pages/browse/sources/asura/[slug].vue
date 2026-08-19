@@ -20,7 +20,6 @@ const api = createAsuraApi()
 
 const fetchInfosLoading = ref(false)
 const infos = ref<AsuraComicInfos>()
-const chaptersComponent = useTemplateRef<InstanceType<typeof AsuraComicChapters>>('chaptersComponent')
 
 const coverSrc = ref<string>()
 
@@ -114,7 +113,6 @@ const comicOriginUrl = computed(() => {
         />
         <AsuraComicGeneralInfos :comic="infos" />
         <AsuraComicChapters
-          ref="chaptersComponent"
           :slug="route.params.slug"
           :comic-origin-url="comicOriginUrl"
         />

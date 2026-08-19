@@ -30,7 +30,7 @@ function routeStub(): { params: { slug: string } } {
 mockNuxtImport('useI18n', () => i18nStub)
 mockNuxtImport('useRoute', () => routeStub)
 // eslint-disable-next-line unicorn/consistent-function-scoping
-mockNuxtImport('useChaptersApi', () => () => ({ retryDownload: retryDownloadApi }))
+mockNuxtImport('createChaptersApi', () => () => ({ retryDownload: retryDownloadApi }))
 
 function chapter(overrides: Partial<AsuraComicChapter> = {}): AsuraComicChapter {
   return {
