@@ -35,7 +35,11 @@ const to = computed(() => {
   return `${props.comicOriginUrl}/chapter/${props.chapter.number}`
 })
 
-const isChapterDownloading = computed(() => props.chapter.internalId && props.chapter.download !== undefined && props.chapter.download >= 0 && props.chapter.download < 100 && props.chapter.earlyAccessUntil && props.chapter.earlyAccessUntil < new Date())
+const isChapterDownloading = computed(() => props.chapter.internalId
+  && props.chapter.download !== undefined
+  && props.chapter.download >= 0
+  && props.chapter.download < 100
+  && (!props.chapter.earlyAccessUntil || props.chapter.earlyAccessUntil < new Date()))
 const isChapterDownloaded = computed(() => props.chapter.internalId && props.chapter.download === 100)
 const isChapterDownloadingError = computed(() => props.chapter.internalId && props.chapter.download === -1 && !retryDownloadLoading.value)
 </script>
