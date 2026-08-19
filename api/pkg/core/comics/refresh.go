@@ -4,13 +4,16 @@ package comics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/logging"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
 )
 
 func (s *Service) logger() *slog.Logger {
@@ -65,6 +68,99 @@ func (s *Service) refreshSource(ctx context.Context, name sources.SourceName) er
 	}
 
 	return nil
+}
+
+func isPollable(status sources.SeriesStatus) bool {
+	return status == sources.SeriesStatusOngoing || status == sources.SeriesStatusHiatus
+}
+
+func (s *Service) RefreshComic(ctx context.Context, opts RefreshComicOpts) (*Comic, error) {
+	comic, err := s.deps.ComicsRepository.FindByID(ctx, opts.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ComicsRepository.FindByID: %w", err)
+	}
+
+	inLibrary, err := s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, comic.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+	}
+
+	if !inLibrary {
+		return nil, domain.ErrForbidden
+	}
+
+	if !isPollable(comic.Status) {
+		return nil, domain.ErrConflict
+	}
+
+	src, ok := s.deps.Sources[comic.Source]
+	if !ok || src == nil {
+		return nil, fmt.Errorf("source %s not found", comic.Source)
+	}
+
+	infos, err := src.GetInfosBySlug(ctx, sources.GetInfosBySlugOpts{
+		Slug:  comic.Slug,
+		Fresh: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("src.GetInfosBySlug: %w", errors.Join(ErrSourceUnavailable, err))
+	}
+
+	srcChapters, err := src.GetChaptersBySlug(ctx, sources.GetChaptersBySlugOpts{
+		Slug:  comic.Slug,
+		Fresh: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("src.GetChaptersBySlug: %w", errors.Join(ErrSourceUnavailable, err))
+	}
+
+	existing, err := s.deps.ChaptersService.ListByComicID(ctx, comic.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ChaptersService.ListByComicID: %w", err)
+	}
+
+	missing := missingSourceChapters(existing, srcChapters)
+
+	var created []chapters.Chapter
+
+	err = s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
+		if len(missing) > 0 {
+			inserted, createErr := s.deps.ChaptersService.CreateAll(ctx, comic.ID, missing)
+			if createErr != nil {
+				return fmt.Errorf("s.deps.ChaptersService.CreateAll: %w", createErr)
+			}
+
+			created = inserted
+		}
+
+		updateErr := s.deps.ComicsRepository.UpdateStatusAndChapterCount(ctx, UpdateStatusAndChapterCountOpts{
+			ID:           comic.ID,
+			Status:       infos.Status,
+			ChapterCount: infos.ChapterCount,
+		})
+		if updateErr != nil {
+			return fmt.Errorf("s.deps.ComicsRepository.UpdateStatusAndChapterCount: %w", updateErr)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
+	}
+
+	if len(created) > 0 {
+		err = s.deps.ChaptersService.EnqueueDownloadable(ctx, created)
+		if err != nil {
+			return nil, fmt.Errorf("s.deps.ChaptersService.EnqueueDownloadable: %w", err)
+		}
+	}
+
+	updated, err := s.deps.ComicsRepository.FindByID(ctx, comic.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ComicsRepository.FindByID: %w", err)
+	}
+
+	return updated, nil
 }
 
 func (s *Service) refreshComic(ctx context.Context, src sources.Source, comic Comic) error {

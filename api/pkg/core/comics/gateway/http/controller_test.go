@@ -38,19 +38,21 @@ const (
 )
 
 type stubComicsService struct {
-	createErr        error
-	getByIDErr       error
-	getManyErr       error
-	deleteErr        error
-	serveCoverErr    error
-	createResult     *comics.Comic
-	getByIDResult    *comics.Comic
-	serveCoverPath   string
-	serveCoverType   string
-	getManyResult    comics.Page
-	lastGetMany      comics.GetManyOpts
-	serveCoverCalls  int
-	lastServeCoverID uuid.UUID
+	createErr          error
+	getByIDErr         error
+	getManyErr         error
+	deleteErr          error
+	serveCoverErr      error
+	refreshComicErr    error
+	createResult       *comics.Comic
+	getByIDResult      *comics.Comic
+	refreshComicResult *comics.Comic
+	serveCoverPath     string
+	serveCoverType     string
+	getManyResult      comics.Page
+	lastGetMany        comics.GetManyOpts
+	serveCoverCalls    int
+	lastServeCoverID   uuid.UUID
 }
 
 func (s *stubComicsService) Create(_ context.Context, _ comics.CreateOpts) (*comics.Comic, error) {
@@ -73,6 +75,10 @@ func (s *stubComicsService) Delete(_ context.Context, _ comics.DeleteOpts) error
 
 func (s *stubComicsService) RefreshChapterLists(context.Context) error {
 	return nil
+}
+
+func (s *stubComicsService) RefreshComic(_ context.Context, _ comics.RefreshComicOpts) (*comics.Comic, error) {
+	return s.refreshComicResult, s.refreshComicErr
 }
 
 func (s *stubComicsService) ServeCover(_ context.Context, opts comics.GetByIDOpts) (string, string, error) {
@@ -564,6 +570,153 @@ func TestDeleteByIDInternalError(t *testing.T) {
 	r := newTestRouter(t, &stubComicsService{deleteErr: sentinel}, authenticatorFor(t, user))
 
 	req := httptest.NewRequest(http.MethodDelete, comicsEndpoint+"/"+comicID.String(), nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestRefreshRequiresAuthentication(t *testing.T) {
+	t.Parallel()
+
+	r := newTestRouter(t, &stubComicsService{}, nil)
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+uuid.New().String()+"/refresh", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRefreshInvalidID(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	r := newTestRouter(t, &stubComicsService{}, authenticatorFor(t, user))
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/not-a-uuid/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestRefreshNotFound(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	r := newTestRouter(t, &stubComicsService{
+		refreshComicErr: fmt.Errorf("s.deps.ComicsRepository.FindByID: %w", domain.ErrNotFound),
+	}, authenticatorFor(t, user))
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestRefreshForbidden(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	r := newTestRouter(t, &stubComicsService{refreshComicErr: domain.ErrForbidden}, authenticatorFor(t, user))
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestRefreshConflict(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	r := newTestRouter(t, &stubComicsService{refreshComicErr: domain.ErrConflict}, authenticatorFor(t, user))
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusConflict)
+	}
+}
+
+func TestRefreshSourceUnavailable(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	r := newTestRouter(t, &stubComicsService{
+		refreshComicErr: fmt.Errorf("src.GetInfosBySlug: %w", comics.ErrSourceUnavailable),
+	}, authenticatorFor(t, user))
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusBadGateway)
+	}
+}
+
+func TestRefreshOK(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comic := &comics.Comic{
+		ID:           uuid.New(),
+		Title:        testComicTitle,
+		Slug:         testComicSlug,
+		Source:       sources.SourceAsuraScans,
+		Status:       sources.SeriesStatusOngoing,
+		Type:         sources.SeriesTypeManhwa,
+		ChapterCount: 42,
+	}
+
+	r := newTestRouter(t, &stubComicsService{refreshComicResult: comic}, authenticatorFor(t, user))
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comic.ID.String()+"/refresh", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var got comicshttpDetail
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if got.ID != comic.ID || got.ChapterCount != 42 {
+		t.Errorf("detail = %+v, want id=%s chapterCount=42", got, comic.ID)
+	}
+}
+
+func TestRefreshInternalError(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	sentinel := errors.New("db down")
+	r := newTestRouter(t, &stubComicsService{refreshComicErr: sentinel}, authenticatorFor(t, user))
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/refresh", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)

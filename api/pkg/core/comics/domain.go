@@ -4,6 +4,7 @@ package comics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -79,12 +80,20 @@ type GetBySlugsAndSource struct {
 	UserID uuid.UUID
 }
 
+var ErrSourceUnavailable = errors.New("source unavailable")
+
+type RefreshComicOpts struct {
+	UserID uuid.UUID
+	ID     uuid.UUID
+}
+
 type ComicsService interface {
 	Create(context.Context, CreateOpts) (*Comic, error)
 	GetByID(context.Context, GetByIDOpts) (*Comic, error)
 	GetMany(context.Context, GetManyOpts) (Page, error)
 	Delete(context.Context, DeleteOpts) error
 	RefreshChapterLists(context.Context) error
+	RefreshComic(context.Context, RefreshComicOpts) (*Comic, error)
 	ServeCover(ctx context.Context, opts GetByIDOpts) (diskPath, contentType string, err error)
 }
 
