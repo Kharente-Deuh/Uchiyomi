@@ -224,24 +224,26 @@ func TestChaptersListResumable(t *testing.T) {
 	comicID := uuid.New()
 	id := uuid.New()
 	publishedAt := time.Now().UTC().Truncate(time.Second)
+	now := time.Now().UTC().Truncate(time.Second)
 
-	mock.ExpectQuery(`FROM "chapters".*download > 0 AND download < 100\) OR download = -1`).
+	mock.ExpectQuery(`FROM "chapters".*\(download > 0 AND download < 100\) OR download = -1 OR \(download = 0 AND \(early_access_until IS NULL OR early_access_until <= \$1\)\)`).
+		WithArgs(now).
 		WillReturnRows(
 			sqlmock.NewRows([]string{
 				"id", "comic_id", "source_chapter_slug", "number", "title",
 				"pages_nb", "published_at", "early_access_until", "download",
 			}).AddRow(
 				id, comicID, chapterSlug, 1.0, chapterTitle,
-				42, publishedAt, publishedAt, 42,
+				42, publishedAt, nil, 0,
 			),
 		)
 
-	got, err := r.ListResumable(context.Background())
+	got, err := r.ListResumable(context.Background(), now)
 	if err != nil {
 		t.Fatalf("ListResumable: %v", err)
 	}
 
-	if len(got) != 1 || got[0].ID != id || got[0].Download != 42 {
+	if len(got) != 1 || got[0].ID != id || got[0].Download != 0 {
 		t.Errorf("ListResumable() = %+v", got)
 	}
 }

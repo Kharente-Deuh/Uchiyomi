@@ -26,7 +26,7 @@ type ChaptersRepository interface {
 	Create(context.Context, CreateOpts) (*Chapter, error)
 	CreateMany(context.Context, []CreateOpts) ([]Chapter, error)
 	ListByComicID(context.Context, uuid.UUID) ([]Chapter, error)
-	ListResumable(context.Context) ([]Chapter, error)
+	ListResumable(context.Context, time.Time) ([]Chapter, error)
 	ListEarlyAccessUnlocked(context.Context, time.Time) ([]Chapter, error)
 	GetByID(context.Context, uuid.UUID) (*Chapter, error)
 	UpdateDownload(context.Context, uuid.UUID, int) error

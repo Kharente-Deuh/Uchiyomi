@@ -89,9 +89,12 @@ func (r *PGChaptersRepository) ListByComicID(ctx context.Context, comicID uuid.U
 	return ret, nil
 }
 
-func (r *PGChaptersRepository) ListResumable(ctx context.Context) ([]chapters.Chapter, error) {
+func (r *PGChaptersRepository) ListResumable(ctx context.Context, now time.Time) ([]chapters.Chapter, error) {
+	resumableWhere := "(download > 0 AND download < 100) OR download = -1" +
+		" OR (download = 0 AND (early_access_until IS NULL OR early_access_until <= ?))"
+
 	models, err := r.db(ctx).
-		Where("(download > 0 AND download < 100) OR download = -1").
+		Where(resumableWhere, now).
 		Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
