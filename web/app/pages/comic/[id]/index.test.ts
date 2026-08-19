@@ -41,9 +41,9 @@ mockNuxtImport('navigateTo', () => navigateTo)
 
 const StatusStub = defineComponent({
   name: 'ComicsStatusInfos',
-  props: { comic: { type: Object, required: true } },
+  props: { modelValue: { type: Object, required: true } },
   emits: ['deleted'],
-  template: '<div data-test="status-infos">{{ comic.title }}</div>',
+  template: '<div data-test="status-infos">{{ modelValue.title }}</div>',
 })
 
 const GeneralStub = defineComponent({
