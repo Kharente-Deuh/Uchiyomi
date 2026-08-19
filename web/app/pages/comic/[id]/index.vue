@@ -96,7 +96,7 @@ const backRoutes = computed((): PageLayoutBackRoute[] => from.value === FEED_ROU
 
         <ComicsStatusInfos
           v-if="!smAndDown"
-          :comic
+          v-model="comic"
           @deleted="onDelete"
         />
       </div>
@@ -119,7 +119,7 @@ const backRoutes = computed((): PageLayoutBackRoute[] => from.value === FEED_ROU
         </div>
         <ComicsStatusInfos
           v-if="smAndDown"
-          :comic
+          v-model="comic"
           @deleted="onDelete"
         />
         <ComicsGeneralInfos :comic />

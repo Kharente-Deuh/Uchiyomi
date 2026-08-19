@@ -295,6 +295,9 @@
       "error": {
         "alreadyExists": "Comic already in library"
       }
+    },
+    "refresh": {
+      "title": "Refresh"
     }
   },
   "comic": {

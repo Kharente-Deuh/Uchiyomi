@@ -9,6 +9,7 @@ export interface ComicsApi {
   deleteById: (id: string) => Promise<ApiResponse<void>>
   search: (params: SearchComicParams) => Promise<ApiResponse<SearchComicResponse>>
   getById: (id: string) => Promise<ApiResponse<Comic>>
+  refreshById: (id: string) => Promise<ApiResponse<Comic>>
 }
 
 export interface CreateComicParams {
@@ -70,10 +71,21 @@ export function createComicsApi(): ComicsApi {
     }
   }
 
+  async function refreshById(id: string): Promise<ApiResponse<Comic>> {
+    try {
+      const response = await api<Comic>(`/${id}/refresh`, { method: 'POST' })
+
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
   return {
     create,
     deleteById,
     search,
     getById,
+    refreshById,
   }
 }
