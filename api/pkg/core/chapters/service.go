@@ -118,7 +118,7 @@ func (s *Service) EnqueueDownloadable(ctx context.Context, chapters []Chapter) e
 }
 
 func (s *Service) EnqueueResumable(ctx context.Context) error {
-	chapterList, err := s.deps.Repository.ListResumable(ctx)
+	chapterList, err := s.deps.Repository.ListResumable(ctx, time.Now())
 	if err != nil {
 		return fmt.Errorf("s.deps.Repository.ListResumable: %w", err)
 	}

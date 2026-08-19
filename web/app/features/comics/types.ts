@@ -32,3 +32,19 @@ export type SearchComicParams = {
   limit: number
   offset: number
 }
+
+export interface Comic {
+  id: string
+  artist: string
+  type: ComicType
+  description: string
+  source: ComicSource
+  author: string
+  status: ComicStatus
+  slug: string
+  title: string
+  cover: string
+  genres: string[]
+  altTitles: string[]
+  chapterCount: number
+}

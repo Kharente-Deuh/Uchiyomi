@@ -87,16 +87,5 @@ watch(() => comic.value.internalId, () => {
       <span class="text-body-large text-medium-emphasis text-uppercase text-truncate">{{ $t('comic.fields.artist') }}</span>
       <span class="text-body-large font-weight-bold text-truncate">{{ comic.artist }}</span>
     </div>
-    <template v-if="comic.genres.length">
-      <VDivider />
-      <div class="d-flex flex-wrap ga-3">
-        <span
-          v-for="(genre, i) in comic.genres"
-          :key="i"
-          class="text-capitalize px-2 py-1 bg-background border-thin"
-          style="border-radius: 12px;"
-        >{{ genre }}</span>
-      </div>
-    </template>
   </div>
 </template>

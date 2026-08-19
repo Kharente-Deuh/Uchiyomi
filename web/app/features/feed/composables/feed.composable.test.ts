@@ -31,14 +31,14 @@ function debounceStub<T extends (...args: never[]) => unknown>(fn: T): T {
   return fn
 }
 
-function useChaptersApiStub(): { getByIds: (ids: string[]) => Promise<{ success: true, data: Chapter[] }> } {
+function createChaptersApiStub(): { getByIds: (ids: string[]) => Promise<{ success: true, data: Chapter[] }> } {
   return { getByIds }
 }
 
 mockNuxtImport('useI18n', () => i18nStub)
 mockNuxtImport('useDisplay', () => displayStub)
 mockNuxtImport('useDebounceFn', debounceStub)
-mockNuxtImport('useChaptersApi', () => useChaptersApiStub)
+mockNuxtImport('createChaptersApi', () => createChaptersApiStub)
 
 function item(overrides: Partial<FeedItem> = {}): FeedItem {
   return {
