@@ -27,17 +27,28 @@ beforeEach(() => {
 })
 
 describe('settings', () => {
+  it('links a regular user to the reader module', async () => {
+    const wrapper = await mount()
+
+    expect(wrapper.findAll('a').map(a => a.attributes('href'))).toEqual(['/settings/reader'])
+    expect(wrapper.text()).toContain('Reader')
+  })
+
   it('hides the OIDC module from a regular user', async () => {
     const wrapper = await mount()
 
-    expect(wrapper.findAll('a')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain('OIDC')
+    expect(wrapper.findAll('a').map(a => a.attributes('href'))).not.toContain('/settings/oidc')
   })
 
-  it('links an admin to the OIDC module', async () => {
+  it('links an admin to the reader and OIDC modules', async () => {
     isAdmin.value = true
     const wrapper = await mount()
 
-    expect(wrapper.findAll('a').map(a => a.attributes('href'))).toEqual(['/settings/oidc'])
+    expect(wrapper.findAll('a').map(a => a.attributes('href'))).toEqual([
+      '/settings/reader',
+      '/settings/oidc',
+    ])
   })
 
   it('describes the OIDC module', async () => {
@@ -53,6 +64,6 @@ describe('settings', () => {
 
     isAdmin.value = true
 
-    await vi.waitFor(() => expect(wrapper.findAll('a')).toHaveLength(1))
+    await vi.waitFor(() => expect(wrapper.findAll('a')).toHaveLength(2))
   })
 })
