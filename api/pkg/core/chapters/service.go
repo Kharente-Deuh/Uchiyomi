@@ -3,9 +3,11 @@
 package chapters
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +23,7 @@ type Deps struct {
 	Repository        ChaptersRepository
 	ChapterDownloader ChapterDownloader
 	LibraryRepository library.LibraryRepository
+	ComicLookup       ComicLookup
 }
 
 func (deps *Deps) Validate() error {
@@ -34,6 +37,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.LibraryRepository == nil {
 		return errors.New("libraryRepository is required")
+	}
+
+	if deps.ComicLookup == nil {
+		return errors.New("comicLookup is required")
 	}
 
 	return nil
@@ -194,6 +201,41 @@ func isDownloadable(chapter Chapter, now time.Time) bool {
 	}
 
 	return true
+}
+
+func (s *Service) ListForLibrary(ctx context.Context, opts ListForLibraryOpts) ([]Chapter, error) {
+	inLibrary, err := s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, opts.ComicID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+	}
+
+	if !inLibrary {
+		exists, lookupErr := s.deps.ComicLookup.Exists(ctx, opts.ComicID)
+		if lookupErr != nil {
+			return nil, fmt.Errorf("s.deps.ComicLookup.Exists: %w", lookupErr)
+		}
+
+		if !exists {
+			return nil, domain.ErrNotFound
+		}
+
+		return nil, domain.ErrForbidden
+	}
+
+	chapterList, err := s.deps.Repository.ListByComicID(ctx, opts.ComicID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.ListByComicID: %w", err)
+	}
+
+	slices.SortFunc(chapterList, func(a, b Chapter) int {
+		return cmp.Compare(b.Number, a.Number)
+	})
+
+	if chapterList == nil {
+		chapterList = []Chapter{}
+	}
+
+	return chapterList, nil
 }
 
 func (s *Service) GetByIds(ctx context.Context, opts GetByIdsOpts) ([]Chapter, error) {

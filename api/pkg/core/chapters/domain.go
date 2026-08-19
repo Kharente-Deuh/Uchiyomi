@@ -50,6 +50,11 @@ type ChaptersService interface {
 	CleanupComic(context.Context, uuid.UUID, []Chapter) error
 	RetryDownload(context.Context, RetryDownloadOpts) error
 	GetByIds(context.Context, GetByIdsOpts) ([]Chapter, error)
+	ListForLibrary(context.Context, ListForLibraryOpts) ([]Chapter, error)
+}
+
+type ComicLookup interface {
+	Exists(context.Context, uuid.UUID) (bool, error)
 }
 
 type RetryDownloadOpts struct {
@@ -60,6 +65,11 @@ type RetryDownloadOpts struct {
 type GetByIdsOpts struct {
 	IDs    []uuid.UUID
 	UserID uuid.UUID
+}
+
+type ListForLibraryOpts struct {
+	UserID  uuid.UUID
+	ComicID uuid.UUID
 }
 
 type CreateOpts struct {

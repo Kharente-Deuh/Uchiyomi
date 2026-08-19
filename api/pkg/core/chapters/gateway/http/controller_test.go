@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,lll
 package http_test
 
 import (
@@ -34,10 +35,13 @@ const (
 )
 
 type stubChaptersService struct {
-	retryErr         error
-	getByIdsErr      error
-	getByIdsResult   []chapters.Chapter
-	lastGetByIdsOpts chapters.GetByIdsOpts
+	retryErr               error
+	getByIdsErr            error
+	listForLibraryErr      error
+	getByIdsResult         []chapters.Chapter
+	listForLibraryResult   []chapters.Chapter
+	lastGetByIdsOpts       chapters.GetByIdsOpts
+	lastListForLibraryOpts chapters.ListForLibraryOpts
 }
 
 func (s *stubChaptersService) CreateAll(
@@ -74,6 +78,14 @@ func (s *stubChaptersService) GetByIds(_ context.Context, opts chapters.GetByIds
 	s.lastGetByIdsOpts = opts
 
 	return s.getByIdsResult, s.getByIdsErr
+}
+
+func (s *stubChaptersService) ListForLibrary(
+	_ context.Context, opts chapters.ListForLibraryOpts,
+) ([]chapters.Chapter, error) {
+	s.lastListForLibraryOpts = opts
+
+	return s.listForLibraryResult, s.listForLibraryErr
 }
 
 type stubSessionService struct {
@@ -430,6 +442,179 @@ func TestPostListReturnsChapters(t *testing.T) {
 
 	if got[1].EarlyAccessUntil != nil {
 		t.Errorf("chapters[1].earlyAccessUntil = %v, want nil", got[1].EarlyAccessUntil)
+	}
+}
+
+func TestListForLibraryRequiresAuthentication(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"?comicId="+uuid.New().String(), nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestListForLibraryMissingComicID(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint, nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestListForLibraryInvalidComicID(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"?comicId=not-a-uuid", nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestListForLibraryNotFoundWhenComicMissing(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	comicID := uuid.New()
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		listForLibraryErr: fmt.Errorf("s.deps.ComicLookup.Exists: %w", domain.ErrNotFound),
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"?comicId="+comicID.String(), nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d body=%s (404 when comic is missing)", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}
+
+func TestListForLibraryForbiddenWhenNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	comicID := uuid.New()
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		listForLibraryErr: domain.ErrForbidden,
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"?comicId="+comicID.String(), nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d body=%s (403 when comic exists but is not in the user's library)", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+}
+
+func TestListForLibraryInternalError(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		listForLibraryErr: errors.New("db down"),
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"?comicId="+uuid.New().String(), nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestListForLibraryReturnsChapters(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	chapterID := uuid.New()
+	comicID := uuid.New()
+	publishedAt := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	earlyAccessUntil := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
+	svc := &stubChaptersService{
+		listForLibraryResult: []chapters.Chapter{
+			{
+				PublishedAt:       publishedAt,
+				EarlyAccessUntil:  &earlyAccessUntil,
+				SourceChapterSlug: "chapter-3",
+				Title:             "Locked",
+				Number:            3,
+				PagesNb:           12,
+				Download:          0,
+				ID:                chapterID,
+				ComicID:           comicID,
+			},
+			{
+				PublishedAt:       publishedAt,
+				SourceChapterSlug: "chapter-1",
+				Title:             "Chapter 1",
+				Number:            1,
+				PagesNb:           20,
+				Download:          100,
+				ID:                uuid.New(),
+				ComicID:           comicID,
+			},
+		},
+	}
+	r := newChaptersTestRouter(t, svc, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"?comicId="+comicID.String(), nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	if svc.lastListForLibraryOpts.UserID != user.ID || svc.lastListForLibraryOpts.ComicID != comicID {
+		t.Errorf("ListForLibrary opts = %+v, want user=%s comic=%s", svc.lastListForLibraryOpts, user.ID, comicID)
+	}
+
+	var got []postListHTTPChapter
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("len(chapters) = %d, want 2", len(got))
+	}
+
+	if got[0].ID != chapterID || got[0].Number != 3 || got[0].Download != 0 {
+		t.Errorf("chapters[0] = %+v", got[0])
+	}
+
+	if got[0].EarlyAccessUntil == nil || !got[0].EarlyAccessUntil.Equal(earlyAccessUntil) {
+		t.Errorf("locked chapter earlyAccessUntil = %v, want %v", got[0].EarlyAccessUntil, earlyAccessUntil)
+	}
+
+	if got[1].EarlyAccessUntil != nil || got[1].Download != 100 {
+		t.Errorf("chapters[1] = %+v", got[1])
 	}
 }
 
