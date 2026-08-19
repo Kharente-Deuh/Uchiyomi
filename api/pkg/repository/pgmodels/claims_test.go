@@ -162,6 +162,7 @@ func TestTableNames(t *testing.T) {
 		"comic":              pgmodels.Comic{}.TableName(),
 		"chapter":            pgmodels.Chapter{}.TableName(),
 		"library entry":      pgmodels.LibraryEntry{}.TableName(),
+		"reader settings":    pgmodels.ReaderSettings{}.TableName(),
 	}
 
 	want := map[string]string{
@@ -173,6 +174,7 @@ func TestTableNames(t *testing.T) {
 		"comic":              "comics",
 		"chapter":            "chapters",
 		"library entry":      "library_entries",
+		"reader settings":    "reader_settings",
 	}
 
 	for model, got := range tests {
