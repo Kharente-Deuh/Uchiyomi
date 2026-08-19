@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+/* eslint-disable unicorn/no-top-level-side-effects */
 
 import type { IconAliases, IconProps, IconSet } from 'vuetify'
 import fa6Regular from '@iconify-json/fa6-regular/icons.json'
@@ -6,12 +7,10 @@ import fa6Solid from '@iconify-json/fa6-solid/icons.json'
 import { addCollection, getIcon } from '@iconify/vue'
 import { h } from 'vue'
 
-// eslint-disable-next-line unicorn/no-top-level-side-effects
 addCollection(fa6Solid)
-// eslint-disable-next-line unicorn/no-top-level-side-effects
+
 addCollection(fa6Regular)
 
-// eslint-disable-next-line unicorn/no-top-level-side-effects
 addCollection({
   prefix: 'uchi',
   icons: {
