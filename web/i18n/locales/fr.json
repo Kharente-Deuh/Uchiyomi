@@ -186,6 +186,10 @@
         "notFound": "Fournisseur introuvable"
       },
       "description": "Gérer les fournisseurs OIDC"
+    },
+    "reader": {
+      "title": "Lecteur",
+      "description": "Configurez votre lecteur comme vous le souhaitez"
     }
   },
   "error": {

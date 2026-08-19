@@ -186,6 +186,10 @@
         "success": "Provider updated !"
       },
       "description": "Manage OIDC providers"
+    },
+    "reader": {
+      "title": "Reader",
+      "description": "Setup your reader as you like"
     }
   },
   "error": {

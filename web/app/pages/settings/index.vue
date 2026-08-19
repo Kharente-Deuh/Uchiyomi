@@ -30,6 +30,12 @@ const settingsModules = computed((): SettingsModule[] => [
       } satisfies SettingsModule,
       ]
     : []),
+  {
+    title: t('settings.reader.title'),
+    description: t('settings.reader.description'),
+    icon: 'fa6-solid:book-open-reader',
+    to: '/settings/reader',
+  },
 ])
 </script>
 
