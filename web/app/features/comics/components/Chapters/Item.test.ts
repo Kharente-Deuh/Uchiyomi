@@ -23,11 +23,11 @@ function chapter(overrides: Partial<Chapter> = {}): Chapter {
   }
 }
 
-async function mount(value: Chapter = chapter(), retryLoading = false): Promise<VueWrapper> {
+async function mount(value: Chapter = chapter(), isRetryLoading = false): Promise<VueWrapper> {
   return mountSuspended({
     render: () => h(VApp, () => [h(Item, {
       chapter: value,
-      retryLoading,
+      retryLoading: isRetryLoading,
       onRetry: vi.fn(),
     })]),
   })
