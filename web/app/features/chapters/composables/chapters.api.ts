@@ -33,7 +33,7 @@ export function createChaptersApi(): ChaptersApi {
 
   async function getByComicId(comicId: string): Promise<ApiResponse<Chapter[]>> {
     try {
-      const response = await api<Chapter[]>(`/list`, { method: 'POST', body: { comicId } })
+      const response = await api<Chapter[]>(`/`, { params: { comicId } })
 
       return { success: true, data: response }
     } catch (error) {
