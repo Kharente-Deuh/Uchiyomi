@@ -117,6 +117,7 @@ func (pgdb *PGDB) Migrate() error {
 		&pgmodels.Session{},
 		&pgmodels.PasswordCreds{},
 		&pgmodels.LibraryEntry{},
+		&pgmodels.ReaderSettings{},
 	}
 
 	for _, m := range models {

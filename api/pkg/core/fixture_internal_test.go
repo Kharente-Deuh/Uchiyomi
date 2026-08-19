@@ -34,6 +34,8 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	httpfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/gateway/http"
 	healthhttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings"
+	httpreadersettings "github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
@@ -406,6 +408,16 @@ func (fakeFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {
 	return feed.Page{Items: []feed.Item{}, Total: 0}, nil
 }
 
+type fakeReaderSettingsService struct{}
+
+func (fakeReaderSettingsService) ListForUser(context.Context, uuid.UUID) ([]readersettings.Profile, error) {
+	return []readersettings.Profile{}, nil
+}
+
+func (fakeReaderSettingsService) Replace(context.Context, readersettings.ReplaceOpts) (readersettings.Profile, error) {
+	return readersettings.Profile{}, nil
+}
+
 func newTestCache[P any, T any](t *testing.T, name string, logger *slog.Logger) *fncache.Cache[P, T] {
 	t.Helper()
 
@@ -577,6 +589,14 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("httpfeed.New: %v", err)
 	}
 
+	readerSettingsCtrl, err := httpreadersettings.New(
+		httpreadersettings.Config{Endpoint: "/me"},
+		httpreadersettings.Deps{Logger: logger, Service: fakeReaderSettingsService{}},
+	)
+	if err != nil {
+		t.Fatalf("httpreadersettings.New: %v", err)
+	}
+
 	app, err := New(
 		Config{ServerPort: port, AllowedOrigins: []string{"*"}},
 		Deps{
@@ -591,6 +611,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			ComicsCtrl:         comicsCtrl,
 			ChaptersCtrl:       chaptersCtrl,
 			FeedCtrl:           feedCtrl,
+			ReaderSettingsCtrl: readerSettingsCtrl,
 			Logger:             logger,
 			Health:             registry,
 			Asura:              asuraApp,

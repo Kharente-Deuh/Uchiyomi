@@ -19,6 +19,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
@@ -75,6 +76,16 @@ type stubFeedService struct{}
 
 func (stubFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {
 	return feed.Page{Items: []feed.Item{}, Total: 0}, nil
+}
+
+type stubReaderSettingsService struct{}
+
+func (stubReaderSettingsService) ListForUser(context.Context, uuid.UUID) ([]readersettings.Profile, error) {
+	return []readersettings.Profile{}, nil
+}
+
+func (stubReaderSettingsService) Replace(context.Context, readersettings.ReplaceOpts) (readersettings.Profile, error) {
+	return readersettings.Profile{}, nil
 }
 
 type emptyOIDCProvidersRepository struct{}
@@ -242,13 +253,14 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 	}
 
 	c, err := setupCtrls(ctrlsDeps{
-		AsuraApp:             asuraApp,
-		CoversService:        coversBundle.Service,
-		SessionsService:      newTestSessionsService(t, user),
-		Logger:               logger,
-		Registry:             health.NewRegistry(),
-		OIDCProvidersService: newTestOIDCProvidersService(t),
-		FeedService:          stubFeedService{},
+		AsuraApp:              asuraApp,
+		CoversService:         coversBundle.Service,
+		SessionsService:       newTestSessionsService(t, user),
+		Logger:                logger,
+		Registry:              health.NewRegistry(),
+		OIDCProvidersService:  newTestOIDCProvidersService(t),
+		FeedService:           stubFeedService{},
+		ReaderSettingsService: stubReaderSettingsService{},
 	})
 	if err != nil {
 		t.Fatalf("setupCtrls: %v", err)
