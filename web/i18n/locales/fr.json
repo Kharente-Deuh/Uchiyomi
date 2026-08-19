@@ -294,6 +294,9 @@
       "error": {
         "alreadyExists": " Série déjà en bibliothèque"
       }
+    },
+    "refresh": {
+      "title": "Rafraîchir"
     }
   },
   "library": {

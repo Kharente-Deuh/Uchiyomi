@@ -71,7 +71,7 @@ func (s *Service) refreshSource(ctx context.Context, name sources.SourceName) er
 }
 
 func isPollable(status sources.SeriesStatus) bool {
-	return status == sources.SeriesStatusOngoing || status == sources.SeriesStatusHiatus
+	return status == sources.SeriesStatusOngoing || status == sources.SeriesStatusHiatus || status == ""
 }
 
 func (s *Service) RefreshComic(ctx context.Context, opts RefreshComicOpts) (*Comic, error) {
