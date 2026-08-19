@@ -20,6 +20,12 @@ interface SettingsModule {
 }
 
 const settingsModules = computed((): SettingsModule[] => [
+  {
+    title: t('settings.reader.title'),
+    description: t('settings.reader.description'),
+    icon: 'fa6-solid:book-open-reader',
+    to: '/settings/reader',
+  },
   ...(isAdmin.value
     ? [
       {
@@ -30,12 +36,6 @@ const settingsModules = computed((): SettingsModule[] => [
       } satisfies SettingsModule,
       ]
     : []),
-  {
-    title: t('settings.reader.title'),
-    description: t('settings.reader.description'),
-    icon: 'fa6-solid:book-open-reader',
-    to: '/settings/reader',
-  },
 ])
 </script>
 
@@ -47,7 +47,7 @@ const settingsModules = computed((): SettingsModule[] => [
         :key="i"
         :to="m.to"
       >
-        <VCard class="pa-4 border-thin" style="border-radius: 12px;">
+        <VCard class="pa-4 border-thin transition-smooth settings-card" style="border-radius: 12px;">
           <div class="d-flex ga-6 text-wrap align-center">
             <VIcon :icon="m.icon" size="large" />
             <div class="d-flex flex-column">
@@ -63,6 +63,19 @@ const settingsModules = computed((): SettingsModule[] => [
 </template>
 
 <style lang="scss" scoped>
+.settings-card {
+  &:hover {
+    border-color: rgb(var(--v-theme-primary));
+
+    .v-icon {
+      color: rgb(var(--v-theme-primary));
+    }
+
+    .text-title-large {
+      color: rgb(var(--v-theme-primary));
+    }
+  }
+}
 .settings-modules-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

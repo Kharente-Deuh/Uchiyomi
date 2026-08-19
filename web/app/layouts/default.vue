@@ -73,7 +73,6 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
   {
     title: t('nav.settings.title'),
     items: [
-      ...settingsNavItems.value,
       {
         title: t('settings.reader.title'),
         to: '/settings/reader',
@@ -81,6 +80,7 @@ const navigationDrawerItems = computed((): NavigationDrawerListProps[] => [
         isActiveFn: (route: RouteLocationNormalized) => route.path.startsWith('/settings/reader'),
         baseRoute: '/settings/reader',
       },
+      ...settingsNavItems.value,
     ],
   },
 ])

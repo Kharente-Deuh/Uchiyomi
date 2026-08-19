@@ -2,8 +2,14 @@
 <script setup lang="ts">
 import type { ComicType } from '~/features/comics/types'
 
-defineProps<{ disabled?: boolean }>()
-const sort = defineModel<ComicType | undefined>({ required: true })
+withDefaults(defineProps<{
+  disabled?: boolean
+  hideLabel?: boolean
+  clearable?: boolean
+}>(), {
+  clearable: true,
+})
+const type = defineModel<ComicType | undefined>({ required: true })
 const { t } = useI18n()
 
 const items: { value: ComicType, title: string }[] = [
@@ -34,10 +40,10 @@ const items: { value: ComicType, title: string }[] = [
     class="border-thin"
     style="border-radius: 12px"
     :disabled
-    :model="sort"
+    :model-value="type"
     :items="items"
-    :label="$t('sources.asura.type.label')"
-    clearable
-    @update:model-value="sort = $event || undefined"
+    :label="hideLabel ? undefined : $t('sources.asura.type.label')"
+    :clearable
+    @update:model-value="type = $event || undefined"
   />
 </template>

@@ -30,7 +30,7 @@ const items: { value: ComicStatus, title: string }[] = [
 <template>
   <VSelect
     width="12rem"
-    :model="status"
+    :model-value="status"
     :items="items"
     density="compact"
     class="border-thin"
