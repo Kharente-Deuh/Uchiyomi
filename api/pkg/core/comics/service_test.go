@@ -82,6 +82,7 @@ func (f *fakeLocalCoverStore) RemoveLocal(comicID uuid.UUID) error {
 
 type fakeComicsRepository struct {
 	getByIDErr             error
+	findByIDErr            error
 	findBySourceSlugErr    error
 	deleteErr              error
 	createErr              error
@@ -89,6 +90,7 @@ type fakeComicsRepository struct {
 	listByStatusesErr      error
 	updateStatusErr        error
 	getByIDResult          *comics.Comic
+	findByIDResult         *comics.Comic
 	findBySourceSlugResult *comics.Comic
 	findBySourceSlugSecond *comics.Comic
 	createResult           *comics.Comic
@@ -100,6 +102,7 @@ type fakeComicsRepository struct {
 	findBySourceSlugCalls  int
 	createCalls            int
 	getByIDCalls           int
+	findByIDCalls          int
 	getManyCalls           int
 	deleteCalls            int
 	listByStatusesCalls    int
@@ -113,8 +116,20 @@ func (f *fakeComicsRepository) GetByID(_ context.Context, _ comics.GetByIDOpts) 
 	return f.getByIDResult, f.getByIDErr
 }
 
-func (f *fakeComicsRepository) FindByID(context.Context, uuid.UUID) (*comics.Comic, error) {
-	panic("FindByID must not be called by the comics service")
+func (f *fakeComicsRepository) FindByID(_ context.Context, id uuid.UUID) (*comics.Comic, error) {
+	f.findByIDCalls++
+
+	if f.findByIDErr != nil {
+		return nil, f.findByIDErr
+	}
+
+	if f.findByIDResult == nil || f.findByIDResult.ID != id {
+		return nil, domain.ErrNotFound
+	}
+
+	copied := *f.findByIDResult
+
+	return &copied, nil
 }
 
 func (f *fakeComicsRepository) GetBySourceSlug(context.Context, comics.GetBySourceSlugOpts) (*comics.Comic, error) {
@@ -191,20 +206,28 @@ func (f *fakeComicsRepository) UpdateStatusAndChapterCount(
 	f.updateStatusCalls++
 	f.lastUpdateStatus = opts
 
+	if f.findByIDResult != nil && f.findByIDResult.ID == opts.ID {
+		f.findByIDResult.Status = opts.Status
+		f.findByIDResult.ChapterCount = opts.ChapterCount
+	}
+
 	return f.updateStatusErr
 }
 
 type fakeLibraryRepository struct {
-	createErr            error
-	deleteErr            error
-	existsByComicIDErr   error
-	existsByComicID      bool
-	createCalls          int
-	deleteCalls          int
-	existsByComicIDCalls int
-	lastCreate           library.CreateOpts
-	lastDelete           library.DeleteOpts
-	lastExistsComicID    uuid.UUID
+	createErr                 error
+	deleteErr                 error
+	existsByComicIDErr        error
+	existsByUserAndComicErr   error
+	existsByComicID           bool
+	inLibrary                 bool
+	createCalls               int
+	deleteCalls               int
+	existsByComicIDCalls      int
+	existsByUserAndComicCalls int
+	lastCreate                library.CreateOpts
+	lastDelete                library.DeleteOpts
+	lastExistsComicID         uuid.UUID
 }
 
 func (f *fakeLibraryRepository) Create(_ context.Context, opts library.CreateOpts) (*library.Entry, error) {
@@ -237,7 +260,13 @@ func (f *fakeLibraryRepository) ExistsByComicID(_ context.Context, comicID uuid.
 }
 
 func (f *fakeLibraryRepository) ExistsByUserAndComic(_ context.Context, _, _ uuid.UUID) (bool, error) {
-	return true, nil
+	f.existsByUserAndComicCalls++
+
+	if f.existsByUserAndComicErr != nil {
+		return false, f.existsByUserAndComicErr
+	}
+
+	return f.inLibrary, nil
 }
 
 type fakeChaptersService struct {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst
 package comics_test
 
 import (
@@ -11,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 )
 
@@ -318,5 +320,113 @@ func TestRefreshChapterListsSkipsCreateWhenNoMissingChapters(t *testing.T) {
 
 	if repo.updateStatusCalls != 1 {
 		t.Errorf("UpdateStatusAndChapterCount called %d times, want 1", repo.updateStatusCalls)
+	}
+}
+
+func TestRefreshComicNotFound(t *testing.T) {
+	t.Parallel()
+
+	deps := validServiceDeps()
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.RefreshComic(context.Background(), comics.RefreshComicOpts{
+		UserID: uuid.New(),
+		ID:     uuid.New(),
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("RefreshComic = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestRefreshComicForbiddenWhenNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	repo := &fakeComicsRepository{
+		findByIDResult: &comics.Comic{
+			ID:     comicID,
+			Source: testSource,
+			Slug:   testSlug,
+			Status: sources.SeriesStatusOngoing,
+			Title:  "Solo Leveling",
+		},
+	}
+	libraryRepo := &fakeLibraryRepository{inLibrary: false}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = repo
+	deps.LibraryRepository = libraryRepo
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	source := deps.Sources[testSource].(*fakeSource)
+
+	_, err = svc.RefreshComic(context.Background(), comics.RefreshComicOpts{
+		UserID: uuid.New(),
+		ID:     comicID,
+	})
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("RefreshComic = %v, want domain.ErrForbidden", err)
+	}
+
+	if source.calls != 0 || source.chaptersCalls != 0 {
+		t.Errorf("source fetches infos=%d chapters=%d, want 0", source.calls, source.chaptersCalls)
+	}
+}
+
+func TestRefreshComicConflictWhenNotPollable(t *testing.T) {
+	t.Parallel()
+
+	statuses := []sources.SeriesStatus{
+		sources.SeriesStatusCompleted,
+		sources.SeriesStatusCancelled,
+		sources.SeriesStatusDropped,
+	}
+
+	for _, status := range statuses {
+		t.Run(string(status), func(t *testing.T) {
+			t.Parallel()
+
+			comicID := uuid.New()
+			repo := &fakeComicsRepository{
+				findByIDResult: &comics.Comic{
+					ID:     comicID,
+					Source: testSource,
+					Slug:   testSlug,
+					Status: status,
+					Title:  "Solo Leveling",
+				},
+			}
+			libraryRepo := &fakeLibraryRepository{inLibrary: true}
+
+			deps := validServiceDeps()
+			deps.ComicsRepository = repo
+			deps.LibraryRepository = libraryRepo
+
+			svc, err := comics.NewService(deps)
+			if err != nil {
+				t.Fatalf("NewService: %v", err)
+			}
+
+			source := deps.Sources[testSource].(*fakeSource)
+
+			_, err = svc.RefreshComic(context.Background(), comics.RefreshComicOpts{
+				UserID: uuid.New(),
+				ID:     comicID,
+			})
+			if !errors.Is(err, domain.ErrConflict) {
+				t.Fatalf("RefreshComic = %v, want domain.ErrConflict", err)
+			}
+
+			if source.calls != 0 || source.chaptersCalls != 0 {
+				t.Errorf("source fetches infos=%d chapters=%d, want 0", source.calls, source.chaptersCalls)
+			}
+		})
 	}
 }

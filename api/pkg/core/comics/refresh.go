@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/logging"
 )
@@ -65,6 +66,32 @@ func (s *Service) refreshSource(ctx context.Context, name sources.SourceName) er
 	}
 
 	return nil
+}
+
+func isPollable(status sources.SeriesStatus) bool {
+	return status == sources.SeriesStatusOngoing || status == sources.SeriesStatusHiatus
+}
+
+func (s *Service) RefreshComic(ctx context.Context, opts RefreshComicOpts) (*Comic, error) {
+	comic, err := s.deps.ComicsRepository.FindByID(ctx, opts.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ComicsRepository.FindByID: %w", err)
+	}
+
+	inLibrary, err := s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, comic.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+	}
+
+	if !inLibrary {
+		return nil, domain.ErrForbidden
+	}
+
+	if !isPollable(comic.Status) {
+		return nil, domain.ErrConflict
+	}
+
+	return comic, nil
 }
 
 func (s *Service) refreshComic(ctx context.Context, src sources.Source, comic Comic) error {

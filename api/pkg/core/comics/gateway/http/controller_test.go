@@ -38,19 +38,21 @@ const (
 )
 
 type stubComicsService struct {
-	createErr        error
-	getByIDErr       error
-	getManyErr       error
-	deleteErr        error
-	serveCoverErr    error
-	createResult     *comics.Comic
-	getByIDResult    *comics.Comic
-	serveCoverPath   string
-	serveCoverType   string
-	getManyResult    comics.Page
-	lastGetMany      comics.GetManyOpts
-	serveCoverCalls  int
-	lastServeCoverID uuid.UUID
+	createErr          error
+	getByIDErr         error
+	getManyErr         error
+	deleteErr          error
+	serveCoverErr      error
+	refreshComicErr    error
+	createResult       *comics.Comic
+	getByIDResult      *comics.Comic
+	refreshComicResult *comics.Comic
+	serveCoverPath     string
+	serveCoverType     string
+	getManyResult      comics.Page
+	lastGetMany        comics.GetManyOpts
+	serveCoverCalls    int
+	lastServeCoverID   uuid.UUID
 }
 
 func (s *stubComicsService) Create(_ context.Context, _ comics.CreateOpts) (*comics.Comic, error) {
@@ -73,6 +75,10 @@ func (s *stubComicsService) Delete(_ context.Context, _ comics.DeleteOpts) error
 
 func (s *stubComicsService) RefreshChapterLists(context.Context) error {
 	return nil
+}
+
+func (s *stubComicsService) RefreshComic(_ context.Context, _ comics.RefreshComicOpts) (*comics.Comic, error) {
+	return s.refreshComicResult, s.refreshComicErr
 }
 
 func (s *stubComicsService) ServeCover(_ context.Context, opts comics.GetByIDOpts) (string, string, error) {

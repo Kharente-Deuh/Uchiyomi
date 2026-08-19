@@ -38,6 +38,10 @@ func (f *fakeComicsService) Delete(context.Context, comics.DeleteOpts) error {
 	panic("Delete must not be called")
 }
 
+func (f *fakeComicsService) RefreshComic(context.Context, comics.RefreshComicOpts) (*comics.Comic, error) {
+	panic("RefreshComic must not be called")
+}
+
 func (f *fakeComicsService) RefreshChapterLists(ctx context.Context) error {
 	f.mu.Lock()
 	f.refreshCalls++
