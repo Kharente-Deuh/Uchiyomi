@@ -335,6 +335,10 @@ func (f *fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownl
 	return nil
 }
 
+func (f *fakeChaptersService) ListForLibrary(context.Context, chapters.ListForLibraryOpts) ([]chapters.Chapter, error) {
+	panic("ListForLibrary must not be called")
+}
+
 //nolint:govet // fieldalignment on a test fake is not worth the unreadable field order
 type fakeSource struct {
 	infos             *sources.GetInfosBySlugResponse

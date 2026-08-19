@@ -392,6 +392,10 @@ func (fakeChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts) ([]c
 	return nil, errors.New(notImplemented)
 }
 
+func (fakeChaptersService) ListForLibrary(context.Context, chapters.ListForLibraryOpts) ([]chapters.Chapter, error) {
+	return nil, errors.New(notImplemented)
+}
+
 type fakeFeedService struct{}
 
 func (fakeFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {

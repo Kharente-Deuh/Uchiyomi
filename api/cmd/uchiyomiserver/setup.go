@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/comics"
 	httpcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/gateway/http"
 	comicrefresh "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/refresh"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
@@ -954,6 +956,7 @@ func setupChapters(deps chaptersDeps) (*chapters.Service, *download.App, error) 
 		Repository:        deps.ChaptersRepository,
 		ChapterDownloader: worker,
 		LibraryRepository: deps.LibraryRepository,
+		ComicLookup:       comicsExistsLookup{repo: deps.ComicsRepository},
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("chapters.NewService: %w", err)
@@ -972,4 +975,21 @@ func setupChapters(deps chaptersDeps) (*chapters.Service, *download.App, error) 
 	}
 
 	return svc, app, nil
+}
+
+type comicsExistsLookup struct {
+	repo comics.ComicsRepository
+}
+
+func (l comicsExistsLookup) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
+	_, err := l.repo.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("l.repo.FindByID: %w", err)
+	}
+
+	return true, nil
 }

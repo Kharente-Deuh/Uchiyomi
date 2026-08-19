@@ -169,6 +169,10 @@ func (s libraryChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts)
 	return nil, nil
 }
 
+func (s libraryChaptersService) ListForLibrary(context.Context, chapters.ListForLibraryOpts) ([]chapters.Chapter, error) {
+	return nil, nil
+}
+
 func newTestAsuraApp(t *testing.T) *asura.App {
 	t.Helper()
 

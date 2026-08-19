@@ -63,6 +63,10 @@ func (f *fakeChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts) (
 	panic("GetByIds must not be called")
 }
 
+func (f *fakeChaptersService) ListForLibrary(context.Context, chapters.ListForLibraryOpts) ([]chapters.Chapter, error) {
+	panic("ListForLibrary must not be called")
+}
+
 type blockingWorker struct {
 	started chan struct{}
 }

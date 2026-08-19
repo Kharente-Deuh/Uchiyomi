@@ -83,6 +83,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 	r.Route(c.cfg.Endpoint, func(r chi.Router) {
 		r.Use(c.cfg.Middlewares...)
 
+		r.Get("/", c.listForLibrary)
 		r.Post("/{id}/retry", c.retryDownload)
 		r.Post("/list", c.postList)
 	})
@@ -164,9 +165,63 @@ func (c *Controller) postList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chapters := make([]postListResponseChapter, 0, len(res))
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, chapterHTTPList(res))
+}
+
+func (c *Controller) listForLibrary(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.Error("user not found in context")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+		return
+	}
+
+	rawComicID := strings.TrimSpace(r.URL.Query().Get("comicId"))
+	if rawComicID == "" {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "comicId is required")
+
+		return
+	}
+
+	comicID, err := uuid.Parse(rawComicID)
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "comicId must be a valid UUID")
+
+		return
+	}
+
+	res, err := c.deps.ChaptersService.ListForLibrary(ctx, chapters.ListForLibraryOpts{
+		UserID:  user.ID,
+		ComicID: comicID,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "comic not found")
+
+			return
+		}
+
+		if errors.Is(err, domain.ErrForbidden) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusForbidden, "comic not in library")
+
+			return
+		}
+
+		c.deps.Logger.Error("failed to list chapters", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+
+		return
+	}
+
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, chapterHTTPList(res))
+}
+
+func chapterHTTPList(res []chapters.Chapter) []postListResponseChapter {
+	out := make([]postListResponseChapter, 0, len(res))
 	for _, chapter := range res {
-		chapters = append(chapters, postListResponseChapter{
+		out = append(out, postListResponseChapter{
 			PublishedAt:       chapter.PublishedAt,
 			EarlyAccessUntil:  utils.OptionalTime(chapter.EarlyAccessUntil),
 			SourceChapterSlug: chapter.SourceChapterSlug,
@@ -179,5 +234,5 @@ func (c *Controller) postList(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, chapters)
+	return out
 }

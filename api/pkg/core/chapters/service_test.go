@@ -195,6 +195,20 @@ func (f *fakeLibraryRepository) ExistsByUserAndComic(
 	return f.existsByUserAndComic, f.existsErr
 }
 
+type fakeComicLookup struct {
+	existsErr error
+	lastID    uuid.UUID
+	exists    bool
+	calls     int
+}
+
+func (f *fakeComicLookup) Exists(_ context.Context, id uuid.UUID) (bool, error) {
+	f.calls++
+	f.lastID = id
+
+	return f.exists, f.existsErr
+}
+
 func newTestService(
 	repo *fakeChaptersRepository,
 	downloader *fakeChapterDownloader,
@@ -204,6 +218,7 @@ func newTestService(
 		Repository:        repo,
 		ChapterDownloader: downloader,
 		LibraryRepository: libraryRepo,
+		ComicLookup:       &fakeComicLookup{exists: true},
 	})
 	if err != nil {
 		panic(err)
@@ -629,5 +644,236 @@ func TestServiceGetByIdsLibraryError(t *testing.T) {
 
 	if got != nil {
 		t.Errorf("GetByIds returned %+v in addition to the error", got)
+	}
+}
+
+func TestServiceListForLibraryReturnsDescendingIncludingLocked(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	lockedUntil := time.Date(2026, time.December, 1, 0, 0, 0, 0, time.UTC)
+	low := chapters.Chapter{ID: uuid.New(), ComicID: comicID, Number: 1, Title: "One", Download: 100}
+	locked := chapters.Chapter{
+		ID: uuid.New(), ComicID: comicID, Number: 3, Title: "Locked", Download: 0, EarlyAccessUntil: &lockedUntil,
+	}
+	mid := chapters.Chapter{ID: uuid.New(), ComicID: comicID, Number: 2, Title: "Two", Download: 40}
+	repo := &fakeChaptersRepository{listByComicIDResult: []chapters.Chapter{low, locked, mid}}
+	libraryRepo := &fakeLibraryRepository{existsByUserAndComic: true}
+	svc := newTestService(repo, &fakeChapterDownloader{}, libraryRepo)
+
+	got, err := svc.ListForLibrary(context.Background(), chapters.ListForLibraryOpts{
+		UserID:  userID,
+		ComicID: comicID,
+	})
+	if err != nil {
+		t.Fatalf("ListForLibrary: %v", err)
+	}
+
+	if libraryRepo.lastUserID != userID || libraryRepo.lastComicID != comicID {
+		t.Errorf("library check user/comic = %s/%s, want %s/%s",
+			libraryRepo.lastUserID, libraryRepo.lastComicID, userID, comicID)
+	}
+
+	if repo.listByComicIDCalls != 1 || repo.lastListByComicID != comicID {
+		t.Errorf("ListByComicID comic = %s, calls = %d", repo.lastListByComicID, repo.listByComicIDCalls)
+	}
+
+	if len(got) != 3 {
+		t.Fatalf("len = %d, want 3", len(got))
+	}
+
+	if got[0].Number != 3 || got[1].Number != 2 || got[2].Number != 1 {
+		t.Errorf("order = %v, %v, %v, want 3, 2, 1", got[0].Number, got[1].Number, got[2].Number)
+	}
+
+	if got[0].EarlyAccessUntil == nil || !got[0].EarlyAccessUntil.Equal(lockedUntil) {
+		t.Errorf("locked chapter missing earlyAccessUntil: %+v", got[0])
+	}
+}
+
+func TestServiceListForLibraryEmpty(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(
+		&fakeChaptersRepository{},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsByUserAndComic: true},
+	)
+
+	got, err := svc.ListForLibrary(context.Background(), chapters.ListForLibraryOpts{
+		UserID:  uuid.New(),
+		ComicID: uuid.New(),
+	})
+	if err != nil {
+		t.Fatalf("ListForLibrary: %v", err)
+	}
+
+	if got == nil || len(got) != 0 {
+		t.Errorf("ListForLibrary() = %+v, want empty slice", got)
+	}
+}
+
+func TestServiceListForLibraryForbiddenWhenComicExistsButNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	lookup := &fakeComicLookup{exists: true}
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        &fakeChaptersRepository{listByComicIDResult: []chapters.Chapter{{Number: 1}}},
+		ChapterDownloader: &fakeChapterDownloader{},
+		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: false},
+		ComicLookup:       lookup,
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	got, err := svc.ListForLibrary(context.Background(), chapters.ListForLibraryOpts{
+		UserID:  uuid.New(),
+		ComicID: comicID,
+	})
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("ListForLibrary = %v, want domain.ErrForbidden", err)
+	}
+
+	if got != nil {
+		t.Errorf("ListForLibrary returned %+v in addition to the error", got)
+	}
+
+	if lookup.calls != 1 || lookup.lastID != comicID {
+		t.Errorf("ComicLookup.Exists comic = %s, calls = %d", lookup.lastID, lookup.calls)
+	}
+}
+
+func TestServiceListForLibraryNotFoundWhenComicMissing(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	lookup := &fakeComicLookup{exists: false}
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        &fakeChaptersRepository{},
+		ChapterDownloader: &fakeChapterDownloader{},
+		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: false},
+		ComicLookup:       lookup,
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	got, err := svc.ListForLibrary(context.Background(), chapters.ListForLibraryOpts{
+		UserID:  uuid.New(),
+		ComicID: comicID,
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("ListForLibrary = %v, want domain.ErrNotFound", err)
+	}
+
+	if got != nil {
+		t.Errorf("ListForLibrary returned %+v in addition to the error", got)
+	}
+
+	if lookup.calls != 1 || lookup.lastID != comicID {
+		t.Errorf("ComicLookup.Exists comic = %s, calls = %d", lookup.lastID, lookup.calls)
+	}
+}
+
+func TestServiceListForLibraryDoesNotLookupComicWhenInLibrary(t *testing.T) {
+	t.Parallel()
+
+	lookup := &fakeComicLookup{exists: false}
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        &fakeChaptersRepository{},
+		ChapterDownloader: &fakeChapterDownloader{},
+		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: true},
+		ComicLookup:       lookup,
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	_, err = svc.ListForLibrary(context.Background(), chapters.ListForLibraryOpts{
+		UserID:  uuid.New(),
+		ComicID: uuid.New(),
+	})
+	if err != nil {
+		t.Fatalf("ListForLibrary: %v", err)
+	}
+
+	if lookup.calls != 0 {
+		t.Errorf("ComicLookup.Exists called %d times, want 0", lookup.calls)
+	}
+}
+
+func TestServiceListForLibraryLibraryError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("library down")
+	svc := newTestService(
+		&fakeChaptersRepository{},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsErr: sentinel},
+	)
+
+	got, err := svc.ListForLibrary(context.Background(), chapters.ListForLibraryOpts{
+		UserID:  uuid.New(),
+		ComicID: uuid.New(),
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("ListForLibrary = %v, want wrapped library sentinel", err)
+	}
+
+	if got != nil {
+		t.Errorf("ListForLibrary returned %+v in addition to the error", got)
+	}
+}
+
+func TestServiceListForLibraryListError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("db down")
+	svc := newTestService(
+		&fakeChaptersRepository{listByComicIDErr: sentinel},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsByUserAndComic: true},
+	)
+
+	got, err := svc.ListForLibrary(context.Background(), chapters.ListForLibraryOpts{
+		UserID:  uuid.New(),
+		ComicID: uuid.New(),
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("ListForLibrary = %v, want wrapped list sentinel", err)
+	}
+
+	if got != nil {
+		t.Errorf("ListForLibrary returned %+v in addition to the error", got)
+	}
+}
+
+func TestServiceListForLibraryLookupError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("comics down")
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository:        &fakeChaptersRepository{},
+		ChapterDownloader: &fakeChapterDownloader{},
+		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: false},
+		ComicLookup:       &fakeComicLookup{existsErr: sentinel},
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	got, err := svc.ListForLibrary(context.Background(), chapters.ListForLibraryOpts{
+		UserID:  uuid.New(),
+		ComicID: uuid.New(),
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("ListForLibrary = %v, want wrapped lookup sentinel", err)
+	}
+
+	if got != nil {
+		t.Errorf("ListForLibrary returned %+v in addition to the error", got)
 	}
 }

@@ -216,6 +216,10 @@ func (s libraryChaptersService) GetByIds(context.Context, chapters.GetByIdsOpts)
 	return nil, nil
 }
 
+func (s libraryChaptersService) ListForLibrary(context.Context, chapters.ListForLibraryOpts) ([]chapters.Chapter, error) {
+	return nil, nil
+}
+
 func newCache[P any, T any](
 	t *testing.T, key func(P) string, fn func(context.Context, P) (*T, error),
 ) *fncache.Cache[P, T] {
