@@ -4,6 +4,7 @@ package pgmodels_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -163,6 +164,7 @@ func TestTableNames(t *testing.T) {
 		"chapter":            pgmodels.Chapter{}.TableName(),
 		"library entry":      pgmodels.LibraryEntry{}.TableName(),
 		"reader settings":    pgmodels.ReaderSettings{}.TableName(),
+		"reading progress":   pgmodels.ReadingProgress{}.TableName(),
 	}
 
 	want := map[string]string{
@@ -175,11 +177,30 @@ func TestTableNames(t *testing.T) {
 		"chapter":            "chapters",
 		"library entry":      "library_entries",
 		"reader settings":    "reader_settings",
+		"reading progress":   "reading_progress",
 	}
 
 	for model, got := range tests {
 		if got != want[model] {
 			t.Errorf("%s: TableName() = %q, want %q", model, got, want[model])
+		}
+	}
+}
+
+func TestReadingProgressConstraints(t *testing.T) {
+	t.Parallel()
+
+	typ := reflect.TypeOf(pgmodels.ReadingProgress{})
+
+	for _, name := range []string{"LibraryEntry", "Chapter"} {
+		field, ok := typ.FieldByName(name)
+		if !ok {
+			t.Fatalf("%s field not found", name)
+		}
+
+		tag := field.Tag.Get("gorm")
+		if !strings.Contains(tag, "constraint:OnDelete:CASCADE") {
+			t.Errorf("%s gorm tag = %q, want constraint:OnDelete:CASCADE", name, tag)
 		}
 	}
 }
