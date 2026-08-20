@@ -132,8 +132,8 @@ describe('comicPage', () => {
     const wrapper = await mount()
 
     await vi.waitFor(() => expect(wrapper.find('[data-test="status-infos"]').exists()).toBe(true))
-    expect(buttons(wrapper).some(btn => btn.props('icon') === 'fa6-solid:repeat')).toBe(true)
-    expect(buttons(wrapper).some(btn => btn.props('icon') === 'fa6-solid:trash' && btn.props('color') === 'error')).toBe(true)
+    expect(buttons(wrapper).some(btn => (btn as any).props('icon') === 'fa6-solid:repeat')).toBe(true)
+    expect(buttons(wrapper).some(btn => (btn as any).props('icon') === 'fa6-solid:trash' && (btn as any).props('color') === 'error')).toBe(true)
     expect(wrapper.find('[data-test="delete-modal"]').exists()).toBe(true)
   })
 
@@ -143,7 +143,7 @@ describe('comicPage', () => {
     const wrapper = await mount()
 
     await vi.waitFor(() => expect(wrapper.find('[data-test="status-infos"]').exists()).toBe(true))
-    expect(buttons(wrapper).some(btn => btn.props('icon') === 'fa6-solid:repeat')).toBe(false)
+    expect(buttons(wrapper).some(btn => (btn as any).props('icon') === 'fa6-solid:repeat')).toBe(false)
   })
 
   it('redirects to the library when the comic is missing', async () => {

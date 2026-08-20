@@ -65,16 +65,16 @@ func (s *stubSessionService) Authenticate(_ context.Context, _ string) (*session
 
 type progressJSON struct {
 	ChapterID string `json:"chapterId"`
-	Page      int    `json:"page"`
 	UpdatedAt string `json:"updatedAt"`
+	Page      int    `json:"page"`
 }
 
 type listJSON struct {
-	Chapters []progressJSON `json:"chapters"`
 	Continue *struct {
 		ChapterID string `json:"chapterId"`
 		Page      int    `json:"page"`
 	} `json:"continue"`
+	Chapters []progressJSON `json:"chapters"`
 }
 
 func testLogger() *slog.Logger {

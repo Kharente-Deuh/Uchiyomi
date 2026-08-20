@@ -26,8 +26,8 @@ type listResponse struct {
 }
 
 type saveRequest struct {
-	ChapterID uuid.UUID `json:"chapterId" validate:"required"`
 	Page      *int      `json:"page" validate:"required"`
+	ChapterID uuid.UUID `json:"chapterId" validate:"required"`
 }
 
 func progressFromDomain(p readingprogress.Progress) progressResponse {
