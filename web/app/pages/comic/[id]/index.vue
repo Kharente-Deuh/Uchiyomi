@@ -68,6 +68,32 @@ const backRoutes = computed((): PageLayoutBackRoute[] => from.value === FEED_ROU
       to: '/library',
       name: t('library.title'),
     }])
+
+const canRefresh = computed(() => comic.value
+  && comic.value.status !== 'hiatus'
+  && comic.value.status !== 'completed'
+  && comic.value.status !== 'cancelled')
+
+const refreshLoading = ref(false)
+async function refreshComic(): Promise<void> {
+  if (!comic.value) {
+    return
+  }
+
+  refreshLoading.value = true
+
+  const response = await api.refreshById(comic.value.id)
+  if (response.success) {
+    comic.value = response.data
+  } else {
+    console.error(response.error)
+    toast.error(t('error.unknown'))
+  }
+
+  refreshLoading.value = false
+}
+
+const showDeleteModal = ref(false)
 </script>
 
 <template>
@@ -82,7 +108,13 @@ const backRoutes = computed((): PageLayoutBackRoute[] => from.value === FEED_ROU
       v-if="comic"
       :class="smAndDown ? 'd-flex flex-column ga-8 px-6' : 'comic-infos-grid'"
     >
-      <div v-if="!smAndDown" class="d-flex flex-column ga-6">
+      <ComicsModalDelete
+        v-model="showDeleteModal"
+        :comic
+        @deleted="onDelete"
+      />
+
+      <div v-if="!smAndDown" class="d-flex flex-column ga-4">
         <VImg
           v-if="coverSrc"
           :src="coverSrc"
@@ -94,14 +126,34 @@ const backRoutes = computed((): PageLayoutBackRoute[] => from.value === FEED_ROU
           @error="coverSrc = defaultCover"
         />
 
+        <div class="d-flex justify-space-between ga-4 w-100 pa-2">
+          <VBtn
+            v-if="canRefresh"
+            v-tooltip="$t('comics.refresh.title')"
+            icon="fa6-solid:repeat"
+            color="secondary"
+            size="small"
+            class="border-thin-secondary"
+            @click="refreshComic"
+          />
+
+          <VBtn
+            v-tooltip="$t('comics.remove.title')"
+            class="border-thin-error"
+            color="error"
+            icon="fa6-solid:trash"
+            size="small"
+            @click="showDeleteModal = true"
+          />
+        </div>
+
         <ComicsStatusInfos
           v-if="!smAndDown"
-          v-model="comic"
-          @deleted="onDelete"
+          :comic
         />
       </div>
 
-      <div class="d-flex flex-column ga-6 w-100">
+      <div class="d-flex flex-column w-100" :class="smAndDown ? 'ga-4' : 'ga-6'">
         <div class="d-flex ga-4 align-center">
           <VImg
             v-if="coverSrc && smAndDown"
@@ -115,12 +167,42 @@ const backRoutes = computed((): PageLayoutBackRoute[] => from.value === FEED_ROU
             @error="coverSrc = defaultCover"
           />
 
-          <span class="font-title font-weight-bold" :class="{ 'text-display-medium': !smAndDown, 'text-title-large': smAndDown }">{{ comic.title }}</span>
+          <span
+            class="font-title font-weight-bold"
+            :class="{
+              'text-display-medium': !smAndDown,
+              'text-title-large': smAndDown,
+            }"
+          >{{ comic.title }}</span>
         </div>
+
+        <div
+          v-if="smAndDown"
+          class="d-flex justify-space-between ga-4 w-100 pa-2"
+        >
+          <VBtn
+            v-if="canRefresh"
+            v-tooltip="$t('comics.refresh.title')"
+            icon="fa6-solid:repeat"
+            color="secondary"
+            size="small"
+            class="border-thin-secondary"
+            @click="refreshComic"
+          />
+
+          <VBtn
+            v-tooltip="$t('comics.remove.title')"
+            class="border-thin-error"
+            color="error"
+            icon="fa6-solid:trash"
+            size="small"
+            @click="showDeleteModal = true"
+          />
+        </div>
+
         <ComicsStatusInfos
           v-if="smAndDown"
-          v-model="comic"
-          @deleted="onDelete"
+          :comic
         />
         <ComicsGeneralInfos :comic />
         <ComicsChapters :id="route.params.id" />

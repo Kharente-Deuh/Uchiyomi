@@ -23,6 +23,7 @@ import (
 	httpfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/gateway/http"
 	httphealth "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	httpreadersettings "github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings/gateway/http"
+	httpreadingprogress "github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress/gateway/http"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
@@ -68,17 +69,18 @@ type Database interface {
 type Deps struct {
 	DB Database
 
-	SetupCtrl          *httpsetup.Controller
-	AsuraCtrl          *httpasura.Controller
-	CoversCtrl         *httpcovers.Controller
-	HealthCtrl         *httphealth.Controller
-	AuthCtrl           *httpauth.Controller
-	UsersCtrl          *httpusers.Controller
-	ComicsCtrl         *httpcomics.Controller
-	ChaptersCtrl       *httpchapters.Controller
-	FeedCtrl           *httpfeed.Controller
-	ReaderSettingsCtrl *httpreadersettings.Controller
-	OIDCProvidersCtrl  *httpoidcproviders.Controller
+	SetupCtrl           *httpsetup.Controller
+	AsuraCtrl           *httpasura.Controller
+	CoversCtrl          *httpcovers.Controller
+	HealthCtrl          *httphealth.Controller
+	AuthCtrl            *httpauth.Controller
+	UsersCtrl           *httpusers.Controller
+	ComicsCtrl          *httpcomics.Controller
+	ChaptersCtrl        *httpchapters.Controller
+	FeedCtrl            *httpfeed.Controller
+	ReaderSettingsCtrl  *httpreadersettings.Controller
+	ReadingProgressCtrl *httpreadingprogress.Controller
+	OIDCProvidersCtrl   *httpoidcproviders.Controller
 
 	Logger *slog.Logger
 	Health *health.Registry
@@ -166,6 +168,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.ReaderSettingsCtrl == nil {
 		return errors.New("readerSettingsCtrl is required")
+	}
+
+	if deps.ReadingProgressCtrl == nil {
+		return errors.New("readingProgressCtrl is required")
 	}
 
 	if deps.Health == nil {
@@ -304,6 +310,7 @@ func (a *App) newRouter(ui http.Handler) chi.Router {
 			a.deps.UsersCtrl.InitRouter(r)
 			a.deps.OIDCProvidersCtrl.InitRouter(r)
 			a.deps.ComicsCtrl.InitRouter(r)
+			a.deps.ReadingProgressCtrl.InitRouter(r)
 			a.deps.ChaptersCtrl.InitRouter(r)
 			a.deps.FeedCtrl.InitRouter(r)
 			a.deps.ReaderSettingsCtrl.InitRouter(r)

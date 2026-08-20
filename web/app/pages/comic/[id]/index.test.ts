@@ -6,15 +6,16 @@ import type { Comic } from '~/features/comics/types'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { VApp } from 'vuetify/components'
+import { VApp, VBtn } from 'vuetify/components'
 import { ASURA_SOURCE_NAME } from '~/constants'
 import ComicPage from './index.vue'
 
-const { getById, smAndDown, navigateTo, params, query } = await vi.hoisted(async () => {
+const { getById, refreshById, smAndDown, navigateTo, params, query } = await vi.hoisted(async () => {
   const { ref } = await import('vue')
 
   return {
     getById: vi.fn(),
+    refreshById: vi.fn(),
     smAndDown: ref(false),
     navigateTo: vi.fn(),
     params: { id: 'c1' },
@@ -22,8 +23,8 @@ const { getById, smAndDown, navigateTo, params, query } = await vi.hoisted(async
   }
 })
 
-function comicsApiStub(): { getById: typeof getById } {
-  return { getById }
+function comicsApiStub(): { getById: typeof getById, refreshById: typeof refreshById } {
+  return { getById, refreshById }
 }
 
 function displayStub(): { smAndDown: typeof smAndDown } {
@@ -41,9 +42,8 @@ mockNuxtImport('navigateTo', () => navigateTo)
 
 const StatusStub = defineComponent({
   name: 'ComicsStatusInfos',
-  props: { modelValue: { type: Object, required: true } },
-  emits: ['deleted'],
-  template: '<div data-test="status-infos">{{ modelValue.title }}</div>',
+  props: { comic: { type: Object, required: true } },
+  template: '<div data-test="status-infos">{{ comic.title }}</div>',
 })
 
 const GeneralStub = defineComponent({
@@ -56,6 +56,15 @@ const ChaptersStub = defineComponent({
   name: 'ComicsChapters',
   props: { id: { type: String, required: true } },
   template: '<div data-test="chapters">{{ id }}</div>',
+})
+
+const DeleteStub = defineComponent({
+  name: 'ComicsModalDelete',
+  props: {
+    modelValue: { type: Boolean, default: false },
+    comic: { type: Object, required: true },
+  },
+  template: '<div data-test="delete-modal" />',
 })
 
 function comic(overrides: Partial<Comic> = {}): Comic {
@@ -86,6 +95,7 @@ async function mount(): Promise<VueWrapper> {
           ComicsStatusInfos: StatusStub,
           ComicsGeneralInfos: GeneralStub,
           ComicsChapters: ChaptersStub,
+          ComicsModalDelete: DeleteStub,
           OrganismPageLayout: false,
         },
       },
@@ -93,13 +103,19 @@ async function mount(): Promise<VueWrapper> {
   )
 }
 
+function buttons(wrapper: VueWrapper): ReturnType<VueWrapper['findAllComponents']> {
+  return wrapper.findAllComponents(VBtn)
+}
+
 beforeEach(() => {
   getById.mockReset()
+  refreshById.mockReset()
   navigateTo.mockReset()
   smAndDown.value = false
   params.id = 'c1'
   query.from = undefined
   getById.mockResolvedValue({ success: true, data: comic() })
+  refreshById.mockResolvedValue({ success: true, data: comic() })
 })
 
 describe('comicPage', () => {
@@ -110,6 +126,24 @@ describe('comicPage', () => {
     expect(getById).toHaveBeenCalledWith('c1')
     expect(wrapper.find('[data-test="general-infos"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="chapters"]').text()).toBe('c1')
+  })
+
+  it('shows the refresh and remove-from-library actions', async () => {
+    const wrapper = await mount()
+
+    await vi.waitFor(() => expect(wrapper.find('[data-test="status-infos"]').exists()).toBe(true))
+    expect(buttons(wrapper).some(btn => (btn as any).props('icon') === 'fa6-solid:repeat')).toBe(true)
+    expect(buttons(wrapper).some(btn => (btn as any).props('icon') === 'fa6-solid:trash' && (btn as any).props('color') === 'error')).toBe(true)
+    expect(wrapper.find('[data-test="delete-modal"]').exists()).toBe(true)
+  })
+
+  it('hides the refresh action when the comic cannot be refreshed', async () => {
+    getById.mockResolvedValue({ success: true, data: comic({ status: 'completed' }) })
+
+    const wrapper = await mount()
+
+    await vi.waitFor(() => expect(wrapper.find('[data-test="status-infos"]').exists()).toBe(true))
+    expect(buttons(wrapper).some(btn => (btn as any).props('icon') === 'fa6-solid:repeat')).toBe(false)
   })
 
   it('redirects to the library when the comic is missing', async () => {
