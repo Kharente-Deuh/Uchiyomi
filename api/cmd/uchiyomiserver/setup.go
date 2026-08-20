@@ -61,6 +61,9 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings"
 	httpreadersettings "github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings/gateway/http"
 	pgreadersettings "github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings/repository/pg"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress"
+	httpreadingprogress "github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress/gateway/http"
+	pgreadingprogress "github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
@@ -151,6 +154,16 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, fmt.Errorf("failed to init readerSettingsSvc: %w", err)
 	}
 
+	readingProgressSvc, err := readingprogress.NewService(readingprogress.Deps{
+		Repository: dbr.ReadingProgressRepository,
+		Library:    dbr.LibraryRepository,
+		Comics:     comicsExistsLookup{repo: dbr.ComicsRepository},
+		Chapters:   dbr.ChaptersRepository,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init readingProgressSvc: %w", err)
+	}
+
 	asuraApp.BindChaptersService(chaptersSvc)
 
 	comicsSvc, err := comics.NewService(comics.Deps{
@@ -180,18 +193,19 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	registry := core.NewHealthRegistry(dbr.PGDB)
 
 	ctrls, err := setupCtrls(ctrlsDeps{
-		Logger:                logger,
-		ComicsService:         comicsSvc,
-		ChaptersService:       chaptersSvc,
-		FeedService:           feedSvc,
-		ReaderSettingsService: readerSettingsSvc,
-		SessionsService:       services.Sessions,
-		SetupService:          services.Setup,
-		AuthService:           services.Auth,
-		OIDCProvidersService:  services.OIDCProviders,
-		AsuraApp:              asuraApp,
-		CoversService:         coversBundle.Service,
-		Registry:              registry,
+		Logger:                 logger,
+		ComicsService:          comicsSvc,
+		ChaptersService:        chaptersSvc,
+		FeedService:            feedSvc,
+		ReaderSettingsService:  readerSettingsSvc,
+		ReadingProgressService: readingProgressSvc,
+		SessionsService:        services.Sessions,
+		SetupService:           services.Setup,
+		AuthService:            services.Auth,
+		OIDCProvidersService:   services.OIDCProviders,
+		AsuraApp:               asuraApp,
+		CoversService:          coversBundle.Service,
+		Registry:               registry,
 	})
 	if err != nil {
 		//nolint:wrapcheck
@@ -204,17 +218,18 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			AllowedOrigins: cfg.Http.AllowedOrigins,
 		},
 		core.Deps{
-			SetupCtrl:          ctrls.Setup,
-			AsuraCtrl:          ctrls.Asura,
-			CoversCtrl:         ctrls.Covers,
-			HealthCtrl:         ctrls.Health,
-			AuthCtrl:           ctrls.Auth,
-			UsersCtrl:          ctrls.Users,
-			OIDCProvidersCtrl:  ctrls.OIDCProviders,
-			ComicsCtrl:         ctrls.Comics,
-			ChaptersCtrl:       ctrls.Chapters,
-			FeedCtrl:           ctrls.Feed,
-			ReaderSettingsCtrl: ctrls.ReaderSettings,
+			SetupCtrl:           ctrls.Setup,
+			AsuraCtrl:           ctrls.Asura,
+			CoversCtrl:          ctrls.Covers,
+			HealthCtrl:          ctrls.Health,
+			AuthCtrl:            ctrls.Auth,
+			UsersCtrl:           ctrls.Users,
+			OIDCProvidersCtrl:   ctrls.OIDCProviders,
+			ComicsCtrl:          ctrls.Comics,
+			ChaptersCtrl:        ctrls.Chapters,
+			FeedCtrl:            ctrls.Feed,
+			ReaderSettingsCtrl:  ctrls.ReaderSettings,
+			ReadingProgressCtrl: ctrls.ReadingProgress,
 
 			Health:             registry,
 			Logger:             logger,
@@ -246,6 +261,7 @@ type dbRelated struct {
 	LibraryRepository             *pglibrary.PGLibraryRepository
 	FeedRepository                *pgfeed.PGFeedRepository
 	ReaderSettingsRepository      *pgreadersettings.PGReaderSettingsRepository
+	ReadingProgressRepository     *pgreadingprogress.PGReadingProgressRepository
 }
 
 func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
@@ -320,6 +336,11 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		return nil, fmt.Errorf("failed to init readerSettingsRepository: %w", err)
 	}
 
+	readingProgressRepository, err := pgreadingprogress.New(pgreadingprogress.Deps{DB: pgdb.DB})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init readingProgressRepository: %w", err)
+	}
+
 	dbr := &dbRelated{
 		PGDB:                          pgdb,
 		Txor:                          txor,
@@ -333,6 +354,7 @@ func setupDBRelated(c *cfg, logger *slog.Logger) (*dbRelated, error) {
 		LibraryRepository:             libraryRepository,
 		FeedRepository:                feedRepository,
 		ReaderSettingsRepository:      readerSettingsRepository,
+		ReadingProgressRepository:     readingProgressRepository,
 	}
 
 	return dbr, nil
@@ -728,32 +750,34 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 }
 
 type ctrls struct {
-	Setup          *httpsetup.Controller
-	Asura          *httpasura.Controller
-	Covers         *httpcovers.Controller
-	Health         *httphealth.Controller
-	Auth           *httpauth.Controller
-	Users          *httpusers.Controller
-	OIDCProviders  *httpoidcproviders.Controller
-	Comics         *httpcomics.Controller
-	Chapters       *httpchapters.Controller
-	Feed           *httpfeed.Controller
-	ReaderSettings *httpreadersettings.Controller
+	Setup           *httpsetup.Controller
+	Asura           *httpasura.Controller
+	Covers          *httpcovers.Controller
+	Health          *httphealth.Controller
+	Auth            *httpauth.Controller
+	Users           *httpusers.Controller
+	OIDCProviders   *httpoidcproviders.Controller
+	Comics          *httpcomics.Controller
+	Chapters        *httpchapters.Controller
+	Feed            *httpfeed.Controller
+	ReaderSettings  *httpreadersettings.Controller
+	ReadingProgress *httpreadingprogress.Controller
 }
 
 type ctrlsDeps struct {
-	FeedService           feed.FeedService
-	ReaderSettingsService readersettings.ReaderSettingsService
-	AsuraApp              *asura.App
-	CoversService         *covers.Service
-	SetupService          *setup.Service
-	SessionsService       *sessions.Service
-	Logger                *slog.Logger
-	Registry              *health.Registry
-	AuthService           *auth.Service
-	OIDCProvidersService  *oidcproviders.Service
-	ComicsService         *comics.Service
-	ChaptersService       *chapters.Service
+	FeedService            feed.FeedService
+	ReaderSettingsService  readersettings.ReaderSettingsService
+	ReadingProgressService readingprogress.ReadingProgressService
+	AsuraApp               *asura.App
+	CoversService          *covers.Service
+	SetupService           *setup.Service
+	SessionsService        *sessions.Service
+	Logger                 *slog.Logger
+	Registry               *health.Registry
+	AuthService            *auth.Service
+	OIDCProvidersService   *oidcproviders.Service
+	ComicsService          *comics.Service
+	ChaptersService        *chapters.Service
 }
 
 func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
@@ -929,18 +953,30 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init reader settings controller: %w", err)
 	}
 
+	readingProgressCtrl, err := httpreadingprogress.New(
+		httpreadingprogress.Config{
+			Endpoint:    "/comics",
+			Middlewares: chi.Middlewares{authenticator.Middleware},
+		},
+		httpreadingprogress.Deps{Logger: deps.Logger, Service: deps.ReadingProgressService},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init reading progress controller: %w", err)
+	}
+
 	c := &ctrls{
-		Asura:          asuraCtrl,
-		Covers:         coversCtrl,
-		Setup:          setup,
-		Health:         healthCtrl,
-		Auth:           authCtrl,
-		Users:          usersCtrl,
-		OIDCProviders:  oidcProvidersCtrl,
-		Comics:         comicsCtrl,
-		Chapters:       chaptersCtrl,
-		Feed:           feedCtrl,
-		ReaderSettings: readerSettingsCtrl,
+		Asura:           asuraCtrl,
+		Covers:          coversCtrl,
+		Setup:           setup,
+		Health:          healthCtrl,
+		Auth:            authCtrl,
+		Users:           usersCtrl,
+		OIDCProviders:   oidcProvidersCtrl,
+		Comics:          comicsCtrl,
+		Chapters:        chaptersCtrl,
+		Feed:            feedCtrl,
+		ReaderSettings:  readerSettingsCtrl,
+		ReadingProgress: readingProgressCtrl,
 	}
 
 	return c, nil

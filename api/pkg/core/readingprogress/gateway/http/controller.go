@@ -81,10 +81,10 @@ func New(cfg Config, deps Deps) (*Controller, error) {
 }
 
 func (c *Controller) InitRouter(r chi.Router) {
-	r.Route(c.cfg.Endpoint, func(r chi.Router) {
+	r.Group(func(r chi.Router) {
 		r.Use(c.cfg.Middlewares...)
-		r.Get("/{id}/progress", c.get)
-		r.Put("/{id}/progress", c.put)
+		r.Get(c.cfg.Endpoint+"/{id}/progress", c.get)
+		r.Put(c.cfg.Endpoint+"/{id}/progress", c.put)
 	})
 }
 

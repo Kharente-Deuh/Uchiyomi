@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
 
@@ -55,6 +56,21 @@ func TestRouterMountsTheReaderSettingsRoute(t *testing.T) {
 
 	if rec.Code == http.StatusNotFound {
 		t.Errorf("GET /api/me/reader-settings = 404, want the route to be mounted")
+	}
+}
+
+func TestRouterMountsTheReadingProgressRoute(t *testing.T) {
+	t.Parallel()
+
+	app, _ := newTestApp(t, &fakeDB{}, gatePort)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/comics/"+uuid.Nil.String()+"/progress", nil)
+	rec := httptest.NewRecorder()
+
+	app.newRouter(nil).ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusNotFound {
+		t.Errorf("GET /api/comics/{id}/progress = 404, want the route to be mounted")
 	}
 }
 

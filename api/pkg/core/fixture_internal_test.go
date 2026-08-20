@@ -36,6 +36,8 @@ import (
 	healthhttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/health/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings"
 	httpreadersettings "github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings/gateway/http"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress"
+	httpreadingprogress "github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/setup"
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
@@ -418,6 +420,16 @@ func (fakeReaderSettingsService) Replace(context.Context, readersettings.Replace
 	return readersettings.Profile{}, nil
 }
 
+type fakeReadingProgressService struct{}
+
+func (fakeReadingProgressService) List(context.Context, readingprogress.ListOpts) (readingprogress.ListResult, error) {
+	return readingprogress.ListResult{Chapters: []readingprogress.Progress{}}, nil
+}
+
+func (fakeReadingProgressService) Save(context.Context, readingprogress.SaveOpts) (readingprogress.Progress, error) {
+	return readingprogress.Progress{}, nil
+}
+
 func newTestCache[P any, T any](t *testing.T, name string, logger *slog.Logger) *fncache.Cache[P, T] {
 	t.Helper()
 
@@ -597,29 +609,38 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("httpreadersettings.New: %v", err)
 	}
 
+	readingProgressCtrl, err := httpreadingprogress.New(
+		httpreadingprogress.Config{Endpoint: "/comics"},
+		httpreadingprogress.Deps{Logger: logger, Service: fakeReadingProgressService{}},
+	)
+	if err != nil {
+		t.Fatalf("httpreadingprogress.New: %v", err)
+	}
+
 	app, err := New(
 		Config{ServerPort: port, AllowedOrigins: []string{"*"}},
 		Deps{
-			DB:                 db,
-			SetupCtrl:          setupCtrl,
-			AuthCtrl:           authCtrl,
-			UsersCtrl:          usersCtrl,
-			AsuraCtrl:          asuraCtrl,
-			CoversCtrl:         coversCtrl,
-			HealthCtrl:         healthCtrl,
-			OIDCProvidersCtrl:  oidcProvidersCtrl,
-			ComicsCtrl:         comicsCtrl,
-			ChaptersCtrl:       chaptersCtrl,
-			FeedCtrl:           feedCtrl,
-			ReaderSettingsCtrl: readerSettingsCtrl,
-			Logger:             logger,
-			Health:             registry,
-			Asura:              asuraApp,
-			Covers:             coversApp,
-			Downloads:          fakeDownloadsApp{},
-			ChapterListRefresh: fakeChapterListRefreshApp{},
-			Sessions:           sessionsApp,
-			OIDCRevalidation:   fakeOIDCRevalidationApp{},
+			DB:                  db,
+			SetupCtrl:           setupCtrl,
+			AuthCtrl:            authCtrl,
+			UsersCtrl:           usersCtrl,
+			AsuraCtrl:           asuraCtrl,
+			CoversCtrl:          coversCtrl,
+			HealthCtrl:          healthCtrl,
+			OIDCProvidersCtrl:   oidcProvidersCtrl,
+			ComicsCtrl:          comicsCtrl,
+			ChaptersCtrl:        chaptersCtrl,
+			FeedCtrl:            feedCtrl,
+			ReaderSettingsCtrl:  readerSettingsCtrl,
+			ReadingProgressCtrl: readingProgressCtrl,
+			Logger:              logger,
+			Health:              registry,
+			Asura:               asuraApp,
+			Covers:              coversApp,
+			Downloads:           fakeDownloadsApp{},
+			ChapterListRefresh:  fakeChapterListRefreshApp{},
+			Sessions:            sessionsApp,
+			OIDCRevalidation:    fakeOIDCRevalidationApp{},
 		})
 	if err != nil {
 		t.Fatalf("New: %v", err)

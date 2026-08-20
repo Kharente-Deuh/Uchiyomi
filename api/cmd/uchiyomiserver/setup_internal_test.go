@@ -20,6 +20,7 @@ import (
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readersettings"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
@@ -86,6 +87,16 @@ func (stubReaderSettingsService) ListForUser(context.Context, uuid.UUID) ([]read
 
 func (stubReaderSettingsService) Replace(context.Context, readersettings.ReplaceOpts) (readersettings.Profile, error) {
 	return readersettings.Profile{}, nil
+}
+
+type stubReadingProgressService struct{}
+
+func (stubReadingProgressService) List(context.Context, readingprogress.ListOpts) (readingprogress.ListResult, error) {
+	return readingprogress.ListResult{Chapters: []readingprogress.Progress{}}, nil
+}
+
+func (stubReadingProgressService) Save(context.Context, readingprogress.SaveOpts) (readingprogress.Progress, error) {
+	return readingprogress.Progress{}, nil
 }
 
 type emptyOIDCProvidersRepository struct{}
@@ -253,14 +264,15 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 	}
 
 	c, err := setupCtrls(ctrlsDeps{
-		AsuraApp:              asuraApp,
-		CoversService:         coversBundle.Service,
-		SessionsService:       newTestSessionsService(t, user),
-		Logger:                logger,
-		Registry:              health.NewRegistry(),
-		OIDCProvidersService:  newTestOIDCProvidersService(t),
-		FeedService:           stubFeedService{},
-		ReaderSettingsService: stubReaderSettingsService{},
+		AsuraApp:               asuraApp,
+		CoversService:          coversBundle.Service,
+		SessionsService:        newTestSessionsService(t, user),
+		Logger:                 logger,
+		Registry:               health.NewRegistry(),
+		OIDCProvidersService:   newTestOIDCProvidersService(t),
+		FeedService:            stubFeedService{},
+		ReaderSettingsService:  stubReaderSettingsService{},
+		ReadingProgressService: stubReadingProgressService{},
 	})
 	if err != nil {
 		t.Fatalf("setupCtrls: %v", err)
