@@ -66,6 +66,7 @@ type chapterRow struct {
 	Title            string
 	Number           float64
 	Download         int
+	HasProgress      bool
 	ID               uuid.UUID
 	ComicID          uuid.UUID
 }
@@ -112,14 +113,22 @@ func (r *PGFeedRepository) ListUnlockedChapters(
 	}
 
 	const sql = `
-SELECT id, comic_id, title, number, published_at, early_access_until, download
+SELECT chapters.id, chapters.comic_id, chapters.title, chapters.number, chapters.published_at,
+  chapters.early_access_until, chapters.download,
+  EXISTS (
+    SELECT 1
+    FROM reading_progress
+    INNER JOIN library_entries ON library_entries.id = reading_progress.library_entry_id
+    WHERE reading_progress.chapter_id = chapters.id
+      AND library_entries.user_id = ?
+  ) AS has_progress
 FROM chapters
-WHERE comic_id IN ? AND (early_access_until IS NULL OR early_access_until <= ?)
+WHERE chapters.comic_id IN ? AND (chapters.early_access_until IS NULL OR chapters.early_access_until <= ?)
 `
 
 	var rows []chapterRow
 
-	err := pgtx.From(ctx, r.deps.DB).Raw(sql, opts.ComicIDs, opts.Now).Scan(&rows).Error
+	err := pgtx.From(ctx, r.deps.DB).Raw(sql, opts.UserID, opts.ComicIDs, opts.Now).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("chapters: %w", err)
 	}
@@ -134,6 +143,7 @@ WHERE comic_id IN ? AND (early_access_until IS NULL OR early_access_until <= ?)
 			PublishedAt:      rows[i].PublishedAt,
 			EarlyAccessUntil: utils.OptionalTime(rows[i].EarlyAccessUntil),
 			Download:         rows[i].Download,
+			HasProgress:      rows[i].HasProgress,
 		}
 	}
 

@@ -18,6 +18,8 @@ import (
 
 var _ readingprogress.Repository = (*PGReadingProgressRepository)(nil)
 
+const libraryEntryAssoc = "LibraryEntry"
+
 type Deps struct {
 	DB *gorm.DB
 }
@@ -48,13 +50,38 @@ func (r *PGReadingProgressRepository) db(ctx context.Context) gorm.Interface[pgm
 	return gorm.G[pgmodels.ReadingProgress](pgtx.From(ctx, r.deps.DB))
 }
 
-func (r *PGReadingProgressRepository) ListByUserAndComic(
+func (r *PGReadingProgressRepository) GetLatestByUserAndComic(
 	ctx context.Context, opts readingprogress.ListOpts,
-) ([]readingprogress.Progress, error) {
+) (*readingprogress.Progress, error) {
 	models, err := r.db(ctx).
-		Joins(clause.JoinTarget{Association: "LibraryEntry"}, nil).
-		Where("library_entries.user_id = ? AND library_entries.comic_id = ?", opts.UserID, opts.ComicID).
+		Joins(clause.JoinTarget{Association: libraryEntryAssoc}, nil).
+		Where(`"LibraryEntry".user_id = ? AND "LibraryEntry".comic_id = ?`, opts.UserID, opts.ComicID).
 		Order("reading_progress.updated_at DESC").
+		Limit(1).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Find: %w", err)
+	}
+
+	if len(models) == 0 {
+		return nil, nil
+	}
+
+	ret := models[0].Domain()
+
+	return &ret, nil
+}
+
+func (r *PGReadingProgressRepository) ListByUserAndChapterIDs(
+	ctx context.Context, opts readingprogress.MapOpts,
+) ([]readingprogress.Progress, error) {
+	if len(opts.IDs) == 0 {
+		return []readingprogress.Progress{}, nil
+	}
+
+	models, err := r.db(ctx).
+		Joins(clause.JoinTarget{Association: libraryEntryAssoc}, nil).
+		Where(`"LibraryEntry".user_id = ? AND reading_progress.chapter_id IN ?`, opts.UserID, opts.IDs).
 		Find(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("r.db(ctx).Find: %w", err)
@@ -72,9 +99,9 @@ func (r *PGReadingProgressRepository) Get(
 	ctx context.Context, opts readingprogress.GetOpts,
 ) (*readingprogress.Progress, error) {
 	model, err := r.db(ctx).
-		Joins(clause.JoinTarget{Association: "LibraryEntry"}, nil).
+		Joins(clause.JoinTarget{Association: libraryEntryAssoc}, nil).
 		Where(
-			"library_entries.user_id = ? AND library_entries.comic_id = ? AND reading_progress.chapter_id = ?",
+			`"LibraryEntry".user_id = ? AND "LibraryEntry".comic_id = ? AND reading_progress.chapter_id = ?`,
 			opts.UserID, opts.ComicID, opts.ChapterID,
 		).
 		First(ctx)

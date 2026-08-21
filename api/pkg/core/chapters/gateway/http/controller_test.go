@@ -23,6 +23,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	chaptershttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 )
@@ -38,10 +39,13 @@ type stubChaptersService struct {
 	retryErr               error
 	getByIdsErr            error
 	listForLibraryErr      error
+	getForLibraryErr       error
 	getByIdsResult         []chapters.Chapter
 	listForLibraryResult   []chapters.Chapter
+	getForLibraryResult    *chapters.Chapter
 	lastGetByIdsOpts       chapters.GetByIdsOpts
 	lastListForLibraryOpts chapters.ListForLibraryOpts
+	lastGetForLibraryOpts  chapters.GetForLibraryOpts
 }
 
 func (s *stubChaptersService) CreateAll(
@@ -86,6 +90,14 @@ func (s *stubChaptersService) ListForLibrary(
 	s.lastListForLibraryOpts = opts
 
 	return s.listForLibraryResult, s.listForLibraryErr
+}
+
+func (s *stubChaptersService) GetForLibrary(
+	_ context.Context, opts chapters.GetForLibraryOpts,
+) (*chapters.Chapter, error) {
+	s.lastGetForLibraryOpts = opts
+
+	return s.getForLibraryResult, s.getForLibraryErr
 }
 
 type stubSessionService struct {
@@ -134,12 +146,45 @@ func chaptersAuthenticatorFor(t *testing.T, user *users.User) chi.Middlewares {
 	return chi.Middlewares{a.Middleware}
 }
 
+type stubProgress struct {
+	err  error
+	byID map[uuid.UUID]readingprogress.Progress
+	last readingprogress.MapOpts
+}
+
+func (s *stubProgress) MapByChapterIDs(
+	_ context.Context, opts readingprogress.MapOpts,
+) (map[uuid.UUID]readingprogress.Progress, error) {
+	s.last = opts
+	if s.err != nil {
+		return nil, s.err
+	}
+
+	if s.byID != nil {
+		return s.byID, nil
+	}
+
+	return map[uuid.UUID]readingprogress.Progress{}, nil
+}
+
 func newChaptersTestRouter(t *testing.T, svc chapters.ChaptersService, mws chi.Middlewares) chi.Router {
+	t.Helper()
+
+	return newChaptersTestRouterWithProgress(t, svc, &stubProgress{}, mws)
+}
+
+func newChaptersTestRouterWithProgress(
+	t *testing.T, svc chapters.ChaptersService, progress chaptershttp.ProgressReader, mws chi.Middlewares,
+) chi.Router {
 	t.Helper()
 
 	c, err := chaptershttp.New(
 		chaptershttp.Config{Endpoint: chaptersEndpoint, Middlewares: mws},
-		chaptershttp.Deps{Logger: chaptersTestLogger(), ChaptersService: svc},
+		chaptershttp.Deps{
+			Logger:          chaptersTestLogger(),
+			ChaptersService: svc,
+			Progress:        progress,
+		},
 	)
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -276,15 +321,19 @@ func TestRetryDownloadInternalError(t *testing.T) {
 }
 
 type postListHTTPChapter struct {
-	PublishedAt       time.Time  `json:"publishedAt"`
-	EarlyAccessUntil  *time.Time `json:"earlyAccessUntil"`
-	SourceChapterSlug string     `json:"sourceChapterSlug"`
-	Title             string     `json:"title"`
-	Number            float64    `json:"number"`
-	PagesNb           int        `json:"pagesNb"`
-	Download          int        `json:"download"`
-	ID                uuid.UUID  `json:"id"`
-	ComicID           uuid.UUID  `json:"comicId"`
+	PublishedAt      time.Time  `json:"publishedAt"`
+	EarlyAccessUntil *time.Time `json:"earlyAccessUntil"`
+	Progress         *struct {
+		UpdatedAt time.Time `json:"updatedAt"`
+		Page      int       `json:"page"`
+	} `json:"progress"`
+	SourceChapterSlug string    `json:"sourceChapterSlug"`
+	Title             string    `json:"title"`
+	Number            float64   `json:"number"`
+	PagesNb           int       `json:"pagesNb"`
+	Download          int       `json:"download"`
+	ID                uuid.UUID `json:"id"`
+	ComicID           uuid.UUID `json:"comicId"`
 }
 
 func TestPostListRequiresAuthentication(t *testing.T) {
@@ -442,6 +491,10 @@ func TestPostListReturnsChapters(t *testing.T) {
 
 	if got[1].EarlyAccessUntil != nil {
 		t.Errorf("chapters[1].earlyAccessUntil = %v, want nil", got[1].EarlyAccessUntil)
+	}
+
+	if first.Progress != nil || got[1].Progress != nil {
+		t.Errorf("progress = %+v / %+v, want null", first.Progress, got[1].Progress)
 	}
 }
 
@@ -616,6 +669,184 @@ func TestListForLibraryReturnsChapters(t *testing.T) {
 	if got[1].EarlyAccessUntil != nil || got[1].Download != 100 {
 		t.Errorf("chapters[1] = %+v", got[1])
 	}
+
+	if got[0].Progress != nil || got[1].Progress != nil {
+		t.Errorf("progress = %+v / %+v, want null", got[0].Progress, got[1].Progress)
+	}
+}
+
+func TestPostListIncludesProgress(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	chapterID := uuid.New()
+	updatedAt := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
+	svc := &stubChaptersService{
+		getByIdsResult: []chapters.Chapter{{
+			ID:      chapterID,
+			ComicID: uuid.New(),
+			PagesNb: 10,
+		}},
+	}
+	progress := &stubProgress{
+		byID: map[uuid.UUID]readingprogress.Progress{
+			chapterID: {ChapterID: chapterID, Page: 18, UpdatedAt: updatedAt},
+		},
+	}
+	r := newChaptersTestRouterWithProgress(t, svc, progress, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		chaptersEndpoint+"/list",
+		strings.NewReader(`{"ids":["`+chapterID.String()+`"]}`),
+	)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var got []postListHTTPChapter
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if len(got) != 1 || got[0].Progress == nil {
+		t.Fatalf("chapters = %+v, want progress", got)
+	}
+
+	if got[0].Progress.Page != 10 {
+		t.Errorf("progress.page = %d, want clamped 10", got[0].Progress.Page)
+	}
+
+	if !got[0].Progress.UpdatedAt.Equal(updatedAt) {
+		t.Errorf("progress.updatedAt = %v, want %v", got[0].Progress.UpdatedAt, updatedAt)
+	}
+
+	if progress.last.UserID != user.ID || len(progress.last.IDs) != 1 || progress.last.IDs[0] != chapterID {
+		t.Errorf("MapByChapterIDs opts = %+v", progress.last)
+	}
+}
+
+func TestGetByIDRequiresAuthentication(t *testing.T) {
+	t.Parallel()
+
+	r := newChaptersTestRouter(t, &stubChaptersService{}, nil)
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+uuid.New().String(), nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestGetByIDInvalidID(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/not-a-uuid", nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestGetByIDNotFound(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		getForLibraryErr: domain.ErrNotFound,
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+uuid.New().String(), nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestGetByIDForbidden(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		getForLibraryErr: domain.ErrForbidden,
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+uuid.New().String(), nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestGetByIDReturnsChapterWithProgress(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	chapterID := uuid.New()
+	comicID := uuid.New()
+	publishedAt := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	updatedAt := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
+	svc := &stubChaptersService{
+		getForLibraryResult: &chapters.Chapter{
+			PublishedAt: publishedAt,
+			Title:       "Chapter 1",
+			Number:      1,
+			PagesNb:     20,
+			Download:    40,
+			ID:          chapterID,
+			ComicID:     comicID,
+		},
+	}
+	progress := &stubProgress{
+		byID: map[uuid.UUID]readingprogress.Progress{
+			chapterID: {ChapterID: chapterID, Page: 4, UpdatedAt: updatedAt},
+		},
+	}
+	r := newChaptersTestRouterWithProgress(t, svc, progress, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+chapterID.String(), nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	if svc.lastGetForLibraryOpts.UserID != user.ID || svc.lastGetForLibraryOpts.ChapterID != chapterID {
+		t.Errorf("GetForLibrary opts = %+v", svc.lastGetForLibraryOpts)
+	}
+
+	var got postListHTTPChapter
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if got.ID != chapterID || got.ComicID != comicID || got.Download != 40 {
+		t.Errorf("chapter = %+v", got)
+	}
+
+	if got.Progress == nil || got.Progress.Page != 4 || !got.Progress.UpdatedAt.Equal(updatedAt) {
+		t.Errorf("progress = %+v", got.Progress)
+	}
 }
 
 func TestConfigValidate(t *testing.T) {
@@ -673,14 +904,19 @@ func TestDepsValidate(t *testing.T) {
 			deps: chaptershttp.Deps{
 				Logger:          logger,
 				ChaptersService: &stubChaptersService{},
+				Progress:        &stubProgress{},
 			},
 		},
 		"missing service": {
-			deps:    chaptershttp.Deps{Logger: logger},
+			deps:    chaptershttp.Deps{Logger: logger, Progress: &stubProgress{}},
 			wantErr: "chapters service is required",
 		},
+		"missing progress": {
+			deps:    chaptershttp.Deps{Logger: logger, ChaptersService: &stubChaptersService{}},
+			wantErr: "progress is required",
+		},
 		"missing logger": {
-			deps:    chaptershttp.Deps{ChaptersService: &stubChaptersService{}},
+			deps:    chaptershttp.Deps{ChaptersService: &stubChaptersService{}, Progress: &stubProgress{}},
 			wantErr: "logger is required",
 		},
 	}
@@ -711,7 +947,11 @@ func TestNewRequiresValidConfig(t *testing.T) {
 
 	_, err := chaptershttp.New(
 		chaptershttp.Config{},
-		chaptershttp.Deps{Logger: chaptersTestLogger(), ChaptersService: &stubChaptersService{}},
+		chaptershttp.Deps{
+			Logger:          chaptersTestLogger(),
+			ChaptersService: &stubChaptersService{},
+			Progress:        &stubProgress{},
+		},
 	)
 	if err == nil {
 		t.Fatal("New with invalid config must fail")

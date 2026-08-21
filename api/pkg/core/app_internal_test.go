@@ -59,18 +59,33 @@ func TestRouterMountsTheReaderSettingsRoute(t *testing.T) {
 	}
 }
 
-func TestRouterMountsTheReadingProgressRoute(t *testing.T) {
+func TestRouterMountsTheChapterProgressRoute(t *testing.T) {
 	t.Parallel()
 
 	app, _ := newTestApp(t, &fakeDB{}, gatePort)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/comics/"+uuid.Nil.String()+"/progress", nil)
+	req := httptest.NewRequest(http.MethodPut, "/api/chapters/"+uuid.Nil.String()+"/progress", nil)
 	rec := httptest.NewRecorder()
 
 	app.newRouter(nil).ServeHTTP(rec, req)
 
 	if rec.Code == http.StatusNotFound {
-		t.Errorf("GET /api/comics/{id}/progress = 404, want the route to be mounted")
+		t.Errorf("PUT /api/chapters/{id}/progress = 404, want the route to be mounted")
+	}
+}
+
+func TestRouterMountsTheChapterByIDRoute(t *testing.T) {
+	t.Parallel()
+
+	app, _ := newTestApp(t, &fakeDB{}, gatePort)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/chapters/"+uuid.Nil.String(), nil)
+	rec := httptest.NewRecorder()
+
+	app.newRouter(nil).ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusNotFound {
+		t.Errorf("GET /api/chapters/{id} = 404, want the route to be mounted")
 	}
 }
 

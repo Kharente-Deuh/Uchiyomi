@@ -51,6 +51,7 @@ type ChaptersService interface {
 	RetryDownload(context.Context, RetryDownloadOpts) error
 	GetByIds(context.Context, GetByIdsOpts) ([]Chapter, error)
 	ListForLibrary(context.Context, ListForLibraryOpts) ([]Chapter, error)
+	GetForLibrary(context.Context, GetForLibraryOpts) (*Chapter, error)
 }
 
 type ComicLookup interface {
@@ -70,6 +71,11 @@ type GetByIdsOpts struct {
 type ListForLibraryOpts struct {
 	UserID  uuid.UUID
 	ComicID uuid.UUID
+}
+
+type GetForLibraryOpts struct {
+	UserID    uuid.UUID
+	ChapterID uuid.UUID
 }
 
 type CreateOpts struct {

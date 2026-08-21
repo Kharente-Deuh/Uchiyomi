@@ -919,6 +919,7 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		httpchapters.Deps{
 			Logger:          deps.Logger,
 			ChaptersService: deps.ChaptersService,
+			Progress:        deps.ReadingProgressService,
 		},
 	)
 	if err != nil {
@@ -955,8 +956,9 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 
 	readingProgressCtrl, err := httpreadingprogress.New(
 		httpreadingprogress.Config{
-			Endpoint:    "/comics",
-			Middlewares: chi.Middlewares{authenticator.Middleware},
+			Endpoint:         "/comics",
+			ChaptersEndpoint: "/chapters",
+			Middlewares:      chi.Middlewares{authenticator.Middleware},
 		},
 		httpreadingprogress.Deps{Logger: deps.Logger, Service: deps.ReadingProgressService},
 	)

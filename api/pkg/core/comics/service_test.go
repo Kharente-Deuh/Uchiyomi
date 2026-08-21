@@ -368,6 +368,10 @@ func (f *fakeChaptersService) ListForLibrary(context.Context, chapters.ListForLi
 	panic("ListForLibrary must not be called")
 }
 
+func (f *fakeChaptersService) GetForLibrary(context.Context, chapters.GetForLibraryOpts) (*chapters.Chapter, error) {
+	panic("GetForLibrary must not be called")
+}
+
 //nolint:govet // fieldalignment on a test fake is not worth the unreadable field order
 type fakeSource struct {
 	infos             *sources.GetInfosBySlugResponse

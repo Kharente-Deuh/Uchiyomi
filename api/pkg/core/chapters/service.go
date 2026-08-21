@@ -267,3 +267,21 @@ func (s *Service) GetByIds(ctx context.Context, opts GetByIdsOpts) ([]Chapter, e
 
 	return accessible, nil
 }
+
+func (s *Service) GetForLibrary(ctx context.Context, opts GetForLibraryOpts) (*Chapter, error) {
+	chapter, err := s.deps.Repository.GetByID(ctx, opts.ChapterID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.GetByID: %w", err)
+	}
+
+	inLibrary, err := s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, chapter.ComicID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+	}
+
+	if !inLibrary {
+		return nil, domain.ErrForbidden
+	}
+
+	return chapter, nil
+}

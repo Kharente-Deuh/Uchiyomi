@@ -24,10 +24,11 @@ import (
 )
 
 const (
-	endpoint     = "/comics"
-	cookieName   = "uchiyomi_session"
-	testToken    = "letoken"
-	testUsername = "alice"
+	endpoint         = "/comics"
+	chaptersEndpoint = "/chapters"
+	cookieName       = "uchiyomi_session"
+	testToken        = "letoken"
+	testUsername     = "alice"
 )
 
 type stubService struct {
@@ -51,6 +52,12 @@ func (s *stubService) Save(_ context.Context, opts readingprogress.SaveOpts) (re
 	return s.saveResult, s.saveErr
 }
 
+func (s *stubService) MapByChapterIDs(
+	_ context.Context, _ readingprogress.MapOpts,
+) (map[uuid.UUID]readingprogress.Progress, error) {
+	return map[uuid.UUID]readingprogress.Progress{}, nil
+}
+
 type stubSessionService struct {
 	result *sessions.AuthenticatedSession
 }
@@ -69,12 +76,11 @@ type progressJSON struct {
 	Page      int    `json:"page"`
 }
 
-type listJSON struct {
+type continueJSON struct {
 	Continue *struct {
 		ChapterID string `json:"chapterId"`
 		Page      int    `json:"page"`
 	} `json:"continue"`
-	Chapters []progressJSON `json:"chapters"`
 }
 
 func testLogger() *slog.Logger {
@@ -115,7 +121,11 @@ func newTestRouter(t *testing.T, svc *stubService, mws chi.Middlewares) chi.Rout
 	t.Helper()
 
 	c, err := httpreadingprogress.New(
-		httpreadingprogress.Config{Endpoint: endpoint, Middlewares: mws},
+		httpreadingprogress.Config{
+			Endpoint:         endpoint,
+			ChaptersEndpoint: chaptersEndpoint,
+			Middlewares:      mws,
+		},
 		httpreadingprogress.Deps{Logger: testLogger(), Service: svc},
 	)
 	if err != nil {
@@ -146,10 +156,10 @@ func getProgress(t *testing.T, r chi.Router, comicID string, withCookie bool) *h
 	return rec
 }
 
-func putProgress(t *testing.T, r chi.Router, comicID, body string, withCookie bool) *httptest.ResponseRecorder {
+func putProgress(t *testing.T, r chi.Router, chapterID, body string, withCookie bool) *httptest.ResponseRecorder {
 	t.Helper()
 
-	req := httptest.NewRequest(http.MethodPut, endpoint+"/"+comicID+"/progress", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, chaptersEndpoint+"/"+chapterID+"/progress", strings.NewReader(body))
 	if withCookie {
 		req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
 	}
@@ -173,25 +183,31 @@ func TestNewValidatesConfigAndDeps(t *testing.T) {
 		cfg     httpreadingprogress.Config
 	}{
 		"empty endpoint": {
-			cfg:     httpreadingprogress.Config{},
+			cfg:     httpreadingprogress.Config{ChaptersEndpoint: chaptersEndpoint},
 			deps:    httpreadingprogress.Deps{Logger: logger, Service: svc},
 			wantErr: "cfg.Validate: endpoint is required",
 		},
+		"empty chapters endpoint": {
+			cfg:     httpreadingprogress.Config{Endpoint: endpoint},
+			deps:    httpreadingprogress.Deps{Logger: logger, Service: svc},
+			wantErr: "cfg.Validate: chapters endpoint is required",
+		},
 		"nil middleware": {
 			cfg: httpreadingprogress.Config{
-				Endpoint:    endpoint,
-				Middlewares: chi.Middlewares{passthrough, nil},
+				Endpoint:         endpoint,
+				ChaptersEndpoint: chaptersEndpoint,
+				Middlewares:      chi.Middlewares{passthrough, nil},
 			},
 			deps:    httpreadingprogress.Deps{Logger: logger, Service: svc},
 			wantErr: "cfg.Validate: all middlewares must not be nil",
 		},
 		"nil logger": {
-			cfg:     httpreadingprogress.Config{Endpoint: endpoint},
+			cfg:     httpreadingprogress.Config{Endpoint: endpoint, ChaptersEndpoint: chaptersEndpoint},
 			deps:    httpreadingprogress.Deps{Service: svc},
 			wantErr: "deps.Validate: logger is required",
 		},
 		"nil service": {
-			cfg:     httpreadingprogress.Config{Endpoint: endpoint},
+			cfg:     httpreadingprogress.Config{Endpoint: endpoint, ChaptersEndpoint: chaptersEndpoint},
 			deps:    httpreadingprogress.Deps{Logger: logger},
 			wantErr: "deps.Validate: service is required",
 		},
@@ -236,7 +252,7 @@ func TestPutUnauthorized(t *testing.T) {
 	user := testUser()
 	r := newTestRouter(t, &stubService{}, authenticatorFor(t, user))
 
-	rec := putProgress(t, r, uuid.New().String(), `{"chapterId":"`+uuid.New().String()+`","page":1}`, false)
+	rec := putProgress(t, r, uuid.New().String(), `{"page":1}`, false)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusUnauthorized, rec.Body.String())
@@ -249,17 +265,10 @@ func TestGetOK(t *testing.T) {
 	user := testUser()
 	comicID := uuid.New()
 	chapterNewer := uuid.New()
-	chapterOlder := uuid.New()
-	updatedNewer := time.Date(2026, 2, 2, 10, 0, 0, 0, time.UTC)
-	updatedOlder := time.Date(2026, 2, 1, 10, 0, 0, 0, time.UTC)
 
 	svc := &stubService{
 		listResult: readingprogress.ListResult{
 			Continue: &readingprogress.Continue{ChapterID: chapterNewer, Page: 5},
-			Chapters: []readingprogress.Progress{
-				{UpdatedAt: updatedNewer, ChapterID: chapterNewer, Page: 5},
-				{UpdatedAt: updatedOlder, ChapterID: chapterOlder, Page: 12},
-			},
 		},
 	}
 	r := newTestRouter(t, svc, authenticatorFor(t, user))
@@ -278,25 +287,9 @@ func TestGetOK(t *testing.T) {
 		t.Errorf("lastList.ComicID = %s, want %s", svc.lastList.ComicID, comicID)
 	}
 
-	var got listJSON
+	var got continueJSON
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
-	}
-
-	if len(got.Chapters) != 2 {
-		t.Fatalf("chapters len = %d, want 2", len(got.Chapters))
-	}
-
-	if got.Chapters[0].ChapterID != chapterNewer.String() || got.Chapters[0].Page != 5 {
-		t.Errorf("chapters[0] = %+v", got.Chapters[0])
-	}
-
-	if got.Chapters[0].UpdatedAt == "" {
-		t.Error("chapters[0].updatedAt is empty, want RFC3339 timestamp")
-	}
-
-	if got.Chapters[1].ChapterID != chapterOlder.String() || got.Chapters[1].Page != 12 {
-		t.Errorf("chapters[1] = %+v", got.Chapters[1])
 	}
 
 	if got.Continue == nil {
@@ -310,6 +303,10 @@ func TestGetOK(t *testing.T) {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
 		t.Fatalf("decode raw body: %v", err)
+	}
+
+	if _, ok := raw["chapters"]; ok {
+		t.Error("body must not include chapters")
 	}
 
 	var continueRaw map[string]json.RawMessage
@@ -328,7 +325,7 @@ func TestGetEmptyContinueNull(t *testing.T) {
 	user := testUser()
 	comicID := uuid.New()
 	svc := &stubService{
-		listResult: readingprogress.ListResult{Chapters: []readingprogress.Progress{}},
+		listResult: readingprogress.ListResult{},
 	}
 	r := newTestRouter(t, svc, authenticatorFor(t, user))
 
@@ -338,7 +335,7 @@ func TestGetEmptyContinueNull(t *testing.T) {
 		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
-	var got listJSON
+	var got continueJSON
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
 	}
@@ -347,12 +344,12 @@ func TestGetEmptyContinueNull(t *testing.T) {
 		t.Errorf("continue = %+v, want null", got.Continue)
 	}
 
-	if len(got.Chapters) != 0 {
-		t.Errorf("chapters len = %d, want 0", len(got.Chapters))
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"continue":null`)) {
+		t.Errorf("body = %s, want continue:null", rec.Body.String())
 	}
 
-	if !bytes.Contains(rec.Body.Bytes(), []byte(`"chapters":[]`)) {
-		t.Errorf("body = %s, want chapters:[]", rec.Body.String())
+	if bytes.Contains(rec.Body.Bytes(), []byte(`"chapters"`)) {
+		t.Errorf("body = %s, must not include chapters", rec.Body.String())
 	}
 }
 
@@ -360,7 +357,6 @@ func TestPutOK(t *testing.T) {
 	t.Parallel()
 
 	user := testUser()
-	comicID := uuid.New()
 	chapterID := uuid.New()
 	savedAt := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
 
@@ -369,8 +365,7 @@ func TestPutOK(t *testing.T) {
 	}
 	r := newTestRouter(t, svc, authenticatorFor(t, user))
 
-	body := `{"chapterId":"` + chapterID.String() + `","page":8}`
-	rec := putProgress(t, r, comicID.String(), body, true)
+	rec := putProgress(t, r, chapterID.String(), `{"page":8}`, true)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
@@ -378,10 +373,6 @@ func TestPutOK(t *testing.T) {
 
 	if svc.lastSave.UserID != user.ID {
 		t.Errorf("lastSave.UserID = %s, want %s", svc.lastSave.UserID, user.ID)
-	}
-
-	if svc.lastSave.ComicID != comicID {
-		t.Errorf("lastSave.ComicID = %s, want %s", svc.lastSave.ComicID, comicID)
 	}
 
 	if svc.lastSave.ChapterID != chapterID {
@@ -406,13 +397,13 @@ func TestPutOK(t *testing.T) {
 	}
 }
 
-func TestPutInvalidComicID(t *testing.T) {
+func TestPutInvalidChapterID(t *testing.T) {
 	t.Parallel()
 
 	user := testUser()
 	r := newTestRouter(t, &stubService{}, authenticatorFor(t, user))
 
-	rec := putProgress(t, r, "not-a-uuid", `{"chapterId":"`+uuid.New().String()+`","page":1}`, true)
+	rec := putProgress(t, r, "not-a-uuid", `{"page":1}`, true)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
@@ -438,7 +429,7 @@ func TestPutPageZero(t *testing.T) {
 	user := testUser()
 	r := newTestRouter(t, &stubService{}, authenticatorFor(t, user))
 
-	rec := putProgress(t, r, uuid.New().String(), `{"chapterId":"`+uuid.New().String()+`","page":0}`, true)
+	rec := putProgress(t, r, uuid.New().String(), `{"page":0}`, true)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
@@ -452,7 +443,7 @@ func TestPutForbidden(t *testing.T) {
 	svc := &stubService{saveErr: domain.ErrForbidden}
 	r := newTestRouter(t, svc, authenticatorFor(t, user))
 
-	rec := putProgress(t, r, uuid.New().String(), `{"chapterId":"`+uuid.New().String()+`","page":1}`, true)
+	rec := putProgress(t, r, uuid.New().String(), `{"page":1}`, true)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusForbidden, rec.Body.String())
@@ -488,7 +479,6 @@ func TestPutUsesSessionUser(t *testing.T) {
 	t.Parallel()
 
 	user := testUser()
-	comicID := uuid.New()
 	chapterID := uuid.New()
 
 	svc := &stubService{
@@ -496,8 +486,7 @@ func TestPutUsesSessionUser(t *testing.T) {
 	}
 	r := newTestRouter(t, svc, authenticatorFor(t, user))
 
-	body := `{"chapterId":"` + chapterID.String() + `","page":3}`
-	rec := putProgress(t, r, comicID.String(), body, true)
+	rec := putProgress(t, r, chapterID.String(), `{"page":3}`, true)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())

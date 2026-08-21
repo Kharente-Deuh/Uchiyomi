@@ -877,3 +877,81 @@ func TestServiceListForLibraryLookupError(t *testing.T) {
 		t.Errorf("ListForLibrary returned %+v in addition to the error", got)
 	}
 }
+
+func TestServiceGetForLibrary(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	want := &chapters.Chapter{ID: chapterID, ComicID: comicID, Download: 40, PagesNb: 12}
+	libraryRepo := &fakeLibraryRepository{existsByUserAndComic: true}
+	svc := newTestService(
+		&fakeChaptersRepository{getByIDResult: want},
+		&fakeChapterDownloader{},
+		libraryRepo,
+	)
+
+	got, err := svc.GetForLibrary(context.Background(), chapters.GetForLibraryOpts{
+		UserID:    userID,
+		ChapterID: chapterID,
+	})
+	if err != nil {
+		t.Fatalf("GetForLibrary: %v", err)
+	}
+
+	if got == nil || got.ID != chapterID || got.Download != 40 {
+		t.Errorf("GetForLibrary() = %+v, want %+v", got, want)
+	}
+
+	if libraryRepo.lastUserID != userID || libraryRepo.lastComicID != comicID {
+		t.Errorf("library check user=%s comic=%s, want user=%s comic=%s",
+			libraryRepo.lastUserID, libraryRepo.lastComicID, userID, comicID)
+	}
+}
+
+func TestServiceGetForLibraryNotFound(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(
+		&fakeChaptersRepository{getByIDErr: domain.ErrNotFound},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{},
+	)
+
+	got, err := svc.GetForLibrary(context.Background(), chapters.GetForLibraryOpts{
+		UserID:    uuid.New(),
+		ChapterID: uuid.New(),
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("GetForLibrary = %v, want domain.ErrNotFound", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetForLibrary returned %+v in addition to the error", got)
+	}
+}
+
+func TestServiceGetForLibraryForbidden(t *testing.T) {
+	t.Parallel()
+
+	chapterID := uuid.New()
+	comicID := uuid.New()
+	svc := newTestService(
+		&fakeChaptersRepository{getByIDResult: &chapters.Chapter{ID: chapterID, ComicID: comicID}},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsByUserAndComic: false},
+	)
+
+	got, err := svc.GetForLibrary(context.Background(), chapters.GetForLibraryOpts{
+		UserID:    uuid.New(),
+		ChapterID: chapterID,
+	})
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("GetForLibrary = %v, want domain.ErrForbidden", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetForLibrary returned %+v in addition to the error", got)
+	}
+}
