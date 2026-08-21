@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import type { DetailedChapter } from '~/features/chapters/types'
+import type { Comic } from '~/features/comics/types'
+import type { ReaderSettings } from '~/features/reader/types'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
 definePageMeta({
@@ -10,12 +12,17 @@ definePageMeta({
 
 const route = useRoute('comic-id-chapterId')
 const api = createChaptersApi()
+const comicsApi = createComicsApi()
+const readerSettingsApi = createReaderSettingsApi()
 const { t } = useI18n()
 const toast = useToast()
 const { smAndDown } = useDisplay()
 
 const chapter = ref<DetailedChapter>()
+const comic = ref<Comic>()
 const isLoading = ref(true)
+
+const readerSettings = ref<ReaderSettings>()
 
 async function fetchChapter(): Promise<void> {
   const res = await api.getById(route.params.chapterId)
@@ -33,8 +40,47 @@ async function fetchChapter(): Promise<void> {
   chapter.value = res.data
 }
 
+async function fetchReaderSettings(): Promise<ReaderSettings[]> {
+  const res = await readerSettingsApi.getReaderSettings()
+  if (!res.success) {
+    console.error('readerSettingsApi.get', res.error)
+    toast.error(t('error.unknown'))
+
+    return []
+  }
+
+  return res.data
+}
+
+async function fetchComic(): Promise<void> {
+  const res = await comicsApi.getById(route.params.id)
+  if (!res.success) {
+    console.error('comicsApi.getById', res.error)
+    toast.error(res.error.status === 404 || res.error.status === 403
+      ? t('sources.asura.comic.notFound')
+      : t('error.unknown'))
+
+    navigateTo({ name: 'library' })
+
+    return
+  }
+
+  comic.value = res.data
+}
+
 onMounted(async () => {
-  fetchChapter()
+  const [_, __, settings] = await Promise.all([
+    fetchChapter(),
+    fetchComic(),
+    fetchReaderSettings(),
+  ])
+
+  readerSettings.value = settings.find(({ type }) => type === comic.value?.type)
+  if (!readerSettings.value) {
+    navigateTo({ name: 'comic-id', params: { id: route.params.id } })
+
+    return
+  }
 
   isLoading.value = false
 })
@@ -53,6 +99,14 @@ async function retryDownload(): Promise<void> {
 
   isRetrying.value = false
 }
+
+watch(() => route.params.chapterId, async (): Promise<void> => {
+  isLoading.value = true
+
+  await fetchChapter()
+
+  isLoading.value = false
+})
 </script>
 
 <template>
