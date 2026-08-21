@@ -3,6 +3,7 @@
 package http
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,6 +30,26 @@ type postListResponseChapter struct {
 	Download          int                      `json:"download"`
 	ID                uuid.UUID                `json:"id"`
 	ComicID           uuid.UUID                `json:"comicId"`
+}
+
+type chapterDetailResponse struct {
+	NextChapterID     *uuid.UUID `json:"nextChapterId,omitempty"`
+	PreviousChapterID *uuid.UUID `json:"previousChapterId,omitempty"`
+	PageURLs          []string   `json:"pageUrls"`
+	postListResponseChapter
+}
+
+func pageURLs(id uuid.UUID, download, pagesNb int) []string {
+	if download != 100 || pagesNb <= 0 {
+		return []string{}
+	}
+
+	urls := make([]string, pagesNb)
+	for i := range pagesNb {
+		urls[i] = "/api/chapters/" + id.String() + "/pages/" + strconv.Itoa(i+1)
+	}
+
+	return urls
 }
 
 func progressPayload(

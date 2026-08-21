@@ -12,6 +12,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -36,16 +38,23 @@ const (
 )
 
 type stubChaptersService struct {
-	retryErr               error
-	getByIdsErr            error
-	listForLibraryErr      error
-	getForLibraryErr       error
-	getByIdsResult         []chapters.Chapter
-	listForLibraryResult   []chapters.Chapter
-	getForLibraryResult    *chapters.Chapter
-	lastGetByIdsOpts       chapters.GetByIdsOpts
-	lastListForLibraryOpts chapters.ListForLibraryOpts
-	lastGetForLibraryOpts  chapters.GetForLibraryOpts
+	retryErr                    error
+	getByIdsErr                 error
+	listForLibraryErr           error
+	getForLibraryErr            error
+	getDetailForLibraryErr      error
+	servePageErr                error
+	getByIdsResult              []chapters.Chapter
+	listForLibraryResult        []chapters.Chapter
+	getForLibraryResult         *chapters.Chapter
+	getDetailForLibraryResult   *chapters.ChapterDetail
+	servePagePath               string
+	servePageType               string
+	lastGetByIdsOpts            chapters.GetByIdsOpts
+	lastListForLibraryOpts      chapters.ListForLibraryOpts
+	lastGetForLibraryOpts       chapters.GetForLibraryOpts
+	lastGetDetailForLibraryOpts chapters.GetForLibraryOpts
+	lastServePageOpts           chapters.ServePageOpts
 }
 
 func (s *stubChaptersService) CreateAll(
@@ -98,6 +107,20 @@ func (s *stubChaptersService) GetForLibrary(
 	s.lastGetForLibraryOpts = opts
 
 	return s.getForLibraryResult, s.getForLibraryErr
+}
+
+func (s *stubChaptersService) GetDetailForLibrary(
+	_ context.Context, opts chapters.GetForLibraryOpts,
+) (*chapters.ChapterDetail, error) {
+	s.lastGetDetailForLibraryOpts = opts
+
+	return s.getDetailForLibraryResult, s.getDetailForLibraryErr
+}
+
+func (s *stubChaptersService) ServePage(_ context.Context, opts chapters.ServePageOpts) (string, string, error) {
+	s.lastServePageOpts = opts
+
+	return s.servePagePath, s.servePageType, s.servePageErr
 }
 
 type stubSessionService struct {
@@ -320,6 +343,7 @@ func TestRetryDownloadInternalError(t *testing.T) {
 	}
 }
 
+//nolint:govet // JSON test DTO; field order matches the API payload, not alignment
 type postListHTTPChapter struct {
 	PublishedAt      time.Time  `json:"publishedAt"`
 	EarlyAccessUntil *time.Time `json:"earlyAccessUntil"`
@@ -327,13 +351,16 @@ type postListHTTPChapter struct {
 		UpdatedAt time.Time `json:"updatedAt"`
 		Page      int       `json:"page"`
 	} `json:"progress"`
-	SourceChapterSlug string    `json:"sourceChapterSlug"`
-	Title             string    `json:"title"`
-	Number            float64   `json:"number"`
-	PagesNb           int       `json:"pagesNb"`
-	Download          int       `json:"download"`
-	ID                uuid.UUID `json:"id"`
-	ComicID           uuid.UUID `json:"comicId"`
+	NextChapterID     *uuid.UUID `json:"nextChapterId"`
+	PreviousChapterID *uuid.UUID `json:"previousChapterId"`
+	PageURLs          []string   `json:"pageUrls"`
+	SourceChapterSlug string     `json:"sourceChapterSlug"`
+	Title             string     `json:"title"`
+	Number            float64    `json:"number"`
+	PagesNb           int        `json:"pagesNb"`
+	Download          int        `json:"download"`
+	ID                uuid.UUID  `json:"id"`
+	ComicID           uuid.UUID  `json:"comicId"`
 }
 
 func TestPostListRequiresAuthentication(t *testing.T) {
@@ -765,7 +792,7 @@ func TestGetByIDNotFound(t *testing.T) {
 
 	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
 	r := newChaptersTestRouter(t, &stubChaptersService{
-		getForLibraryErr: domain.ErrNotFound,
+		getDetailForLibraryErr: domain.ErrNotFound,
 	}, chaptersAuthenticatorFor(t, user))
 
 	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+uuid.New().String(), nil)
@@ -783,7 +810,7 @@ func TestGetByIDForbidden(t *testing.T) {
 
 	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
 	r := newChaptersTestRouter(t, &stubChaptersService{
-		getForLibraryErr: domain.ErrForbidden,
+		getDetailForLibraryErr: domain.ErrForbidden,
 	}, chaptersAuthenticatorFor(t, user))
 
 	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+uuid.New().String(), nil)
@@ -805,14 +832,16 @@ func TestGetByIDReturnsChapterWithProgress(t *testing.T) {
 	publishedAt := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
 	updatedAt := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
 	svc := &stubChaptersService{
-		getForLibraryResult: &chapters.Chapter{
-			PublishedAt: publishedAt,
-			Title:       "Chapter 1",
-			Number:      1,
-			PagesNb:     20,
-			Download:    40,
-			ID:          chapterID,
-			ComicID:     comicID,
+		getDetailForLibraryResult: &chapters.ChapterDetail{
+			Chapter: chapters.Chapter{
+				PublishedAt: publishedAt,
+				Title:       "Chapter 1",
+				Number:      1,
+				PagesNb:     20,
+				Download:    40,
+				ID:          chapterID,
+				ComicID:     comicID,
+			},
 		},
 	}
 	progress := &stubProgress{
@@ -831,8 +860,8 @@ func TestGetByIDReturnsChapterWithProgress(t *testing.T) {
 		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
-	if svc.lastGetForLibraryOpts.UserID != user.ID || svc.lastGetForLibraryOpts.ChapterID != chapterID {
-		t.Errorf("GetForLibrary opts = %+v", svc.lastGetForLibraryOpts)
+	if svc.lastGetDetailForLibraryOpts.UserID != user.ID || svc.lastGetDetailForLibraryOpts.ChapterID != chapterID {
+		t.Errorf("GetDetailForLibrary opts = %+v", svc.lastGetDetailForLibraryOpts)
 	}
 
 	var got postListHTTPChapter
@@ -846,6 +875,151 @@ func TestGetByIDReturnsChapterWithProgress(t *testing.T) {
 
 	if got.Progress == nil || got.Progress.Page != 4 || !got.Progress.UpdatedAt.Equal(updatedAt) {
 		t.Errorf("progress = %+v", got.Progress)
+	}
+
+	if got.PageURLs == nil || len(got.PageURLs) != 0 {
+		t.Errorf("pageUrls = %#v, want empty slice", got.PageURLs)
+	}
+
+	if got.NextChapterID != nil || got.PreviousChapterID != nil {
+		t.Errorf("neighbors = next %#v prev %#v, want omitted", got.NextChapterID, got.PreviousChapterID)
+	}
+}
+
+func TestGetByIDPageURLsAndNeighbors(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	chapterID := uuid.New()
+	prevID := uuid.New()
+	nextID := uuid.New()
+	svc := &stubChaptersService{
+		getDetailForLibraryResult: &chapters.ChapterDetail{
+			Chapter: chapters.Chapter{
+				ID:       chapterID,
+				ComicID:  uuid.New(),
+				Number:   2,
+				PagesNb:  2,
+				Download: 100,
+			},
+			PreviousID: &prevID,
+			NextID:     &nextID,
+		},
+	}
+	r := newChaptersTestRouter(t, svc, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+chapterID.String(), nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	var got postListHTTPChapter
+	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	want0 := "/api/chapters/" + chapterID.String() + "/pages/1"
+	want1 := "/api/chapters/" + chapterID.String() + "/pages/2"
+	if len(got.PageURLs) != 2 || got.PageURLs[0] != want0 || got.PageURLs[1] != want1 {
+		t.Errorf("pageUrls = %#v", got.PageURLs)
+	}
+
+	if got.PreviousChapterID == nil || *got.PreviousChapterID != prevID {
+		t.Errorf("previousChapterId = %v, want %s", got.PreviousChapterID, prevID)
+	}
+
+	if got.NextChapterID == nil || *got.NextChapterID != nextID {
+		t.Errorf("nextChapterId = %v, want %s", got.NextChapterID, nextID)
+	}
+}
+
+func TestServePageOK(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	chapterID := uuid.New()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "001.webp")
+	if err := os.WriteFile(path, []byte("page-bytes"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		servePagePath: path,
+		servePageType: "image/webp",
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+chapterID.String()+"/pages/1", nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	if rec.Header().Get("Content-Type") != "image/webp" {
+		t.Errorf("Content-Type = %q", rec.Header().Get("Content-Type"))
+	}
+
+	if rec.Body.String() != "page-bytes" {
+		t.Errorf("body = %q", rec.Body.String())
+	}
+}
+
+func TestServePageUnauthorized(t *testing.T) {
+	t.Parallel()
+
+	r := newChaptersTestRouter(t, &stubChaptersService{}, chaptersAuthenticatorFor(t, &users.User{
+		ID: uuid.New(), Name: chaptersUsername,
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+uuid.New().String()+"/pages/1", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestServePageNotFoundWhenIncomplete(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		servePageErr: domain.ErrNotFound,
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+uuid.New().String()+"/pages/1", nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestServePageForbidden(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: chaptersUsername}
+	r := newChaptersTestRouter(t, &stubChaptersService{
+		servePageErr: domain.ErrForbidden,
+	}, chaptersAuthenticatorFor(t, user))
+
+	req := httptest.NewRequest(http.MethodGet, chaptersEndpoint+"/"+uuid.New().String()+"/pages/1", nil)
+	req.AddCookie(&http.Cookie{Name: chaptersCookie, Value: chaptersToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 }
 

@@ -3,7 +3,13 @@
 package download
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 )
 
 func TestProgressPercent(t *testing.T) {
@@ -41,5 +47,43 @@ func TestParsePageIndex(t *testing.T) {
 
 	if _, ok := parsePageIndex("bad-name.webp"); ok {
 		t.Fatal("parsePageIndex accepted invalid file name")
+	}
+}
+
+func TestDiskPagesOpenPage(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	comicID := uuid.New()
+	pageDir := chapterDir(dir, comicID, 1.5)
+	if err := os.MkdirAll(pageDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	path := filepath.Join(pageDir, "002.png")
+	if err := os.WriteFile(path, []byte("img"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	gotPath, contentType, err := DiskPages{Dir: dir}.OpenPage(comicID, 1.5, 2)
+	if err != nil {
+		t.Fatalf("OpenPage: %v", err)
+	}
+
+	if gotPath != path {
+		t.Errorf("path = %q, want %q", gotPath, path)
+	}
+
+	if contentType != "image/png" {
+		t.Errorf("contentType = %q", contentType)
+	}
+}
+
+func TestDiskPagesOpenPageMissing(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := DiskPages{Dir: t.TempDir()}.OpenPage(uuid.New(), 1, 1)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("OpenPage = %v, want ErrNotFound", err)
 	}
 }

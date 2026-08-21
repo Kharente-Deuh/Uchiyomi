@@ -41,6 +41,22 @@ type ChapterDownloader interface {
 	Resume(context.Context, uuid.UUID) error
 }
 
+type ChapterDetail struct {
+	PreviousID *uuid.UUID
+	NextID     *uuid.UUID
+	Chapter    Chapter
+}
+
+type PageStore interface {
+	OpenPage(comicID uuid.UUID, chapterNumber float64, index int) (diskPath, contentType string, err error)
+}
+
+type ServePageOpts struct {
+	UserID    uuid.UUID
+	ChapterID uuid.UUID
+	Index     int
+}
+
 type ChaptersService interface {
 	CreateAll(context.Context, uuid.UUID, []sources.SourceChapter) ([]Chapter, error)
 	ListByComicID(context.Context, uuid.UUID) ([]Chapter, error)
@@ -52,6 +68,8 @@ type ChaptersService interface {
 	GetByIds(context.Context, GetByIdsOpts) ([]Chapter, error)
 	ListForLibrary(context.Context, ListForLibraryOpts) ([]Chapter, error)
 	GetForLibrary(context.Context, GetForLibraryOpts) (*Chapter, error)
+	GetDetailForLibrary(context.Context, GetForLibraryOpts) (*ChapterDetail, error)
+	ServePage(context.Context, ServePageOpts) (diskPath, contentType string, err error)
 }
 
 type ComicLookup interface {

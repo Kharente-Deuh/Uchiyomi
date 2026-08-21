@@ -177,6 +177,16 @@ func (s libraryChaptersService) GetForLibrary(context.Context, chapters.GetForLi
 	return nil, nil
 }
 
+func (s libraryChaptersService) GetDetailForLibrary(
+	context.Context, chapters.GetForLibraryOpts,
+) (*chapters.ChapterDetail, error) {
+	return nil, nil
+}
+
+func (s libraryChaptersService) ServePage(context.Context, chapters.ServePageOpts) (string, string, error) {
+	return "", "", nil
+}
+
 func newTestAsuraApp(t *testing.T) *asura.App {
 	t.Helper()
 

@@ -408,6 +408,16 @@ func (fakeChaptersService) GetForLibrary(context.Context, chapters.GetForLibrary
 	return nil, errors.New(notImplemented)
 }
 
+func (fakeChaptersService) GetDetailForLibrary(
+	context.Context, chapters.GetForLibraryOpts,
+) (*chapters.ChapterDetail, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeChaptersService) ServePage(context.Context, chapters.ServePageOpts) (string, string, error) {
+	return "", "", errors.New(notImplemented)
+}
+
 type fakeFeedService struct{}
 
 func (fakeFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {

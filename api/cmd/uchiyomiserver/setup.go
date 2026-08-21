@@ -1029,6 +1029,7 @@ func setupChapters(deps chaptersDeps) (*chapters.Service, *download.App, error) 
 		ChapterDownloader: worker,
 		LibraryRepository: deps.LibraryRepository,
 		ComicLookup:       comicsExistsLookup{repo: deps.ComicsRepository},
+		PageStore:         download.DiskPages{Dir: deps.DownloadsDir},
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("chapters.NewService: %w", err)

@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -95,6 +98,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 		r.Use(c.cfg.Middlewares...)
 
 		r.Get("/", c.listForLibrary)
+		r.Get("/{id}/pages/{index}", c.servePage)
 		r.Get("/{id}", c.getByID)
 		r.Post("/{id}/retry", c.retryDownload)
 		r.Post("/list", c.postList)
@@ -247,7 +251,7 @@ func (c *Controller) getByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chapter, err := c.deps.ChaptersService.GetForLibrary(ctx, chapters.GetForLibraryOpts{
+	chapter, err := c.deps.ChaptersService.GetDetailForLibrary(ctx, chapters.GetForLibraryOpts{
 		UserID:    user.ID,
 		ChapterID: chapterID,
 	})
@@ -270,7 +274,7 @@ func (c *Controller) getByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := c.chapterItem(r.Context(), user.ID, *chapter)
+	item, err := c.chapterDetailItem(r.Context(), user.ID, *chapter)
 	if err != nil {
 		c.deps.Logger.Error("failed to map reading progress", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -279,6 +283,68 @@ func (c *Controller) getByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, item)
+}
+
+func (c *Controller) servePage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.Error("user not found in context")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "id must be a valid UUID")
+
+		return
+	}
+
+	index, err := strconv.Atoi(chi.URLParam(r, "index"))
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "page not found")
+
+		return
+	}
+
+	diskPath, contentType, err := c.deps.ChaptersService.ServePage(ctx, chapters.ServePageOpts{
+		UserID:    user.ID,
+		ChapterID: id,
+		Index:     index,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "page not found")
+
+			return
+		}
+
+		if errors.Is(err, domain.ErrForbidden) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusForbidden, "comic not in library")
+
+			return
+		}
+
+		c.deps.Logger.Error("failed to serve chapter page", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+
+		return
+	}
+
+	f, err := os.Open(diskPath)
+	if err != nil {
+		c.deps.Logger.Error("failed to open chapter page", "path", diskPath, "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+
+		return
+	}
+
+	defer f.Close()
+
+	w.Header().Set("Content-Type", contentType)
+	http.ServeContent(w, r, diskPath, time.Time{}, f)
 }
 
 func (c *Controller) writeChapterList(
@@ -293,6 +359,22 @@ func (c *Controller) writeChapterList(
 	}
 
 	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, chapterHTTPList(res, byID))
+}
+
+func (c *Controller) chapterDetailItem(
+	ctx context.Context, userID uuid.UUID, detail chapters.ChapterDetail,
+) (chapterDetailResponse, error) {
+	item, err := c.chapterItem(ctx, userID, detail.Chapter)
+	if err != nil {
+		return chapterDetailResponse{}, fmt.Errorf("c.chapterItem: %w", err)
+	}
+
+	return chapterDetailResponse{
+		postListResponseChapter: item,
+		PageURLs:                pageURLs(detail.Chapter.ID, detail.Chapter.Download, detail.Chapter.PagesNb),
+		NextChapterID:           detail.NextID,
+		PreviousChapterID:       detail.PreviousID,
+	}, nil
 }
 
 func (c *Controller) chapterItem(
