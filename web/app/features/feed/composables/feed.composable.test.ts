@@ -49,6 +49,7 @@ function item(overrides: Partial<FeedItem> = {}): FeedItem {
     source: 'asurascans',
     status: 'ongoing',
     type: 'manhwa',
+    hasProgress: true,
     latestChapters: [{
       id: 'ch-1',
       number: 1,
