@@ -39,6 +39,7 @@ watch(() => props.item.cover, () => {
           <FeedComicCardChapter
             v-for="(chapter, index) in item.latestChapters"
             :key="index"
+            :comic-id="item.id"
             :chapter
           />
         </div>

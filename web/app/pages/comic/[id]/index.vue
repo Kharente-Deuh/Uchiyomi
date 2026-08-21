@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import type { RouteRecordName } from 'vue-router'
 import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
-import type { Comic } from '~/features/comics/types'
+import type { Comic, ComicProgressContinue } from '~/features/comics/types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
@@ -22,17 +22,23 @@ const api = createComicsApi()
 
 const isLoading = ref(true)
 const comic = ref<Comic>()
+const continueProgress = ref<ComicProgressContinue>()
 const coverSrc = ref<string>()
 
 const from = computed(() => route.query.from as string)
 
-onMounted(() => {
-  fetchComic()
+onMounted(async () => {
+  isLoading.value = true
+
+  await Promise.all([
+    fetchComic(),
+    fetchProgress(),
+  ])
+
+  isLoading.value = false
 })
 
 async function fetchComic(): Promise<void> {
-  isLoading.value = true
-
   const res = await api.getById(route.params.id)
   if (!res.success) {
     console.error('api.getById', res.error)
@@ -51,8 +57,18 @@ async function fetchComic(): Promise<void> {
 
   comic.value = res.data
   coverSrc.value = res.data.cover
+}
 
-  isLoading.value = false
+async function fetchProgress(): Promise<void> {
+  const res = await api.getProgress(route.params.id)
+  if (!res.success) {
+    console.error('api.getProgress', res.error)
+    toast.error(t('error.unknown'))
+
+    return
+  }
+
+  continueProgress.value = res.data.continue
 }
 
 function onDelete(): void {
@@ -205,7 +221,7 @@ const showDeleteModal = ref(false)
           :comic
         />
         <ComicsGeneralInfos :comic />
-        <ComicsChapters :id="route.params.id" />
+        <ComicsChapters :id="route.params.id" :continue="continueProgress" />
       </div>
     </div>
   </OrganismPageLayout>

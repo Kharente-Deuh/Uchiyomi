@@ -211,7 +211,9 @@
     "sort": {
       "latest": "Latest",
       "oldest": "Oldest"
-    }
+    },
+    "start": "Start",
+    "continue": "Continue"
   },
   "role": {
     "admin": "Admin",
@@ -274,6 +276,9 @@
             }
           }
         }
+      },
+      "chapter": {
+        "notFound": "Chapter not found"
       }
     },
     "add": {
@@ -309,6 +314,15 @@
     "fields": {
       "author": "Author",
       "artist": "Artist"
+    },
+    "chapter": {
+      "previous": "Previous",
+      "next": "Next",
+      "exitToComic": "Exit to comic",
+      "download": {
+        "error": "Chapter download error",
+        "retry": "Retry"
+      }
     }
   },
   "library": {

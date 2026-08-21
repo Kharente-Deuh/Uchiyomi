@@ -48,3 +48,12 @@ export interface Comic {
   altTitles: string[]
   chapterCount: number
 }
+
+export interface ComicProgress {
+  continue?: ComicProgressContinue
+}
+
+export interface ComicProgressContinue {
+  chapterId: string
+  page: number
+}
