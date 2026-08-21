@@ -38,6 +38,7 @@ async function fetchChapter(): Promise<void> {
   }
 
   chapter.value = res.data
+  syncPolling()
 }
 
 async function fetchReaderSettings(): Promise<ReaderSettings[]> {
@@ -107,6 +108,31 @@ watch(() => route.params.chapterId, async (): Promise<void> => {
 
   isLoading.value = false
 })
+
+const isInFlight = ref(false)
+const { pause, resume } = useIntervalFn(async () => {
+  if (isInFlight.value || isLoading.value) {
+    return
+  }
+
+  isInFlight.value = true
+  await fetchChapter()
+  isInFlight.value = false
+}, 2000, { immediate: false })
+
+function syncPolling(): void {
+  if (!chapter.value) {
+    pause()
+
+    return
+  }
+
+  if (chapter.value.download >= 0 && chapter.value.download < 100) {
+    resume()
+  } else {
+    pause()
+  }
+}
 </script>
 
 <template>
@@ -144,50 +170,43 @@ watch(() => route.params.chapterId, async (): Promise<void> => {
         />
       </template>
 
-      <div class="d-flex align-center flex-wrap ga-4">
-        <AtomLink v-if="chapter.previousChapterId" :to="{ name: 'comic-id-chapterId', params: { id: route.params.id, chapterId: chapter.previousChapterId } }">
+      <div
+        class="d-flex align-center ga-4 px-4"
+        :class="{
+          'justify-space-between': smAndDown,
+          'w-100': smAndDown,
+        }"
+      >
+        <AtomLink :to="chapter.previousChapterId ? `comic/${route.params.id}/${chapter.previousChapterId}` : undefined">
           <VBtn
-            v-if="chapter.previousChapterId"
-            color="primary"
-            :class="{
-              'w-100': !chapter.previousChapterId,
-              'w-auto': chapter.previousChapterId,
-              'px-3': smAndDown,
-            }"
-            :prepend-icon="smAndDown ? undefined : 'fa6-solid:angle-left'"
-            :text="smAndDown ? undefined : $t('comic.chapter.previous')"
-            :icon="smAndDown ? 'fa6-solid:angle-left' : undefined"
-            class="border-thin-primary"
+            :color="chapter.previousChapterId ? 'primary' : undefined"
+            :variant="chapter.previousChapterId ? 'tonal' : 'text'"
+            :disabled="!chapter.previousChapterId"
+            prepend-icon="fa6-solid:angle-left"
+            :text="$t('comic.chapter.previous')"
+            :class="{ 'border-thin-primary': chapter.previousChapterId }"
           />
         </AtomLink>
 
-        <AtomLink v-if="chapter.nextChapterId" :to="{ name: 'comic-id-chapterId', params: { id: route.params.id, chapterId: chapter.nextChapterId } }">
+        <AtomLink :to="`comic/${route.params.id}`">
           <VBtn
-            v-if="chapter.nextChapterId"
-            color="primary"
-            :icon="smAndDown ? 'fa6-solid:angle-right' : undefined"
-            :text="smAndDown ? undefined : $t('comic.chapter.next')"
-            :append-icon="smAndDown ? undefined : 'fa6-solid:angle-right'"
-            :class="{
-              'w-100': !chapter.nextChapterId,
-              'w-auto': chapter.nextChapterId,
-              'px-3': smAndDown,
-            }"
-            class="border-thin-primary"
+            :text="$t('comic.chapter.exitToComic')"
+            color="secondary"
+            variant="flat"
+          />
+        </AtomLink>
+
+        <AtomLink :to="chapter.nextChapterId ? `comic/${route.params.id}/${chapter.nextChapterId}` : undefined">
+          <VBtn
+            :color="chapter.nextChapterId ? 'primary' : undefined"
+            :disabled="!chapter.nextChapterId"
+            :variant="chapter.nextChapterId ? 'tonal' : 'text'"
+            append-icon="fa6-solid:angle-right"
+            :text="$t('comic.chapter.next')"
+            :class="{ 'border-thin-primary': chapter.nextChapterId }"
           />
         </AtomLink>
       </div>
-      <AtomLink :to="{ name: 'comic-id', params: { id: route.params.id } }">
-        <VBtn
-          class="border-thin-secondary"
-          :class="{
-            'w-100': smAndDown,
-            'w-fit-content': !smAndDown,
-          }"
-          :text="$t('comic.chapter.exitToComic')"
-          color="secondary"
-        />
-      </AtomLink>
     </div>
   </template>
 </template>

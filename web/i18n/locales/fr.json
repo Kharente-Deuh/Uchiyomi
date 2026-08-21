@@ -350,7 +350,7 @@
   },
   "comic": {
     "chapter": {
-      "previous": "Précédent",
+      "previous": "Préc",
       "next": "Suivant",
       "exitToComic": "Retourner a la BD",
       "download": {
