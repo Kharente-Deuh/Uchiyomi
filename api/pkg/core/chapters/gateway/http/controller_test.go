@@ -351,16 +351,24 @@ type postListHTTPChapter struct {
 		UpdatedAt time.Time `json:"updatedAt"`
 		Page      int       `json:"page"`
 	} `json:"progress"`
-	NextChapterID     *uuid.UUID `json:"nextChapterId"`
-	PreviousChapterID *uuid.UUID `json:"previousChapterId"`
-	PageURLs          []string   `json:"pageUrls"`
-	SourceChapterSlug string     `json:"sourceChapterSlug"`
-	Title             string     `json:"title"`
-	Number            float64    `json:"number"`
-	PagesNb           int        `json:"pagesNb"`
-	Download          int        `json:"download"`
-	ID                uuid.UUID  `json:"id"`
-	ComicID           uuid.UUID  `json:"comicId"`
+	Next *struct {
+		Title  string    `json:"title"`
+		Number float64   `json:"number"`
+		ID     uuid.UUID `json:"id"`
+	} `json:"next"`
+	Previous *struct {
+		Title  string    `json:"title"`
+		Number float64   `json:"number"`
+		ID     uuid.UUID `json:"id"`
+	} `json:"previous"`
+	PageURLs          []string  `json:"pageUrls"`
+	SourceChapterSlug string    `json:"sourceChapterSlug"`
+	Title             string    `json:"title"`
+	Number            float64   `json:"number"`
+	PagesNb           int       `json:"pagesNb"`
+	Download          int       `json:"download"`
+	ID                uuid.UUID `json:"id"`
+	ComicID           uuid.UUID `json:"comicId"`
 }
 
 func TestPostListRequiresAuthentication(t *testing.T) {
@@ -881,8 +889,8 @@ func TestGetByIDReturnsChapterWithProgress(t *testing.T) {
 		t.Errorf("pageUrls = %#v, want empty slice", got.PageURLs)
 	}
 
-	if got.NextChapterID != nil || got.PreviousChapterID != nil {
-		t.Errorf("neighbors = next %#v prev %#v, want omitted", got.NextChapterID, got.PreviousChapterID)
+	if got.Next != nil || got.Previous != nil {
+		t.Errorf("neighbors = next %#v prev %#v, want omitted", got.Next, got.Previous)
 	}
 }
 
@@ -902,8 +910,8 @@ func TestGetByIDPageURLsAndNeighbors(t *testing.T) {
 				PagesNb:  2,
 				Download: 100,
 			},
-			PreviousID: &prevID,
-			NextID:     &nextID,
+			Previous: &chapters.ChapterNeighbor{ID: prevID, Title: "One", Number: 1},
+			Next:     &chapters.ChapterNeighbor{ID: nextID, Title: "Three", Number: 3},
 		},
 	}
 	r := newChaptersTestRouter(t, svc, chaptersAuthenticatorFor(t, user))
@@ -928,12 +936,12 @@ func TestGetByIDPageURLsAndNeighbors(t *testing.T) {
 		t.Errorf("pageUrls = %#v", got.PageURLs)
 	}
 
-	if got.PreviousChapterID == nil || *got.PreviousChapterID != prevID {
-		t.Errorf("previousChapterId = %v, want %s", got.PreviousChapterID, prevID)
+	if got.Previous == nil || got.Previous.ID != prevID || got.Previous.Title != "One" || got.Previous.Number != 1 {
+		t.Errorf("previous = %+v, want id=%s title=One number=1", got.Previous, prevID)
 	}
 
-	if got.NextChapterID == nil || *got.NextChapterID != nextID {
-		t.Errorf("nextChapterId = %v, want %s", got.NextChapterID, nextID)
+	if got.Next == nil || got.Next.ID != nextID || got.Next.Title != "Three" || got.Next.Number != 3 {
+		t.Errorf("next = %+v, want id=%s title=Three number=3", got.Next, nextID)
 	}
 }
 

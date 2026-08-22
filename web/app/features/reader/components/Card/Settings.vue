@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { PageScale, ReaderSettings } from '../types'
-import type { PageMode } from './Input/PageMode.vue'
+import type { PageScale, ReaderSettings } from '../../types.ts'
+import type { PageMode } from '../Input/PageMode.vue'
 import type { ComicType } from '~/features/comics/types'
 
 const settings = defineModel<ReaderSettings>({ required: true })

@@ -1,12 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { Chapter, ChapterProgress } from '~/features/chapters/types'
+import type { Chapter } from '~/features/chapters/types'
 import { formatRelativeTime } from '~/utils/date.utils'
 
 const props = defineProps<{
   chapter: Chapter
   retryLoading: boolean
-  progress?: ChapterProgress
 }>()
 
 defineEmits<{ retry: [] }>()
@@ -71,11 +70,12 @@ const to = computed(() => {
           }"
         >
           <span
-            class="text-body-large"
+            class="text-body-large readable-chapter-title transition-smooth"
             :class="{
+              'opacity-50': chapter.progress,
               'font-weight-bold': chapter.download === 100,
-              'text-medium-emphasis': chapter.download !== 100 || progress,
-              'text-primary': chapter.download === 100 && progress,
+              'text-medium-emphasis': chapter.download !== 100,
+              'text-primary': chapter.download === 100 && chapter.progress,
             }"
           >{{ $t('sources.asurascans.comic.chapter', { number: chapter.number }) }}</span>
           <span v-if="chapter.title && !isEarlyAccess" class="text-body-medium text-medium-emphasis text-truncate">{{ chapter.title }}</span>
@@ -130,6 +130,10 @@ const to = computed(() => {
   &:hover {
     color: rgb(var(--v-theme-primary));
     background-color: rgba(var(--v-theme-surface-variant));
+
+    .readable-chapter-title {
+      opacity: 1;
+    }
   }
 }
 

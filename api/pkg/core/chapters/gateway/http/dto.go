@@ -32,10 +32,16 @@ type postListResponseChapter struct {
 	ComicID           uuid.UUID                `json:"comicId"`
 }
 
+type chapterNeighborResponse struct {
+	Title  string    `json:"title"`
+	ID     uuid.UUID `json:"id"`
+	Number float64   `json:"number"`
+}
+
 type chapterDetailResponse struct {
-	NextChapterID     *uuid.UUID `json:"nextChapterId,omitempty"`
-	PreviousChapterID *uuid.UUID `json:"previousChapterId,omitempty"`
-	PageURLs          []string   `json:"pageUrls"`
+	PageURLs []string                 `json:"pageUrls"`
+	Next     *chapterNeighborResponse `json:"next,omitempty"`
+	Previous *chapterNeighborResponse `json:"previous,omitempty"`
 	postListResponseChapter
 }
 

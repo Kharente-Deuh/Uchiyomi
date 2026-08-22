@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import type { ComicSource } from '~/features/comics/types'
-import asuraImg from '~/assets/images/sources/asurascans.webp'
 import { ASURA_SOURCE_NAME } from '~/constants'
 
 defineProps<{ disabled?: boolean }>()
 const source = defineModel<ComicSource | undefined>({ required: true })
-const { t } = useI18n()
+const { getSourceDetails } = useSources()
+const asuraDetails = getSourceDetails('asurascans')
 
-const items: { value: ComicSource, title: string, img: string }[] = [
+const items = computed((): { value: ComicSource, title: string, img: string }[] => [
   {
     value: ASURA_SOURCE_NAME,
-    title: t('sources.asurascans.title'),
-    img: asuraImg,
+    title: asuraDetails.name,
+    img: asuraDetails.image,
   },
-]
+])
 </script>
 
 <template>

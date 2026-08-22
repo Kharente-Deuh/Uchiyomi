@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { h, ref } from 'vue'
 import { VApp } from 'vuetify/components'
 import { useToast } from '~/composables/toast.composable'
-import Card from './Card.vue'
+import Card from './Settings.vue'
 
 const { updateReaderSettings } = await vi.hoisted(async () => ({
   updateReaderSettings: vi.fn(),

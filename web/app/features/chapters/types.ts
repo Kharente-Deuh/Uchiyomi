@@ -23,6 +23,12 @@ export interface SaveChapterProgressRequest {
 
 export type DetailedChapter = Chapter & {
   pageUrls: string[]
-  nextChapterId?: string
-  previousChapterId?: string
+  next?: AdjacentChapter
+  previous?: AdjacentChapter
+}
+
+export interface AdjacentChapter {
+  id: string
+  title: string
+  number: number
 }

@@ -321,8 +321,16 @@
       "exitToComic": "Exit to comic",
       "download": {
         "error": "Chapter download error",
-        "retry": "Retry"
+        "retry": "Retry",
+        "loading": "Chapter downloading..."
       }
+    },
+    "betweenChapters": {
+      "current": "Current chapter",
+      "next": "Next chapter",
+      "previous": "Previous chapter",
+      "endOfComic": "There is no next chapter",
+      "startOfComic": "There is no previous chapter"
     }
   },
   "library": {

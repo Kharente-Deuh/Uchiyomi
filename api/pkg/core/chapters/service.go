@@ -310,13 +310,11 @@ func (s *Service) GetDetailForLibrary(ctx context.Context, opts GetForLibraryOpt
 		}
 
 		if i > 0 {
-			id := siblings[i-1].ID
-			detail.PreviousID = &id
+			detail.Previous = neighborFrom(siblings[i-1])
 		}
 
 		if i < len(siblings)-1 {
-			id := siblings[i+1].ID
-			detail.NextID = &id
+			detail.Next = neighborFrom(siblings[i+1])
 		}
 
 		break
@@ -344,4 +342,12 @@ func (s *Service) ServePage(ctx context.Context, opts ServePageOpts) (string, st
 	}
 
 	return path, contentType, nil
+}
+
+func neighborFrom(chapter Chapter) *ChapterNeighbor {
+	return &ChapterNeighbor{
+		Title:  chapter.Title,
+		ID:     chapter.ID,
+		Number: chapter.Number,
+	}
 }

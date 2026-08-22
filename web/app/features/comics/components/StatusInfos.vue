@@ -13,6 +13,7 @@ defineProps<{ comic: Comic }>()
     <div class="d-flex flex-wrap ga-4">
       <ComicsChipStatus :status="comic.status" />
       <ComicsChipType :type="comic.type" />
+      <ComicsChipSource :source="comic.source" />
     </div>
 
     <div v-if="comic.author" class="d-flex ga-2 justify-space-between">

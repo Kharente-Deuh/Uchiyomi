@@ -54,6 +54,66 @@ describe('createChaptersApi().getByIds', () => {
   })
 })
 
+describe('createChaptersApi().getById', () => {
+  it('returns the chapter with next and previous neighbors', async () => {
+    const next = { id: 'ch-3', title: 'Three', number: 3 }
+    const previous = { id: 'ch-1', title: 'One', number: 1 }
+    call.mockResolvedValue({
+      id: 'ch-2',
+      comicId: 'c1',
+      number: 2,
+      title: 'Two',
+      pageUrls: ['/api/chapters/ch-2/pages/1'],
+      next,
+      previous,
+    })
+
+    const res = await createChaptersApi().getById('ch-2')
+
+    expect(call).toHaveBeenCalledWith('/ch-2')
+    expect(res).toEqual({
+      success: true,
+      data: {
+        id: 'ch-2',
+        comicId: 'c1',
+        number: 2,
+        title: 'Two',
+        pageUrls: ['/api/chapters/ch-2/pages/1'],
+        next,
+        previous,
+      },
+    })
+  })
+
+  it('surfaces a 404 with its status', async () => {
+    call.mockRejectedValue({ statusCode: 404, data: {} })
+
+    const res = await createChaptersApi().getById('missing')
+
+    expect(res.success === false && res.error.status).toBe(404)
+  })
+})
+
+describe('createChaptersApi().saveProgress', () => {
+  it('puts the page on the chapter progress route', async () => {
+    const progress = { page: 4, updatedAt: '2026-08-22T00:00:00.000Z' }
+    call.mockResolvedValue(progress)
+
+    const res = await createChaptersApi().saveProgress({ id: 'ch-2', page: 4 })
+
+    expect(call).toHaveBeenCalledWith('/ch-2/progress', { method: 'PUT', body: { page: 4 } })
+    expect(res).toEqual({ success: true, data: progress })
+  })
+
+  it('surfaces a failure with its status', async () => {
+    call.mockRejectedValue({ statusCode: 500, data: {} })
+
+    const res = await createChaptersApi().saveProgress({ id: 'ch-2', page: 4 })
+
+    expect(res.success === false && res.error.status).toBe(500)
+  })
+})
+
 describe('createChaptersApi().retryDownload', () => {
   it('posts retry for the chapter id', async () => {
     call.mockResolvedValue(undefined)

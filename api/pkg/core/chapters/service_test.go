@@ -995,15 +995,15 @@ func TestServiceGetDetailForLibraryNeighbors(t *testing.T) {
 	currentID := uuid.New()
 	nextID := uuid.New()
 	current := &chapters.Chapter{
-		ID: currentID, ComicID: comicID, Number: 2, Download: 100, PagesNb: 3,
+		ID: currentID, ComicID: comicID, Number: 2, Title: "Two", Download: 100, PagesNb: 3,
 	}
 	svc := newTestService(
 		&fakeChaptersRepository{
 			getByIDResult: current,
 			listByComicIDResult: []chapters.Chapter{
-				{ID: prevID, ComicID: comicID, Number: 1, Download: 42},
+				{ID: prevID, ComicID: comicID, Number: 1, Title: "One", Download: 42},
 				*current,
-				{ID: nextID, ComicID: comicID, Number: 3, Download: -1},
+				{ID: nextID, ComicID: comicID, Number: 3, Title: "Three", Download: -1},
 			},
 		},
 		&fakeChapterDownloader{},
@@ -1022,12 +1022,14 @@ func TestServiceGetDetailForLibraryNeighbors(t *testing.T) {
 		t.Errorf("chapter id = %s, want %s", got.Chapter.ID, currentID)
 	}
 
-	if got.PreviousID == nil || *got.PreviousID != prevID {
-		t.Errorf("previous = %v, want %s", got.PreviousID, prevID)
+	wantPrev := chapters.ChapterNeighbor{ID: prevID, Title: "One", Number: 1}
+	if got.Previous == nil || *got.Previous != wantPrev {
+		t.Errorf("previous = %+v, want %+v", got.Previous, wantPrev)
 	}
 
-	if got.NextID == nil || *got.NextID != nextID {
-		t.Errorf("next = %v, want %s", got.NextID, nextID)
+	wantNext := chapters.ChapterNeighbor{ID: nextID, Title: "Three", Number: 3}
+	if got.Next == nil || *got.Next != wantNext {
+		t.Errorf("next = %+v, want %+v", got.Next, wantNext)
 	}
 }
 
@@ -1054,8 +1056,8 @@ func TestServiceGetDetailForLibraryOmitsMissingNeighbors(t *testing.T) {
 		t.Fatalf("GetDetailForLibrary: %v", err)
 	}
 
-	if got.PreviousID != nil || got.NextID != nil {
-		t.Errorf("neighbors previous=%v next=%v, want both nil", got.PreviousID, got.NextID)
+	if got.Previous != nil || got.Next != nil {
+		t.Errorf("neighbors previous=%+v next=%+v, want both nil", got.Previous, got.Next)
 	}
 }
 

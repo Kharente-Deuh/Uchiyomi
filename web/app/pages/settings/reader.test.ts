@@ -21,7 +21,7 @@ function readerSettingsApiStub(): { getReaderSettings: typeof getReaderSettings 
 mockNuxtImport('createReaderSettingsApi', () => readerSettingsApiStub)
 
 const CardStub = defineComponent({
-  name: 'ReaderCard',
+  name: 'ReaderCardSettings',
   props: {
     modelValue: { type: Object, required: true },
     type: { type: String, required: true },
@@ -46,7 +46,7 @@ const manga: ReaderSettings = {
 async function mount(): Promise<VueWrapper> {
   return mountSuspended(
     { render: () => h(VApp, () => [h(ReaderPage)]) },
-    { global: { stubs: { ReaderCard: CardStub } } },
+    { global: { stubs: { ReaderCardSettings: CardStub } } },
   )
 }
 
