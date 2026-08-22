@@ -358,6 +358,13 @@
         "retry": "Réessayer",
         "loading": "Téléchargement du chapitre..."
       }
+    },
+    "betweenChapters": {
+      "current": "Chapitre actuel",
+      "next": "Chapitre suivant",
+      "previous": "Chapitre précédent",
+      "endOfComic": "Il n'y a pas de prochain chapitre",
+      "startOfComic": "Il n'y a pas de chapitre précédent"
     }
   }
 }

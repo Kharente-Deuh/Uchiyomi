@@ -19,6 +19,11 @@ watch(() => props.chapter.download, (value) => {
     showOverlay.value = true
   }
 }, { immediate: true })
+
+const page = ref(0)
+watch(() => props.chapter.id, () => {
+  page.value = 0
+})
 </script>
 
 <template>
@@ -69,6 +74,8 @@ watch(() => props.chapter.download, (value) => {
 
     <ReaderModePaged
       v-if="settings.readingMode === 'paged-rtl' || settings.readingMode === 'paged-ltr'"
+      v-model:page="page"
+      v-model:show-overlay="showOverlay"
       :comic
       :chapter
       :settings

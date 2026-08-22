@@ -11,19 +11,19 @@ const show = defineModel<boolean>({ required: true })
 </script>
 
 <template>
-  <VExpandTransition>
+  <VFadeTransition>
     <ReaderOverlayHeader
       v-show="show"
       :comic="comic"
       :chapter="chapter"
     />
-  </VExpandTransition>
+  </VFadeTransition>
 
-  <VExpandTransition>
+  <VFadeTransition>
     <ReaderOverlayFooter
       v-show="show"
       :comic="comic"
       :chapter="chapter"
     />
-  </VExpandTransition>
+  </VFadeTransition>
 </template>
