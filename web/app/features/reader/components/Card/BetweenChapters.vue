@@ -12,7 +12,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="d-flex flex-column ga-8 justify-center h-100 mx-auto" style="max-width:20rem;">
+  <div class="d-flex flex-column ga-8 justify-center h-screen mx-auto" style="max-width:20rem;">
     <div class="d-flex flex-column ga-2 text-truncate">
       <span class="text-body-medium">{{ $t('comic.betweenChapters.current') }} :</span>
       <span class="text-title-large font-weight-bold"> {{ $t('feed.chapter.number', { number: currentChapter.number }) }} </span>

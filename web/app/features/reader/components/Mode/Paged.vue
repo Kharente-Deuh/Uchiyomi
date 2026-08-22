@@ -8,7 +8,6 @@ const props = defineProps<{
   comic: Comic
   chapter: DetailedChapter
   settings: ReaderSettings
-  startPage?: number
 }>()
 
 const emits = defineEmits<{
@@ -52,7 +51,6 @@ watch(page, (value) => {
 const betweenChaptersMode = ref<BetweenChaptersMode>()
 
 watch(() => props.chapter.id, () => {
-  page.value = 0
   betweenChaptersMode.value = undefined
 })
 
@@ -116,42 +114,44 @@ function nextPage(): void {
 </script>
 
 <template>
-  <div class="h-screen w-screen overflow-auto position-relative" @click="showOverlay = !showOverlay">
-    <div
-      class="position-fixed top-0 left-0 h-screen w-33"
-      style="z-index: 1;"
-      @click.stop="clickLeft"
-    />
-
-    <div
-      class="position-fixed top-0 right-0 h-screen w-33"
-      style="z-index: 1;"
-      @click.stop="clickRight"
-    />
-
-    <ReaderCardBetweenChapters
-      v-if="betweenChaptersMode"
-      :comic-id="comic.id"
-      :current-chapter="chapter"
-      :next-chapter="betweenChaptersMode === 'next' ? chapter.next : chapter.previous"
-      :mode="betweenChaptersMode"
-    />
-
-    <div
-      v-else
-      class="d-flex justify-center align-center min-h-screen"
-      :class="{
-        'flex-row-reverse': settings.readingMode === 'paged-rtl',
-        'overflow-auto': settings.pageScale !== 'fit-screen',
-      }"
-    >
-      <VImg
-        v-for="src in images"
-        :key="src"
-        :src="src"
-        eager
-        :class="imageClass"
+  <div class="h-screen w-screen overflow-auto" @click="showOverlay = !showOverlay">
+    <div class="position-relative" style="min-height: 100%;">
+      <div
+        class="position-absolute top-0 bottom-0 left-0 w-33"
+        style="z-index: 1;"
+        @click.stop="clickLeft"
       />
+
+      <div
+        class="position-absolute top-0 bottom-0 right-0 w-33"
+        style="z-index: 1;"
+        @click.stop="clickRight"
+      />
+
+      <ReaderCardBetweenChapters
+        v-if="betweenChaptersMode"
+        :comic-id="comic.id"
+        :current-chapter="chapter"
+        :next-chapter="betweenChaptersMode === 'next' ? chapter.next : chapter.previous"
+        :mode="betweenChaptersMode"
+      />
+
+      <div
+        v-else
+        class="d-flex justify-center align-center min-h-screen"
+        :class="{
+          'flex-row-reverse': settings.readingMode === 'paged-rtl',
+          'overflow-auto': settings.pageScale !== 'fit-screen',
+        }"
+      >
+        <VImg
+          v-for="src in images"
+          :key="src"
+          :src="src"
+          eager
+          :class="imageClass"
+        />
+      </div>
     </div>
   </div>
 </template>

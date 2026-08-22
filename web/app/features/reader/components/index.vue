@@ -10,7 +10,13 @@ const props = defineProps<{
   retryDownloadLoading: boolean
 }>()
 
-defineEmits<{ retryDownload: [] }>()
+defineEmits<{
+  retryDownload: []
+  previousChapter: []
+  nextChapter: []
+  fetchNextChapter: []
+  fetchPreviousChapter: []
+}>()
 
 const showOverlay = ref(true)
 
@@ -20,10 +26,7 @@ watch(() => props.chapter.download, (value) => {
   }
 }, { immediate: true })
 
-const page = ref(0)
-watch(() => props.chapter.id, () => {
-  page.value = 0
-})
+const page = defineModel<number>('page', { required: true })
 </script>
 
 <template>
@@ -79,6 +82,10 @@ watch(() => props.chapter.id, () => {
       :comic
       :chapter
       :settings
+      @fetch-next-chapter="$emit('fetchNextChapter')"
+      @fetch-previous-chapter="$emit('fetchPreviousChapter')"
+      @previous-chapter="$emit('previousChapter')"
+      @next-chapter="$emit('nextChapter')"
     />
   </div>
 </template>
