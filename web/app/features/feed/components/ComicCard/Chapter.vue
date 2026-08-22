@@ -21,7 +21,10 @@ const date = computed(() => {
         <span
           class="text-body-large feed-chapter-title"
           style="font-size: 1.05rem;"
-          :class="{ 'text-medium-emphasis': chapter.download !== 100 }"
+          :class="{
+            'text-medium-emphasis': chapter.download !== 100,
+            'text-primary': chapter.hasProgress,
+          }"
         > {{ $t('feed.chapter.number', { number: chapter.number }) }} </span>
         <template v-if="chapter.download !== 100">
           <VIcon
