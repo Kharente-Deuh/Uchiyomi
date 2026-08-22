@@ -27,7 +27,6 @@ type Continue struct {
 
 type ListResult struct {
 	Continue *Continue
-	Chapters []Progress
 }
 
 type ListOpts struct {
@@ -35,9 +34,13 @@ type ListOpts struct {
 	ComicID uuid.UUID
 }
 
+type MapOpts struct {
+	IDs    []uuid.UUID
+	UserID uuid.UUID
+}
+
 type SaveOpts struct {
 	UserID    uuid.UUID
-	ComicID   uuid.UUID
 	ChapterID uuid.UUID
 	Page      int
 }
@@ -57,13 +60,15 @@ type UpsertOpts struct {
 }
 
 type Repository interface {
-	ListByUserAndComic(context.Context, ListOpts) ([]Progress, error)
+	GetLatestByUserAndComic(context.Context, ListOpts) (*Progress, error)
+	ListByUserAndChapterIDs(context.Context, MapOpts) ([]Progress, error)
 	Get(context.Context, GetOpts) (*Progress, error)
 	Upsert(context.Context, UpsertOpts) (Progress, error)
 }
 
 type ReadingProgressService interface {
 	List(context.Context, ListOpts) (ListResult, error)
+	MapByChapterIDs(context.Context, MapOpts) (map[uuid.UUID]Progress, error)
 	Save(context.Context, SaveOpts) (Progress, error)
 }
 
@@ -77,7 +82,6 @@ type ComicLookup interface {
 
 type ChapterLookup interface {
 	GetByID(context.Context, uuid.UUID) (*chapters.Chapter, error)
-	GetByIds(context.Context, []uuid.UUID) ([]chapters.Chapter, error)
 }
 
 func ClampPage(page, pagesNb int) int {

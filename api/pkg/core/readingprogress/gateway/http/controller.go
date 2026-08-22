@@ -19,8 +19,9 @@ import (
 )
 
 type Config struct {
-	Endpoint    string
-	Middlewares chi.Middlewares
+	Endpoint         string
+	ChaptersEndpoint string
+	Middlewares      chi.Middlewares
 }
 
 func (cfg *Config) Validate() error {
@@ -30,6 +31,14 @@ func (cfg *Config) Validate() error {
 
 	if !strings.HasPrefix(cfg.Endpoint, "/") {
 		return fmt.Errorf("endpoint must start with '/', got %q", cfg.Endpoint)
+	}
+
+	if cfg.ChaptersEndpoint == "" {
+		return errors.New("chapters endpoint is required")
+	}
+
+	if !strings.HasPrefix(cfg.ChaptersEndpoint, "/") {
+		return fmt.Errorf("chapters endpoint must start with '/', got %q", cfg.ChaptersEndpoint)
 	}
 
 	hasNilMiddlewares := slices.ContainsFunc(cfg.Middlewares, func(m func(http.Handler) http.Handler) bool {
@@ -84,7 +93,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(c.cfg.Middlewares...)
 		r.Get(c.cfg.Endpoint+"/{id}/progress", c.get)
-		r.Put(c.cfg.Endpoint+"/{id}/progress", c.put)
+		r.Put(c.cfg.ChaptersEndpoint+"/{id}/progress", c.put)
 	})
 }
 
@@ -139,7 +148,7 @@ func (c *Controller) put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comicID, err := uuid.Parse(chi.URLParam(r, "id"))
+	chapterID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "id must be a valid UUID")
 
@@ -161,8 +170,7 @@ func (c *Controller) put(w http.ResponseWriter, r *http.Request) {
 
 	saved, err := c.deps.Service.Save(ctx, readingprogress.SaveOpts{
 		UserID:    user.ID,
-		ComicID:   comicID,
-		ChapterID: req.ChapterID,
+		ChapterID: chapterID,
 		Page:      *req.Page,
 	})
 	if err != nil {

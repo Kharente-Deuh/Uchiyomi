@@ -1,11 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { Chapter } from '~/features/chapters/types'
+import type { Chapter, ChapterProgress } from '~/features/chapters/types'
 import { formatRelativeTime } from '~/utils/date.utils'
 
 const props = defineProps<{
   chapter: Chapter
   retryLoading: boolean
+  progress?: ChapterProgress
 }>()
 
 defineEmits<{ retry: [] }>()
@@ -34,77 +35,94 @@ const isChapterDownloading = computed(() => props.chapter.download !== undefined
 
 const isChapterDownloaded = computed(() => props.chapter.download === 100)
 const isChapterDownloadingError = computed(() => props.chapter.download === -1 && !props.retryLoading)
+
+const to = computed(() => {
+  if (props.chapter.download !== 100) {
+    return
+  }
+
+  return `/comic/${props.chapter.comicId}/${props.chapter.id}`
+})
 </script>
 
 <template>
-  <div
-    class="d-flex justify-space-between ga-6 pa-4 border-b-thin bg-surface align-center text-truncate transition-smooth"
-    :class="{
-      'early-access-chapter': isEarlyAccess,
-      'readable-chapter': !isEarlyAccess,
-    }"
-  >
-    <div class="d-flex align-center ga-4">
-      <div v-if="isEarlyAccess" class="d-flex flex-column items-center justify-center border-thin-gold pa-2 text-body-small rounded-lg early-access-icon">
-        <VIcon
-          icon="fa6-solid:lock"
-          size="x-small"
-          color="gold"
-        />
-      </div>
-      <div
-        class="d-flex flex-wrap text-truncate"
-        :class="{
-          'flex-column': isEarlyAccess,
-          'align-center': !isEarlyAccess,
-          'ga-4': !isEarlyAccess,
-        }"
-      >
-        <span class="text-body-large font-weight-bold">{{ $t('sources.asurascans.comic.chapter', { number: chapter.number }) }}</span>
-        <span v-if="chapter.title && !isEarlyAccess" class="text-body-medium text-medium-emphasis text-truncate">{{ chapter.title }}</span>
-        <span
-          v-else-if="isEarlyAccess"
-          class="text-body-medium text-medium-emphasis text-truncate text-gold"
+  <AtomLink :to>
+    <div
+      class="d-flex justify-space-between ga-6 pa-4 border-b-thin bg-surface align-center text-truncate transition-smooth"
+      :class="{
+        'early-access-chapter': isEarlyAccess,
+        'readable-chapter': !isEarlyAccess,
+      }"
+    >
+      <div class="d-flex align-center ga-4">
+        <div v-if="isEarlyAccess" class="d-flex flex-column items-center justify-center border-thin-gold pa-2 text-body-small rounded-lg early-access-icon">
+          <VIcon
+            icon="fa6-solid:lock"
+            size="x-small"
+            color="gold"
+          />
+        </div>
+        <div
+          class="d-flex flex-wrap text-truncate"
+          :class="{
+            'flex-column': isEarlyAccess,
+            'align-center': !isEarlyAccess,
+            'ga-4': !isEarlyAccess,
+          }"
         >
-          {{ $t('sources.asurascans.comic.chapterUnlocksIn', { time: formatRelativeTime(chapter.earlyAccessUntil as Date, { locale, direction: 'future' }) }) }}
-        </span>
+          <span
+            class="text-body-large"
+            :class="{
+              'font-weight-bold': chapter.download === 100,
+              'text-medium-emphasis': chapter.download !== 100 || progress,
+              'text-primary': chapter.download === 100 && progress,
+            }"
+          >{{ $t('sources.asurascans.comic.chapter', { number: chapter.number }) }}</span>
+          <span v-if="chapter.title && !isEarlyAccess" class="text-body-medium text-medium-emphasis text-truncate">{{ chapter.title }}</span>
+          <span
+            v-else-if="isEarlyAccess"
+            class="text-body-medium text-medium-emphasis text-truncate text-gold"
+          >
+            {{ $t('sources.asurascans.comic.chapterUnlocksIn', { time: formatRelativeTime(chapter.earlyAccessUntil as Date, { locale, direction: 'future' }) }) }}
+          </span>
+        </div>
+      </div>
+
+      <div class="d-flex align-center ga-3">
+        <VProgressCircular
+          v-if="isChapterDownloading"
+          :model-value="chapter.download"
+          size="18"
+          :indeterminate="chapter.download === 0"
+          width="2"
+          color="primary"
+        />
+        <VIcon
+          v-if="isChapterDownloaded"
+          icon="fa6-solid:check"
+          size="x-small"
+          color="success"
+        />
+        <VIcon
+          v-if="isChapterDownloadingError && !props.retryLoading"
+          v-tooltip:bottom="$t('sources.asurascans.comic.retryDownloadChapter.tooltip')"
+          icon="fa6-solid:exclamation"
+          classs="cursor-pointer"
+          size="x-small"
+          color="error"
+          @click.prevent="$emit('retry')"
+        />
+        <VProgressCircular
+          v-if="isChapterDownloadingError && props.retryLoading"
+          indeterminate
+          size="18"
+          width="2"
+          color="error"
+        />
+        <span class="text-body-medium text-medium-emphasis" :class="{ 'text-gold': isEarlyAccess }">{{ date }}</span>
       </div>
     </div>
-
-    <div class="d-flex align-center ga-3">
-      <VProgressCircular
-        v-if="isChapterDownloading"
-        :model-value="chapter.download"
-        size="18"
-        :indeterminate="chapter.download === 0"
-        width="2"
-        color="primary"
-      />
-      <VIcon
-        v-if="isChapterDownloaded"
-        icon="fa6-solid:check"
-        size="x-small"
-        color="success"
-      />
-      <VIcon
-        v-if="isChapterDownloadingError && !props.retryLoading"
-        v-tooltip:bottom="$t('sources.asurascans.comic.retryDownloadChapter.tooltip')"
-        icon="fa6-solid:exclamation"
-        classs="cursor-pointer"
-        size="x-small"
-        color="error"
-        @click.prevent="$emit('retry')"
-      />
-      <VProgressCircular
-        v-if="isChapterDownloadingError && props.retryLoading"
-        indeterminate
-        size="18"
-        width="2"
-        color="error"
-      />
-      <span class="text-body-medium text-medium-emphasis" :class="{ 'text-gold': isEarlyAccess }">{{ date }}</span>
-    </div>
-  </div>
+  </AtomLink>
 </template>
 
 <style lang="scss">

@@ -126,6 +126,7 @@ type feedChapterResponse struct {
 	EarlyAccessUntil *time.Time `json:"earlyAccessUntil"`
 	Title            string     `json:"title"`
 	Number           float64    `json:"number"`
+	HasProgress      bool       `json:"hasProgress"`
 	Download         int        `json:"download"`
 	ID               uuid.UUID  `json:"id"`
 }
@@ -409,6 +410,10 @@ func TestGetJSON(t *testing.T) {
 		t.Errorf("download = %d, want 2", item.LatestChapters[0].Download)
 	}
 
+	if item.LatestChapters[0].HasProgress {
+		t.Error("hasProgress = true, want false")
+	}
+
 	if item.LatestChapters[0].EarlyAccessUntil == nil || !item.LatestChapters[0].EarlyAccessUntil.Equal(earlyAccessUntil) {
 		t.Errorf("earlyAccessUntil = %v, want %v", item.LatestChapters[0].EarlyAccessUntil, earlyAccessUntil)
 	}
@@ -462,6 +467,10 @@ func TestGetJSONOmitsZeroEarlyAccessUntil(t *testing.T) {
 
 	if got.Items[0].LatestChapters[0].EarlyAccessUntil != nil {
 		t.Errorf("earlyAccessUntil = %v, want nil", got.Items[0].LatestChapters[0].EarlyAccessUntil)
+	}
+
+	if !strings.Contains(body, `"hasProgress":false`) {
+		t.Errorf("body = %s, want hasProgress:false present", body)
 	}
 }
 

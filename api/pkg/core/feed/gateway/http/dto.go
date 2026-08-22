@@ -17,6 +17,7 @@ type latestChapterResponse struct {
 	EarlyAccessUntil *time.Time `json:"earlyAccessUntil,omitempty"`
 	Title            string     `json:"title"`
 	Number           float64    `json:"number"`
+	HasProgress      bool       `json:"hasProgress"`
 	Download         int        `json:"download"`
 	ID               uuid.UUID  `json:"id"`
 }
@@ -61,6 +62,7 @@ func itemFromDomain(item *feed.Item) itemResponse {
 			PublishedAt:      ch.PublishedAt,
 			EarlyAccessUntil: utils.OptionalTime(ch.EarlyAccessUntil),
 			Download:         ch.Download,
+			HasProgress:      ch.HasProgress,
 		})
 	}
 

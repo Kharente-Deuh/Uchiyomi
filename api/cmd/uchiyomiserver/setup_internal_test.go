@@ -92,7 +92,13 @@ func (stubReaderSettingsService) Replace(context.Context, readersettings.Replace
 type stubReadingProgressService struct{}
 
 func (stubReadingProgressService) List(context.Context, readingprogress.ListOpts) (readingprogress.ListResult, error) {
-	return readingprogress.ListResult{Chapters: []readingprogress.Progress{}}, nil
+	return readingprogress.ListResult{}, nil
+}
+
+func (stubReadingProgressService) MapByChapterIDs(
+	context.Context, readingprogress.MapOpts,
+) (map[uuid.UUID]readingprogress.Progress, error) {
+	return map[uuid.UUID]readingprogress.Progress{}, nil
 }
 
 func (stubReadingProgressService) Save(context.Context, readingprogress.SaveOpts) (readingprogress.Progress, error) {

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 )
 
 func comicDir(baseDir string, comicID uuid.UUID) string {
@@ -109,6 +111,41 @@ func deleteComicDir(dir string) error {
 	}
 
 	return nil
+}
+
+type DiskPages struct {
+	Dir string
+}
+
+func (s DiskPages) OpenPage(comicID uuid.UUID, chapterNumber float64, index int) (string, string, error) {
+	pattern := filepath.Join(chapterDir(s.Dir, comicID, chapterNumber), pageFilename(index, ".*"))
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return "", "", fmt.Errorf("filepath.Glob %s: %w", pattern, err)
+	}
+
+	var files []string
+	for _, match := range matches {
+		st, err := os.Stat(match)
+		if err != nil {
+			return "", "", fmt.Errorf("os.Stat %s: %w", match, err)
+		}
+
+		if st.Mode().IsRegular() {
+			files = append(files, match)
+		}
+	}
+
+	if len(files) != 1 {
+		return "", "", domain.ErrNotFound
+	}
+
+	contentType := mime.TypeByExtension(filepath.Ext(files[0]))
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	return files[0], contentType, nil
 }
 
 func downloadPage(ctx context.Context, client *http.Client, imageURL, destPath string) error {

@@ -211,7 +211,9 @@
     "sort": {
       "oldest": "Plus ancien",
       "latest": "Plus récent"
-    }
+    },
+    "start": "Commencer",
+    "continue": "Continuer"
   },
   "role": {
     "admin": "Administrateur",
@@ -276,6 +278,9 @@
             }
           }
         }
+      },
+      "chapter": {
+        "notFound": "Chapitre introuvable"
       }
     },
     "add": {
@@ -341,6 +346,17 @@
       "doublePage": "Double-page",
       "singlePage": "Page unique",
       "title": "Mode page"
+    }
+  },
+  "comic": {
+    "chapter": {
+      "previous": "Préc",
+      "next": "Suivant",
+      "exitToComic": "Retourner a la BD",
+      "download": {
+        "error": "Erreur de téléchargement de chapitre",
+        "retry": "Réessayer"
+      }
     }
   }
 }

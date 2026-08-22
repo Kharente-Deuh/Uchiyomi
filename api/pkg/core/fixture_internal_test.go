@@ -404,6 +404,20 @@ func (fakeChaptersService) ListForLibrary(context.Context, chapters.ListForLibra
 	return nil, errors.New(notImplemented)
 }
 
+func (fakeChaptersService) GetForLibrary(context.Context, chapters.GetForLibraryOpts) (*chapters.Chapter, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeChaptersService) GetDetailForLibrary(
+	context.Context, chapters.GetForLibraryOpts,
+) (*chapters.ChapterDetail, error) {
+	return nil, errors.New(notImplemented)
+}
+
+func (fakeChaptersService) ServePage(context.Context, chapters.ServePageOpts) (string, string, error) {
+	return "", "", errors.New(notImplemented)
+}
+
 type fakeFeedService struct{}
 
 func (fakeFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {
@@ -423,7 +437,13 @@ func (fakeReaderSettingsService) Replace(context.Context, readersettings.Replace
 type fakeReadingProgressService struct{}
 
 func (fakeReadingProgressService) List(context.Context, readingprogress.ListOpts) (readingprogress.ListResult, error) {
-	return readingprogress.ListResult{Chapters: []readingprogress.Progress{}}, nil
+	return readingprogress.ListResult{}, nil
+}
+
+func (fakeReadingProgressService) MapByChapterIDs(
+	context.Context, readingprogress.MapOpts,
+) (map[uuid.UUID]readingprogress.Progress, error) {
+	return map[uuid.UUID]readingprogress.Progress{}, nil
 }
 
 func (fakeReadingProgressService) Save(context.Context, readingprogress.SaveOpts) (readingprogress.Progress, error) {
@@ -587,7 +607,11 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 
 	chaptersCtrl, err := httpchapters.New(
 		httpchapters.Config{Endpoint: "/chapters"},
-		httpchapters.Deps{Logger: logger, ChaptersService: fakeChaptersService{}},
+		httpchapters.Deps{
+			Logger:          logger,
+			ChaptersService: fakeChaptersService{},
+			Progress:        fakeReadingProgressService{},
+		},
 	)
 	if err != nil {
 		t.Fatalf("httpchapters.New: %v", err)
@@ -610,7 +634,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 	}
 
 	readingProgressCtrl, err := httpreadingprogress.New(
-		httpreadingprogress.Config{Endpoint: "/comics"},
+		httpreadingprogress.Config{Endpoint: "/comics", ChaptersEndpoint: "/chapters"},
 		httpreadingprogress.Deps{Logger: logger, Service: fakeReadingProgressService{}},
 	)
 	if err != nil {

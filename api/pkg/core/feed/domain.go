@@ -16,6 +16,7 @@ type LatestChapter struct {
 	Title            string
 	Number           float64
 	Download         int
+	HasProgress      bool
 	ID               uuid.UUID
 	ComicID          uuid.UUID
 }
@@ -55,6 +56,7 @@ type ListPageOpts struct {
 type ListChaptersOpts struct {
 	Now      time.Time
 	ComicIDs []uuid.UUID
+	UserID   uuid.UUID
 }
 
 type FeedRepository interface {

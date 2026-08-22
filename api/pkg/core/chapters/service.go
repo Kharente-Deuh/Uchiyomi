@@ -24,6 +24,7 @@ type Deps struct {
 	ChapterDownloader ChapterDownloader
 	LibraryRepository library.LibraryRepository
 	ComicLookup       ComicLookup
+	PageStore         PageStore
 }
 
 func (deps *Deps) Validate() error {
@@ -41,6 +42,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.ComicLookup == nil {
 		return errors.New("comicLookup is required")
+	}
+
+	if deps.PageStore == nil {
+		return errors.New("pageStore is required")
 	}
 
 	return nil
@@ -266,4 +271,77 @@ func (s *Service) GetByIds(ctx context.Context, opts GetByIdsOpts) ([]Chapter, e
 	}
 
 	return accessible, nil
+}
+
+func (s *Service) GetForLibrary(ctx context.Context, opts GetForLibraryOpts) (*Chapter, error) {
+	chapter, err := s.deps.Repository.GetByID(ctx, opts.ChapterID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.GetByID: %w", err)
+	}
+
+	inLibrary, err := s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, chapter.ComicID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+	}
+
+	if !inLibrary {
+		return nil, domain.ErrForbidden
+	}
+
+	return chapter, nil
+}
+
+func (s *Service) GetDetailForLibrary(ctx context.Context, opts GetForLibraryOpts) (*ChapterDetail, error) {
+	chapter, err := s.GetForLibrary(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("s.GetForLibrary: %w", err)
+	}
+
+	siblings, err := s.deps.Repository.ListByComicID(ctx, chapter.ComicID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.ListByComicID: %w", err)
+	}
+
+	detail := &ChapterDetail{Chapter: *chapter}
+
+	for i := range siblings {
+		if siblings[i].ID != chapter.ID {
+			continue
+		}
+
+		if i > 0 {
+			id := siblings[i-1].ID
+			detail.PreviousID = &id
+		}
+
+		if i < len(siblings)-1 {
+			id := siblings[i+1].ID
+			detail.NextID = &id
+		}
+
+		break
+	}
+
+	return detail, nil
+}
+
+func (s *Service) ServePage(ctx context.Context, opts ServePageOpts) (string, string, error) {
+	chapter, err := s.GetForLibrary(ctx, GetForLibraryOpts{
+		UserID:    opts.UserID,
+		ChapterID: opts.ChapterID,
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("s.GetForLibrary: %w", err)
+	}
+
+	if chapter.Download != 100 || opts.Index < 1 || opts.Index > chapter.PagesNb {
+		return "", "", domain.ErrNotFound
+	}
+
+	path, contentType, err := s.deps.PageStore.OpenPage(chapter.ComicID, chapter.Number, opts.Index)
+	if err != nil {
+		return "", "", fmt.Errorf("s.deps.PageStore.OpenPage: %w", err)
+	}
+
+	return path, contentType, nil
 }

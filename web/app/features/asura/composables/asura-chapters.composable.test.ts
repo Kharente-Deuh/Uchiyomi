@@ -32,6 +32,8 @@ function createChaptersApiStub(): ChaptersApi {
     retryDownload: retryDownloadApi,
     getByIds: vi.fn(),
     getByComicId: vi.fn(),
+    getById: vi.fn(),
+    saveProgress: vi.fn(),
   }
 }
 

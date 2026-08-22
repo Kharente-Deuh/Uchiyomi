@@ -194,20 +194,22 @@ func TestListUnlockedChaptersFiltersLocked(t *testing.T) {
 
 	comicID := uuid.New()
 	chapterID := uuid.New()
+	userID := uuid.New()
 	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 	published := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	until := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
 
 	// GORM expands IN ? to ($1) with PreferSimpleProtocol: comicID, now
-	mock.ExpectQuery(`comic_id IN.*early_access_until IS NULL OR early_access_until <=`).
-		WithArgs(comicID, now).
+	mock.ExpectQuery(`chapters.comic_id IN.*chapters.early_access_until IS NULL OR chapters.early_access_until <=`).
+		WithArgs(userID, comicID, now).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "comic_id", "title", "number", "published_at", "early_access_until", "download",
-		}).AddRow(chapterID, comicID, "Ch 10", 10.0, published, until, 2))
+			"id", "comic_id", "title", "number", "published_at", "early_access_until", "download", "has_progress",
+		}).AddRow(chapterID, comicID, "Ch 10", 10.0, published, until, 2, true))
 
 	got, err := r.ListUnlockedChapters(context.Background(), feed.ListChaptersOpts{
 		Now:      now,
 		ComicIDs: []uuid.UUID{comicID},
+		UserID:   userID,
 	})
 	if err != nil {
 		t.Fatalf("ListUnlockedChapters: %v", err)
@@ -220,7 +222,7 @@ func TestListUnlockedChaptersFiltersLocked(t *testing.T) {
 	ch := got[0]
 	if ch.ID != chapterID || ch.ComicID != comicID || ch.Title != "Ch 10" ||
 		ch.Number != 10.0 || ch.Download != 2 || !ch.PublishedAt.Equal(published) ||
-		ch.EarlyAccessUntil == nil || !ch.EarlyAccessUntil.Equal(until) {
+		ch.EarlyAccessUntil == nil || !ch.EarlyAccessUntil.Equal(until) || !ch.HasProgress {
 		t.Errorf("LatestChapter = %+v", ch)
 	}
 }

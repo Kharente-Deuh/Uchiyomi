@@ -21,13 +21,11 @@ type continueResponse struct {
 }
 
 type listResponse struct {
-	Continue *continueResponse  `json:"continue"`
-	Chapters []progressResponse `json:"chapters"`
+	Continue *continueResponse `json:"continue"`
 }
 
 type saveRequest struct {
-	Page      *int      `json:"page" validate:"required"`
-	ChapterID uuid.UUID `json:"chapterId" validate:"required"`
+	Page *int `json:"page" validate:"required"`
 }
 
 func progressFromDomain(p readingprogress.Progress) progressResponse {
@@ -39,11 +37,6 @@ func progressFromDomain(p readingprogress.Progress) progressResponse {
 }
 
 func listFromDomain(result readingprogress.ListResult) listResponse {
-	chapters := make([]progressResponse, 0, len(result.Chapters))
-	for _, p := range result.Chapters {
-		chapters = append(chapters, progressFromDomain(p))
-	}
-
 	var cont *continueResponse
 	if result.Continue != nil {
 		cont = &continueResponse{
@@ -52,8 +45,5 @@ func listFromDomain(result readingprogress.ListResult) listResponse {
 		}
 	}
 
-	return listResponse{
-		Continue: cont,
-		Chapters: chapters,
-	}
+	return listResponse{Continue: cont}
 }

@@ -51,7 +51,7 @@ func readingProgressSelectColumns() []string {
 	return []string{"id", "library_entry_id", "chapter_id", "page", "updated_at"}
 }
 
-func TestListByUserAndComicJoinsLibraryEntry(t *testing.T) {
+func TestGetLatestByUserAndComicJoinsLibraryEntry(t *testing.T) {
 	t.Parallel()
 
 	r, mock := newReadingProgressRepo(t)
@@ -62,24 +62,24 @@ func TestListByUserAndComicJoinsLibraryEntry(t *testing.T) {
 	chapterID := uuid.New()
 	updatedAt := time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
 
-	mock.ExpectQuery(`reading_progress.*library_entries`).
-		WithArgs(userID, comicID).
+	mock.ExpectQuery(`JOIN "library_entries" "LibraryEntry".*WHERE "LibraryEntry"\.(user_id|"user_id")`).
+		WithArgs(userID, comicID, 1).
 		WillReturnRows(
 			sqlmock.NewRows(readingProgressSelectColumns()).AddRow(
 				uuid.New(), uuid.New(), chapterID, 5, updatedAt,
 			),
 		)
 
-	got, err := r.ListByUserAndComic(context.Background(), readingprogress.ListOpts{
+	got, err := r.GetLatestByUserAndComic(context.Background(), readingprogress.ListOpts{
 		UserID:  userID,
 		ComicID: comicID,
 	})
 	if err != nil {
-		t.Fatalf("ListByUserAndComic: %v", err)
+		t.Fatalf("GetLatestByUserAndComic: %v", err)
 	}
 
-	if len(got) != 1 {
-		t.Fatalf("ListByUserAndComic() len = %d, want 1", len(got))
+	if got == nil {
+		t.Fatal("GetLatestByUserAndComic() = nil, want progress")
 	}
 
 	want := readingprogress.Progress{
@@ -87,8 +87,8 @@ func TestListByUserAndComicJoinsLibraryEntry(t *testing.T) {
 		Page:      5,
 		UpdatedAt: updatedAt,
 	}
-	if got[0] != want {
-		t.Errorf("ListByUserAndComic()[0] = %+v, want %+v", got[0], want)
+	if *got != want {
+		t.Errorf("GetLatestByUserAndComic() = %+v, want %+v", *got, want)
 	}
 
 	if otherUserID == userID {
@@ -96,7 +96,7 @@ func TestListByUserAndComicJoinsLibraryEntry(t *testing.T) {
 	}
 }
 
-func TestListOrdersByUpdatedAtDesc(t *testing.T) {
+func TestGetLatestOrdersByUpdatedAtDesc(t *testing.T) {
 	t.Parallel()
 
 	r, mock := newReadingProgressRepo(t)
@@ -105,15 +105,67 @@ func TestListOrdersByUpdatedAtDesc(t *testing.T) {
 	comicID := uuid.New()
 
 	mock.ExpectQuery(`ORDER BY.*updated_at`).
-		WithArgs(userID, comicID).
+		WithArgs(userID, comicID, 1).
 		WillReturnRows(sqlmock.NewRows(readingProgressSelectColumns()))
 
-	_, err := r.ListByUserAndComic(context.Background(), readingprogress.ListOpts{
+	got, err := r.GetLatestByUserAndComic(context.Background(), readingprogress.ListOpts{
 		UserID:  userID,
 		ComicID: comicID,
 	})
 	if err != nil {
-		t.Fatalf("ListByUserAndComic: %v", err)
+		t.Fatalf("GetLatestByUserAndComic: %v", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetLatestByUserAndComic() = %+v, want nil", got)
+	}
+}
+
+func TestListByUserAndChapterIDsEmptySkipsQuery(t *testing.T) {
+	t.Parallel()
+
+	r, _ := newReadingProgressRepo(t)
+
+	got, err := r.ListByUserAndChapterIDs(context.Background(), readingprogress.MapOpts{
+		UserID: uuid.New(),
+		IDs:    nil,
+	})
+	if err != nil {
+		t.Fatalf("ListByUserAndChapterIDs: %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Errorf("ListByUserAndChapterIDs() = %+v, want empty", got)
+	}
+}
+
+func TestListByUserAndChapterIDsJoinsLibraryEntry(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newReadingProgressRepo(t)
+
+	userID := uuid.New()
+	chapterID := uuid.New()
+	updatedAt := time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
+
+	mock.ExpectQuery(`JOIN "library_entries" "LibraryEntry".*chapter_id`).
+		WithArgs(userID, chapterID).
+		WillReturnRows(
+			sqlmock.NewRows(readingProgressSelectColumns()).AddRow(
+				uuid.New(), uuid.New(), chapterID, 9, updatedAt,
+			),
+		)
+
+	got, err := r.ListByUserAndChapterIDs(context.Background(), readingprogress.MapOpts{
+		UserID: userID,
+		IDs:    []uuid.UUID{chapterID},
+	})
+	if err != nil {
+		t.Fatalf("ListByUserAndChapterIDs: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ChapterID != chapterID || got[0].Page != 9 {
+		t.Errorf("ListByUserAndChapterIDs() = %+v", got)
 	}
 }
 
@@ -126,7 +178,7 @@ func TestGetNotFound(t *testing.T) {
 	comicID := uuid.New()
 	chapterID := uuid.New()
 
-	mock.ExpectQuery(`reading_progress.*library_entries`).
+	mock.ExpectQuery(`JOIN "library_entries" "LibraryEntry".*WHERE "LibraryEntry"\.(user_id|"user_id")`).
 		WithArgs(userID, comicID, chapterID, 1).
 		WillReturnRows(sqlmock.NewRows(readingProgressSelectColumns()))
 

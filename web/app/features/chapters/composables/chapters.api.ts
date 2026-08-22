@@ -1,4 +1,4 @@
-import type { Chapter } from '../types'
+import type { Chapter, ChapterProgress, DetailedChapter, SaveChapterProgressRequest } from '../types'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
 
@@ -6,6 +6,20 @@ export interface ChaptersApi {
   retryDownload: (chapterId: string) => Promise<ApiResponse<void>>
   getByIds: (ids: string[]) => Promise<ApiResponse<Chapter[]>>
   getByComicId: (comicId: string) => Promise<ApiResponse<Chapter[]>>
+  getById: (id: string) => Promise<ApiResponse<DetailedChapter>>
+  saveProgress: (req: SaveChapterProgressRequest) => Promise<ApiResponse<ChapterProgress>>
+}
+
+function chapterFromHTTP({ progress, ...chapter }: Chapter): Chapter {
+  return {
+    ...chapter,
+    progress: progress
+      ? {
+          updatedAt: new Date(progress.updatedAt),
+          page: progress.page,
+        }
+      : undefined,
+  }
 }
 
 export function createChaptersApi(): ChaptersApi {
@@ -25,7 +39,10 @@ export function createChaptersApi(): ChaptersApi {
     try {
       const response = await api<Chapter[]>(`/list`, { method: 'POST', body: { ids } })
 
-      return { success: true, data: response }
+      return {
+        success: true,
+        data: response.map(chapter => chapterFromHTTP(chapter)),
+      }
     } catch (error) {
       return { success: false, error: ApiError.fromFetchError(error) }
     }
@@ -34,6 +51,37 @@ export function createChaptersApi(): ChaptersApi {
   async function getByComicId(comicId: string): Promise<ApiResponse<Chapter[]>> {
     try {
       const response = await api<Chapter[]>(`/`, { params: { comicId } })
+
+      return {
+        success: true,
+        data: response.map(chapter => chapterFromHTTP(chapter)),
+      }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
+  async function getById(id: string): Promise<ApiResponse<DetailedChapter>> {
+    try {
+      const { previousChapterId, nextChapterId, pageUrls, ...response } = await api<DetailedChapter>(`/${id}`)
+
+      return {
+        success: true,
+        data: {
+          ...chapterFromHTTP(response),
+          pageUrls: pageUrls ?? [],
+          nextChapterId,
+          previousChapterId,
+        },
+      }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
+  async function saveProgress({ id, ...body }: SaveChapterProgressRequest): Promise<ApiResponse<ChapterProgress>> {
+    try {
+      const response = await api<ChapterProgress>(`/${id}/progress`, { method: 'PUT', body })
 
       return { success: true, data: response }
     } catch (error) {
@@ -45,5 +93,7 @@ export function createChaptersApi(): ChaptersApi {
     retryDownload,
     getByIds,
     getByComicId,
+    getById,
+    saveProgress,
   }
 }

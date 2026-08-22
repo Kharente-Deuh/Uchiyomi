@@ -76,6 +76,7 @@ func (s *Service) Get(ctx context.Context, opts GetOpts) (Page, error) {
 	chapters, err := s.deps.FeedRepository.ListUnlockedChapters(ctx, ListChaptersOpts{
 		Now:      now,
 		ComicIDs: ids,
+		UserID:   opts.UserID,
 	})
 	if err != nil {
 		return Page{}, fmt.Errorf("s.deps.FeedRepository.ListUnlockedChapters: %w", err)

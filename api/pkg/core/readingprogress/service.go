@@ -58,54 +58,53 @@ func (s *Service) List(ctx context.Context, opts ListOpts) (ListResult, error) {
 		return ListResult{}, err
 	}
 
-	rows, err := s.deps.Repository.ListByUserAndComic(ctx, opts)
+	row, err := s.deps.Repository.GetLatestByUserAndComic(ctx, opts)
 	if err != nil {
-		return ListResult{}, fmt.Errorf("s.deps.Repository.ListByUserAndComic: %w", err)
+		return ListResult{}, fmt.Errorf("s.deps.Repository.GetLatestByUserAndComic: %w", err)
 	}
 
-	if len(rows) == 0 {
-		return ListResult{Chapters: []Progress{}}, nil
+	if row == nil {
+		return ListResult{}, nil
 	}
 
-	ids := make([]uuid.UUID, len(rows))
-	for i, row := range rows {
-		ids[i] = row.ChapterID
-	}
-
-	chapterList, err := s.deps.Chapters.GetByIds(ctx, ids)
+	chapter, err := s.deps.Chapters.GetByID(ctx, row.ChapterID)
 	if err != nil {
-		return ListResult{}, fmt.Errorf("s.deps.Chapters.GetByIds: %w", err)
-	}
-
-	pagesNb := make(map[uuid.UUID]int, len(chapterList))
-	for _, chapter := range chapterList {
-		pagesNb[chapter.ID] = chapter.PagesNb
-	}
-
-	chapters := make([]Progress, len(rows))
-	for i, row := range rows {
-		chapters[i] = Progress{
-			UpdatedAt: row.UpdatedAt,
-			ChapterID: row.ChapterID,
-			Page:      ClampPage(row.Page, pagesNb[row.ChapterID]),
+		if errors.Is(err, domain.ErrNotFound) {
+			return ListResult{
+				Continue: &Continue{ChapterID: row.ChapterID, Page: row.Page},
+			}, nil
 		}
+
+		return ListResult{}, fmt.Errorf("s.deps.Chapters.GetByID: %w", err)
 	}
 
-	result := ListResult{Chapters: chapters}
-	first := chapters[0]
-	result.Continue = &Continue{
-		ChapterID: first.ChapterID,
-		Page:      first.Page,
+	return ListResult{
+		Continue: &Continue{
+			ChapterID: row.ChapterID,
+			Page:      ClampPage(row.Page, chapter.PagesNb),
+		},
+	}, nil
+}
+
+func (s *Service) MapByChapterIDs(ctx context.Context, opts MapOpts) (map[uuid.UUID]Progress, error) {
+	if len(opts.IDs) == 0 {
+		return map[uuid.UUID]Progress{}, nil
 	}
 
-	return result, nil
+	rows, err := s.deps.Repository.ListByUserAndChapterIDs(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.Repository.ListByUserAndChapterIDs: %w", err)
+	}
+
+	out := make(map[uuid.UUID]Progress, len(rows))
+	for _, row := range rows {
+		out[row.ChapterID] = row
+	}
+
+	return out, nil
 }
 
 func (s *Service) Save(ctx context.Context, opts SaveOpts) (Progress, error) {
-	if err := s.requireLibrary(ctx, opts.UserID, opts.ComicID); err != nil {
-		return Progress{}, err
-	}
-
 	chapter, err := s.deps.Chapters.GetByID(ctx, opts.ChapterID)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
@@ -115,13 +114,13 @@ func (s *Service) Save(ctx context.Context, opts SaveOpts) (Progress, error) {
 		return Progress{}, fmt.Errorf("s.deps.Chapters.GetByID: %w", err)
 	}
 
-	if chapter.ComicID != opts.ComicID {
-		return Progress{}, domain.ErrNotFound
+	if err = s.requireLibrary(ctx, opts.UserID, chapter.ComicID); err != nil {
+		return Progress{}, err
 	}
 
 	stored, err := s.deps.Repository.Get(ctx, GetOpts{
 		UserID:    opts.UserID,
-		ComicID:   opts.ComicID,
+		ComicID:   chapter.ComicID,
 		ChapterID: opts.ChapterID,
 	})
 	if err != nil {
@@ -146,7 +145,7 @@ func (s *Service) Save(ctx context.Context, opts SaveOpts) (Progress, error) {
 	saved, err := s.deps.Repository.Upsert(ctx, UpsertOpts{
 		UpdatedAt: time.Now().UTC(),
 		UserID:    opts.UserID,
-		ComicID:   opts.ComicID,
+		ComicID:   chapter.ComicID,
 		ChapterID: opts.ChapterID,
 		Page:      page,
 	})

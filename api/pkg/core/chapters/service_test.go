@@ -209,6 +209,31 @@ func (f *fakeComicLookup) Exists(_ context.Context, id uuid.UUID) (bool, error) 
 	return f.exists, f.existsErr
 }
 
+type nopPageStore struct{}
+
+func (nopPageStore) OpenPage(uuid.UUID, float64, int) (string, string, error) {
+	panic("OpenPage must not be called")
+}
+
+type fakePageStore struct {
+	err         error
+	path        string
+	contentType string
+	lastNumber  float64
+	lastComic   uuid.UUID
+	lastIndex   int
+	calls       int
+}
+
+func (f *fakePageStore) OpenPage(comicID uuid.UUID, chapterNumber float64, index int) (string, string, error) {
+	f.calls++
+	f.lastComic = comicID
+	f.lastNumber = chapterNumber
+	f.lastIndex = index
+
+	return f.path, f.contentType, f.err
+}
+
 func newTestService(
 	repo *fakeChaptersRepository,
 	downloader *fakeChapterDownloader,
@@ -219,6 +244,7 @@ func newTestService(
 		ChapterDownloader: downloader,
 		LibraryRepository: libraryRepo,
 		ComicLookup:       &fakeComicLookup{exists: true},
+		PageStore:         nopPageStore{},
 	})
 	if err != nil {
 		panic(err)
@@ -724,6 +750,7 @@ func TestServiceListForLibraryForbiddenWhenComicExistsButNotInLibrary(t *testing
 		ChapterDownloader: &fakeChapterDownloader{},
 		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: false},
 		ComicLookup:       lookup,
+		PageStore:         nopPageStore{},
 	})
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
@@ -756,6 +783,7 @@ func TestServiceListForLibraryNotFoundWhenComicMissing(t *testing.T) {
 		ChapterDownloader: &fakeChapterDownloader{},
 		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: false},
 		ComicLookup:       lookup,
+		PageStore:         nopPageStore{},
 	})
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
@@ -787,6 +815,7 @@ func TestServiceListForLibraryDoesNotLookupComicWhenInLibrary(t *testing.T) {
 		ChapterDownloader: &fakeChapterDownloader{},
 		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: true},
 		ComicLookup:       lookup,
+		PageStore:         nopPageStore{},
 	})
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
@@ -860,6 +889,7 @@ func TestServiceListForLibraryLookupError(t *testing.T) {
 		ChapterDownloader: &fakeChapterDownloader{},
 		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: false},
 		ComicLookup:       &fakeComicLookup{existsErr: sentinel},
+		PageStore:         nopPageStore{},
 	})
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
@@ -875,5 +905,243 @@ func TestServiceListForLibraryLookupError(t *testing.T) {
 
 	if got != nil {
 		t.Errorf("ListForLibrary returned %+v in addition to the error", got)
+	}
+}
+
+func TestServiceGetForLibrary(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	want := &chapters.Chapter{ID: chapterID, ComicID: comicID, Download: 40, PagesNb: 12}
+	libraryRepo := &fakeLibraryRepository{existsByUserAndComic: true}
+	svc := newTestService(
+		&fakeChaptersRepository{getByIDResult: want},
+		&fakeChapterDownloader{},
+		libraryRepo,
+	)
+
+	got, err := svc.GetForLibrary(context.Background(), chapters.GetForLibraryOpts{
+		UserID:    userID,
+		ChapterID: chapterID,
+	})
+	if err != nil {
+		t.Fatalf("GetForLibrary: %v", err)
+	}
+
+	if got == nil || got.ID != chapterID || got.Download != 40 {
+		t.Errorf("GetForLibrary() = %+v, want %+v", got, want)
+	}
+
+	if libraryRepo.lastUserID != userID || libraryRepo.lastComicID != comicID {
+		t.Errorf("library check user=%s comic=%s, want user=%s comic=%s",
+			libraryRepo.lastUserID, libraryRepo.lastComicID, userID, comicID)
+	}
+}
+
+func TestServiceGetForLibraryNotFound(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(
+		&fakeChaptersRepository{getByIDErr: domain.ErrNotFound},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{},
+	)
+
+	got, err := svc.GetForLibrary(context.Background(), chapters.GetForLibraryOpts{
+		UserID:    uuid.New(),
+		ChapterID: uuid.New(),
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("GetForLibrary = %v, want domain.ErrNotFound", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetForLibrary returned %+v in addition to the error", got)
+	}
+}
+
+func TestServiceGetForLibraryForbidden(t *testing.T) {
+	t.Parallel()
+
+	chapterID := uuid.New()
+	comicID := uuid.New()
+	svc := newTestService(
+		&fakeChaptersRepository{getByIDResult: &chapters.Chapter{ID: chapterID, ComicID: comicID}},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsByUserAndComic: false},
+	)
+
+	got, err := svc.GetForLibrary(context.Background(), chapters.GetForLibraryOpts{
+		UserID:    uuid.New(),
+		ChapterID: chapterID,
+	})
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("GetForLibrary = %v, want domain.ErrForbidden", err)
+	}
+
+	if got != nil {
+		t.Errorf("GetForLibrary returned %+v in addition to the error", got)
+	}
+}
+
+func TestServiceGetDetailForLibraryNeighbors(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	prevID := uuid.New()
+	currentID := uuid.New()
+	nextID := uuid.New()
+	current := &chapters.Chapter{
+		ID: currentID, ComicID: comicID, Number: 2, Download: 100, PagesNb: 3,
+	}
+	svc := newTestService(
+		&fakeChaptersRepository{
+			getByIDResult: current,
+			listByComicIDResult: []chapters.Chapter{
+				{ID: prevID, ComicID: comicID, Number: 1, Download: 42},
+				*current,
+				{ID: nextID, ComicID: comicID, Number: 3, Download: -1},
+			},
+		},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsByUserAndComic: true},
+	)
+
+	got, err := svc.GetDetailForLibrary(context.Background(), chapters.GetForLibraryOpts{
+		UserID:    userID,
+		ChapterID: currentID,
+	})
+	if err != nil {
+		t.Fatalf("GetDetailForLibrary: %v", err)
+	}
+
+	if got.Chapter.ID != currentID {
+		t.Errorf("chapter id = %s, want %s", got.Chapter.ID, currentID)
+	}
+
+	if got.PreviousID == nil || *got.PreviousID != prevID {
+		t.Errorf("previous = %v, want %s", got.PreviousID, prevID)
+	}
+
+	if got.NextID == nil || *got.NextID != nextID {
+		t.Errorf("next = %v, want %s", got.NextID, nextID)
+	}
+}
+
+func TestServiceGetDetailForLibraryOmitsMissingNeighbors(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	onlyID := uuid.New()
+	only := &chapters.Chapter{ID: onlyID, ComicID: comicID, Number: 1}
+	svc := newTestService(
+		&fakeChaptersRepository{
+			getByIDResult:       only,
+			listByComicIDResult: []chapters.Chapter{*only},
+		},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsByUserAndComic: true},
+	)
+
+	got, err := svc.GetDetailForLibrary(context.Background(), chapters.GetForLibraryOpts{
+		UserID:    uuid.New(),
+		ChapterID: onlyID,
+	})
+	if err != nil {
+		t.Fatalf("GetDetailForLibrary: %v", err)
+	}
+
+	if got.PreviousID != nil || got.NextID != nil {
+		t.Errorf("neighbors previous=%v next=%v, want both nil", got.PreviousID, got.NextID)
+	}
+}
+
+func TestServiceServePage(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	store := &fakePageStore{path: "/tmp/001.webp", contentType: "image/webp"}
+	svc, err := chapters.NewService(chapters.Deps{
+		Repository: &fakeChaptersRepository{
+			getByIDResult: &chapters.Chapter{
+				ID: chapterID, ComicID: comicID, Number: 1, PagesNb: 3, Download: 100,
+			},
+		},
+		ChapterDownloader: &fakeChapterDownloader{},
+		LibraryRepository: &fakeLibraryRepository{existsByUserAndComic: true},
+		ComicLookup:       &fakeComicLookup{exists: true},
+		PageStore:         store,
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	path, contentType, err := svc.ServePage(context.Background(), chapters.ServePageOpts{
+		UserID:    userID,
+		ChapterID: chapterID,
+		Index:     1,
+	})
+	if err != nil {
+		t.Fatalf("ServePage: %v", err)
+	}
+
+	if path != store.path || contentType != store.contentType {
+		t.Errorf("ServePage = %q %q", path, contentType)
+	}
+
+	if store.lastComic != comicID || store.lastNumber != 1 || store.lastIndex != 1 {
+		t.Errorf("OpenPage args comic=%s number=%v index=%d", store.lastComic, store.lastNumber, store.lastIndex)
+	}
+}
+
+func TestServiceServePageNotFoundWhenIncomplete(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(
+		&fakeChaptersRepository{
+			getByIDResult: &chapters.Chapter{
+				ID: uuid.New(), ComicID: uuid.New(), PagesNb: 3, Download: 40,
+			},
+		},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsByUserAndComic: true},
+	)
+
+	_, _, err := svc.ServePage(context.Background(), chapters.ServePageOpts{
+		UserID:    uuid.New(),
+		ChapterID: uuid.New(),
+		Index:     1,
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("ServePage = %v, want ErrNotFound", err)
+	}
+}
+
+func TestServiceServePageNotFoundWhenIndexOutOfRange(t *testing.T) {
+	t.Parallel()
+
+	chapterID := uuid.New()
+	svc := newTestService(
+		&fakeChaptersRepository{
+			getByIDResult: &chapters.Chapter{
+				ID: chapterID, ComicID: uuid.New(), PagesNb: 2, Download: 100,
+			},
+		},
+		&fakeChapterDownloader{},
+		&fakeLibraryRepository{existsByUserAndComic: true},
+	)
+
+	_, _, err := svc.ServePage(context.Background(), chapters.ServePageOpts{
+		UserID:    uuid.New(),
+		ChapterID: chapterID,
+		Index:     3,
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("ServePage = %v, want ErrNotFound", err)
 	}
 }

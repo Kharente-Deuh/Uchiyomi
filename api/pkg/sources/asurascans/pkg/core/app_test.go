@@ -220,6 +220,20 @@ func (s libraryChaptersService) ListForLibrary(context.Context, chapters.ListFor
 	return nil, nil
 }
 
+func (s libraryChaptersService) GetForLibrary(context.Context, chapters.GetForLibraryOpts) (*chapters.Chapter, error) {
+	return nil, nil
+}
+
+func (s libraryChaptersService) GetDetailForLibrary(
+	context.Context, chapters.GetForLibraryOpts,
+) (*chapters.ChapterDetail, error) {
+	return nil, nil
+}
+
+func (s libraryChaptersService) ServePage(context.Context, chapters.ServePageOpts) (string, string, error) {
+	return "", "", nil
+}
+
 func newCache[P any, T any](
 	t *testing.T, key func(P) string, fn func(context.Context, P) (*T, error),
 ) *fncache.Cache[P, T] {

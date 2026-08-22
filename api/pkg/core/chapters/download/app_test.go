@@ -67,6 +67,20 @@ func (f *fakeChaptersService) ListForLibrary(context.Context, chapters.ListForLi
 	panic("ListForLibrary must not be called")
 }
 
+func (f *fakeChaptersService) GetForLibrary(context.Context, chapters.GetForLibraryOpts) (*chapters.Chapter, error) {
+	panic("GetForLibrary must not be called")
+}
+
+func (f *fakeChaptersService) GetDetailForLibrary(
+	context.Context, chapters.GetForLibraryOpts,
+) (*chapters.ChapterDetail, error) {
+	panic("GetDetailForLibrary must not be called")
+}
+
+func (f *fakeChaptersService) ServePage(context.Context, chapters.ServePageOpts) (string, string, error) {
+	panic("ServePage must not be called")
+}
+
 type blockingWorker struct {
 	started chan struct{}
 }
