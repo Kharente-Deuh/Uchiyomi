@@ -105,7 +105,7 @@ function previousPage(): void {
 }
 
 function nextPage(): void {
-  if (page.value < props.chapter.pageUrls.length - 1) {
+  if (page.value < props.chapter.pageUrls.length - (props.settings.doublePage ? 2 : 1)) {
     page.value = page.value + (props.settings.doublePage ? 2 : 1)
   } else if (!betweenChaptersMode.value) {
     betweenChaptersMode.value = 'next'
