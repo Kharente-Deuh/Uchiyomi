@@ -2,7 +2,6 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router'
 import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
-import asuraImg from '~/assets/images/sources/asurascans.webp'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
 definePageMeta({
@@ -28,11 +27,14 @@ interface Source {
   src: string
 }
 
+const { getSourceDetails } = useSources()
+const asuraDetails = getSourceDetails('asurascans')
+
 const sources: Source[] = [
   {
     to: '/browse/sources/asura',
-    title: t('sources.asurascans.title'),
-    src: asuraImg,
+    title: asuraDetails.name,
+    src: asuraDetails.image,
   },
 ]
 </script>

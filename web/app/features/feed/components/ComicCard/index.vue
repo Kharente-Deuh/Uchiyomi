@@ -29,6 +29,7 @@ watch(() => props.item.cover, () => {
           <span class="text-title-large font-weight-bold feed-comic-card-title text-truncate">
             {{ item.title }}
           </span>
+          <ComicsChipSource :source="item.source" size="small" />
           <ComicsIconStatus
             v-if="(item.status as string) !== ''"
             :status="item.status"
