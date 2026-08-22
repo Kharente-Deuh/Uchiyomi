@@ -61,7 +61,7 @@ async function updateSettings(settings: ReaderSettings): Promise<void> {
     :global-loader="isLoading"
   >
     <div class="d-flex flex-column ga-6" :class="{ 'px-8': smAndDown }">
-      <ReaderCard
+      <ReaderCardSettings
         v-if="currentSettings"
         v-model="currentSettings"
         v-model:type="comicType"
