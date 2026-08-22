@@ -63,15 +63,15 @@ export function createChaptersApi(): ChaptersApi {
 
   async function getById(id: string): Promise<ApiResponse<DetailedChapter>> {
     try {
-      const { previousChapterId, nextChapterId, pageUrls, ...response } = await api<DetailedChapter>(`/${id}`)
+      const { next, previous, pageUrls, ...response } = await api<DetailedChapter>(`/${id}`)
 
       return {
         success: true,
         data: {
           ...chapterFromHTTP(response),
           pageUrls: pageUrls ?? [],
-          nextChapterId,
-          previousChapterId,
+          next,
+          previous,
         },
       }
     } catch (error) {

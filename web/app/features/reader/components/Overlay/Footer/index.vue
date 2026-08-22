@@ -14,25 +14,25 @@ defineProps<{
     style="z-index: 2;"
   >
     <div class="d-flex ga-4 justify-space-between align-center w-100 mx-auto" style="max-width: 80rem;">
-      <AtomLink :to="chapter.previousChapterId ? `/comic/${comic.id}/${chapter.previousChapterId}` : undefined">
+      <AtomLink :to="chapter.previous ? `/comic/${comic.id}/${chapter.previous.id}` : undefined">
         <VBtn
-          :disabled="!chapter.previousChapterId"
-          :variant="chapter.previousChapterId ? 'tonal' : 'text'"
+          :disabled="!chapter.previous"
+          :variant="chapter.previous ? 'tonal' : 'text'"
           prepend-icon="fa6-solid:angle-left"
           :text="$t('comic.chapter.previous')"
-          :class="{ 'border-thin-primary': chapter.previousChapterId }"
+          :class="{ 'border-thin-primary': chapter.previous }"
         />
       </AtomLink>
 
       <ReaderOverlayFooterChaptersMenu :comic-id="comic.id" :current-chapter="chapter" />
 
-      <AtomLink :to="chapter.nextChapterId ? `/comic/${comic.id}/${chapter.nextChapterId}` : undefined">
+      <AtomLink :to="chapter.next ? `/comic/${comic.id}/${chapter.next.id}` : undefined">
         <VBtn
-          :disabled="!chapter.nextChapterId"
-          :variant="chapter.nextChapterId ? 'tonal' : 'text'"
+          :disabled="!chapter.next"
+          :variant="chapter.next ? 'tonal' : 'text'"
           append-icon="fa6-solid:angle-right"
           :text="$t('comic.chapter.next')"
-          :class="{ 'border-thin-primary': chapter.nextChapterId }"
+          :class="{ 'border-thin-primary': chapter.next }"
         />
       </AtomLink>
     </div>

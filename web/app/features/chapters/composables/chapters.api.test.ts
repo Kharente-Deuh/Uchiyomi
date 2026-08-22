@@ -54,6 +54,46 @@ describe('createChaptersApi().getByIds', () => {
   })
 })
 
+describe('createChaptersApi().getById', () => {
+  it('returns the chapter with next and previous neighbors', async () => {
+    const next = { id: 'ch-3', title: 'Three', number: 3 }
+    const previous = { id: 'ch-1', title: 'One', number: 1 }
+    call.mockResolvedValue({
+      id: 'ch-2',
+      comicId: 'c1',
+      number: 2,
+      title: 'Two',
+      pageUrls: ['/api/chapters/ch-2/pages/1'],
+      next,
+      previous,
+    })
+
+    const res = await createChaptersApi().getById('ch-2')
+
+    expect(call).toHaveBeenCalledWith('/ch-2')
+    expect(res).toEqual({
+      success: true,
+      data: {
+        id: 'ch-2',
+        comicId: 'c1',
+        number: 2,
+        title: 'Two',
+        pageUrls: ['/api/chapters/ch-2/pages/1'],
+        next,
+        previous,
+      },
+    })
+  })
+
+  it('surfaces a 404 with its status', async () => {
+    call.mockRejectedValue({ statusCode: 404, data: {} })
+
+    const res = await createChaptersApi().getById('missing')
+
+    expect(res.success === false && res.error.status).toBe(404)
+  })
+})
+
 describe('createChaptersApi().retryDownload', () => {
   it('posts retry for the chapter id', async () => {
     call.mockResolvedValue(undefined)

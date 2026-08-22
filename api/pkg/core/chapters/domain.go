@@ -41,10 +41,16 @@ type ChapterDownloader interface {
 	Resume(context.Context, uuid.UUID) error
 }
 
+type ChapterNeighbor struct {
+	Title  string
+	ID     uuid.UUID
+	Number float64
+}
+
 type ChapterDetail struct {
-	PreviousID *uuid.UUID
-	NextID     *uuid.UUID
-	Chapter    Chapter
+	Previous *ChapterNeighbor
+	Next     *ChapterNeighbor
+	Chapter  Chapter
 }
 
 type PageStore interface {

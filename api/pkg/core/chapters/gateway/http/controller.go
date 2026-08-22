@@ -372,8 +372,8 @@ func (c *Controller) chapterDetailItem(
 	return chapterDetailResponse{
 		postListResponseChapter: item,
 		PageURLs:                pageURLs(detail.Chapter.ID, detail.Chapter.Download, detail.Chapter.PagesNb),
-		NextChapterID:           detail.NextID,
-		PreviousChapterID:       detail.PreviousID,
+		Next:                    neighborResponse(detail.Next),
+		Previous:                neighborResponse(detail.Previous),
 	}, nil
 }
 
@@ -386,6 +386,18 @@ func (c *Controller) chapterItem(
 	}
 
 	return chapterHTTPItem(chapter, byID), nil
+}
+
+func neighborResponse(n *chapters.ChapterNeighbor) *chapterNeighborResponse {
+	if n == nil {
+		return nil
+	}
+
+	return &chapterNeighborResponse{
+		Title:  n.Title,
+		ID:     n.ID,
+		Number: n.Number,
+	}
 }
 
 func (c *Controller) progressByIDs(

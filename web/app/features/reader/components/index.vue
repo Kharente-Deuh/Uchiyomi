@@ -12,7 +12,7 @@ const props = defineProps<{
 
 defineEmits<{ retryDownload: [] }>()
 
-const showOverlay = ref(false)
+const showOverlay = ref(true)
 
 watch(() => props.chapter.download, (value) => {
   if (value !== 100 && !showOverlay.value) {
