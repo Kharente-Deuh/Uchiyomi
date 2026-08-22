@@ -15,6 +15,7 @@ function chapter(overrides: Partial<FeedChapter> = {}): FeedChapter {
     number: 12,
     download: 100,
     publishedAt: new Date('2026-08-18T12:00:00.000Z'),
+    hasProgress: false,
     ...overrides,
   }
 }

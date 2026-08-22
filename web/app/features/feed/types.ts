@@ -8,7 +8,6 @@ export interface FeedItem {
   source: ComicSource
   status: ComicStatus
   type: ComicType
-  hasProgress: boolean
   latestChapters: FeedChapter[]
 }
 
@@ -19,6 +18,7 @@ export interface FeedChapter {
   earlyAccessUntil?: Date
   number: number
   download: number
+  hasProgress: boolean
 }
 
 export interface FeedResponse {

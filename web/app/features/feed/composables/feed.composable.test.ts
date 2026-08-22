@@ -49,12 +49,12 @@ function item(overrides: Partial<FeedItem> = {}): FeedItem {
     source: 'asurascans',
     status: 'ongoing',
     type: 'manhwa',
-    hasProgress: true,
     latestChapters: [{
       id: 'ch-1',
       number: 1,
       download: 100,
       publishedAt: new Date('2026-01-01'),
+      hasProgress: false,
     }],
   }
 
@@ -220,7 +220,13 @@ describe('useFeed polling', () => {
   it('does not poll when no chapter is in progress', async () => {
     getFeed.mockResolvedValue({
       success: true,
-      data: { items: [item({ latestChapters: [{ id: 'ch-1', number: 1, download: 100, publishedAt: new Date('2026-01-01') }] })], total: 1 },
+      data: { items: [item({ latestChapters: [{
+        id: 'ch-1',
+        number: 1,
+        download: 100,
+        publishedAt: new Date('2026-01-01'),
+        hasProgress: false,
+      }] })], total: 1 },
     })
 
     setup()
@@ -235,7 +241,13 @@ describe('useFeed polling', () => {
       success: true,
       data: {
         items: [item({
-          latestChapters: [{ id: 'ch-1', number: 1, download: 10, publishedAt: new Date('2026-01-01') }],
+          latestChapters: [{
+            id: 'ch-1',
+            number: 1,
+            download: 10,
+            publishedAt: new Date('2026-01-01'),
+            hasProgress: false,
+          }],
         })],
         total: 1,
       },
@@ -256,7 +268,13 @@ describe('useFeed polling', () => {
       success: true,
       data: {
         items: [item({
-          latestChapters: [{ id: 'ch-1', number: 1, download: 10, publishedAt: new Date('2026-01-01') }],
+          latestChapters: [{
+            id: 'ch-1',
+            number: 1,
+            download: 10,
+            publishedAt: new Date('2026-01-01'),
+            hasProgress: false,
+          }],
         })],
         total: 1,
       },
@@ -277,7 +295,13 @@ describe('useFeed polling', () => {
 
   it('does not rewrite download when the poll returns the same value', async () => {
     const feedItem = item({
-      latestChapters: [{ id: 'ch-1', number: 1, download: 10, publishedAt: new Date('2026-01-01') }],
+      latestChapters: [{
+        id: 'ch-1',
+        number: 1,
+        download: 10,
+        publishedAt: new Date('2026-01-01'),
+        hasProgress: false,
+      }],
     })
     getFeed.mockResolvedValue({ success: true, data: { items: [feedItem], total: 1 } })
     getByIds.mockResolvedValue({ success: true, data: [chapter({ download: 10 })] })
@@ -296,7 +320,13 @@ describe('useFeed polling', () => {
       success: true,
       data: {
         items: [item({
-          latestChapters: [{ id: 'ch-1', number: 1, download: 90, publishedAt: new Date('2026-01-01') }],
+          latestChapters: [{
+            id: 'ch-1',
+            number: 1,
+            download: 90,
+            publishedAt: new Date('2026-01-01'),
+            hasProgress: false,
+          }],
         })],
         total: 1,
       },

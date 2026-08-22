@@ -160,8 +160,8 @@ export function useReader(comicId: string, chapterId: Ref<string>): ReaderCompos
     isLoading.value = false
   })
 
-  watch(chapter, (newValue) => {
-    if (!newValue) {
+  watch(chapter, (newValue, oldValue) => {
+    if (!newValue || newValue.id === oldValue?.id) {
       return
     }
 
