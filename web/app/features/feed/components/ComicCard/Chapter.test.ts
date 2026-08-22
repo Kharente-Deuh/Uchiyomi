@@ -21,7 +21,7 @@ function chapter(overrides: Partial<FeedChapter> = {}): FeedChapter {
 
 async function mount(value: FeedChapter): Promise<VueWrapper> {
   return mountSuspended({
-    render: () => h(VApp, () => [h(Chapter, { chapter: value })]),
+    render: () => h(VApp, () => [h(Chapter, { comicId: 'comic-1', chapter: value })]),
   })
 }
 

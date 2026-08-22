@@ -10,12 +10,13 @@ import { VApp, VBtn } from 'vuetify/components'
 import { ASURA_SOURCE_NAME } from '~/constants'
 import ComicPage from './index.vue'
 
-const { getById, refreshById, smAndDown, navigateTo, params, query } = await vi.hoisted(async () => {
+const { getById, refreshById, getProgress, smAndDown, navigateTo, params, query } = await vi.hoisted(async () => {
   const { ref } = await import('vue')
 
   return {
     getById: vi.fn(),
     refreshById: vi.fn(),
+    getProgress: vi.fn(),
     smAndDown: ref(false),
     navigateTo: vi.fn(),
     params: { id: 'c1' },
@@ -23,8 +24,8 @@ const { getById, refreshById, smAndDown, navigateTo, params, query } = await vi.
   }
 })
 
-function comicsApiStub(): { getById: typeof getById, refreshById: typeof refreshById } {
-  return { getById, refreshById }
+function comicsApiStub(): { getById: typeof getById, refreshById: typeof refreshById, getProgress: typeof getProgress } {
+  return { getById, refreshById, getProgress }
 }
 
 function displayStub(): { smAndDown: typeof smAndDown } {
@@ -110,12 +111,14 @@ function buttons(wrapper: VueWrapper): ReturnType<VueWrapper['findAllComponents'
 beforeEach(() => {
   getById.mockReset()
   refreshById.mockReset()
+  getProgress.mockReset()
   navigateTo.mockReset()
   smAndDown.value = false
   params.id = 'c1'
   query.from = undefined
   getById.mockResolvedValue({ success: true, data: comic() })
   refreshById.mockResolvedValue({ success: true, data: comic() })
+  getProgress.mockResolvedValue({ success: true, data: {} })
 })
 
 describe('comicPage', () => {

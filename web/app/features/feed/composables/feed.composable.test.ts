@@ -41,7 +41,7 @@ mockNuxtImport('useDebounceFn', debounceStub)
 mockNuxtImport('createChaptersApi', () => createChaptersApiStub)
 
 function item(overrides: Partial<FeedItem> = {}): FeedItem {
-  return {
+  const defaults: FeedItem = {
     id: 'comic-1',
     title: 'Solo Leveling',
     slug: 'solo-leveling',
@@ -56,8 +56,9 @@ function item(overrides: Partial<FeedItem> = {}): FeedItem {
       download: 100,
       publishedAt: new Date('2026-01-01'),
     }],
-    ...overrides,
   }
+
+  return { ...defaults, ...overrides }
 }
 
 function chapter(overrides: Partial<Chapter> = {}): Chapter {
