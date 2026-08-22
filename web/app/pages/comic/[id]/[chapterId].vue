@@ -16,7 +16,6 @@ const comicsApi = createComicsApi()
 const readerSettingsApi = createReaderSettingsApi()
 const { t } = useI18n()
 const toast = useToast()
-const { smAndDown } = useDisplay()
 
 const chapter = ref<DetailedChapter>()
 const comic = ref<Comic>()
@@ -145,68 +144,12 @@ function syncPolling(): void {
     />
   </div>
 
-  <template v-else-if="chapter">
-    <div v-if="chapter.download !== 100" class="d-flex flex-column w-screen h-screen justify-center align-center ga-4">
-      <VProgressCircular
-        v-if="chapter.download !== -1"
-        :indeterminate="chapter.download === 0"
-        :value="chapter.download"
-        size="48"
-        color="primary"
-      />
-      <template v-if="chapter.download === -1">
-        <VIcon
-          icon="fa6-solid:circle-exclamation"
-          size="48"
-          color="error"
-        />
-        <span class="text-body-large text-medium-emphasis">{{ $t('comic.chapter.download.error') }}</span>
-        <VBtn
-          color="error"
-          class="border-thin-error"
-          :text="$t('comic.chapter.download.retry')"
-          :loading="isRetrying"
-          @click="retryDownload"
-        />
-      </template>
-
-      <div
-        class="d-flex align-center ga-4 px-4"
-        :class="{
-          'justify-space-between': smAndDown,
-          'w-100': smAndDown,
-        }"
-      >
-        <AtomLink :to="chapter.previousChapterId ? `comic/${route.params.id}/${chapter.previousChapterId}` : undefined">
-          <VBtn
-            :color="chapter.previousChapterId ? 'primary' : undefined"
-            :variant="chapter.previousChapterId ? 'tonal' : 'text'"
-            :disabled="!chapter.previousChapterId"
-            prepend-icon="fa6-solid:angle-left"
-            :text="$t('comic.chapter.previous')"
-            :class="{ 'border-thin-primary': chapter.previousChapterId }"
-          />
-        </AtomLink>
-
-        <AtomLink :to="`comic/${route.params.id}`">
-          <VBtn
-            :text="$t('comic.chapter.exitToComic')"
-            color="secondary"
-            variant="flat"
-          />
-        </AtomLink>
-
-        <AtomLink :to="chapter.nextChapterId ? `comic/${route.params.id}/${chapter.nextChapterId}` : undefined">
-          <VBtn
-            :color="chapter.nextChapterId ? 'primary' : undefined"
-            :disabled="!chapter.nextChapterId"
-            :variant="chapter.nextChapterId ? 'tonal' : 'text'"
-            append-icon="fa6-solid:angle-right"
-            :text="$t('comic.chapter.next')"
-            :class="{ 'border-thin-primary': chapter.nextChapterId }"
-          />
-        </AtomLink>
-      </div>
-    </div>
-  </template>
+  <Reader
+    v-else-if="comic && chapter && readerSettings"
+    :comic
+    :chapter
+    :settings="readerSettings"
+    :retry-download-loading="isRetrying"
+    @retry-download="retryDownload"
+  />
 </template>

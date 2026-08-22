@@ -321,7 +321,8 @@
       "exitToComic": "Exit to comic",
       "download": {
         "error": "Chapter download error",
-        "retry": "Retry"
+        "retry": "Retry",
+        "loading": "Chapter downloading..."
       }
     }
   },

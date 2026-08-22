@@ -355,7 +355,8 @@
       "exitToComic": "Retourner a la BD",
       "download": {
         "error": "Erreur de téléchargement de chapitre",
-        "retry": "Réessayer"
+        "retry": "Réessayer",
+        "loading": "Téléchargement du chapitre..."
       }
     }
   }
