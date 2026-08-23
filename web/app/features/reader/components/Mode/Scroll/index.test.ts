@@ -74,9 +74,11 @@ async function mount(opts: { page?: number } = {}): Promise<{
 }
 
 function setScrollMetrics(el: HTMLElement, metrics: { scrollHeight: number, scrollTop: number, clientHeight: number }): void {
-  Object.defineProperty(el, 'scrollHeight', { configurable: true, value: metrics.scrollHeight })
-  Object.defineProperty(el, 'scrollTop', { configurable: true, value: metrics.scrollTop })
-  Object.defineProperty(el, 'clientHeight', { configurable: true, value: metrics.clientHeight })
+  Object.defineProperties(el, {
+    scrollHeight: { configurable: true, value: metrics.scrollHeight },
+    scrollTop: { configurable: true, value: metrics.scrollTop },
+    clientHeight: { configurable: true, value: metrics.clientHeight },
+  })
 }
 
 describe('readerModeScroll', () => {
