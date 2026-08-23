@@ -117,13 +117,22 @@ async function waitUntilIdle(reader: ReaderComposable): Promise<void> {
 
 const wrappers: VueWrapper[] = []
 
-async function setup(chapterId = 'ch-2'): Promise<{ reader: ReaderComposable, chapterId: Ref<string> }> {
+async function setup(
+  chapterId = 'ch-2',
+  opts: { ignoreProgress?: boolean, onAfterProgressIgnored?: () => void } = {},
+): Promise<{ reader: ReaderComposable, chapterId: Ref<string> }> {
   const id = ref(chapterId)
+  const ignoreProgress = ref(opts.ignoreProgress ?? false)
   let reader: ReaderComposable | undefined
 
   const wrapper = await mountSuspended({
     setup: () => {
-      reader = useReader('c1', id)
+      reader = useReader({
+        comicId: 'c1',
+        chapterId: id,
+        ignoreProgress,
+        onAfterProgressIgnored: opts.onAfterProgressIgnored,
+      })
 
       return { reader }
     },
@@ -182,6 +191,19 @@ describe('useReader', () => {
     await waitUntilIdle(reader)
 
     expect(reader.page.value).toBe(2)
+  })
+
+  it('skips restored progress when ignoreProgress is set', async () => {
+    const onAfterProgressIgnored = vi.fn()
+    getById.mockResolvedValue(chapterResponse({
+      progress: { page: 2, updatedAt: new Date('2026-08-22') },
+    }))
+
+    const { reader } = await setup('ch-2', { ignoreProgress: true, onAfterProgressIgnored })
+    await waitUntilIdle(reader)
+
+    expect(reader.page.value).toBe(0)
+    expect(onAfterProgressIgnored).toHaveBeenCalledOnce()
   })
 
   it('redirects to the library when the comic is missing', async () => {

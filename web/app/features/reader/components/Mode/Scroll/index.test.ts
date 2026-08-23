@@ -7,7 +7,7 @@ import type { Comic } from '~/features/comics/types'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
 import { h, ref } from 'vue'
-import { VApp } from 'vuetify/components'
+import { VApp, VImg } from 'vuetify/components'
 import { ASURA_SOURCE_NAME } from '~/constants'
 import Scroll from './index.vue'
 
@@ -45,11 +45,14 @@ function chapter(overrides: Partial<DetailedChapter> = {}): DetailedChapter {
   }
 }
 
-async function mount(opts: { page?: number } = {}): Promise<VueWrapper> {
+async function mount(opts: { page?: number } = {}): Promise<{
+  wrapper: VueWrapper
+  showOverlay: ReturnType<typeof ref<boolean>>
+}> {
   const page = ref(opts.page ?? 0)
   const showOverlay = ref(true)
 
-  return await mountSuspended({
+  const wrapper = await mountSuspended({
     setup: () => ({ page, showOverlay }),
     render: () => h(VApp, () => [
       h(Scroll, {
@@ -66,12 +69,61 @@ async function mount(opts: { page?: number } = {}): Promise<VueWrapper> {
       }),
     ]),
   })
+
+  return { wrapper, showOverlay }
+}
+
+function setScrollMetrics(el: HTMLElement, metrics: { scrollHeight: number, scrollTop: number, clientHeight: number }): void {
+  Object.defineProperty(el, 'scrollHeight', { configurable: true, value: metrics.scrollHeight })
+  Object.defineProperty(el, 'scrollTop', { configurable: true, value: metrics.scrollTop })
+  Object.defineProperty(el, 'clientHeight', { configurable: true, value: metrics.clientHeight })
 }
 
 describe('readerModeScroll', () => {
   it('constrains the virtual list to the viewport so scrollToIndex can move', async () => {
-    const wrapper = await mount({ page: 2 })
+    const { wrapper } = await mount({ page: 2 })
 
     expect(wrapper.find('.v-virtual-scroll').classes()).toContain('h-100')
+  })
+
+  it('renders a page image per url', async () => {
+    const { wrapper } = await mount()
+
+    expect(wrapper.findAllComponents(VImg).map(img => img.props('src'))).toEqual(['/p1', '/p2', '/p3'])
+  })
+
+  it('ignores the first scroll so restore does not hide the overlay', async () => {
+    const { wrapper, showOverlay } = await mount()
+    const el = wrapper.find('.v-virtual-scroll').element as HTMLElement
+    setScrollMetrics(el, { scrollHeight: 1000, scrollTop: 40, clientHeight: 100 })
+
+    await wrapper.find('.v-virtual-scroll').trigger('scroll')
+
+    expect(showOverlay.value).toBe(true)
+  })
+
+  it('hides the overlay on a later scroll that is not at the bottom', async () => {
+    const { wrapper, showOverlay } = await mount()
+    const el = wrapper.find('.v-virtual-scroll').element as HTMLElement
+    setScrollMetrics(el, { scrollHeight: 1000, scrollTop: 40, clientHeight: 100 })
+
+    await wrapper.find('.v-virtual-scroll').trigger('scroll')
+    await wrapper.find('.v-virtual-scroll').trigger('scroll')
+
+    expect(showOverlay.value).toBe(false)
+  })
+
+  it('shows the overlay when scrolled to the bottom', async () => {
+    const { wrapper, showOverlay } = await mount()
+    const el = wrapper.find('.v-virtual-scroll').element as HTMLElement
+    setScrollMetrics(el, { scrollHeight: 1000, scrollTop: 40, clientHeight: 100 })
+    await wrapper.find('.v-virtual-scroll').trigger('scroll')
+    await wrapper.find('.v-virtual-scroll').trigger('scroll')
+    expect(showOverlay.value).toBe(false)
+
+    setScrollMetrics(el, { scrollHeight: 1000, scrollTop: 900, clientHeight: 100 })
+    await wrapper.find('.v-virtual-scroll').trigger('scroll')
+
+    expect(showOverlay.value).toBe(true)
   })
 })

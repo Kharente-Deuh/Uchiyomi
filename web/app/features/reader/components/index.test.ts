@@ -34,6 +34,17 @@ const PagedStub = defineComponent({
   template: '<div data-test="paged" />',
 })
 
+const ScrollStub = defineComponent({
+  name: 'ReaderModeScroll',
+  props: {
+    comic: { type: Object, required: true },
+    chapter: { type: Object, required: true },
+    page: { type: Number, required: true },
+    showOverlay: { type: Boolean, required: true },
+  },
+  template: '<div data-test="scroll" />',
+})
+
 function comic(overrides: Partial<Comic> = {}): Comic {
   return {
     id: 'c1',
@@ -105,6 +116,7 @@ async function mount(opts: {
       stubs: {
         ReaderOverlay: OverlayStub,
         ReaderModePaged: PagedStub,
+        ReaderModeScroll: ScrollStub,
       },
     },
   })
@@ -140,6 +152,13 @@ describe('reader', () => {
   it('does not mount paged mode for webtoon settings', async () => {
     const { wrapper } = await mount({ settings: { readingMode: 'webtoon' } })
 
+    expect(wrapper.find('[data-test="paged"]').exists()).toBe(false)
+  })
+
+  it('shows scroll mode for webtoon settings', async () => {
+    const { wrapper } = await mount({ settings: { readingMode: 'webtoon' } })
+
+    expect(wrapper.find('[data-test="scroll"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="paged"]').exists()).toBe(false)
   })
 })
