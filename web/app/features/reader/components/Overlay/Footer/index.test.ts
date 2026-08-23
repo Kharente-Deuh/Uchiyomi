@@ -88,8 +88,8 @@ describe('readerOverlayFooter', () => {
   it('links to the previous and next chapters', async () => {
     const wrapper = await mount()
 
-    expect(wrapper.find('a[href="/comic/c1/ch-1"]').exists()).toBe(true)
-    expect(wrapper.find('a[href="/comic/c1/ch-3"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/comic/c1/ch-1?ignoreProgress=true"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/comic/c1/ch-3?ignoreProgress=true"]').exists()).toBe(true)
     expect(buttons(wrapper).find(b => b.text().includes('Prev'))?.props('disabled')).toBe(false)
     expect(buttons(wrapper).find(b => b.text().includes('Next'))?.props('disabled')).toBe(false)
   })

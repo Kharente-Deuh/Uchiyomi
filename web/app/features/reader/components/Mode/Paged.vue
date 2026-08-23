@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import type { Comic } from '../../../comics/types'
 import type { BetweenChaptersMode } from '../Card/BetweenChapters.vue'

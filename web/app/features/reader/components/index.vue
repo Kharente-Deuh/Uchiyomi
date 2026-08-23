@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import type { ReaderSettings } from '../types'
 import type { DetailedChapter } from '~/features/chapters/types'
@@ -86,6 +87,14 @@ const page = defineModel<number>('page', { required: true })
       @fetch-previous-chapter="$emit('fetchPreviousChapter')"
       @previous-chapter="$emit('previousChapter')"
       @next-chapter="$emit('nextChapter')"
+    />
+
+    <ReaderModeScroll
+      v-else
+      v-model:page="page"
+      v-model:show-overlay="showOverlay"
+      :comic
+      :chapter
     />
   </div>
 </template>

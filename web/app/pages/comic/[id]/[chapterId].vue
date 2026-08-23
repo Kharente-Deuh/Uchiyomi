@@ -23,7 +23,12 @@ const {
   nextChapter,
   previousChapter,
   startEnd,
-} = useReader(route.value.params.id, computed(() => route.value.params.chapterId))
+} = useReader({
+  comicId: route.value.params.id,
+  chapterId: computed(() => route.value.params.chapterId),
+  ignoreProgress: computed(() => route.value.query.ignoreProgress === 'true'),
+  onAfterProgressIgnored: () => updateRoute(route.value.params.chapterId),
+})
 
 function toPreviousChapter(): void {
   if (!previousChapter.value) {
@@ -50,6 +55,7 @@ function updateRoute(chapterId: string): void {
       id: route.value.params.id,
       chapterId,
     },
+    query: {},
   })
 }
 </script>
