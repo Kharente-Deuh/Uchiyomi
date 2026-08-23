@@ -83,7 +83,11 @@ function onScroll(event: Event): void {
 </script>
 
 <template>
-  <div class="h-screen w-screen overflow-hidden" @click="showOverlay = !showOverlay">
+  <div
+    class="h-screen overflow-hidden mx-auto"
+    style="max-width: 70rem;"
+    @click="showOverlay = !showOverlay"
+  >
     <VVirtualScroll
       ref="virtualScrollRef"
       class="h-100"
