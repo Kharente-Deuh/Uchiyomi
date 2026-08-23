@@ -84,8 +84,7 @@ function onScroll(event: Event): void {
 
 <template>
   <div
-    class="h-screen overflow-hidden mx-auto"
-    style="max-width: 70rem;"
+    class="h-screen w-screen mx-auto"
     @click="showOverlay = !showOverlay"
   >
     <VVirtualScroll
@@ -97,6 +96,7 @@ function onScroll(event: Event): void {
       <template #default="{ item, index }">
         <ReaderModeScrollImg
           :src="item"
+          style="max-width: 70rem; margin-right: auto; margin-left: auto;"
           :root="scrollRoot"
           @intersecting="onIntersecting(index, $event)"
         />
