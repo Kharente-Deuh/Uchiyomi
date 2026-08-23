@@ -27,6 +27,7 @@ const {
   comicId: route.value.params.id,
   chapterId: computed(() => route.value.params.chapterId),
   ignoreProgress: computed(() => route.value.query.ignoreProgress === 'true'),
+  onAfterProgressIgnored: () => updateRoute(route.value.params.chapterId),
 })
 
 function toPreviousChapter(): void {
@@ -54,6 +55,7 @@ function updateRoute(chapterId: string): void {
       id: route.value.params.id,
       chapterId,
     },
+    query: {},
   })
 }
 </script>

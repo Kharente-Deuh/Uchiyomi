@@ -23,9 +23,10 @@ export interface ReaderComposableOptions {
   ignoreProgress?: Ref<boolean>
   comicId: string
   chapterId: Ref<string>
+  onAfterProgressIgnored?: () => void
 }
 
-export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposableOptions): ReaderComposable {
+export function useReader(opts: ReaderComposableOptions): ReaderComposable {
   const api = createChaptersApi()
   const comicsApi = createComicsApi()
   const readerSettingsApi = createReaderSettingsApi()
@@ -33,7 +34,7 @@ export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposab
   const toast = useToast()
 
   const loadedChapters = ref<DetailedChapter[]>([])
-  const chapter = computed(() => loadedChapters.value.find(({ id }) => id === chapterId.value))
+  const chapter = computed(() => loadedChapters.value.find(({ id }) => id === opts.chapterId.value))
   const comic = ref<Comic>()
   const isLoading = ref(true)
   const fetchChapterLoading = ref(false)
@@ -85,7 +86,7 @@ export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposab
   }
 
   async function fetchComic(): Promise<void> {
-    const res = await comicsApi.getById(comicId)
+    const res = await comicsApi.getById(opts.comicId)
     if (!res.success) {
       console.error('comicsApi.getById', res.error)
 
@@ -103,7 +104,7 @@ export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposab
 
   onMounted(async () => {
     const [_, __, settings] = await Promise.all([
-      fetchChapter(chapterId.value),
+      fetchChapter(opts.chapterId.value),
       fetchComic(),
       fetchReaderSettings(),
     ])
@@ -115,20 +116,24 @@ export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposab
     }
 
     if (!chapter.value) {
-      navigateTo(`/comic/${comicId}`)
+      navigateTo(`/comic/${opts.comicId}`)
 
       return
     }
 
     readerSettings.value = settings.find(({ type }) => type === comic.value?.type)
     if (!readerSettings.value) {
-      navigateTo(`/comic/${comicId}`)
+      navigateTo(`/comic/${opts.comicId}`)
 
       return
     }
 
-    if (!ignoreProgress?.value && chapter.value.progress) {
+    if (!opts.ignoreProgress?.value && chapter.value.progress) {
       page.value = chapter.value.progress.page
+    }
+
+    if (opts.ignoreProgress?.value && opts.onAfterProgressIgnored) {
+      opts.onAfterProgressIgnored()
     }
 
     isLoading.value = false
@@ -138,9 +143,9 @@ export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposab
 
   async function retryDownload(): Promise<void> {
     retryDownloadLoading.value = true
-    const res = await api.retryDownload(chapterId.value)
+    const res = await api.retryDownload(opts.chapterId.value)
     if (res.success) {
-      await fetchChapter(chapterId.value)
+      await fetchChapter(opts.chapterId.value)
     } else {
       console.error('api.retryDownload', res.error)
       if (res.error.status === 404 || res.error.status === 403) {
@@ -153,15 +158,15 @@ export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposab
     retryDownloadLoading.value = false
   }
 
-  watch(chapterId, async (): Promise<void> => {
-    const loadedChapter = loadedChapters.value.find(({ id }) => id === chapterId.value)
+  watch(opts.chapterId, async (): Promise<void> => {
+    const loadedChapter = loadedChapters.value.find(({ id }) => id === opts.chapterId.value)
     if (loadedChapter || fetchChapterLoading.value) {
       return
     }
 
     isLoading.value = true
 
-    await fetchChapter(chapterId.value)
+    await fetchChapter(opts.chapterId.value)
 
     isLoading.value = false
   })
@@ -188,11 +193,11 @@ export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposab
     }
 
     isInFlight.value = true
-    await fetchChapter(chapterId.value)
+    await fetchChapter(opts.chapterId.value)
     isInFlight.value = false
   }, 2000, { immediate: false })
 
-  watch(chapterId, () => {
+  watch(opts.chapterId, () => {
     syncPolling()
   })
 
@@ -201,7 +206,7 @@ export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposab
       return
     }
 
-    if (loadedChapters.value.at(-1)?.id === chapterId.value) {
+    if (loadedChapters.value.at(-1)?.id === opts.chapterId.value) {
       syncPolling()
     }
   })
