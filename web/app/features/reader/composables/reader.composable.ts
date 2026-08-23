@@ -19,7 +19,13 @@ export interface ReaderComposable {
   startEnd: Ref<boolean>
 }
 
-export function useReader(comicId: string, chapterId: Ref<string>): ReaderComposable {
+export interface ReaderComposableOptions {
+  ignoreProgress?: Ref<boolean>
+  comicId: string
+  chapterId: Ref<string>
+}
+
+export function useReader({ comicId, chapterId, ignoreProgress }: ReaderComposableOptions): ReaderComposable {
   const api = createChaptersApi()
   const comicsApi = createComicsApi()
   const readerSettingsApi = createReaderSettingsApi()
@@ -121,7 +127,7 @@ export function useReader(comicId: string, chapterId: Ref<string>): ReaderCompos
       return
     }
 
-    if (chapter.value.progress) {
+    if (!ignoreProgress?.value && chapter.value.progress) {
       page.value = chapter.value.progress.page
     }
 

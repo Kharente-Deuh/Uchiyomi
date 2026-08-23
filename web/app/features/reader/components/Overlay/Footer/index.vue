@@ -14,7 +14,7 @@ defineProps<{
     style="z-index: 2;"
   >
     <div class="d-flex ga-4 justify-space-between align-center w-100 mx-auto" style="max-width: 80rem;">
-      <AtomLink :to="chapter.previous ? `/comic/${comic.id}/${chapter.previous.id}` : undefined">
+      <AtomLink :to="chapter.previous ? `/comic/${comic.id}/${chapter.previous.id}?ignoreProgress=true` : undefined">
         <VBtn
           :disabled="!chapter.previous"
           :variant="chapter.previous ? 'tonal' : 'text'"
@@ -26,7 +26,7 @@ defineProps<{
 
       <ReaderOverlayFooterChaptersMenu :comic-id="comic.id" :current-chapter="chapter" />
 
-      <AtomLink :to="chapter.next ? `/comic/${comic.id}/${chapter.next.id}` : undefined">
+      <AtomLink :to="chapter.next ? `/comic/${comic.id}/${chapter.next.id}?ignoreProgress=true` : undefined">
         <VBtn
           :disabled="!chapter.next"
           :variant="chapter.next ? 'tonal' : 'text'"
