@@ -163,10 +163,11 @@ func (c *Controller) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := c.deps.Service.MarkRead(ctx, readingprogress.MarkReadOpts{
+	result, err := c.deps.Service.SetRead(ctx, readingprogress.SetReadOpts{
 		UserID:     user.ID,
 		ComicID:    comicID,
 		ChapterIDs: req.ChapterIDs,
+		Read:       true,
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {

@@ -29,21 +29,25 @@ func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn 
 	return f.err
 }
 
+//nolint:govet // fieldalignment on a test fake is not worth the unreadable field order
 type fakeRepo struct {
 	latest      *readingprogress.Progress
 	existing    *readingprogress.Progress
 	listErr     error
 	getErr      error
 	upsertErr   error
+	deleteErr   error
 	stored      []readingprogress.Progress
 	rows        []readingprogress.Progress
 	upserts     []readingprogress.UpsertOpts
 	lastUpsert  readingprogress.UpsertOpts
 	lastGet     readingprogress.GetOpts
+	lastDelete  readingprogress.DeleteProgressOpts
 	listed      readingprogress.ListOpts
 	listCalls   int
 	getCalls    int
 	upsertCalls int
+	deleteCalls int
 }
 
 func (f *fakeRepo) GetLatestByUserAndComic(
@@ -109,6 +113,16 @@ func (f *fakeRepo) Upsert(_ context.Context, opts readingprogress.UpsertOpts) (r
 	f.rows = []readingprogress.Progress{row}
 
 	return out, f.upsertErr
+}
+
+func (f *fakeRepo) DeleteByUserAndChapterIDs(
+	_ context.Context,
+	opts readingprogress.DeleteProgressOpts,
+) error {
+	f.deleteCalls++
+	f.lastDelete = opts
+
+	return f.deleteErr
 }
 
 type fakeLibrary struct {
@@ -198,7 +212,7 @@ func ch(id, comicID uuid.UUID, number float64, pagesNb int) chapters.Chapter {
 	return chapters.Chapter{ID: id, ComicID: comicID, Number: number, PagesNb: pagesNb}
 }
 
-func markReadSvc(
+func setReadSvc(
 	t *testing.T,
 	repo *fakeRepo,
 	lib readingprogress.LibraryMembership,
@@ -551,27 +565,31 @@ func TestListForbidden(t *testing.T) {
 	}
 }
 
-func TestMarkReadEmptyChapterIDs(t *testing.T) {
+func TestSetReadEmptyChapterIDs(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
 		name string
 		ids  []uuid.UUID
+		read bool
 	}{
-		{name: "nil", ids: nil},
-		{name: "empty slice", ids: []uuid.UUID{}},
+		{name: "nil read true", ids: nil, read: true},
+		{name: "empty slice read true", ids: []uuid.UUID{}, read: true},
+		{name: "nil read false", ids: nil, read: false},
+		{name: "empty slice read false", ids: []uuid.UUID{}, read: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			repo := &fakeRepo{}
 			tx := &fakeTransactor{}
-			svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{}, tx)
+			svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{}, tx)
 
-			_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+			_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 				UserID:     uuid.New(),
 				ComicID:    uuid.New(),
 				ChapterIDs: tc.ids,
+				Read:       tc.read,
 			})
 			if !errors.Is(err, readingprogress.ErrInvalid) {
 				t.Errorf("err = %v, want ErrInvalid", err)
@@ -582,28 +600,32 @@ func TestMarkReadEmptyChapterIDs(t *testing.T) {
 			if repo.upsertCalls != 0 {
 				t.Errorf("repo.upsertCalls = %d, want 0", repo.upsertCalls)
 			}
+			if repo.deleteCalls != 0 {
+				t.Errorf("repo.deleteCalls = %d, want 0", repo.deleteCalls)
+			}
 		})
 	}
 }
 
 //nolint:dupl
-func TestMarkReadForbiddenWhenNotInLibrary(t *testing.T) {
+func TestSetReadForbiddenWhenNotInLibrary(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
 	chID := uuid.New()
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: false}, &fakeComics{exists: true}, &fakeChapters{
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: false}, &fakeComics{exists: true}, &fakeChapters{
 		byID: map[uuid.UUID]chapters.Chapter{
 			chID: ch(chID, comicID, 1.0, 10),
 		},
 	}, tx)
 
-	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     uuid.New(),
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{chID},
+		Read:       true,
 	})
 	if !errors.Is(err, domain.ErrForbidden) {
 		t.Errorf("err = %v, want ErrForbidden", err)
@@ -617,23 +639,24 @@ func TestMarkReadForbiddenWhenNotInLibrary(t *testing.T) {
 }
 
 //nolint:dupl
-func TestMarkReadNotFoundWhenComicMissing(t *testing.T) {
+func TestSetReadNotFoundWhenComicMissing(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
 	chID := uuid.New()
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: false}, &fakeComics{exists: false}, &fakeChapters{
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: false}, &fakeComics{exists: false}, &fakeChapters{
 		byID: map[uuid.UUID]chapters.Chapter{
 			chID: ch(chID, comicID, 2.5, 10),
 		},
 	}, tx)
 
-	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     uuid.New(),
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{chID},
+		Read:       true,
 	})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("err = %v, want ErrNotFound", err)
@@ -647,7 +670,7 @@ func TestMarkReadNotFoundWhenComicMissing(t *testing.T) {
 }
 
 //nolint:dupl
-func TestMarkReadUnknownChapter(t *testing.T) {
+func TestSetReadUnknownChapter(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
@@ -655,16 +678,17 @@ func TestMarkReadUnknownChapter(t *testing.T) {
 	ch2 := uuid.New()
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
 		byID: map[uuid.UUID]chapters.Chapter{
 			ch1: ch(ch1, comicID, 1.0, 10),
 		},
 	}, tx)
 
-	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     uuid.New(),
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{ch1, ch2},
+		Read:       true,
 	})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("err = %v, want ErrNotFound", err)
@@ -678,7 +702,7 @@ func TestMarkReadUnknownChapter(t *testing.T) {
 }
 
 //nolint:dupl
-func TestMarkReadForeignComicChapter(t *testing.T) {
+func TestSetReadForeignComicChapter(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
@@ -686,16 +710,17 @@ func TestMarkReadForeignComicChapter(t *testing.T) {
 	chID := uuid.New()
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
 		byID: map[uuid.UUID]chapters.Chapter{
 			chID: ch(chID, otherComicID, 3.0, 10),
 		},
 	}, tx)
 
-	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     uuid.New(),
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{chID},
+		Read:       true,
 	})
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("err = %v, want ErrNotFound", err)
@@ -709,23 +734,24 @@ func TestMarkReadForeignComicChapter(t *testing.T) {
 }
 
 //nolint:dupl
-func TestMarkReadOnlyZeroPagesNb(t *testing.T) {
+func TestSetReadOnlyZeroPagesNb(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
 	chID := uuid.New()
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
 		byID: map[uuid.UUID]chapters.Chapter{
 			chID: ch(chID, comicID, 4.0, 0),
 		},
 	}, tx)
 
-	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     uuid.New(),
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{chID},
+		Read:       true,
 	})
 	if !errors.Is(err, readingprogress.ErrInvalid) {
 		t.Errorf("err = %v, want ErrInvalid", err)
@@ -738,7 +764,7 @@ func TestMarkReadOnlyZeroPagesNb(t *testing.T) {
 	}
 }
 
-func TestMarkReadDedupesBeforeLookup(t *testing.T) {
+func TestSetReadDedupesBeforeLookup(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
@@ -750,22 +776,23 @@ func TestMarkReadDedupesBeforeLookup(t *testing.T) {
 			chID: ch(chID, comicID, 5.0, 10),
 		},
 	}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, chaps, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, chaps, tx)
 
-	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     uuid.New(),
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{chID, chID},
+		Read:       true,
 	})
 	if len(chaps.lastIDs) != 1 {
 		t.Fatalf("len(chaps.lastIDs) = %d, want 1", len(chaps.lastIDs))
 	}
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 }
 
-func TestMarkReadFirstProgressContinueIsHighestNumber(t *testing.T) {
+func TestSetReadFirstProgressContinueIsHighestNumber(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
@@ -780,15 +807,16 @@ func TestMarkReadFirstProgressContinueIsHighestNumber(t *testing.T) {
 
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	got, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     userID,
 		ComicID:    comicID,
 		ChapterIDs: ids,
+		Read:       true,
 	})
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 
 	if tx.calls != 1 {
@@ -829,7 +857,7 @@ func TestMarkReadFirstProgressContinueIsHighestNumber(t *testing.T) {
 	}
 }
 
-func TestMarkReadKeepsEarlierContinuePage(t *testing.T) {
+func TestSetReadKeepsEarlierContinuePage(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
@@ -855,15 +883,16 @@ func TestMarkReadKeepsEarlierContinuePage(t *testing.T) {
 		},
 	}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	got, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     userID,
 		ComicID:    comicID,
 		ChapterIDs: ids,
+		Read:       true,
 	})
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 
 	if len(repo.upserts) < 2 {
@@ -892,7 +921,7 @@ func TestMarkReadKeepsEarlierContinuePage(t *testing.T) {
 	}
 }
 
-func TestMarkReadKeepsCompletedLaterContinue(t *testing.T) {
+func TestSetReadKeepsCompletedLaterContinue(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
@@ -918,15 +947,16 @@ func TestMarkReadKeepsCompletedLaterContinue(t *testing.T) {
 		},
 	}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	got, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     userID,
 		ComicID:    comicID,
 		ChapterIDs: ids,
+		Read:       true,
 	})
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 
 	for i, up := range repo.upserts[:len(repo.upserts)-1] {
@@ -944,7 +974,7 @@ func TestMarkReadKeepsCompletedLaterContinue(t *testing.T) {
 	}
 }
 
-func TestMarkReadMovesContinueForward(t *testing.T) {
+func TestSetReadMovesContinueForward(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
@@ -968,15 +998,16 @@ func TestMarkReadMovesContinueForward(t *testing.T) {
 		},
 	}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	got, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     userID,
 		ComicID:    comicID,
 		ChapterIDs: ids,
+		Read:       true,
 	})
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 
 	foundCh5Upsert := false
@@ -998,7 +1029,7 @@ func TestMarkReadMovesContinueForward(t *testing.T) {
 	}
 }
 
-func TestMarkReadSkipsZeroPagesNbAmongEligible(t *testing.T) {
+func TestSetReadSkipsZeroPagesNbAmongEligible(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
@@ -1015,15 +1046,16 @@ func TestMarkReadSkipsZeroPagesNbAmongEligible(t *testing.T) {
 
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	got, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     userID,
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{ch1ID, ch2ID, ch3ID},
+		Read:       true,
 	})
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 
 	for _, up := range repo.upserts {
@@ -1041,7 +1073,7 @@ func TestMarkReadSkipsZeroPagesNbAmongEligible(t *testing.T) {
 	}
 }
 
-func TestMarkReadDuplicateIDsOneWritePerChapter(t *testing.T) {
+func TestSetReadDuplicateIDsOneWritePerChapter(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
@@ -1054,15 +1086,16 @@ func TestMarkReadDuplicateIDsOneWritePerChapter(t *testing.T) {
 
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     userID,
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{ch1ID, ch1ID},
+		Read:       true,
 	})
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 
 	ch1Upserts := 0
@@ -1076,7 +1109,7 @@ func TestMarkReadDuplicateIDsOneWritePerChapter(t *testing.T) {
 	}
 }
 
-func TestMarkReadMissingContinueChapterTreatsAsNone(t *testing.T) {
+func TestSetReadMissingContinueChapterTreatsAsNone(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
@@ -1098,15 +1131,16 @@ func TestMarkReadMissingContinueChapterTreatsAsNone(t *testing.T) {
 		},
 	}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	got, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     userID,
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{ch3ID, ch7ID},
+		Read:       true,
 	})
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 
 	for _, up := range repo.upserts {
@@ -1124,7 +1158,7 @@ func TestMarkReadMissingContinueChapterTreatsAsNone(t *testing.T) {
 	}
 }
 
-func TestMarkReadTxErrorNoListSideEffect(t *testing.T) {
+func TestSetReadTxErrorNoListSideEffect(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
@@ -1139,12 +1173,13 @@ func TestMarkReadTxErrorNoListSideEffect(t *testing.T) {
 		upsertErr := errors.New("db error")
 		repo := &fakeRepo{upsertErr: upsertErr}
 		tx := &fakeTransactor{}
-		svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+		svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-		_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 			UserID:     uuid.New(),
 			ComicID:    comicID,
 			ChapterIDs: []uuid.UUID{chID},
+			Read:       true,
 		})
 		if err == nil {
 			t.Fatal("expected error")
@@ -1160,12 +1195,13 @@ func TestMarkReadTxErrorNoListSideEffect(t *testing.T) {
 		txErr := errors.New("tx commit failed")
 		repo := &fakeRepo{}
 		tx := &fakeTransactor{err: txErr}
-		svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+		svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-		_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 			UserID:     uuid.New(),
 			ComicID:    comicID,
 			ChapterIDs: []uuid.UUID{chID},
+			Read:       true,
 		})
 		if err == nil {
 			t.Fatal("expected error")
@@ -1176,7 +1212,7 @@ func TestMarkReadTxErrorNoListSideEffect(t *testing.T) {
 	})
 }
 
-func TestMarkReadTieBreakByUUID(t *testing.T) {
+func TestSetReadTieBreakByUUID(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
@@ -1191,15 +1227,16 @@ func TestMarkReadTieBreakByUUID(t *testing.T) {
 
 	repo := &fakeRepo{}
 	tx := &fakeTransactor{}
-	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
 
-	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+	got, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
 		UserID:     userID,
 		ComicID:    comicID,
 		ChapterIDs: []uuid.UUID{id2, id1},
+		Read:       true,
 	})
 	if err != nil {
-		t.Fatalf("MarkRead: %v", err)
+		t.Fatalf("SetRead: %v", err)
 	}
 
 	lastUpsert := repo.upserts[len(repo.upserts)-1]
@@ -1208,5 +1245,265 @@ func TestMarkReadTieBreakByUUID(t *testing.T) {
 	}
 	if got.Continue == nil || got.Continue.ChapterID != id1 {
 		t.Errorf("got.Continue = %+v, want chapter %v", got.Continue, id1)
+	}
+}
+
+func TestSetReadFalseSuccess(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+
+	byID := map[uuid.UUID]chapters.Chapter{
+		ch1: ch(ch1, comicID, 1.0, 10),
+		ch2: ch(ch2, comicID, 2.0, 15),
+	}
+
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	got, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{ch1, ch2},
+		Read:       false,
+	})
+	if err != nil {
+		t.Fatalf("SetRead(Read: false): %v", err)
+	}
+
+	if tx.calls != 0 {
+		t.Errorf("tx.calls = %d, want 0", tx.calls)
+	}
+	if repo.upsertCalls != 0 {
+		t.Errorf("repo.upsertCalls = %d, want 0", repo.upsertCalls)
+	}
+	if repo.deleteCalls != 1 {
+		t.Errorf("repo.deleteCalls = %d, want 1", repo.deleteCalls)
+	}
+	if repo.lastDelete.UserID != userID {
+		t.Errorf("repo.lastDelete.UserID = %v, want %v", repo.lastDelete.UserID, userID)
+	}
+	if len(repo.lastDelete.ChapterIDs) != 2 ||
+		repo.lastDelete.ChapterIDs[0] != ch1 ||
+		repo.lastDelete.ChapterIDs[1] != ch2 {
+		t.Errorf("repo.lastDelete.ChapterIDs = %v, want [%v, %v]", repo.lastDelete.ChapterIDs, ch1, ch2)
+	}
+	if got.Continue != nil {
+		t.Errorf("got.Continue = %+v, want nil", got.Continue)
+	}
+}
+
+func TestSetReadFalseSkipsZeroPagesNb(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+
+	byID := map[uuid.UUID]chapters.Chapter{
+		ch1: ch(ch1, comicID, 1.0, 0),
+		ch2: ch(ch2, comicID, 2.0, 15),
+	}
+
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{ch1, ch2},
+		Read:       false,
+	})
+	if err != nil {
+		t.Fatalf("SetRead: %v", err)
+	}
+
+	if repo.deleteCalls != 1 {
+		t.Errorf("repo.deleteCalls = %d, want 1", repo.deleteCalls)
+	}
+	if len(repo.lastDelete.ChapterIDs) != 1 || repo.lastDelete.ChapterIDs[0] != ch2 {
+		t.Errorf("repo.lastDelete.ChapterIDs = %v, want [%v]", repo.lastDelete.ChapterIDs, ch2)
+	}
+}
+
+func TestSetReadFalseDeleteError(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	byID := map[uuid.UUID]chapters.Chapter{
+		chID: ch(chID, comicID, 1.0, 10),
+	}
+
+	delErr := errors.New("delete failed")
+	repo := &fakeRepo{deleteErr: delErr}
+	tx := &fakeTransactor{}
+	svc := setReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	_, err := svc.SetRead(context.Background(), readingprogress.SetReadOpts{
+		UserID:     uuid.New(),
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{chID},
+		Read:       false,
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, delErr) {
+		t.Errorf("err = %v, want wrapped %v", err, delErr)
+	}
+}
+
+func TestDeleteChapterNotFound(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeRepo{}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{},
+	})
+
+	err := svc.Delete(context.Background(), readingprogress.DeleteOpts{
+		UserID:    uuid.New(),
+		ChapterID: uuid.New(),
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+	if repo.deleteCalls != 0 {
+		t.Errorf("repo.deleteCalls = %d, want 0", repo.deleteCalls)
+	}
+}
+
+func TestDeleteChapterLookupError(t *testing.T) {
+	t.Parallel()
+
+	lookupErr := errors.New("chapter lookup error")
+	repo := &fakeRepo{}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+		getErr: lookupErr,
+	})
+
+	err := svc.Delete(context.Background(), readingprogress.DeleteOpts{
+		UserID:    uuid.New(),
+		ChapterID: uuid.New(),
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, lookupErr) {
+		t.Errorf("err = %v, want wrapped %v", err, lookupErr)
+	}
+	if repo.deleteCalls != 0 {
+		t.Errorf("repo.deleteCalls = %d, want 0", repo.deleteCalls)
+	}
+}
+
+func TestDeleteForbiddenWhenNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	repo := &fakeRepo{}
+	svc := newService(t, repo, &fakeLibrary{inLib: false}, &fakeComics{exists: true}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, comicID, 1.0, 10),
+		},
+	})
+
+	err := svc.Delete(context.Background(), readingprogress.DeleteOpts{
+		UserID:    uuid.New(),
+		ChapterID: chID,
+	})
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("err = %v, want ErrForbidden", err)
+	}
+	if repo.deleteCalls != 0 {
+		t.Errorf("repo.deleteCalls = %d, want 0", repo.deleteCalls)
+	}
+}
+
+func TestDeleteNotFoundWhenComicMissing(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	repo := &fakeRepo{}
+	svc := newService(t, repo, &fakeLibrary{inLib: false}, &fakeComics{exists: false}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, comicID, 1.0, 10),
+		},
+	})
+
+	err := svc.Delete(context.Background(), readingprogress.DeleteOpts{
+		UserID:    uuid.New(),
+		ChapterID: chID,
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+	if repo.deleteCalls != 0 {
+		t.Errorf("repo.deleteCalls = %d, want 0", repo.deleteCalls)
+	}
+}
+
+func TestDeleteSuccess(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	chID := uuid.New()
+	repo := &fakeRepo{}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, comicID, 1.0, 10),
+		},
+	})
+
+	err := svc.Delete(context.Background(), readingprogress.DeleteOpts{
+		UserID:    userID,
+		ChapterID: chID,
+	})
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if repo.deleteCalls != 1 {
+		t.Errorf("repo.deleteCalls = %d, want 1", repo.deleteCalls)
+	}
+	if repo.lastDelete.UserID != userID {
+		t.Errorf("repo.lastDelete.UserID = %v, want %v", repo.lastDelete.UserID, userID)
+	}
+	if len(repo.lastDelete.ChapterIDs) != 1 || repo.lastDelete.ChapterIDs[0] != chID {
+		t.Errorf("repo.lastDelete.ChapterIDs = %v, want [%v]", repo.lastDelete.ChapterIDs, chID)
+	}
+}
+
+func TestDeleteRepoError(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	delErr := errors.New("delete error")
+	repo := &fakeRepo{deleteErr: delErr}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, comicID, 1.0, 10),
+		},
+	})
+
+	err := svc.Delete(context.Background(), readingprogress.DeleteOpts{
+		UserID:    uuid.New(),
+		ChapterID: chID,
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, delErr) {
+		t.Errorf("err = %v, want wrapped %v", err, delErr)
 	}
 }

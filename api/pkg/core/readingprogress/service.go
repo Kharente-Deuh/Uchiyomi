@@ -164,7 +164,7 @@ func (s *Service) Save(ctx context.Context, opts SaveOpts) (Progress, error) {
 	return saved, nil
 }
 
-func (s *Service) MarkRead(ctx context.Context, opts MarkReadOpts) (ListResult, error) {
+func (s *Service) SetRead(ctx context.Context, opts SetReadOpts) (ListResult, error) {
 	ids := uniqueIDs(opts.ChapterIDs)
 	if len(ids) == 0 {
 		return ListResult{}, fmt.Errorf("%w: chapterIds is required", ErrInvalid)
@@ -198,24 +198,64 @@ func (s *Service) MarkRead(ctx context.Context, opts MarkReadOpts) (ListResult, 
 		return ListResult{}, fmt.Errorf("%w: no eligible chapters", ErrInvalid)
 	}
 
-	err = s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
-		return s.markReadTx(ctx, opts, eligible)
-	})
-	if err != nil {
-		return ListResult{}, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
+	eligibleIDs := make([]uuid.UUID, len(eligible))
+	for i, ch := range eligible {
+		eligibleIDs[i] = ch.ID
+	}
+
+	if opts.Read {
+		err = s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
+			return s.markReadTx(ctx, opts.UserID, opts.ComicID, eligible)
+		})
+		if err != nil {
+			return ListResult{}, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
+		}
+	} else {
+		err = s.deps.Repository.DeleteByUserAndChapterIDs(ctx, DeleteProgressOpts{
+			UserID:     opts.UserID,
+			ChapterIDs: eligibleIDs,
+		})
+		if err != nil {
+			return ListResult{}, fmt.Errorf("s.deps.Repository.DeleteByUserAndChapterIDs: %w", err)
+		}
 	}
 
 	return s.List(ctx, ListOpts{UserID: opts.UserID, ComicID: opts.ComicID})
 }
 
+func (s *Service) Delete(ctx context.Context, opts DeleteOpts) error {
+	chapter, err := s.deps.Chapters.GetByID(ctx, opts.ChapterID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.ErrNotFound
+		}
+
+		return fmt.Errorf("s.deps.Chapters.GetByID: %w", err)
+	}
+
+	if err = s.requireLibrary(ctx, opts.UserID, chapter.ComicID); err != nil {
+		return err
+	}
+
+	err = s.deps.Repository.DeleteByUserAndChapterIDs(ctx, DeleteProgressOpts{
+		UserID:     opts.UserID,
+		ChapterIDs: []uuid.UUID{opts.ChapterID},
+	})
+	if err != nil {
+		return fmt.Errorf("s.deps.Repository.DeleteByUserAndChapterIDs: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Service) markReadTx(
 	ctx context.Context,
-	opts MarkReadOpts,
+	userID, comicID uuid.UUID,
 	eligible []chapters.Chapter,
 ) error {
 	latest, err := s.deps.Repository.GetLatestByUserAndComic(ctx, ListOpts{
-		UserID:  opts.UserID,
-		ComicID: opts.ComicID,
+		UserID:  userID,
+		ComicID: comicID,
 	})
 	if err != nil {
 		return fmt.Errorf("s.deps.Repository.GetLatestByUserAndComic: %w", err)
@@ -239,7 +279,7 @@ func (s *Service) markReadTx(
 
 	existingProgress, err := s.deps.Repository.ListByUserAndChapterIDs(ctx, MapOpts{
 		IDs:    eligibleIDs,
-		UserID: opts.UserID,
+		UserID: userID,
 	})
 	if err != nil {
 		return fmt.Errorf("s.deps.Repository.ListByUserAndChapterIDs: %w", err)
@@ -256,8 +296,8 @@ func (s *Service) markReadTx(
 		if !ok || storedPage != ch.PagesNb {
 			_, err := s.deps.Repository.Upsert(ctx, UpsertOpts{
 				UpdatedAt: writtenAt,
-				UserID:    opts.UserID,
-				ComicID:   opts.ComicID,
+				UserID:    userID,
+				ComicID:   comicID,
 				ChapterID: ch.ID,
 				Page:      ch.PagesNb,
 			})
@@ -276,8 +316,8 @@ func (s *Service) markReadTx(
 
 	_, err = s.deps.Repository.Upsert(ctx, UpsertOpts{
 		UpdatedAt: retouchAt,
-		UserID:    opts.UserID,
-		ComicID:   opts.ComicID,
+		UserID:    userID,
+		ComicID:   comicID,
 		ChapterID: winnerID,
 		Page:      winnerPage,
 	})

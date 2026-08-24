@@ -51,10 +51,16 @@ type GetOpts struct {
 	ChapterID uuid.UUID
 }
 
-type MarkReadOpts struct {
+type DeleteOpts struct {
+	UserID    uuid.UUID
+	ChapterID uuid.UUID
+}
+
+type SetReadOpts struct {
 	ChapterIDs []uuid.UUID
 	UserID     uuid.UUID
 	ComicID    uuid.UUID
+	Read       bool
 }
 
 type UpsertOpts struct {
@@ -66,8 +72,8 @@ type UpsertOpts struct {
 }
 
 type DeleteProgressOpts struct {
-	UserID     uuid.UUID
 	ChapterIDs []uuid.UUID
+	UserID     uuid.UUID
 }
 
 type Repository interface {
@@ -82,7 +88,8 @@ type ReadingProgressService interface {
 	List(context.Context, ListOpts) (ListResult, error)
 	MapByChapterIDs(context.Context, MapOpts) (map[uuid.UUID]Progress, error)
 	Save(context.Context, SaveOpts) (Progress, error)
-	MarkRead(context.Context, MarkReadOpts) (ListResult, error)
+	SetRead(context.Context, SetReadOpts) (ListResult, error)
+	Delete(context.Context, DeleteOpts) error
 }
 
 type LibraryMembership interface {
