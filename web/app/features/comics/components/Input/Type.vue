@@ -15,19 +15,19 @@ const { t } = useI18n()
 const items: { value: ComicType, title: string }[] = [
   {
     value: 'manhwa',
-    title: t('sources.asura.type.manhwa'),
+    title: t('sources.asurascans.type.manhwa'),
   },
   {
     value: 'mangatoon',
-    title: t('sources.asura.type.mangatoon'),
+    title: t('sources.asurascans.type.mangatoon'),
   },
   {
     value: 'manga',
-    title: t('sources.asura.type.manga'),
+    title: t('sources.asurascans.type.manga'),
   },
   {
     value: 'manhua',
-    title: t('sources.asura.type.manhua'),
+    title: t('sources.asurascans.type.manhua'),
   },
 ]
 </script>
@@ -42,7 +42,7 @@ const items: { value: ComicType, title: string }[] = [
     :disabled
     :model-value="type"
     :items="items"
-    :label="hideLabel ? undefined : $t('sources.asura.type.label')"
+    :label="hideLabel ? undefined : $t('sources.asurascans.type.label')"
     :clearable
     @update:model-value="type = $event || undefined"
   />

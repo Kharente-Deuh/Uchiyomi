@@ -229,16 +229,6 @@
       "search": {
         "error": "Échec du chargement des séries"
       },
-      "comic": {
-        "chaptersCount": "Aucun chapitre | \n1 Chapitre | \n{count} Chapitres",
-        "chapter": "Chapitre {number}",
-        "chapterUnlocksIn": "Accessible {time}",
-        "retryDownloadChapter": {
-          "tooltip": "Cliquez pour réessayer le téléchargement"
-        }
-      }
-    },
-    "asura": {
       "status": {
         "ongoing": "En cours",
         "completed": "Fini",
@@ -269,6 +259,12 @@
       },
       "comic": {
         "notFound": "Serie introuvable",
+        "chaptersCount": "Aucun chapitre | \n1 Chapitre | \n{count} Chapitres",
+        "chapter": "Chapitre {number}",
+        "chapterUnlocksIn": "Accessible {time}",
+        "retryDownloadChapter": {
+          "tooltip": "Cliquez pour réessayer le téléchargement"
+        },
         "chapters": {
           "error": {
             "fetch": "Échec du chargement des chapitres",

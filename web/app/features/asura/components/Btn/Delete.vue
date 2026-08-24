@@ -28,7 +28,7 @@ const { smAndDown } = useDisplay()
         <span
           v-show="mode === 'label'"
           class="text-no-wrap text-body-small transition-smooth"
-        >{{ $t('sources.asura.label.inLibrary') }}</span>
+        >{{ $t('sources.asurascans.label.inLibrary') }}</span>
       </VExpandXTransition>
     </div>
 

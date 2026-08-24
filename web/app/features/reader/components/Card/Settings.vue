@@ -111,7 +111,7 @@ async function restoreDefault(): Promise<void> {
 <template>
   <VCard class="pa-4 border-thin d-flex flex-column ga-6" style="border-radius: 12px;">
     <div class="d-flex ga-2 align-center justify-space-between">
-      <span class="text-title-large">{{ $t('sources.asura.type.label') }}</span>
+      <span class="text-title-large">{{ $t('sources.asurascans.type.label') }}</span>
       <div class="w-fit">
         <ComicsInputType
           v-model="type"

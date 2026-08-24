@@ -9,19 +9,19 @@ const { t } = useI18n()
 const items: { value: AsuraSort, title: string }[] = [
   {
     value: 'popular',
-    title: t('sources.asura.sort.popular'),
+    title: t('sources.asurascans.sort.popular'),
   },
   {
     value: 'latest',
-    title: t('sources.asura.sort.latest'),
+    title: t('sources.asurascans.sort.latest'),
   },
   {
     value: 'title',
-    title: t('sources.asura.sort.title'),
+    title: t('sources.asurascans.sort.title'),
   },
   {
     value: 'rating',
-    title: t('sources.asura.sort.rating'),
+    title: t('sources.asurascans.sort.rating'),
   },
 ]
 </script>
@@ -36,6 +36,6 @@ const items: { value: AsuraSort, title: string }[] = [
     :disabled
     hide-details
     :items="items"
-    :label="$t('sources.asura.sort.label')"
+    :label="$t('sources.asurascans.sort.label')"
   />
 </template>

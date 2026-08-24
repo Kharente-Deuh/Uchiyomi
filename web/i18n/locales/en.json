@@ -228,16 +228,6 @@
       "search": {
         "error": "Failed to load series"
       },
-      "comic": {
-        "chaptersCount": "No chapters | 1 Chapter | {count} Chapters",
-        "chapter": "Chapter {number}",
-        "chapterUnlocksIn": "Unlocks {time}",
-        "retryDownloadChapter": {
-          "tooltip": "Click to retry download"
-        }
-      }
-    },
-    "asura": {
       "status": {
         "ongoing": "Ongoing",
         "completed": "Completed",
@@ -268,6 +258,12 @@
       },
       "comic": {
         "notFound": "Comic not found",
+        "chaptersCount": "No chapters | 1 Chapter | {count} Chapters",
+        "chapter": "Chapter {number}",
+        "chapterUnlocksIn": "Unlocks {time}",
+        "retryDownloadChapter": {
+          "tooltip": "Click to retry download"
+        },
         "chapters": {
           "error": {
             "fetch": "Failed to fetch chapters",

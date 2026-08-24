@@ -38,7 +38,7 @@ async function fetchInfos(): Promise<void> {
   } else {
     console.error('api.getInfosBySlug', res.error)
     toast.error(res.error.status === 404
-      ? t('sources.asura.comic.notFound')
+      ? t('sources.asurascans.comic.notFound')
       : t('error.unknown'))
 
     await navigateTo('/browse/sources/asura')

@@ -17,6 +17,6 @@ withDefaults(defineProps<{
     }"
     :style="{ borderRadius: '12px' }"
   >
-    <span class="">{{ $t(`sources.asura.type.${type}`) }}</span>
+    <span class="">{{ $t(`sources.asurascans.type.${type}`) }}</span>
   </span>
 </template>

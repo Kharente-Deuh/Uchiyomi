@@ -27,6 +27,6 @@ const borderClass = computed(() => {
     :class="borderClass"
   >
     <ComicsIconStatus :status />
-    <span class="text-body-large text-truncate">{{ $t(`sources.asura.status.${status}`) }}</span>
+    <span class="text-body-large text-truncate">{{ $t(`sources.asurascans.status.${status}`) }}</span>
   </div>
 </template>

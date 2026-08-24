@@ -219,7 +219,7 @@ describe('useAsuraChapters retryDownload', () => {
 
     expect(getSeriesChapters).toHaveBeenCalledTimes(1)
     expect(useToast().messages.value).toEqual([{
-      text: 'sources.asura.comic.chapters.error.retry.notFound',
+      text: 'sources.asurascans.comic.chapters.error.retry.notFound',
       color: 'error',
     }])
   })
@@ -231,7 +231,7 @@ describe('useAsuraChapters retryDownload', () => {
     await setup().retryDownload('ch-1')
 
     expect(useToast().messages.value).toEqual([{
-      text: 'sources.asura.comic.chapters.error.retry.forbidden',
+      text: 'sources.asurascans.comic.chapters.error.retry.forbidden',
       color: 'error',
     }])
   })
@@ -243,7 +243,7 @@ describe('useAsuraChapters retryDownload', () => {
     await setup().retryDownload('ch-1')
 
     expect(useToast().messages.value).toEqual([{
-      text: 'sources.asura.comic.chapters.error.retry.conflict',
+      text: 'sources.asurascans.comic.chapters.error.retry.conflict',
       color: 'error',
     }])
   })

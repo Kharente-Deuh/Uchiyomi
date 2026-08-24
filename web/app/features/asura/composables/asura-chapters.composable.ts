@@ -54,7 +54,7 @@ export function useAsuraChapters(): AsuraChaptersComposable {
     }
 
     if (res.error.status === 404) {
-      toast.error(t('sources.asura.comic.chapters.error.fetch'))
+      toast.error(t('sources.asurascans.comic.chapters.error.fetch'))
     } else {
       toast.error(t('error.unknown'))
     }
@@ -82,13 +82,13 @@ export function useAsuraChapters(): AsuraChaptersComposable {
 
     switch (res.error.status) {
       case 404:
-        toast.error(t('sources.asura.comic.chapters.error.retry.notFound'))
+        toast.error(t('sources.asurascans.comic.chapters.error.retry.notFound'))
         break
       case 403:
-        toast.error(t('sources.asura.comic.chapters.error.retry.forbidden'))
+        toast.error(t('sources.asurascans.comic.chapters.error.retry.forbidden'))
         break
       case 409:
-        toast.error(t('sources.asura.comic.chapters.error.retry.conflict'))
+        toast.error(t('sources.asurascans.comic.chapters.error.retry.conflict'))
         break
       default:
         toast.error(t('error.unknown'))

@@ -33,7 +33,7 @@ const modelValue = computed((): { icon: string, color: string } | undefined => {
 
     <div v-else class="d-flex flex-column items-center justify-center rounded-lg border-thin transition-smooth status-icon-box">
       <VIcon
-        v-tooltip="$t(`sources.asura.status.${status}`)"
+        v-tooltip="$t(`sources.asurascans.status.${status}`)"
         :icon="modelValue.icon"
         :color="modelValue.color"
         size="x-small"

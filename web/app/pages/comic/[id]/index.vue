@@ -43,7 +43,7 @@ async function fetchComic(): Promise<void> {
   if (!res.success) {
     console.error('api.getById', res.error)
     toast.error(res.error.status === 404
-      ? t('sources.asura.comic.notFound')
+      ? t('sources.asurascans.comic.notFound')
       : t('error.unknown'))
 
     if (from.value === FEED_ROUTE_NAME) {

@@ -10,19 +10,19 @@ const { t } = useI18n()
 const items: { value: ComicStatus, title: string }[] = [
   {
     value: 'ongoing',
-    title: t('sources.asura.status.ongoing'),
+    title: t('sources.asurascans.status.ongoing'),
   },
   {
     value: 'completed',
-    title: t('sources.asura.status.completed'),
+    title: t('sources.asurascans.status.completed'),
   },
   {
     value: 'hiatus',
-    title: t('sources.asura.status.hiatus'),
+    title: t('sources.asurascans.status.hiatus'),
   },
   {
     value: 'cancelled',
-    title: t('sources.asura.status.cancelled'),
+    title: t('sources.asurascans.status.cancelled'),
   },
 ]
 </script>
@@ -36,7 +36,7 @@ const items: { value: ComicStatus, title: string }[] = [
     class="border-thin"
     style="border-radius: 12px;"
     hide-details
-    :label="$t('sources.asura.status.label')"
+    :label="$t('sources.asurascans.status.label')"
     clearable
     :disabled
     @update:model-value="status = $event || undefined"
