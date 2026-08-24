@@ -102,6 +102,10 @@
         "displayName": {
           "label": "Nom d'affichage"
         },
+        "slug": {
+          "label": "Slug",
+          "hint": "Lettres minuscules, chiffres et tirets"
+        },
         "issuerUrl": {
           "label": "URL de l'émetteur"
         },
@@ -185,7 +189,8 @@
         "noProviders": "Aucun fournisseur n'est défini",
         "notFound": "Fournisseur introuvable"
       },
-      "description": "Gérer les fournisseurs OIDC"
+      "description": "Gérer les fournisseurs OIDC",
+      "startUrl": "Start URL: /api/auth/oidc/{slug}/start"
     },
     "reader": {
       "title": "Lecteur",

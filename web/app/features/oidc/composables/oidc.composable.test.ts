@@ -34,6 +34,7 @@ const provider = {
 
 const request = {
   displayName: 'PocketID',
+  slug: 'pocket-id',
   issuerUrl: 'https://id.example.org',
   clientId: 'client',
   clientSecret: 'secret',

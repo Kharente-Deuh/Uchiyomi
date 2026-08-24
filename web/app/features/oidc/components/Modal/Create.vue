@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import { array, boolean, object, string } from 'yup'
+import { slugFromDisplayName } from '~/features/oidc/utils/slug-from-display-name'
 import { useForm } from '~/utils/forms/use-form'
 
 const show = defineModel<boolean>({ required: true })
@@ -14,9 +15,16 @@ async function onSubmit(values: CreateOidcProviderRequest): Promise<void> {
   show.value = false
 }
 
+const slugDirty = ref(false)
+
 const { field, handleSubmit, reset, isValid } = useForm({
   schema: object({
     displayName: string().required().label(t('settings.oidc.fields.displayName.label')),
+    slug: string()
+      .required()
+      .max(64)
+      .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .label(t('settings.oidc.fields.slug.label')),
     issuerUrl: string().required().url().label(t('settings.oidc.fields.issuerUrl.label')),
     clientId: string().required().label(t('settings.oidc.fields.clienId.label')),
     clientSecret: string().required().label(t('settings.oidc.fields.clientSecret.label')),
@@ -29,6 +37,7 @@ const { field, handleSubmit, reset, isValid } = useForm({
   }),
   initialValues: {
     displayName: '',
+    slug: '',
     issuerUrl: '',
     clientId: '',
     clientSecret: '',
@@ -50,8 +59,17 @@ const autoProvisionProps = computed(() => {
 
 watch(show, (val: boolean): void => {
   if (val) {
+    slugDirty.value = false
     reset()
   }
+})
+
+watch(() => field('displayName').props.modelValue, (name: string) => {
+  if (slugDirty.value) {
+    return
+  }
+
+  field('slug').props['onUpdate:modelValue'](slugFromDisplayName(name))
 })
 
 watch(() => field('roleClaim').props.modelValue, (value: string) => {
@@ -79,6 +97,11 @@ watch(() => field('roleClaim').props.modelValue, (value: string) => {
       <span class="text-title-large font-title text-truncate">{{ $t('settings.oidc.category.providerInfos.title') }}</span>
     </div>
     <VTextField v-bind="field('displayName').props" />
+    <VTextField
+      v-bind="field('slug').props"
+      :messages="[$t('settings.oidc.fields.slug.hint')]"
+      @update:model-value="slugDirty = true; field('slug').props['onUpdate:modelValue']($event ?? '')"
+    />
     <VTextField v-bind="field('clientId').props" />
     <AtomInputPassword v-bind="field('clientSecret').props" />
     <VTextField v-bind="field('issuerUrl').props">

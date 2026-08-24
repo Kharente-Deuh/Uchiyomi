@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	sessionshttp "github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions/gateway/http"
@@ -117,7 +116,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 		r.Post("/login", c.loginWithPwd)
 		r.With(c.cfg.LogoutMiddlewares...).Post("/logout", c.logout)
 		r.Get("/providers", c.listProviders)
-		r.Get("/oidc/{id}/start", c.startOIDCLogin)
+		r.Get("/oidc/{slug}/start", c.startOIDCLogin)
 		r.Get("/oidc/callback", c.oidcCallback)
 		r.Post("/oidc/backchannel-logout", c.oidcBackchannelLogout)
 	})
@@ -196,6 +195,7 @@ func (c *Controller) listProviders(w http.ResponseWriter, r *http.Request) {
 	for _, p := range providers {
 		res = append(res, ProviderSummaryResponse{
 			ID:          p.ID.String(),
+			Slug:        p.Slug,
 			DisplayName: p.DisplayName,
 		})
 	}
@@ -206,16 +206,10 @@ func (c *Controller) listProviders(w http.ResponseWriter, r *http.Request) {
 func (c *Controller) startOIDCLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	id, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		http.Redirect(w, r, "/login?error=oidcUnavailable", http.StatusFound)
-
-		return
-	}
-
+	slug := chi.URLParam(r, "slug")
 	res, err := c.deps.AuthService.StartOIDCLogin(ctx, auth.StartOIDCLoginOpts{
-		ProviderID: id,
-		Redirect:   r.URL.Query().Get("redirect"),
+		ProviderSlug: slug,
+		Redirect:     r.URL.Query().Get("redirect"),
 	})
 	if err != nil {
 		c.logOIDCError(ctx, "failed to start oidc login", err)

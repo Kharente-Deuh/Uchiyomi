@@ -35,6 +35,7 @@ mockNuxtImport('navigateTo', () => navigateTo)
 const provider = {
   id: 'p1',
   displayName: 'PocketID',
+  slug: 'pocket-id',
   issuerUrl: 'https://id.example.org',
   clientId: 'client',
   usernameClaim: 'preferred_username',
@@ -130,6 +131,7 @@ describe('useOidcProvider().update', () => {
 
     expect(updateById).toHaveBeenCalledWith('p1', {
       displayName: 'Renamed',
+      slug: provider.slug,
       issuerUrl: provider.issuerUrl,
       clientId: provider.clientId,
       usernameClaim: provider.usernameClaim,

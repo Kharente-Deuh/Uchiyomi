@@ -136,6 +136,7 @@ describe('oidcModalCreate', () => {
 
     await vi.waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
       displayName: 'PocketID',
+      slug: 'pocketid',
       clientId: 'client',
       clientSecret: 'secret',
       issuerUrl: 'https://id.example.org',
@@ -212,5 +213,36 @@ describe('oidcModalCreate', () => {
     show.value = true
 
     await vi.waitFor(() => expect(fieldByLabel(wrapper, 'Display name').element.value).toBe(''))
+  })
+
+  it('prefills the slug from the display name', async () => {
+    const { wrapper } = await mount()
+
+    await fieldByLabel(wrapper, 'Display name').setValue('PocketID')
+
+    await vi.waitFor(() => expect(fieldByLabel(wrapper, 'Slug').element.value).toBe('pocketid'))
+  })
+
+  it('stops resyncing the slug once it has been edited', async () => {
+    const { wrapper } = await mount()
+
+    await fieldByLabel(wrapper, 'Display name').setValue('PocketID')
+    await vi.waitFor(() => expect(fieldByLabel(wrapper, 'Slug').element.value).toBe('pocketid'))
+
+    await fieldByLabel(wrapper, 'Slug').setValue('custom')
+    await fieldByLabel(wrapper, 'Display name').setValue('Other Name')
+
+    await vi.waitFor(() => expect(fieldByLabel(wrapper, 'Slug').element.value).toBe('custom'))
+  })
+
+  it('stays incomplete when the display name yields no valid slug', async () => {
+    const { wrapper } = await mount()
+
+    await fieldByLabel(wrapper, 'Display name').setValue('!!!')
+
+    await vi.waitFor(() => {
+      expect(fieldByLabel(wrapper, 'Slug').element.value).toBe('')
+      expect(isFormComplete(wrapper)).toBe(false)
+    })
   })
 })

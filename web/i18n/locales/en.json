@@ -102,6 +102,10 @@
         "displayName": {
           "label": "Display name"
         },
+        "slug": {
+          "label": "Slug",
+          "hint": "Lowercase letters, numbers, and hyphens"
+        },
         "issuerUrl": {
           "label": "Issuer URL"
         },
@@ -185,7 +189,8 @@
       "update": {
         "success": "Provider updated !"
       },
-      "description": "Manage OIDC providers"
+      "description": "Manage OIDC providers",
+      "startUrl": "Start URL: /api/auth/oidc/{slug}/start"
     },
     "reader": {
       "title": "Reader",

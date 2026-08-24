@@ -17,7 +17,10 @@ defineProps<{
   >
     <div class="d-flex ga-4 align-center mb-6">
       <VIcon :icon color="secondary" />
-      <span class="font-title text-title-large">{{ title }}</span>
+      <div class="d-flex flex-column ga-1">
+        <span class="font-title text-title-large">{{ title }}</span>
+        <slot name="subtitle" />
+      </div>
     </div>
     <slot />
   </VCard>

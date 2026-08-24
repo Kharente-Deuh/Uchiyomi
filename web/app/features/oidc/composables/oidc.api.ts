@@ -14,6 +14,7 @@ export interface OidcApi {
 
 export interface CreateOidcProviderRequest {
   displayName: string
+  slug: string
   issuerUrl: string
   clientId: string
   clientSecret: string

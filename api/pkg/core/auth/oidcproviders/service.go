@@ -64,6 +64,7 @@ func (deps *ServiceDeps) Validate() error {
 
 type CreateOpts struct {
 	DisplayName   string
+	Slug          string
 	IssuerURL     string
 	ClientID      string
 	ClientSecret  string
@@ -80,6 +81,7 @@ type CreateOpts struct {
 
 type UpdateOpts struct {
 	DisplayName   string
+	Slug          string
 	IssuerURL     string
 	ClientID      string
 	UsernameClaim string
@@ -155,6 +157,7 @@ func (s *Service) Create(ctx context.Context, opts CreateOpts) (*OIDCProvider, e
 
 	provider, err := s.deps.Repository.Create(ctx, CreateOIDCProviderOpts{
 		DisplayName:     opts.DisplayName,
+		Slug:            opts.Slug,
 		IssuerURL:       opts.IssuerURL,
 		ClientID:        opts.ClientID,
 		ClientSecretEnc: secretEnc,
@@ -179,6 +182,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, opts UpdateOpts) (*O
 
 	provider, err := s.deps.Repository.Update(ctx, id, UpdateOIDCProviderOpts{
 		DisplayName:   opts.DisplayName,
+		Slug:          opts.Slug,
 		IssuerURL:     opts.IssuerURL,
 		ClientID:      opts.ClientID,
 		Scopes:        opts.Scopes,

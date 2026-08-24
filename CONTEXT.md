@@ -145,3 +145,16 @@ _Avoid_: WebSocket, progress stream, SSE
 
 **Chapter download queue**:
 Each source has a single global download queue processed one chapter at a time (FIFO). Chapters are enqueued in ascending chapter number order. Across multiple comics, chapters are enqueued in the order their comic was added to a library. Enqueue is idempotent: a chapter is added only if its download progress is below 100 and it is not already in the queue. Chapters at 100 % or already queued are skipped. Within a chapter, pages are downloaded in parallel, throttled by a configurable rate limit on the worker.
+
+### Auth
+
+**OIDC provider**:
+An identity provider registered on the instance so users can sign in with it. Distinct from Source.
+_Avoid_: OIDC client (the registered app at the identity provider is not this entity)
+
+**OIDC provider display name**:
+The human-facing label shown on the login button ("Sign in with …"). Distinct from OIDC provider slug.
+_Avoid_: OIDC_NAME, using this as a URL identifier
+
+**OIDC provider slug**:
+The unique, URL-safe identifier of an OIDC provider, used in the login start URL. Distinct from OIDC provider display name and from Source slug.

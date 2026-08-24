@@ -10,7 +10,7 @@ defineProps<{
 const { t } = useI18n()
 const { provider, update, updateLoading } = useOidcProvider()
 
-type Form = Pick<UpdateOidcProviderRequest, 'displayName' | 'issuerUrl' | 'clientId' | 'autoProvision'>
+type Form = Pick<UpdateOidcProviderRequest, 'displayName' | 'slug' | 'issuerUrl' | 'clientId' | 'autoProvision'>
 
 async function onSubmit(values: Form): Promise<void> {
   if (!provider.value) {
@@ -25,12 +25,18 @@ async function onSubmit(values: Form): Promise<void> {
 const { field, handleSubmit, reset, isValid } = useForm({
   schema: object({
     displayName: string().required().label(t('settings.oidc.fields.displayName.label')),
+    slug: string()
+      .required()
+      .max(64)
+      .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .label(t('settings.oidc.fields.slug.label')),
     issuerUrl: string().required().url().label(t('settings.oidc.fields.issuerUrl.label')),
     clientId: string().required().label(t('settings.oidc.fields.clienId.label')),
     autoProvision: boolean().required().label(t('settings.oidc.fields.autoProvision.label')),
   }),
   initialValues: {
     displayName: '',
+    slug: '',
     issuerUrl: '',
     clientId: '',
     autoProvision: false,
@@ -42,6 +48,7 @@ watch(provider, (value?: OidcProvider) => {
   if (value) {
     reset({
       displayName: value.displayName,
+      slug: value.slug,
       issuerUrl: value.issuerUrl,
       clientId: value.clientId,
       autoProvision: value.autoProvision,
@@ -55,6 +62,7 @@ const hasChanged = computed(() => {
   }
 
   return provider.value.displayName !== field('displayName').props.modelValue
+    || provider.value.slug !== field('slug').props.modelValue
     || provider.value.issuerUrl !== field('issuerUrl').props.modelValue
     || provider.value.clientId !== field('clientId').props.modelValue
     || provider.value.autoProvision !== field('autoProvision').props.modelValue
@@ -76,8 +84,15 @@ const isFormValid = computed(() => isValid.value && hasChanged.value)
     :title="$t('settings.oidc.category.providerInfos.title')"
     icon="fa6-regular:address-card"
   >
+    <template #subtitle>
+      <span class="text-body-medium text-secondary opacity-70">{{ $t('settings.oidc.startUrl', { slug: provider?.slug }) }}</span>
+    </template>
     <div class="provider-informations-grid">
-      <VTextField v-bind="field('displayName').props" />
+      <VTextField v-bind="field('displayName').props" class="h-fit" />
+      <VTextField
+        v-bind="field('slug').props"
+        :messages="[$t('settings.oidc.fields.slug.hint')]"
+      />
       <VTextField v-bind="field('clientId').props" />
       <VTextField v-bind="field('issuerUrl').props" style="height: fit-content">
         <template #append>

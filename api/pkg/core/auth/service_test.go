@@ -32,6 +32,7 @@ const (
 	testCipherKey    = "abcdefghijklmnopqrstuvwxyz012345"
 	usernameClaimKey = "preferred_username"
 	testSubject      = "sub-123"
+	testProviderSlug = "keycloak"
 )
 
 type txCtxKey struct{}
@@ -324,6 +325,7 @@ func newFakes() *fakes {
 	provider := &oidcproviders.OIDCProvider{
 		ID:            uuid.New(),
 		DisplayName:   "Example IdP",
+		Slug:          testProviderSlug,
 		IssuerURL:     "https://idp.example.com",
 		ClientID:      "client-id",
 		UsernameClaim: usernameClaimKey,

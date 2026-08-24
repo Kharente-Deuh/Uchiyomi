@@ -33,6 +33,7 @@ type fakeOIDCProvidersRepo struct {
 	err          error
 	issuerErr    error
 	gotIssuerURL string
+	gotSlug      string
 	gotID        uuid.UUID
 	calls        int
 	issuerCalls  int
@@ -61,6 +62,21 @@ func (f *fakeOIDCProvidersRepo) GetByIssuerURL(
 	}
 
 	if f.provider != nil && f.provider.IssuerURL == issuerURL {
+		return f.provider, nil
+	}
+
+	return nil, domain.ErrNotFound
+}
+
+func (f *fakeOIDCProvidersRepo) GetBySlug(_ context.Context, slug string) (*oidcproviders.OIDCProvider, error) {
+	f.calls++
+	f.gotSlug = slug
+
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	if f.provider != nil && f.provider.Slug == slug {
 		return f.provider, nil
 	}
 
@@ -266,13 +282,18 @@ func TestStartOIDCLoginBuildsAuthCodeURLAndCookie(t *testing.T) {
 	t.Parallel()
 
 	f := newFakes()
+	svc := f.svc(t)
 
-	got, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{
-		ProviderID: f.opr.provider.ID,
-		Redirect:   testRedirectPath,
+	got, err := svc.StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{
+		ProviderSlug: f.opr.provider.Slug,
+		Redirect:     testRedirectPath,
 	})
 	if err != nil {
 		t.Fatalf("StartOIDCLogin: %v", err)
+	}
+
+	if f.opr.gotSlug != testProviderSlug {
+		t.Errorf("gotSlug = %q, want %q", f.opr.gotSlug, testProviderSlug)
 	}
 
 	if got.AuthCodeURL != f.oc.authCodeURL {
@@ -294,6 +315,18 @@ func TestStartOIDCLoginBuildsAuthCodeURLAndCookie(t *testing.T) {
 	if f.oc.gotAuthParams.State == "" || f.oc.gotAuthParams.Nonce == "" || f.oc.gotAuthParams.Verifier == "" {
 		t.Errorf("AuthCodeParams incomplets: %+v", f.oc.gotAuthParams)
 	}
+
+	if _, err := svc.FinishOIDCLogin(context.Background(), auth.FinishOIDCLoginOpts{
+		Code:             testOIDCCode,
+		State:            f.oc.gotAuthParams.State,
+		StateCookieValue: got.StateCookieValue,
+	}); err != nil {
+		t.Fatalf("FinishOIDCLogin: %v", err)
+	}
+
+	if f.opr.gotID != f.opr.provider.ID {
+		t.Errorf("state cookie ProviderID = %v, want %v", f.opr.gotID, f.opr.provider.ID)
+	}
 }
 
 func TestStartOIDCLoginCookieRoundTripsThroughFinish(t *testing.T) {
@@ -303,8 +336,8 @@ func TestStartOIDCLoginCookieRoundTripsThroughFinish(t *testing.T) {
 	svc := f.svc(t)
 
 	start, err := svc.StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{
-		ProviderID: f.opr.provider.ID,
-		Redirect:   testRedirectPath,
+		ProviderSlug: f.opr.provider.Slug,
+		Redirect:     testRedirectPath,
 	})
 	if err != nil {
 		t.Fatalf("StartOIDCLogin: %v", err)
@@ -342,7 +375,7 @@ func TestStartOIDCLoginUnknownProviderIsUnavailable(t *testing.T) {
 	f := newFakes()
 	f.opr.err = domain.ErrNotFound
 
-	_, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{ProviderID: uuid.New()})
+	_, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{ProviderSlug: "missing"})
 	if !errors.Is(err, auth.ErrOIDCUnavailable) {
 		t.Errorf("err = %v, want ErrOIDCUnavailable", err)
 	}
@@ -354,7 +387,7 @@ func TestStartOIDCLoginRepositoryFailureIsUnavailable(t *testing.T) {
 	f := newFakes()
 	f.opr.err = errors.New("connection refused")
 
-	_, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{ProviderID: uuid.New()})
+	_, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{ProviderSlug: testProviderSlug})
 	if !errors.Is(err, auth.ErrOIDCUnavailable) {
 		t.Errorf("err = %v, want ErrOIDCUnavailable", err)
 	}
@@ -366,7 +399,7 @@ func TestStartOIDCLoginAuthCodeURLFailureIsUnavailable(t *testing.T) {
 	f := newFakes()
 	f.oc.authCodeErr = errors.New("discovery unreachable")
 
-	_, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{ProviderID: f.opr.provider.ID})
+	_, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{ProviderSlug: f.opr.provider.Slug})
 	if !errors.Is(err, auth.ErrOIDCUnavailable) {
 		t.Errorf("err = %v, want ErrOIDCUnavailable", err)
 	}
@@ -376,8 +409,8 @@ func startCookie(t *testing.T, f *fakes, svc *auth.Service) (string, string) {
 	t.Helper()
 
 	start, err := svc.StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{
-		ProviderID: f.opr.provider.ID,
-		Redirect:   testRedirectPath,
+		ProviderSlug: f.opr.provider.Slug,
+		Redirect:     testRedirectPath,
 	})
 	if err != nil {
 		t.Fatalf("StartOIDCLogin: %v", err)
@@ -604,8 +637,8 @@ func TestFinishOIDCLoginUnsafeRedirectFallsBackToRoot(t *testing.T) {
 	svc := f.svc(t)
 
 	start, err := svc.StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{
-		ProviderID: f.opr.provider.ID,
-		Redirect:   "//evil.example.com",
+		ProviderSlug: f.opr.provider.Slug,
+		Redirect:     "//evil.example.com",
 	})
 	if err != nil {
 		t.Fatalf("StartOIDCLogin: %v", err)

@@ -131,6 +131,12 @@ func (emptyOIDCProvidersRepository) GetByIssuerURL(
 	return nil, errors.New("not implemented")
 }
 
+func (emptyOIDCProvidersRepository) GetBySlug(
+	context.Context, string,
+) (*oidcproviders.OIDCProvider, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (emptyOIDCProvidersRepository) Create(
 	context.Context, oidcproviders.CreateOIDCProviderOpts,
 ) (*oidcproviders.OIDCProvider, error) {

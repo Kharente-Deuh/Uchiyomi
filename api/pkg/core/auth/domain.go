@@ -7,7 +7,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/sessions"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 )
@@ -47,8 +46,8 @@ type LogoutResult struct {
 }
 
 type StartOIDCLoginOpts struct {
-	Redirect   string
-	ProviderID uuid.UUID
+	Redirect     string
+	ProviderSlug string
 }
 
 type OIDCStart struct {

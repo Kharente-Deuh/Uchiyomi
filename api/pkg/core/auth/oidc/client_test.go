@@ -233,6 +233,7 @@ func baseClaims(issuer, clientID, nonce string) map[string]any {
 func testProvider(issuer string) oidcproviders.OIDCProvider {
 	return oidcproviders.OIDCProvider{
 		ID:              uuid.New(),
+		Slug:            "keycloak",
 		IssuerURL:       issuer,
 		ClientID:        "test-client",
 		ClientSecretEnc: []byte("encrypted-secret"),

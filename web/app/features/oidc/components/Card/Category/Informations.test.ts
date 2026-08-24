@@ -28,6 +28,7 @@ const TestBtnStub = defineComponent({
 const base = {
   id: 'p1',
   displayName: 'PocketID',
+  slug: 'pocket-id',
   issuerUrl: 'https://id.example.org',
   clientId: 'client',
   usernameClaim: 'preferred_username',
@@ -63,6 +64,7 @@ describe('oidcCardCategoryInformations', () => {
     const values = wrapper.findAll('input').map(i => (i.element as HTMLInputElement).value)
 
     expect(values).toContain('PocketID')
+    expect(values).toContain('pocket-id')
     expect(values).toContain('client')
     expect(values).toContain('https://id.example.org')
   })
@@ -142,5 +144,26 @@ describe('oidcCardCategoryInformations', () => {
     await saveButton(wrapper).trigger('click')
 
     expect(update).not.toHaveBeenCalled()
+  })
+
+  it('enables save once the slug changed', async () => {
+    const wrapper = await mount()
+
+    await inputByValue(wrapper, 'pocket-id').setValue('new-slug')
+
+    await vi.waitFor(() => expect(saveButton(wrapper).attributes('disabled')).toBeUndefined())
+  })
+
+  it('submits the edited slug to update', async () => {
+    const wrapper = await mount()
+
+    await inputByValue(wrapper, 'pocket-id').setValue('new-slug')
+    await vi.waitFor(() => expect(saveButton(wrapper).attributes('disabled')).toBeUndefined())
+    await saveButton(wrapper).trigger('click')
+
+    await vi.waitFor(() => expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'p1',
+      slug: 'new-slug',
+    })))
   })
 })

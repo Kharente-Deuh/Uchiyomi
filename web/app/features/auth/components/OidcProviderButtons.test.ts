@@ -8,8 +8,8 @@ import { oidcStartUrl } from '~/features/auth/composables/auth.api'
 import OidcProviderButtons from './OidcProviderButtons.vue'
 
 const providers: ProviderSummary[] = [
-  { id: 'okta', displayName: 'Okta' },
-  { id: 'google', displayName: 'Google' },
+  { id: 'id-okta', slug: 'okta', displayName: 'Okta' },
+  { id: 'id-google', slug: 'google', displayName: 'Google' },
 ]
 
 describe('authOidcProviderButtons', () => {
@@ -30,7 +30,7 @@ describe('authOidcProviderButtons', () => {
       const anchor = wrapper.find(`[data-test="login-oidc-${provider.id}"]`)
       expect(anchor.exists()).toBe(true)
       expect(anchor.element.tagName).toBe('A')
-      expect(anchor.attributes('href')).toBe(oidcStartUrl(provider.id, '/library'))
+      expect(anchor.attributes('href')).toBe(oidcStartUrl(provider.slug, '/library'))
     }
   })
 

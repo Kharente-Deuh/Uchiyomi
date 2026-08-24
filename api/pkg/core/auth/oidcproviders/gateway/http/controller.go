@@ -121,6 +121,7 @@ func (c *Controller) list(w http.ResponseWriter, r *http.Request) {
 		res = append(res, LightProviderResponse{
 			CreatedAt:   p.CreatedAt,
 			ID:          p.ID.String(),
+			Slug:        p.Slug,
 			DisplayName: p.DisplayName,
 			UserCount:   p.UserCount,
 		})
@@ -167,6 +168,7 @@ func (c *Controller) create(w http.ResponseWriter, r *http.Request) {
 
 	provider, err := c.deps.Service.Create(ctx, oidcproviders.CreateOpts{
 		DisplayName:   req.DisplayName.String(),
+		Slug:          req.Slug.String(),
 		IssuerURL:     req.IssuerURL.String(),
 		ClientID:      req.ClientID.String(),
 		ClientSecret:  req.ClientSecret.String(),
@@ -211,6 +213,7 @@ func (c *Controller) update(w http.ResponseWriter, r *http.Request) {
 
 	provider, err := c.deps.Service.Update(ctx, id, oidcproviders.UpdateOpts{
 		DisplayName:   req.DisplayName.String(),
+		Slug:          req.Slug.String(),
 		IssuerURL:     req.IssuerURL.String(),
 		ClientID:      req.ClientID.String(),
 		UsernameClaim: req.UsernameClaim.String(),
@@ -285,6 +288,8 @@ func (c *Controller) writeServiceError(w http.ResponseWriter, r *http.Request, m
 			"issuer discovery document does not advertise the required endpoints")
 	case errors.Is(err, domain.ErrAlreadyExists):
 		httputils.WriteError(w, c.deps.Logger, http.StatusConflict, "issuer URL is already declared")
+	case errors.Is(err, oidcproviders.ErrSlugTaken):
+		httputils.WriteError(w, c.deps.Logger, http.StatusConflict, "slug is already declared")
 	case errors.Is(err, domain.ErrNotFound):
 		httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "")
 	default:
@@ -316,6 +321,7 @@ func toProviderResponse(p *oidcproviders.OIDCProvider) ProviderResponse {
 		UpdatedAt:     p.UpdatedAt,
 		RoleClaim:     p.RoleClaim,
 		ID:            p.ID.String(),
+		Slug:          p.Slug,
 		DisplayName:   p.DisplayName,
 		IssuerURL:     p.IssuerURL,
 		ClientID:      p.ClientID,

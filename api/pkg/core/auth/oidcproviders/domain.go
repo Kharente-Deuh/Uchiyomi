@@ -13,6 +13,7 @@ import (
 type OIDCProvidersRepository interface {
 	GetByID(context.Context, uuid.UUID) (*OIDCProvider, error)
 	GetByIssuerURL(context.Context, string) (*OIDCProvider, error)
+	GetBySlug(context.Context, string) (*OIDCProvider, error)
 	Create(context.Context, CreateOIDCProviderOpts) (*OIDCProvider, error)
 	Update(context.Context, uuid.UUID, UpdateOIDCProviderOpts) (*OIDCProvider, error)
 	DeleteByID(context.Context, uuid.UUID) error
@@ -28,6 +29,7 @@ type OIDCProvider struct {
 	UsernameClaim   string
 	IssuerURL       string
 	DisplayName     string
+	Slug            string
 	Scopes          []string
 	ClientSecretEnc []byte
 	AdminValues     []string
@@ -38,6 +40,7 @@ type OIDCProvider struct {
 
 type UpdateOIDCProviderOpts struct {
 	DisplayName string
+	Slug        string
 
 	IssuerURL string
 	ClientID  string
@@ -53,6 +56,7 @@ type UpdateOIDCProviderOpts struct {
 
 type CreateOIDCProviderOpts struct {
 	DisplayName string
+	Slug        string
 
 	IssuerURL       string
 	ClientID        string
@@ -82,9 +86,12 @@ type OIDCProviderDetails struct {
 type LightOIDCProvider struct {
 	CreatedAt   time.Time
 	DisplayName string
+	Slug        string
 	ID          uuid.UUID
 	UserCount   int64
 }
+
+var ErrSlugTaken = errors.New("oidc provider slug already exists")
 
 var ErrIncompleteDiscovery = errors.New("discovery document is incomplete")
 

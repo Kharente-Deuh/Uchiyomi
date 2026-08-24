@@ -87,6 +87,10 @@ func (r *stubOIDCProvidersRepo) GetByIssuerURL(context.Context, string) (*oidcpr
 	panic("GetByIssuerURL is not used by the revalidation app")
 }
 
+func (r *stubOIDCProvidersRepo) GetBySlug(context.Context, string) (*oidcproviders.OIDCProvider, error) {
+	panic("GetBySlug is not used by the revalidation app")
+}
+
 func (r *stubOIDCProvidersRepo) Create(
 	context.Context,
 	oidcproviders.CreateOIDCProviderOpts,
