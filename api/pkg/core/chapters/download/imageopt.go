@@ -5,6 +5,13 @@ package download
 import (
 	"bytes"
 	"encoding/binary"
+	"image"
+	"image/jpeg"
+	"image/png"
+	"log/slog"
+	"strings"
+
+	"github.com/KarpelesLab/gowebp"
 )
 
 type ImageFormat int
@@ -17,25 +24,114 @@ const (
 	FormatGIF
 )
 
-var pngHeader = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
-var jpegHeader = []byte{0xFF, 0xD8, 0xFF}
-var gif87a = []byte("GIF87a")
-var gif89a = []byte("GIF89a")
+const (
+	pngHeader  = "\x89PNG\r\n\x1a\n"
+	jpegHeader = "\xff\xd8\xff"
+	gif87a     = "GIF87a"
+	gif89a     = "GIF89a"
+)
+
+type OptimizedPage struct {
+	Data      []byte
+	Extension string
+}
+
+func OptimizePage(data []byte, urlExt string, logger *slog.Logger) OptimizedPage {
+	format := SniffFormat(data)
+	defaultExt := fallbackExtension(format, urlExt)
+
+	fallback := OptimizedPage{
+		Data:      data,
+		Extension: defaultExt,
+	}
+
+	if format == FormatPNG && IsAPNG(data) {
+		return fallback
+	}
+
+	if format != FormatPNG && format != FormatJPEG {
+		return fallback
+	}
+
+	var img image.Image
+	var err error
+
+	switch format {
+	case FormatPNG:
+		img, err = png.Decode(bytes.NewReader(data))
+	case FormatJPEG:
+		img, err = jpeg.Decode(bytes.NewReader(data))
+	default:
+		return fallback
+	}
+
+	if err != nil {
+		if logger != nil {
+			logger.Warn("failed to decode image for webp conversion", "error", err)
+		}
+
+		return fallback
+	}
+
+	var webpBuf bytes.Buffer
+	// nil options in KarpelesLab/gowebp encodes lossless VP8L by default
+	if err := gowebp.Encode(&webpBuf, img, nil); err != nil {
+		if logger != nil {
+			logger.Warn("failed to encode lossless webp", "error", err)
+		}
+
+		return fallback
+	}
+
+	webpBytes := webpBuf.Bytes()
+	if len(webpBytes) < len(data) {
+		return OptimizedPage{
+			Data:      webpBytes,
+			Extension: ".webp",
+		}
+	}
+
+	return fallback
+}
+
+func fallbackExtension(format ImageFormat, urlExt string) string {
+	switch format {
+	case FormatPNG:
+		return ".png"
+	case FormatJPEG:
+		if strings.EqualFold(urlExt, ".jpeg") {
+			return ".jpeg"
+		}
+
+		return ".jpg"
+	case FormatWebP:
+		return ".webp"
+	case FormatGIF:
+		return ".gif"
+	default:
+		cleanExt := strings.ToLower(strings.TrimSpace(urlExt))
+		if cleanExt == "" || !strings.HasPrefix(cleanExt, ".") {
+			return ".webp"
+		}
+
+		return cleanExt
+	}
+}
 
 func SniffFormat(data []byte) ImageFormat {
-	if len(data) >= 8 && bytes.Equal(data[:8], pngHeader) {
+	if len(data) >= 8 && string(data[:8]) == pngHeader {
 		return FormatPNG
 	}
 
-	if len(data) >= 3 && bytes.Equal(data[:3], jpegHeader) {
+	if len(data) >= 3 && string(data[:3]) == jpegHeader {
 		return FormatJPEG
 	}
 
-	if len(data) >= 12 && bytes.Equal(data[:4], []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WEBP")) {
+	if len(data) >= 12 && string(data[:4]) == "RIFF" && string(data[8:12]) == "WEBP" {
 		return FormatWebP
 	}
 
-	if len(data) >= 6 && (bytes.Equal(data[:6], gif87a) || bytes.Equal(data[:6], gif89a)) {
+	if len(data) >= 6 && (string(data[:6]) == gif87a || string(data[:6]) == gif89a) {
 		return FormatGIF
 	}
 
@@ -43,7 +139,7 @@ func SniffFormat(data []byte) ImageFormat {
 }
 
 func IsAPNG(data []byte) bool {
-	if len(data) < 8 || !bytes.Equal(data[:8], pngHeader) {
+	if len(data) < 8 || string(data[:8]) != pngHeader {
 		return false
 	}
 
