@@ -59,10 +59,6 @@ watch(page, () => {
   if (betweenChaptersMode.value) {
     betweenChaptersMode.value = undefined
   }
-
-  if (showOverlay.value) {
-    showOverlay.value = false
-  }
 })
 
 watch(betweenChaptersMode, (value) => {
@@ -93,7 +89,15 @@ function clickRight(): void {
   }
 }
 
+function hideOverlay(): void {
+  if (showOverlay.value) {
+    showOverlay.value = false
+  }
+}
+
 function previousPage(): void {
+  hideOverlay()
+
   if (page.value > 0) {
     page.value = page.value - (props.settings.doublePage ? 2 : 1)
   } else if (!betweenChaptersMode.value) {
@@ -104,6 +108,8 @@ function previousPage(): void {
 }
 
 function nextPage(): void {
+  hideOverlay()
+
   if (page.value < props.chapter.pageUrls.length - (props.settings.doublePage ? 2 : 1)) {
     page.value = page.value + (props.settings.doublePage ? 2 : 1)
   } else if (!betweenChaptersMode.value) {
