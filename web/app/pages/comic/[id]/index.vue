@@ -182,9 +182,9 @@ const showDeleteModal = ref(false)
             @error="coverSrc = defaultCover"
           />
 
-          <div class="d-flex ga-2 flex-column">
+          <div class="d-flex ga-2 flex-column text-truncate justify-space-between w-100">
             <span
-              class="font-title font-weight-bold"
+              class="font-title font-weight-bold text-wrap"
               :class="{
                 'text-display-medium': !smAndDown,
                 'text-title-large': smAndDown,
@@ -192,16 +192,7 @@ const showDeleteModal = ref(false)
             >{{ comic.title }}</span>
 
             <template v-if="smAndDown">
-              <div v-if="comic.author" class="d-flex ga-2 justify-space-between mt-1">
-                <span class="text-body-medium text-medium-emphasis text-uppercase text-truncate">{{ $t('comic.fields.author') }}</span>
-                <span class="text-body-medium font-weight-bold text-truncate">{{ comic.author }}</span>
-              </div>
-              <div v-if="comic.artist" class="d-flex ga-2 justify-space-between">
-                <span class="text-body-medium text-medium-emphasis text-uppercase text-truncate">{{ $t('comic.fields.artist') }}</span>
-                <span class="text-body-medium font-weight-bold text-truncate">{{ comic.artist }}</span>
-              </div>
-
-              <div class="d-flex flex-wrap ga-3 align-center mt-1">
+              <div class="d-flex flex-wrap ga-3 align-center my-1">
                 <ComicsIconStatus :status="comic.status" with-background />
                 <ComicsChipType :type="comic.type" size="small" />
                 <div>
@@ -210,6 +201,15 @@ const showDeleteModal = ref(false)
                     size="small"
                   />
                 </div>
+              </div>
+
+              <div v-if="comic.author" class="d-flex ga-2 justify-space-between">
+                <span class="text-body-medium text-medium-emphasis text-uppercase text-truncate">{{ $t('comic.fields.author') }}</span>
+                <span class="text-body-medium font-weight-bold text-truncate">{{ comic.author }}</span>
+              </div>
+              <div v-if="comic.artist" class="d-flex ga-2 justify-space-between">
+                <span class="text-body-medium text-medium-emphasis text-uppercase text-truncate">{{ $t('comic.fields.artist') }}</span>
+                <span class="text-body-medium font-weight-bold text-truncate">{{ comic.artist }}</span>
               </div>
             </template>
           </div>
