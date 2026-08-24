@@ -32,7 +32,7 @@ onBeforeRouteLeave((to: RouteLocationNormalized) => {
       <LibraryHeader />
     </template>
 
-    <div class="pt-6" :class="{ 'px-4': smAndDown }">
+    <div class="pt-6" :class="{ 'px-4': smAndDown, 'pt-3': smAndDown }">
       <div v-if="!isLoading && comics.length === 0" class="d-flex justify-center">
         <span class="text-medium-emphasis text-body-large"> {{ $t('errors.noResults') }} </span>
       </div>
