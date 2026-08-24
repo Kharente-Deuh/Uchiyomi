@@ -4,7 +4,7 @@
 import type { VueWrapper } from '@vue/test-utils'
 import type { DetailedChapter } from '~/features/chapters/types'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 import { VApp, VSlider } from 'vuetify/components'
 import Rail from './Rail.vue'
@@ -49,14 +49,13 @@ describe('readerOverlayRail', () => {
     expect(wrapper.text()).toContain('5')
   })
 
-  it('renders a readonly vertical reversed slider snapped to pages', async () => {
+  it('renders a vertical reversed slider snapped to pages', async () => {
     const wrapper = await mount(2)
     const slider = wrapper.findComponent(VSlider)
 
     expect(slider.exists()).toBe(true)
     expect(slider.props('direction')).toBe('vertical')
     expect(slider.props('reverse')).toBe(true)
-    expect(slider.props('readonly')).toBe(true)
     expect(slider.props('step')).toBe(1)
     expect(slider.props('min')).toBe(0)
     expect(slider.props('max')).toBe(4)
@@ -90,5 +89,24 @@ describe('readerOverlayRail', () => {
     const wrapper = await mount(4, chapter(), true)
 
     expect(wrapper.get('[data-test="rail-current"]').text()).toBe('5')
+  })
+
+  it('does not let a click on the rail bubble to the reader', async () => {
+    const onClick = vi.fn()
+    const wrapper = await mountSuspended({
+      render: () => h('div', { onClick }, [
+        h(VApp, () => [
+          h(Rail, {
+            'chapter': chapter(),
+            'page': 2,
+            'onUpdate:page': () => {},
+          }),
+        ]),
+      ]),
+    })
+
+    await wrapper.find('.position-fixed').trigger('click')
+
+    expect(onClick).not.toHaveBeenCalled()
   })
 })

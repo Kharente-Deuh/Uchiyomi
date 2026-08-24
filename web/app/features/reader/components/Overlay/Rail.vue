@@ -26,6 +26,7 @@ const currentLabel = computed(() => {
   <div
     class="position-fixed d-flex py-8"
     style="top: 6rem; bottom: 4.5rem; right: 1.5rem; z-index: 2;"
+    @click.stop
   >
     <div class="d-flex flex-column rounded-pill bg-surface border-thin pa-4 ga-2 h-100">
       <div data-test="rail-current" class="d-flex w-100 justify-center">
@@ -40,7 +41,6 @@ const currentLabel = computed(() => {
         :step="step"
         direction="vertical"
         reverse
-        readonly
         color="primary"
         track-color="secondary"
         show-ticks="always"
