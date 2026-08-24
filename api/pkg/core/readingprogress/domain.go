@@ -51,6 +51,12 @@ type GetOpts struct {
 	ChapterID uuid.UUID
 }
 
+type MarkReadOpts struct {
+	ChapterIDs []uuid.UUID
+	UserID     uuid.UUID
+	ComicID    uuid.UUID
+}
+
 type UpsertOpts struct {
 	UpdatedAt time.Time
 	UserID    uuid.UUID
@@ -70,6 +76,7 @@ type ReadingProgressService interface {
 	List(context.Context, ListOpts) (ListResult, error)
 	MapByChapterIDs(context.Context, MapOpts) (map[uuid.UUID]Progress, error)
 	Save(context.Context, SaveOpts) (Progress, error)
+	MarkRead(context.Context, MarkReadOpts) (ListResult, error)
 }
 
 type LibraryMembership interface {
@@ -82,6 +89,7 @@ type ComicLookup interface {
 
 type ChapterLookup interface {
 	GetByID(context.Context, uuid.UUID) (*chapters.Chapter, error)
+	GetByIds(context.Context, []uuid.UUID) ([]chapters.Chapter, error)
 }
 
 func ClampPage(page, pagesNb int) int {

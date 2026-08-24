@@ -12,20 +12,36 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
 )
 
+type fakeTransactor struct {
+	err   error
+	calls int
+}
+
+func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn func(context.Context) error) error {
+	f.calls++
+	if err := fn(ctx); err != nil {
+		return err
+	}
+
+	return f.err
+}
+
 type fakeRepo struct {
+	existing    *readingprogress.Progress
 	listErr     error
 	getErr      error
 	upsertErr   error
-	existing    *readingprogress.Progress
 	rows        []readingprogress.Progress
+	upserts     []readingprogress.UpsertOpts
 	lastUpsert  readingprogress.UpsertOpts
+	lastGet     readingprogress.GetOpts
+	listed      readingprogress.ListOpts
 	listCalls   int
 	getCalls    int
 	upsertCalls int
-	lastGet     readingprogress.GetOpts
-	listed      readingprogress.ListOpts
 }
 
 func (f *fakeRepo) GetLatestByUserAndComic(
@@ -72,6 +88,7 @@ func (f *fakeRepo) Get(_ context.Context, opts readingprogress.GetOpts) (*readin
 func (f *fakeRepo) Upsert(_ context.Context, opts readingprogress.UpsertOpts) (readingprogress.Progress, error) {
 	f.upsertCalls++
 	f.lastUpsert = opts
+	f.upserts = append(f.upserts, opts)
 
 	return readingprogress.Progress{
 		ChapterID: opts.ChapterID,
@@ -111,10 +128,13 @@ func (f *fakeComics) Exists(_ context.Context, id uuid.UUID) (bool, error) {
 }
 
 type fakeChapters struct {
-	getErr   error
-	chapter  *chapters.Chapter
-	lastID   uuid.UUID
-	getCalls int
+	byID        map[uuid.UUID]chapters.Chapter
+	chapter     *chapters.Chapter
+	getErr      error
+	getByIdsErr error
+	lastIDs     []uuid.UUID
+	lastID      uuid.UUID
+	getCalls    int
 }
 
 func (f *fakeChapters) GetByID(_ context.Context, id uuid.UUID) (*chapters.Chapter, error) {
@@ -124,7 +144,40 @@ func (f *fakeChapters) GetByID(_ context.Context, id uuid.UUID) (*chapters.Chapt
 		return nil, f.getErr
 	}
 
+	if f.byID != nil {
+		ch, ok := f.byID[id]
+		if !ok {
+			return nil, domain.ErrNotFound
+		}
+
+		return &ch, nil
+	}
+
 	return f.chapter, nil
+}
+
+func (f *fakeChapters) GetByIds(_ context.Context, ids []uuid.UUID) ([]chapters.Chapter, error) {
+	f.lastIDs = ids
+	if f.getByIdsErr != nil {
+		return nil, f.getByIdsErr
+	}
+
+	if f.byID != nil {
+		out := make([]chapters.Chapter, 0, len(ids))
+		for _, id := range ids {
+			if ch, ok := f.byID[id]; ok {
+				out = append(out, ch)
+			}
+		}
+
+		return out, nil
+	}
+
+	if f.chapter != nil {
+		return []chapters.Chapter{*f.chapter}, nil
+	}
+
+	return nil, nil
 }
 
 func newService(
@@ -138,6 +191,7 @@ func newService(
 
 	svc, err := readingprogress.NewService(readingprogress.Deps{
 		Repository: repo,
+		Transactor: &fakeTransactor{},
 		Library:    lib,
 		Comics:     comics,
 		Chapters:   ch,
@@ -155,6 +209,20 @@ func TestNewServiceValidatesDeps(t *testing.T) {
 	_, err := readingprogress.NewService(readingprogress.Deps{})
 	if err == nil {
 		t.Fatal("NewService with empty deps must fail")
+	}
+}
+
+func TestNewServiceRequiresTransactor(t *testing.T) {
+	t.Parallel()
+
+	_, err := readingprogress.NewService(readingprogress.Deps{
+		Repository: &fakeRepo{},
+		Library:    &fakeLibrary{inLib: true},
+		Comics:     &fakeComics{exists: true},
+		Chapters:   &fakeChapters{},
+	})
+	if err == nil {
+		t.Fatal("NewService without transactor must fail")
 	}
 }
 

@@ -10,12 +10,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
 )
 
 var _ ReadingProgressService = (*Service)(nil)
 
 type Deps struct {
 	Repository Repository
+	Transactor transaction.Transactor
 	Library    LibraryMembership
 	Comics     ComicLookup
 	Chapters   ChapterLookup
@@ -24,6 +26,10 @@ type Deps struct {
 func (deps *Deps) Validate() error {
 	if deps.Repository == nil {
 		return errors.New("repository is required")
+	}
+
+	if deps.Transactor == nil {
+		return errors.New("transactor is required")
 	}
 
 	if deps.Library == nil {
@@ -154,6 +160,13 @@ func (s *Service) Save(ctx context.Context, opts SaveOpts) (Progress, error) {
 	}
 
 	return saved, nil
+}
+
+func (s *Service) MarkRead(ctx context.Context, opts MarkReadOpts) (ListResult, error) {
+	_ = ctx
+	_ = opts
+
+	return ListResult{}, fmt.Errorf("%w: not implemented", ErrInvalid)
 }
 
 func (s *Service) requireLibrary(ctx context.Context, userID, comicID uuid.UUID) error {

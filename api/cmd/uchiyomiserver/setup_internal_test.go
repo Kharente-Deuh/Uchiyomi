@@ -105,6 +105,12 @@ func (stubReadingProgressService) Save(context.Context, readingprogress.SaveOpts
 	return readingprogress.Progress{}, nil
 }
 
+func (stubReadingProgressService) MarkRead(
+	context.Context, readingprogress.MarkReadOpts,
+) (readingprogress.ListResult, error) {
+	return readingprogress.ListResult{}, nil
+}
+
 type emptyOIDCProvidersRepository struct{}
 
 func (emptyOIDCProvidersRepository) GetByID(

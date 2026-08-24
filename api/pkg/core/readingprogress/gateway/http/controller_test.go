@@ -34,10 +34,13 @@ const (
 type stubService struct {
 	listErr    error
 	saveErr    error
+	markErr    error
 	listResult readingprogress.ListResult
+	markResult readingprogress.ListResult
 	saveResult readingprogress.Progress
-	lastList   readingprogress.ListOpts
+	lastMark   readingprogress.MarkReadOpts
 	lastSave   readingprogress.SaveOpts
+	lastList   readingprogress.ListOpts
 }
 
 func (s *stubService) List(_ context.Context, opts readingprogress.ListOpts) (readingprogress.ListResult, error) {
@@ -50,6 +53,14 @@ func (s *stubService) Save(_ context.Context, opts readingprogress.SaveOpts) (re
 	s.lastSave = opts
 
 	return s.saveResult, s.saveErr
+}
+
+func (s *stubService) MarkRead(
+	_ context.Context, opts readingprogress.MarkReadOpts,
+) (readingprogress.ListResult, error) {
+	s.lastMark = opts
+
+	return s.markResult, s.markErr
 }
 
 func (s *stubService) MapByChapterIDs(
