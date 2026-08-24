@@ -133,10 +133,6 @@ async function retryChapter(chapterId: string): Promise<void> {
 }
 
 const nextChapter = computed(() => {
-  if (!props.continue) {
-    return
-  }
-
   const chaptersCpy = sort.value === 'asc' ? chapters.value : chapters.value.toSorted((a, b) => a.number - b.number)
   const continueCpy = props.continue
 
