@@ -916,11 +916,11 @@ func getProviders(t *testing.T, r chi.Router) *httptest.ResponseRecorder {
 	return rec
 }
 
-func getOIDCStart(t *testing.T, r chi.Router, id string) *httptest.ResponseRecorder {
+func getOIDCStart(t *testing.T, r chi.Router, slug string) *httptest.ResponseRecorder {
 	t.Helper()
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/oidc/"+id+"/start", nil))
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/oidc/"+slug+"/start", nil))
 
 	return rec
 }
@@ -945,7 +945,7 @@ func TestListProvidersReturnsMappedShape(t *testing.T) {
 
 	id := uuid.New()
 	providers := &stubProvidersLister{result: []oidcproviders.LightOIDCProvider{
-		{ID: id, DisplayName: "Acme SSO"},
+		{ID: id, Slug: "acme", DisplayName: "Acme SSO"},
 	}}
 	r, _ := newTestRouterWithProviders(t, &stubAuthService{}, providers)
 
@@ -960,7 +960,7 @@ func TestListProvidersReturnsMappedShape(t *testing.T) {
 		t.Fatalf("json.Unmarshal(%s): %v", rec.Body.String(), err)
 	}
 
-	want := []authhttp.ProviderSummaryResponse{{ID: id.String(), DisplayName: "Acme SSO"}}
+	want := []authhttp.ProviderSummaryResponse{{ID: id.String(), Slug: "acme", DisplayName: "Acme SSO"}}
 	if len(got) != 1 || got[0] != want[0] {
 		t.Errorf("body = %+v, want %+v", got, want)
 	}
@@ -987,10 +987,11 @@ func TestListProvidersServiceError(t *testing.T) {
 	}
 }
 
-func TestStartOIDCLoginBadUUIDRedirects(t *testing.T) {
+func TestStartOIDCLoginUnknownSlugRedirects(t *testing.T) {
 	t.Parallel()
 
-	r, _ := newTestRouterWithProviders(t, &stubAuthService{}, &stubProvidersLister{})
+	svc := &stubAuthService{startErr: auth.ErrOIDCUnavailable}
+	r, _ := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
 
 	rec := getOIDCStart(t, r, "not-a-uuid")
 
@@ -1006,7 +1007,6 @@ func TestStartOIDCLoginBadUUIDRedirects(t *testing.T) {
 func TestStartOIDCLoginHappyPathRedirectsAndSetsStateCookie(t *testing.T) {
 	t.Parallel()
 
-	id := uuid.New()
 	svc := &stubAuthService{startResult: &auth.OIDCStart{
 		AuthCodeURL:      "https://idp.example.com/authorize?state=abc",
 		StateCookieValue: "opaque-state",
@@ -1014,7 +1014,7 @@ func TestStartOIDCLoginHappyPathRedirectsAndSetsStateCookie(t *testing.T) {
 	}}
 	r, _ := newTestRouterWithProviders(t, svc, &stubProvidersLister{})
 
-	rec := getOIDCStart(t, r, id.String())
+	rec := getOIDCStart(t, r, "keycloak")
 
 	if rec.Code != http.StatusFound {
 		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusFound, rec.Body.String())
@@ -1024,8 +1024,8 @@ func TestStartOIDCLoginHappyPathRedirectsAndSetsStateCookie(t *testing.T) {
 		t.Errorf("Location = %q, want %q", loc, svc.startResult.AuthCodeURL)
 	}
 
-	if svc.gotStartOpts.ProviderID != id {
-		t.Errorf("ProviderID = %v, want %v", svc.gotStartOpts.ProviderID, id)
+	if svc.gotStartOpts.ProviderSlug != "keycloak" {
+		t.Errorf("ProviderSlug = %q, want %q", svc.gotStartOpts.ProviderSlug, "keycloak")
 	}
 
 	raw := rec.Header().Get("Set-Cookie")

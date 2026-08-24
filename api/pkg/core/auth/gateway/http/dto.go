@@ -17,6 +17,7 @@ type LoginWithPwdResponse struct {
 
 type ProviderSummaryResponse struct {
 	ID          string `json:"id"`
+	Slug        string `json:"slug"`
 	DisplayName string `json:"displayName"`
 }
 
