@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"net/url"
@@ -148,7 +149,14 @@ func (s DiskPages) OpenPage(comicID uuid.UUID, chapterNumber float64, index int)
 	return files[0], contentType, nil
 }
 
-func downloadPage(ctx context.Context, client *http.Client, imageURL, destPath string) error {
+func downloadPage(
+	ctx context.Context,
+	client *http.Client,
+	imageURL string,
+	dir string,
+	pageIndex int,
+	logger *slog.Logger,
+) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
 	if err != nil {
 		return fmt.Errorf("http.NewRequestWithContext: %w", err)
@@ -165,13 +173,23 @@ func downloadPage(ctx context.Context, client *http.Client, imageURL, destPath s
 		return fmt.Errorf("unexpected status %d", res.StatusCode)
 	}
 
-	if err = os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-		return fmt.Errorf("os.MkdirAll %s: %w", destPath, err)
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("io.ReadAll: %w", err)
 	}
 
-	tmp, err := os.CreateTemp(filepath.Dir(destPath), ".dl-*")
+	urlExt := pageExtension(imageURL)
+	opt := OptimizePage(bodyBytes, urlExt, logger)
+
+	destPath := filepath.Join(dir, pageFilename(pageIndex, opt.Extension))
+
+	if err = os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("os.MkdirAll %s: %w", dir, err)
+	}
+
+	tmp, err := os.CreateTemp(dir, ".dl-*")
 	if err != nil {
-		return fmt.Errorf("os.CreateTemp %s: %w", destPath, err)
+		return fmt.Errorf("os.CreateTemp %s: %w", dir, err)
 	}
 
 	tmpName := tmp.Name()
@@ -180,8 +198,8 @@ func downloadPage(ctx context.Context, client *http.Client, imageURL, destPath s
 		os.Remove(tmpName)
 	}()
 
-	if _, err = io.Copy(tmp, res.Body); err != nil {
-		return fmt.Errorf("io.Copy %s: %w", tmpName, err)
+	if _, err = tmp.Write(opt.Data); err != nil {
+		return fmt.Errorf("tmp.Write %s: %w", tmpName, err)
 	}
 
 	if err = tmp.Sync(); err != nil {

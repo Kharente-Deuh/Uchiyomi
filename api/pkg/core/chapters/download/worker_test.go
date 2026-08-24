@@ -4,12 +4,14 @@
 package download_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -173,7 +175,8 @@ func newTestWorkerWithConfig(
 	t.Cleanup(server.Close)
 
 	for i := range pageURLs {
-		pageURLs[i] = server.URL + fmt.Sprintf("/page-%d", i+1)
+		ext := path.Ext(pageURLs[i])
+		pageURLs[i] = server.URL + fmt.Sprintf("/page-%d%s", i+1, ext)
 	}
 
 	if cfg.Dir == "" {
@@ -649,4 +652,389 @@ func TestWorkerResumeEnqueuesWithoutClearingPages(t *testing.T) {
 	if updated.Download != 42 {
 		t.Errorf("download = %d, want 42", updated.Download)
 	}
+}
+
+func TestWorkerOptimizesPNGToWebP(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: "chapter-1",
+		Number:            1,
+		PagesNb:           1,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	pngBytes := createTestPNG(t, 200, 200)
+
+	worker, dir, chaptersRepo := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{".png"},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(pngBytes)
+		}),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = worker.Run(ctx)
+	}()
+
+	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
+		if err == nil && updated.Download == 100 {
+			chapterDir := filepath.Join(dir, comicID.String(), "1")
+			webpPath := filepath.Join(chapterDir, "001.webp")
+			pngPath := filepath.Join(chapterDir, "001.png")
+
+			data, err := os.ReadFile(webpPath)
+			if err != nil {
+				t.Fatalf("expected 001.webp to exist: %v", err)
+			}
+
+			if len(data) >= len(pngBytes) {
+				t.Errorf("expected webp size (%d) to be smaller than png (%d)", len(data), len(pngBytes))
+			}
+
+			if download.SniffFormat(data) != download.FormatWebP {
+				t.Errorf("expected downloaded file to be webp format")
+			}
+
+			if _, err := os.Stat(pngPath); !os.IsNotExist(err) {
+				t.Errorf("expected 001.png not to exist")
+			}
+
+			return
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	t.Fatal("chapter was not completed")
+}
+
+func TestWorkerOptimizesJPEGToWebPWhenSmaller(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: "chapter-1",
+		Number:            1,
+		PagesNb:           1,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	jpegBytes := createTestSolidJPEG(t, 200, 200)
+
+	worker, dir, chaptersRepo := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{".jpg"},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(jpegBytes)
+		}),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = worker.Run(ctx)
+	}()
+
+	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
+		if err == nil && updated.Download == 100 {
+			chapterDir := filepath.Join(dir, comicID.String(), "1")
+			webpPath := filepath.Join(chapterDir, "001.webp")
+
+			data, err := os.ReadFile(webpPath)
+			if err != nil {
+				t.Fatalf("expected 001.webp to exist: %v", err)
+			}
+
+			if len(data) >= len(jpegBytes) {
+				t.Errorf("expected webp size (%d) to be smaller than jpeg (%d)", len(data), len(jpegBytes))
+			}
+
+			if download.SniffFormat(data) != download.FormatWebP {
+				t.Errorf("expected downloaded file to be webp format")
+			}
+
+			return
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	t.Fatal("chapter was not completed")
+}
+
+func TestWorkerPreservesJPEGWhenWebPLarger(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: "chapter-1",
+		Number:            1,
+		PagesNb:           1,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	jpegBytes := createTestJPEG(t, 200, 200)
+
+	worker, dir, chaptersRepo := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{".jpg"},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(jpegBytes)
+		}),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = worker.Run(ctx)
+	}()
+
+	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
+		if err == nil && updated.Download == 100 {
+			chapterDir := filepath.Join(dir, comicID.String(), "1")
+			jpgPath := filepath.Join(chapterDir, "001.jpg")
+
+			data, err := os.ReadFile(jpgPath)
+			if err != nil {
+				t.Fatalf("expected 001.jpg to exist: %v", err)
+			}
+
+			if !bytes.Equal(data, jpegBytes) {
+				t.Errorf("expected original jpeg bytes to be preserved")
+			}
+
+			return
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	t.Fatal("chapter was not completed")
+}
+
+func TestWorkerResumesSkippingExistingWebPAndPNG(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: "chapter-1",
+		Number:            1,
+		PagesNb:           3,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	page3PNG := createTestPNG(t, 200, 200)
+
+	var calls atomic.Int32
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(page3PNG)
+	})
+
+	worker, dir, chaptersRepo := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{".png", ".png", ".png"},
+		handler,
+	)
+
+	chapterDir := filepath.Join(dir, comicID.String(), "1")
+	if err := os.MkdirAll(chapterDir, 0o755); err != nil {
+		t.Fatalf("os.MkdirAll: %v", err)
+	}
+
+	existingPage1 := []byte("existing-webp-page1")
+	existingPage2 := []byte("existing-png-page2")
+
+	if err := os.WriteFile(filepath.Join(chapterDir, "001.webp"), existingPage1, 0o644); err != nil {
+		t.Fatalf("os.WriteFile: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(chapterDir, "002.png"), existingPage2, 0o644); err != nil {
+		t.Fatalf("os.WriteFile: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = worker.Run(ctx)
+	}()
+
+	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
+		if err == nil && updated.Download == 100 {
+			if calls.Load() != 1 {
+				t.Fatalf("download attempts for missing page = %d, want 1", calls.Load())
+			}
+
+			// Verify existing files were untouched
+			p1, err := os.ReadFile(filepath.Join(chapterDir, "001.webp"))
+			if err != nil || !bytes.Equal(p1, existingPage1) {
+				t.Fatalf("001.webp modified or missing: %v", err)
+			}
+
+			p2, err := os.ReadFile(filepath.Join(chapterDir, "002.png"))
+			if err != nil || !bytes.Equal(p2, existingPage2) {
+				t.Fatalf("002.png modified or missing: %v", err)
+			}
+
+			// Verify page 3 was downloaded and optimized to webp
+			if _, err := os.Stat(filepath.Join(chapterDir, "003.webp")); err != nil {
+				t.Fatalf("third page not saved as webp: %v", err)
+			}
+
+			return
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	t.Fatal("chapter was not completed")
+}
+
+func TestWorkerPreservesAPNGAsPNG(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	chapter := chapters.Chapter{
+		ID:                chapterID,
+		ComicID:           comicID,
+		SourceChapterSlug: "chapter-1",
+		Number:            1,
+		PagesNb:           1,
+	}
+	comic := comics.Comic{
+		ID:     comicID,
+		Source: sources.SourceAsuraScans,
+		Slug:   "series-slug",
+	}
+
+	apngBytes := createTestAPNG(t)
+
+	worker, dir, chaptersRepo := newTestWorker(
+		t,
+		chapter,
+		comic,
+		[]string{".png"},
+		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(apngBytes)
+		}),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = worker.Run(ctx)
+	}()
+
+	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
+		if err == nil && updated.Download == 100 {
+			chapterDir := filepath.Join(dir, comicID.String(), "1")
+			pngPath := filepath.Join(chapterDir, "001.png")
+			webpPath := filepath.Join(chapterDir, "001.webp")
+
+			data, err := os.ReadFile(pngPath)
+			if err != nil {
+				t.Fatalf("expected 001.png to exist: %v", err)
+			}
+
+			if !bytes.Equal(data, apngBytes) {
+				t.Errorf("expected APNG bytes to be preserved exactly")
+			}
+
+			if _, err := os.Stat(webpPath); !os.IsNotExist(err) {
+				t.Errorf("expected 001.webp not to exist for APNG")
+			}
+
+			return
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	t.Fatal("chapter was not completed")
 }

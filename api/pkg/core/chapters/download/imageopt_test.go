@@ -46,6 +46,22 @@ func createTestJPEG(t *testing.T, w, h int) []byte {
 	return buf.Bytes()
 }
 
+func createTestSolidJPEG(t *testing.T, w, h int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 100}); err != nil {
+		t.Fatalf("jpeg.Encode: %v", err)
+	}
+
+	return buf.Bytes()
+}
+
 func createTestAPNG(t *testing.T) []byte {
 	t.Helper()
 	basePNG := createTestPNG(t, 10, 10)
@@ -125,19 +141,30 @@ func TestOptimizePage_PNGToWebP(t *testing.T) {
 }
 
 func TestOptimizePage_JPEGToWebP_Smaller(t *testing.T) {
-	jpegData := createTestJPEG(t, 200, 200)
-	res := download.OptimizePage(jpegData, ".jpg", nil)
+	solidJPEG := createTestSolidJPEG(t, 200, 200)
+	res := download.OptimizePage(solidJPEG, ".jpg", nil)
 
-	// If WebP is smaller, extension must be .webp
-	if len(res.Data) < len(jpegData) {
-		if res.Extension != ".webp" {
-			t.Errorf("expected .webp when smaller, got %s", res.Extension)
+	if res.Extension != ".webp" {
+		t.Errorf("expected .webp when smaller, got %s", res.Extension)
+	}
+	if len(res.Data) >= len(solidJPEG) {
+		t.Errorf("expected webp size (%d) to be smaller than jpeg (%d)", len(res.Data), len(solidJPEG))
+	}
+	if download.SniffFormat(res.Data) != download.FormatWebP {
+		t.Errorf("expected output to be valid WebP format")
+	}
+
+	gradientJPEG := createTestJPEG(t, 200, 200)
+	resGradient := download.OptimizePage(gradientJPEG, ".jpg", nil)
+	if len(resGradient.Data) < len(gradientJPEG) {
+		if resGradient.Extension != ".webp" {
+			t.Errorf("expected .webp when smaller, got %s", resGradient.Extension)
 		}
 	} else {
-		if res.Extension != ".jpg" {
-			t.Errorf("expected original extension when WebP is larger, got %s", res.Extension)
+		if resGradient.Extension != ".jpg" {
+			t.Errorf("expected original extension when WebP is larger, got %s", resGradient.Extension)
 		}
-		if !bytes.Equal(res.Data, jpegData) {
+		if !bytes.Equal(resGradient.Data, gradientJPEG) {
 			t.Errorf("expected original data preserved when WebP is larger")
 		}
 	}
