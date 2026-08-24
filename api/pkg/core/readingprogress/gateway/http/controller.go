@@ -93,6 +93,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(c.cfg.Middlewares...)
 		r.Get(c.cfg.Endpoint+"/{id}/progress", c.get)
+		r.Post(c.cfg.Endpoint+"/{id}/progress", c.post)
 		r.Put(c.cfg.ChaptersEndpoint+"/{id}/progress", c.put)
 	})
 }
@@ -131,6 +132,62 @@ func (c *Controller) get(w http.ResponseWriter, r *http.Request) {
 		}
 
 		c.deps.Logger.Error("failed to list reading progress", "error", err)
+		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
+
+		return
+	}
+
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, listFromDomain(result))
+}
+
+func (c *Controller) post(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		httputils.WriteError(w, c.deps.Logger, http.StatusUnauthorized, "")
+
+		return
+	}
+
+	comicID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "id must be a valid UUID")
+
+		return
+	}
+
+	req, err := httputils.DecodeJSON[markReadRequest](r)
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "invalid request body")
+
+		return
+	}
+
+	result, err := c.deps.Service.MarkRead(ctx, readingprogress.MarkReadOpts{
+		UserID:     user.ID,
+		ComicID:    comicID,
+		ChapterIDs: req.ChapterIDs,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "")
+
+			return
+		}
+
+		if errors.Is(err, domain.ErrForbidden) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusForbidden, "comic not in library")
+
+			return
+		}
+
+		if errors.Is(err, readingprogress.ErrInvalid) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "invalid request body")
+
+			return
+		}
+
+		c.deps.Logger.Error("failed to mark reading progress", "error", err)
 		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
 
 		return

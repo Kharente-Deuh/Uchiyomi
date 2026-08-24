@@ -28,6 +28,10 @@ type saveRequest struct {
 	Page *int `json:"page" validate:"required"`
 }
 
+type markReadRequest struct {
+	ChapterIDs []uuid.UUID `json:"chapterIds" validate:"required,min=1,dive"`
+}
+
 func progressFromDomain(p readingprogress.Progress) progressResponse {
 	return progressResponse{
 		UpdatedAt: p.UpdatedAt,
