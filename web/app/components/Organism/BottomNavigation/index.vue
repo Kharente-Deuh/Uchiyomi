@@ -9,7 +9,7 @@ defineProps<{
 
 <template>
   <footer
-    class="position-fixed bottom-0 w-100 nvagation-bottom h-100 bg-surface border-thin elevation-down d-flex justify-space-evenly"
+    class="position-fixed bottom-0 w-100 nvagation-bottom bg-surface border-thin elevation-down d-flex justify-space-evenly"
     style="border-top-left-radius: 12px; border-top-right-radius: 12px;"
   >
     <OrganismBottomNavigationItem
@@ -23,6 +23,8 @@ defineProps<{
 <style lang="scss">
 .nvagation-bottom {
   z-index: 1004;
+  box-sizing: border-box;
   height: var(--bottom-navigation-height);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 </style>

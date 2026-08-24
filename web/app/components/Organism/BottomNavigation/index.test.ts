@@ -23,4 +23,9 @@ describe('bottomNavigation', () => {
     const wrapper = await mountSuspended(wrap())
     expect(wrapper.findAllComponents(Item)).toHaveLength(2)
   })
+
+  it('does not stretch to 100% height (that swallows the PWA home indicator)', async () => {
+    const wrapper = await mountSuspended(wrap())
+    expect(wrapper.find('footer').classes()).not.toContain('h-100')
+  })
 })

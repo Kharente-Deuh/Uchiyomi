@@ -8,7 +8,7 @@ const isDark = computed(() => theme.global.current.value.dark)
 </script>
 
 <template>
-  <VApp>
+  <VApp style="padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);">
     <VMain class="bg-bimo-grey-darken-2 d-flex flex-column justify-center h-100 gradient-background">
       <div
         style="width: 23rem;"

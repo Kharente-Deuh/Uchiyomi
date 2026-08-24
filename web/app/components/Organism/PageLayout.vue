@@ -45,7 +45,6 @@ const { height: headerHeight } = useElementSize(headerRef, undefined, { box: 'bo
     <div
       ref="headerRef"
       class="d-flex flex-column ga-2 bg-background page-layout__sticky-header"
-      :class="{ 'pt-4': !smAndDown }"
     >
       <div
         v-if="title"
@@ -121,5 +120,6 @@ const { height: headerHeight } = useElementSize(headerRef, undefined, { box: 'bo
   top: 0;
   z-index: 20;
   padding-bottom: 12px;
+  padding-top: var(--page-header-padding-top);
 }
 </style>

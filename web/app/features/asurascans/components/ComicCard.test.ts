@@ -4,7 +4,7 @@
 import type { VueWrapper } from '@vue/test-utils'
 import type { AsuraScansSearchItem } from '../types'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 import { VApp } from 'vuetify/components'
 import ComicCard from './ComicCard.vue'
@@ -61,5 +61,26 @@ describe('asuraScansComicCard', () => {
     const wrapper = await mount(item('c1'))
     expect(wrapper.find('.remove-library-btn').exists()).toBe(true)
     expect(wrapper.find('.add-library-btn').exists()).toBe(false)
+  })
+
+  it('does not track hover on coarse pointers so a tap navigates immediately', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }))
+
+    const wrapper = await mount(item())
+    const hover = wrapper.findComponent({ name: 'VHover' })
+
+    expect(hover.exists()).toBe(true)
+    expect(hover.props('disabled')).toBe(true)
+
+    vi.unstubAllGlobals()
   })
 })
