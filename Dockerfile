@@ -1,6 +1,4 @@
-ARG WITH_WEB=off
-
-FROM node:26-alpine AS web-on
+FROM node:26-alpine AS web
 
 WORKDIR /web
 
@@ -16,12 +14,6 @@ COPY web/ ./
 
 RUN pnpm build
 
-FROM busybox AS web-off
-
-RUN mkdir -p /web/.output/public
-
-FROM web-${WITH_WEB} AS web
-
 FROM golang:1.26-alpine AS build
 
 WORKDIR /src
@@ -31,7 +23,6 @@ COPY api/cmd/ cmd/
 COPY api/pkg/ pkg/
 COPY --from=web /web/.output/public/ pkg/webui/dist/
 
-ARG WITH_WEB
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
@@ -40,7 +31,7 @@ ENV CGO_ENABLED=0
 RUN --mount=type=cache,target=/root/.cache/go-build \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -mod=readonly -trimpath \
-    -tags="$([ "${WITH_WEB}" = on ] && echo webui)" \
+    -tags=webui \
     -ldflags='-s -w' \
     -o /out/uchiyomiserver ./cmd/uchiyomiserver
 
