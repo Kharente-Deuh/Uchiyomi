@@ -23,8 +23,8 @@ defineProps<{
 <style lang="scss">
 .nvagation-bottom {
   z-index: 1004;
-  box-sizing: border-box;
-  height: var(--bottom-navigation-height);
+  box-sizing: content-box;
+  height: var(--bottom-navigation-content-height);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 </style>

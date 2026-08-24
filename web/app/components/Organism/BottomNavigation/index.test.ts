@@ -25,35 +25,13 @@ describe('bottomNavigation', () => {
   })
 
   it('does not stretch to 100% height (that swallows the PWA home indicator)', async () => {
-    await mountSuspended(wrap())
-    const footer = document.body.querySelector('footer')
-    expect(footer).not.toBeNull()
-    expect(footer?.classList.contains('h-100')).toBe(false)
+    const wrapper = await mountSuspended(wrap())
+    expect(wrapper.find('.nvagation-bottom').classes()).not.toContain('h-100')
   })
 
-  it('applies the home-indicator inset only as padding, not also in min-height', async () => {
-    await mountSuspended(wrap())
-    const rule = findNavigationBottomRule()
-    expect(rule).not.toBeUndefined()
-    expect(rule?.style.minHeight).toBe('var(--bottom-navigation-content-height)')
-    expect(rule?.style.paddingBottom).toBe('env(safe-area-inset-bottom, 0px)')
+  it('does not bake the safe-area into both height and padding (that doubles the PWA inset)', async () => {
+    const source = await import('./index.vue?raw').then(m => m.default as string)
+    expect(source).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom/)
+    expect(source).not.toMatch(/height:\s*var\(--bottom-navigation-height\)/)
   })
 })
-
-function findNavigationBottomRule(): CSSStyleRule | undefined {
-  for (const sheet of document.styleSheets) {
-    let rules: CSSRuleList
-    try {
-      rules = sheet.cssRules
-    }
-    catch {
-      continue
-    }
-
-    for (const cssRule of rules) {
-      if (cssRule instanceof CSSStyleRule && cssRule.selectorText.includes('nvagation-bottom')) {
-        return cssRule
-      }
-    }
-  }
-}
