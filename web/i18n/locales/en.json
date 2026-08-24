@@ -301,7 +301,8 @@
   },
   "comics": {
     "remove": {
-      "title": "Remove from library"
+      "title": "Remove from library",
+      "titleShort": "Remove"
     },
     "create": {
       "error": {

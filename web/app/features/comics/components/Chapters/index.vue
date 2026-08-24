@@ -261,7 +261,11 @@ function onSelectionAction(updateContinue: boolean): void {
   <div class="d-flex flex-column w-100 position-relative bg-surface" style="border-radius: 12px; max-height: 40rem;">
     <div
       v-if="selectedChapters.length === 0"
-      class="d-flex justify-space-between ga-6 pa-4 border-b-thin bg-surface align-center"
+      class="d-flex justify-space-between pa-4 border-b-thin bg-surface align-center"
+      :class="{
+        'ga-6': !smAndDown,
+        'ga-4': smAndDown,
+      }"
       style="z-index: 1; border-top-left-radius: 12px; border-top-right-radius: 12px;"
     >
       <span class="text-title-large font-weight-bold">{{ $t('sources.asurascans.comic.chaptersCount', { count: chapters.length }) }}</span>
@@ -274,6 +278,7 @@ function onSelectionAction(updateContinue: boolean): void {
 
       <div class="d-flex align-center ga-4">
         <VBtn
+          v-if="!smAndDown"
           variant="tonal"
           class="text-body-medium"
           color="surfaceVariant"
@@ -287,7 +292,7 @@ function onSelectionAction(updateContinue: boolean): void {
         <VIcon
           :icon="selectAllChaptersIcon"
           cursor="pointer"
-          size="large"
+          :size="smAndDown ? 'default' : 'large'"
           @click="toggleSelectAllChapters"
         />
       </div>
