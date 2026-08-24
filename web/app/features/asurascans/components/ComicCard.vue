@@ -14,10 +14,12 @@ const src = ref<string>(props.comic.cover)
 watch(() => props.comic.cover, (newVal) => {
   src.value = newVal
 }, { immediate: true })
+
+const canHover = useMediaQuery('(hover: hover) and (pointer: fine)')
 </script>
 
 <template>
-  <VHover>
+  <VHover :disabled="!canHover">
     <template #default="{ isHovering, props: hoverProps }">
       <AtomLink :to="`/browse/sources/${ASURA_SOURCE_NAME}/${comic.slug}`" v-bind="hoverProps">
         <div class="d-flex flex-column comic-card w-100 h-100">
@@ -83,23 +85,31 @@ watch(() => props.comic.cover, (newVal) => {
     }
   }
 
-  &:hover {
-    .in-library-label {
-      opacity: 0;
-    }
-
+  @media (hover: none), (pointer: coarse) {
     .add-library-btn {
       opacity: 1;
     }
+  }
 
-    .v-img {
-      transition: all 0.2s ease-in-out;
-      border: solid 1px rgb(var(--v-theme-primary));
-    }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      .in-library-label {
+        opacity: 0;
+      }
 
-    .comic-card-title {
-      transition: all 0.2s ease-in-out;
-      color: rgb(var(--v-theme-primary));
+      .add-library-btn {
+        opacity: 1;
+      }
+
+      .v-img {
+        transition: all 0.2s ease-in-out;
+        border: solid 1px rgb(var(--v-theme-primary));
+      }
+
+      .comic-card-title {
+        transition: all 0.2s ease-in-out;
+        color: rgb(var(--v-theme-primary));
+      }
     }
   }
 }

@@ -12,14 +12,13 @@ const details = computed(() => getSourceDetails(props.source))
 </script>
 
 <template>
-  <VImg
+  <img
     v-if="size === 'small'"
     :src="details.image"
     aspect-ratio="1"
-    width="31"
-    class="rounded-lg w-fit"
-    :style="{ border: `1px solid ${details.color}C8` }"
-  />
+    class="rounded-lg"
+    :style="{ border: `1px solid ${details.color}C8`, width: '31px', height: '31px' }"
+  >
   <div
     v-else
     class="d-flex align-center ga-3 w-fit px-2 py-1 bg-background"

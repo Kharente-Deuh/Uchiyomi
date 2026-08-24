@@ -16,6 +16,7 @@ export const pwa: ModuleOptions = {
     name: APP_NAME,
     short_name: APP_NAME,
     description: APP_DESCRIPTION,
+    display: 'standalone',
     theme_color: '#0e1014',
     background_color: '#0e1014',
     icons: [

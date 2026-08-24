@@ -29,12 +29,14 @@ watch(() => props.item.cover, () => {
           <span class="text-title-large font-weight-bold feed-comic-card-title text-truncate">
             {{ item.title }}
           </span>
-          <ComicsChipSource :source="item.source" size="small" />
-          <ComicsIconStatus
-            v-if="(item.status as string) !== ''"
-            :status="item.status"
-            with-background
-          />
+          <div class="d-flex ga-3">
+            <ComicsChipSource :source="item.source" size="small" />
+            <ComicsIconStatus
+              v-if="(item.status as string) !== ''"
+              :status="item.status"
+              with-background
+            />
+          </div>
         </div>
         <div class="d-flex flex-column ga-2 justify-space-between">
           <FeedComicCardChapter
@@ -55,14 +57,16 @@ watch(() => props.item.cover, () => {
   grid-template-columns: 25% auto;
   gap: 1.5rem;
 
-  &:hover {
-    .v-img {
-      transition: all 0.2s ease-in-out;
-      border: solid 1px rgb(var(--v-theme-primary));
-    }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      .v-img {
+        transition: all 0.2s ease-in-out;
+        border: solid 1px rgb(var(--v-theme-primary));
+      }
 
-    .feed-comic-card-title {
-      color: rgb(var(--v-theme-primary));
+      .feed-comic-card-title {
+        color: rgb(var(--v-theme-primary));
+      }
     }
   }
 }

@@ -36,15 +36,17 @@ watch(() => props.comic.cover, (newVal) => {
 
 <style lang="scss">
 .library-comic-card {
-  &:hover {
-    .v-img {
-      transition: all 0.2s ease-in-out;
-      border: solid 1px rgb(var(--v-theme-primary));
-    }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      .v-img {
+        transition: all 0.2s ease-in-out;
+        border: solid 1px rgb(var(--v-theme-primary));
+      }
 
-    .library-comic-card-title {
-      transition: all 0.2s ease-in-out;
-      color: rgb(var(--v-theme-primary));
+      .library-comic-card-title {
+        transition: all 0.2s ease-in-out;
+        color: rgb(var(--v-theme-primary));
+      }
     }
   }
 }

@@ -102,4 +102,9 @@ describe('organismPageLayout', () => {
 
     expect(wrapper.text()).toContain('filters')
   })
+
+  it('insets the sticky header below the PWA status bar', async () => {
+    const wrapper = await mountSuspended(wrap({ title: 'Asura Scans' }))
+    expect(wrapper.find('.page-layout__sticky-header').exists()).toBe(true)
+  })
 })

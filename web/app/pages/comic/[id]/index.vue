@@ -195,12 +195,10 @@ const showDeleteModal = ref(false)
               <div class="d-flex flex-wrap ga-3 align-center my-1">
                 <ComicsIconStatus :status="comic.status" with-background />
                 <ComicsChipType :type="comic.type" size="small" />
-                <div>
-                  <ComicsChipSource
-                    :source="comic.source"
-                    size="small"
-                  />
-                </div>
+                <ComicsChipSource
+                  :source="comic.source"
+                  size="small"
+                />
               </div>
 
               <div v-if="comic.author" class="d-flex ga-2 justify-space-between">
