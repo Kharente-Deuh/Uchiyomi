@@ -78,6 +78,7 @@ type DeleteProgressOpts struct {
 
 type Repository interface {
 	GetLatestByUserAndComic(context.Context, ListOpts) (*Progress, error)
+	ListByUserAndComic(context.Context, ListOpts) ([]Progress, error)
 	ListByUserAndChapterIDs(context.Context, MapOpts) ([]Progress, error)
 	Get(context.Context, GetOpts) (*Progress, error)
 	Upsert(context.Context, UpsertOpts) (Progress, error)
@@ -103,6 +104,7 @@ type ComicLookup interface {
 type ChapterLookup interface {
 	GetByID(context.Context, uuid.UUID) (*chapters.Chapter, error)
 	GetByIds(context.Context, []uuid.UUID) ([]chapters.Chapter, error)
+	ListByComicID(context.Context, uuid.UUID) ([]chapters.Chapter, error)
 }
 
 func ClampPage(page, pagesNb int) int {

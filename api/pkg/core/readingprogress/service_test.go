@@ -73,6 +73,23 @@ func (f *fakeRepo) GetLatestByUserAndComic(
 	return &row, nil
 }
 
+func (f *fakeRepo) ListByUserAndComic(
+	_ context.Context,
+	opts readingprogress.ListOpts,
+) ([]readingprogress.Progress, error) {
+	f.listCalls++
+	f.listed = opts
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+
+	if f.stored != nil {
+		return f.stored, nil
+	}
+
+	return f.rows, nil
+}
+
 func (f *fakeRepo) ListByUserAndChapterIDs(
 	_ context.Context,
 	_ readingprogress.MapOpts,
@@ -109,8 +126,19 @@ func (f *fakeRepo) Upsert(_ context.Context, opts readingprogress.UpsertOpts) (r
 		UpdatedAt: opts.UpdatedAt,
 	}
 	f.latest = &out
-	row := out
-	f.rows = []readingprogress.Progress{row}
+
+	updated := false
+	for i := range f.rows {
+		if f.rows[i].ChapterID == opts.ChapterID {
+			f.rows[i] = out
+			updated = true
+
+			break
+		}
+	}
+	if !updated {
+		f.rows = append(f.rows, out)
+	}
 
 	return out, f.upsertErr
 }
@@ -121,6 +149,18 @@ func (f *fakeRepo) DeleteByUserAndChapterIDs(
 ) error {
 	f.deleteCalls++
 	f.lastDelete = opts
+
+	delMap := make(map[uuid.UUID]bool, len(opts.ChapterIDs))
+	for _, id := range opts.ChapterIDs {
+		delMap[id] = true
+	}
+	remaining := make([]readingprogress.Progress, 0, len(f.rows))
+	for _, r := range f.rows {
+		if !delMap[r.ChapterID] {
+			remaining = append(remaining, r)
+		}
+	}
+	f.rows = remaining
 
 	return f.deleteErr
 }
@@ -156,13 +196,46 @@ func (f *fakeComics) Exists(_ context.Context, id uuid.UUID) (bool, error) {
 }
 
 type fakeChapters struct {
-	byID        map[uuid.UUID]chapters.Chapter
-	chapter     *chapters.Chapter
-	getErr      error
-	getByIdsErr error
-	lastIDs     []uuid.UUID
-	lastID      uuid.UUID
-	getCalls    int
+	byID           map[uuid.UUID]chapters.Chapter
+	chapter        *chapters.Chapter
+	list           []chapters.Chapter
+	getErr         error
+	getByIdsErr    error
+	listByComicErr error
+	lastIDs        []uuid.UUID
+	lastID         uuid.UUID
+	lastComicID    uuid.UUID
+	getCalls       int
+	listCalls      int
+}
+
+func (f *fakeChapters) ListByComicID(_ context.Context, comicID uuid.UUID) ([]chapters.Chapter, error) {
+	f.listCalls++
+	f.lastComicID = comicID
+	if f.listByComicErr != nil {
+		return nil, f.listByComicErr
+	}
+
+	if f.list != nil {
+		return f.list, nil
+	}
+
+	if f.byID != nil {
+		out := make([]chapters.Chapter, 0, len(f.byID))
+		for _, c := range f.byID {
+			if c.ComicID == comicID {
+				out = append(out, c)
+			}
+		}
+
+		return out, nil
+	}
+
+	if f.chapter != nil {
+		return []chapters.Chapter{*f.chapter}, nil
+	}
+
+	return nil, nil
 }
 
 func (f *fakeChapters) GetByID(_ context.Context, id uuid.UUID) (*chapters.Chapter, error) {
@@ -505,8 +578,13 @@ func TestListEmptyContinueNull(t *testing.T) {
 
 	userID := uuid.New()
 	comicID := uuid.New()
+	ch1 := uuid.New()
 	repo := &fakeRepo{rows: nil}
-	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{})
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+		},
+	})
 
 	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: userID, ComicID: comicID})
 	if err != nil {
@@ -522,26 +600,255 @@ func TestListEmptyContinueNull(t *testing.T) {
 	}
 }
 
-func TestListClampsWithoutWrite(t *testing.T) {
+func TestListIgnoredPageOneNotLast(t *testing.T) {
 	t.Parallel()
 
-	chID := uuid.New()
-	repo := &fakeRepo{rows: []readingprogress.Progress{{
-		ChapterID: chID,
-		Page:      18,
-		UpdatedAt: time.Unix(2, 0).UTC(),
-	}}}
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{
+		{ChapterID: ch1, Page: 1},
+	}}
 	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
-		chapter: &chapters.Chapter{ID: chID, PagesNb: 12, Download: 50},
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+		},
 	})
 
-	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: uuid.New()})
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
 
-	if got.Continue == nil || got.Continue.Page != 12 || got.Continue.ChapterID != chID {
-		t.Errorf("continue = %+v", got.Continue)
+	if got.Continue != nil {
+		t.Errorf("continue = %+v, want nil", got.Continue)
+	}
+}
+
+//nolint:dupl
+func TestListSinglePageChapterCompleteAdvances(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{
+		{ChapterID: ch1, Page: 1},
+	}}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 1},
+			{ID: ch2, ComicID: comicID, Number: 2, PagesNb: 20},
+		},
+	})
+
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch2 || got.Continue.Page != 1 {
+		t.Errorf("continue = %+v, want chapter %s page 1", got.Continue, ch2)
+	}
+}
+
+//nolint:dupl
+func TestListPartiallyReadChapter(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{
+		{ChapterID: ch1, Page: 10},
+	}}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+			{ID: ch2, ComicID: comicID, Number: 2, PagesNb: 20},
+		},
+	})
+
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch1 || got.Continue.Page != 10 {
+		t.Errorf("continue = %+v, want chapter %s page 10", got.Continue, ch1)
+	}
+}
+
+//nolint:dupl
+func TestListCompletedChapterAdvancesToNext(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{
+		{ChapterID: ch1, Page: 20},
+	}}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+			{ID: ch2, ComicID: comicID, Number: 2, PagesNb: 20},
+		},
+	})
+
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch2 || got.Continue.Page != 1 {
+		t.Errorf("continue = %+v, want chapter %s page 1", got.Continue, ch2)
+	}
+}
+
+//nolint:dupl
+func TestListHighestChapterWithProgressSelected(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	ch3 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{
+		{ChapterID: ch1, Page: 20},
+		{ChapterID: ch2, Page: 5},
+	}}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+			{ID: ch2, ComicID: comicID, Number: 2, PagesNb: 20},
+			{ID: ch3, ComicID: comicID, Number: 3, PagesNb: 20},
+		},
+	})
+
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch2 || got.Continue.Page != 5 {
+		t.Errorf("continue = %+v, want chapter %s page 5", got.Continue, ch2)
+	}
+}
+
+//nolint:dupl
+func TestListHighestChapterCompletedAdvances(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	ch3 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{
+		{ChapterID: ch1, Page: 20},
+		{ChapterID: ch2, Page: 20},
+	}}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+			{ID: ch2, ComicID: comicID, Number: 2, PagesNb: 20},
+			{ID: ch3, ComicID: comicID, Number: 3, PagesNb: 20},
+		},
+	})
+
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch3 || got.Continue.Page != 1 {
+		t.Errorf("continue = %+v, want chapter %s page 1", got.Continue, ch3)
+	}
+}
+
+//nolint:dupl
+func TestListLastChapterCompletedReturnsLastChapter(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{
+		{ChapterID: ch1, Page: 20},
+		{ChapterID: ch2, Page: 20},
+	}}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+			{ID: ch2, ComicID: comicID, Number: 2, PagesNb: 20},
+		},
+	})
+
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch2 || got.Continue.Page != 20 {
+		t.Errorf("continue = %+v, want chapter %s page 20", got.Continue, ch2)
+	}
+}
+
+//nolint:dupl
+func TestListAccidentalPageOneOnLaterChapterIgnored(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	ch3 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{
+		{ChapterID: ch1, Page: 20},
+		{ChapterID: ch3, Page: 1},
+	}}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+			{ID: ch2, ComicID: comicID, Number: 2, PagesNb: 20},
+			{ID: ch3, ComicID: comicID, Number: 3, PagesNb: 20},
+		},
+	})
+
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch2 || got.Continue.Page != 1 {
+		t.Errorf("continue = %+v, want chapter %s page 1", got.Continue, ch2)
+	}
+}
+
+//nolint:dupl
+func TestListClampsPageToPagesNb(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	repo := &fakeRepo{rows: []readingprogress.Progress{{
+		ChapterID: ch1,
+		Page:      25,
+		UpdatedAt: time.Unix(2, 0).UTC(),
+	}}}
+	svc := newService(t, repo, &fakeLibrary{inLib: true}, &fakeComics{}, &fakeChapters{
+		list: []chapters.Chapter{
+			{ID: ch1, ComicID: comicID, Number: 1, PagesNb: 20},
+			{ID: ch2, ComicID: comicID, Number: 2, PagesNb: 20},
+		},
+	})
+
+	got, err := svc.List(context.Background(), readingprogress.ListOpts{UserID: uuid.New(), ComicID: comicID})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch2 || got.Continue.Page != 1 {
+		t.Errorf("continue = %+v, want chapter %s page 1", got.Continue, ch2)
 	}
 
 	if repo.upsertCalls != 0 {
@@ -838,20 +1145,7 @@ func TestSetReadFirstProgressContinueIsHighestNumber(t *testing.T) {
 		}
 	}
 
-	lastUpsert := repo.upserts[len(repo.upserts)-1]
 	wantWinnerID := ids[9]
-	if lastUpsert.ChapterID != wantWinnerID || lastUpsert.Page != 20 {
-		t.Errorf("last upsert = %+v, want chapter %v at page 20", lastUpsert, wantWinnerID)
-	}
-
-	if len(repo.upserts) > 1 && !lastUpsert.UpdatedAt.After(repo.upserts[0].UpdatedAt) {
-		t.Errorf(
-			"last upsert UpdatedAt %v not after first upsert UpdatedAt %v",
-			lastUpsert.UpdatedAt,
-			repo.upserts[0].UpdatedAt,
-		)
-	}
-
 	if got.Continue == nil || got.Continue.ChapterID != wantWinnerID || got.Continue.Page != 20 {
 		t.Errorf("got.Continue = %+v, want chapter %v at page 20", got.Continue, wantWinnerID)
 	}
@@ -876,10 +1170,12 @@ func TestSetReadKeepsEarlierContinuePage(t *testing.T) {
 	}
 
 	repo := &fakeRepo{
-		latest: &readingprogress.Progress{
-			ChapterID: ch50ID,
-			Page:      3,
-			UpdatedAt: time.Unix(10, 0).UTC(),
+		rows: []readingprogress.Progress{
+			{
+				ChapterID: ch50ID,
+				Page:      3,
+				UpdatedAt: time.Unix(10, 0).UTC(),
+			},
 		},
 	}
 	tx := &fakeTransactor{}
@@ -895,25 +1191,17 @@ func TestSetReadKeepsEarlierContinuePage(t *testing.T) {
 		t.Fatalf("SetRead: %v", err)
 	}
 
-	if len(repo.upserts) < 2 {
-		t.Fatalf("len(repo.upserts) = %d, want at least 2", len(repo.upserts))
+	if len(repo.upserts) != 40 {
+		t.Fatalf("len(repo.upserts) = %d, want 40", len(repo.upserts))
 	}
 
-	for i, up := range repo.upserts[:len(repo.upserts)-1] {
+	for i, up := range repo.upserts {
 		if up.ChapterID == ch50ID {
-			t.Errorf("upsert[%d] has ch50, want only in last upsert", i)
+			t.Errorf("upsert[%d] has ch50, want ch50 untouched", i)
 		}
 		if up.Page != 10 {
 			t.Errorf("upsert[%d] Page = %d, want 10", i, up.Page)
 		}
-	}
-
-	lastUpsert := repo.upserts[len(repo.upserts)-1]
-	if lastUpsert.ChapterID != ch50ID || lastUpsert.Page != 3 {
-		t.Errorf("last upsert = %+v, want ch50 at page 3", lastUpsert)
-	}
-	if !lastUpsert.UpdatedAt.After(repo.upserts[0].UpdatedAt) {
-		t.Errorf("last upsert UpdatedAt not after first upsert UpdatedAt")
 	}
 
 	if got.Continue == nil || got.Continue.ChapterID != ch50ID || got.Continue.Page != 3 {
@@ -940,10 +1228,12 @@ func TestSetReadKeepsCompletedLaterContinue(t *testing.T) {
 	}
 
 	repo := &fakeRepo{
-		latest: &readingprogress.Progress{
-			ChapterID: ch100ID,
-			Page:      50,
-			UpdatedAt: time.Unix(10, 0).UTC(),
+		rows: []readingprogress.Progress{
+			{
+				ChapterID: ch100ID,
+				Page:      50,
+				UpdatedAt: time.Unix(10, 0).UTC(),
+			},
 		},
 	}
 	tx := &fakeTransactor{}
@@ -959,16 +1249,12 @@ func TestSetReadKeepsCompletedLaterContinue(t *testing.T) {
 		t.Fatalf("SetRead: %v", err)
 	}
 
-	for i, up := range repo.upserts[:len(repo.upserts)-1] {
+	for i, up := range repo.upserts {
 		if up.ChapterID == ch100ID {
-			t.Errorf("non-final upsert[%d] rewrote ch100", i)
+			t.Errorf("upsert[%d] rewrote ch100, want untouched", i)
 		}
 	}
 
-	lastUpsert := repo.upserts[len(repo.upserts)-1]
-	if lastUpsert.ChapterID != ch100ID || lastUpsert.Page != 50 {
-		t.Errorf("last upsert = %+v, want ch100 at page 50", lastUpsert)
-	}
 	if got.Continue == nil || got.Continue.ChapterID != ch100ID || got.Continue.Page != 50 {
 		t.Errorf("got.Continue = %+v, want ch100 at page 50", got.Continue)
 	}
@@ -1011,7 +1297,7 @@ func TestSetReadMovesContinueForward(t *testing.T) {
 	}
 
 	foundCh5Upsert := false
-	for _, up := range repo.upserts[:len(repo.upserts)-1] {
+	for _, up := range repo.upserts {
 		if up.ChapterID == ch5ID && up.Page == 15 {
 			foundCh5Upsert = true
 		}
@@ -1020,10 +1306,6 @@ func TestSetReadMovesContinueForward(t *testing.T) {
 		t.Errorf("ch5 was not upserted to page 15 in loop")
 	}
 
-	lastUpsert := repo.upserts[len(repo.upserts)-1]
-	if lastUpsert.ChapterID != ch50ID || lastUpsert.Page != 15 {
-		t.Errorf("last upsert = %+v, want ch50 at page 15", lastUpsert)
-	}
 	if got.Continue == nil || got.Continue.ChapterID != ch50ID || got.Continue.Page != 15 {
 		t.Errorf("got.Continue = %+v, want ch50 at page 15", got.Continue)
 	}
@@ -1064,10 +1346,6 @@ func TestSetReadSkipsZeroPagesNbAmongEligible(t *testing.T) {
 		}
 	}
 
-	lastUpsert := repo.upserts[len(repo.upserts)-1]
-	if lastUpsert.ChapterID != ch3ID || lastUpsert.Page != 10 {
-		t.Errorf("last upsert = %+v, want ch3 at page 10", lastUpsert)
-	}
 	if got.Continue == nil || got.Continue.ChapterID != ch3ID || got.Continue.Page != 10 {
 		t.Errorf("got.Continue = %+v, want ch3 at page 10", got.Continue)
 	}
@@ -1104,8 +1382,8 @@ func TestSetReadDuplicateIDsOneWritePerChapter(t *testing.T) {
 			ch1Upserts++
 		}
 	}
-	if ch1Upserts > 2 {
-		t.Errorf("ch1 upserts = %d, want <= 2", ch1Upserts)
+	if ch1Upserts != 1 {
+		t.Errorf("ch1 upserts = %d, want 1", ch1Upserts)
 	}
 }
 
@@ -1124,10 +1402,12 @@ func TestSetReadMissingContinueChapterTreatsAsNone(t *testing.T) {
 	}
 
 	repo := &fakeRepo{
-		latest: &readingprogress.Progress{
-			ChapterID: missingID,
-			Page:      5,
-			UpdatedAt: time.Unix(10, 0).UTC(),
+		rows: []readingprogress.Progress{
+			{
+				ChapterID: missingID,
+				Page:      5,
+				UpdatedAt: time.Unix(10, 0).UTC(),
+			},
 		},
 	}
 	tx := &fakeTransactor{}
@@ -1149,10 +1429,6 @@ func TestSetReadMissingContinueChapterTreatsAsNone(t *testing.T) {
 		}
 	}
 
-	lastUpsert := repo.upserts[len(repo.upserts)-1]
-	if lastUpsert.ChapterID != ch7ID || lastUpsert.Page != 12 {
-		t.Errorf("last upsert = %+v, want ch7 at page 12", lastUpsert)
-	}
 	if got.Continue == nil || got.Continue.ChapterID != ch7ID || got.Continue.Page != 12 {
 		t.Errorf("got.Continue = %+v, want ch7 at page 12", got.Continue)
 	}
@@ -1239,12 +1515,11 @@ func TestSetReadTieBreakByUUID(t *testing.T) {
 		t.Fatalf("SetRead: %v", err)
 	}
 
-	lastUpsert := repo.upserts[len(repo.upserts)-1]
-	if lastUpsert.ChapterID != id1 {
-		t.Errorf("winner = %v, want %v (smallest UUID)", lastUpsert.ChapterID, id1)
+	if len(repo.upserts) != 2 {
+		t.Fatalf("len(repo.upserts) = %d, want 2", len(repo.upserts))
 	}
-	if got.Continue == nil || got.Continue.ChapterID != id1 {
-		t.Errorf("got.Continue = %+v, want chapter %v", got.Continue, id1)
+	if got.Continue == nil || got.Continue.ChapterID != id2 || got.Continue.Page != 10 {
+		t.Errorf("got.Continue = %+v, want chapter %v at page 10", got.Continue, id2)
 	}
 }
 

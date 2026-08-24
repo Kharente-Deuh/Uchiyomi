@@ -72,6 +72,25 @@ func (r *PGReadingProgressRepository) GetLatestByUserAndComic(
 	return &ret, nil
 }
 
+func (r *PGReadingProgressRepository) ListByUserAndComic(
+	ctx context.Context, opts readingprogress.ListOpts,
+) ([]readingprogress.Progress, error) {
+	models, err := r.db(ctx).
+		Joins(clause.JoinTarget{Association: libraryEntryAssoc}, nil).
+		Where(`"LibraryEntry".user_id = ? AND "LibraryEntry".comic_id = ?`, opts.UserID, opts.ComicID).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Find: %w", err)
+	}
+
+	ret := make([]readingprogress.Progress, 0, len(models))
+	for i := range models {
+		ret = append(ret, models[i].Domain())
+	}
+
+	return ret, nil
+}
+
 func (r *PGReadingProgressRepository) ListByUserAndChapterIDs(
 	ctx context.Context, opts readingprogress.MapOpts,
 ) ([]readingprogress.Progress, error) {

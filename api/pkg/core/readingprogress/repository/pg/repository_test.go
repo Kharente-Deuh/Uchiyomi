@@ -121,6 +121,47 @@ func TestGetLatestOrdersByUpdatedAtDesc(t *testing.T) {
 	}
 }
 
+func TestListByUserAndComicJoinsLibraryEntry(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newReadingProgressRepo(t)
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	chapter1 := uuid.New()
+	chapter2 := uuid.New()
+	updatedAt := time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
+
+	query := `JOIN "library_entries" "LibraryEntry".*WHERE "LibraryEntry"\.(user_id|"user_id") = \$1` +
+		` AND "LibraryEntry"\.(comic_id|"comic_id") = \$2`
+	mock.ExpectQuery(query).
+		WithArgs(userID, comicID).
+		WillReturnRows(
+			sqlmock.NewRows(readingProgressSelectColumns()).
+				AddRow(uuid.New(), uuid.New(), chapter1, 5, updatedAt).
+				AddRow(uuid.New(), uuid.New(), chapter2, 10, updatedAt),
+		)
+
+	got, err := r.ListByUserAndComic(context.Background(), readingprogress.ListOpts{
+		UserID:  userID,
+		ComicID: comicID,
+	})
+	if err != nil {
+		t.Fatalf("ListByUserAndComic: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("len(got) = %d, want 2", len(got))
+	}
+
+	if got[0].ChapterID != chapter1 || got[0].Page != 5 {
+		t.Errorf("got[0] = %+v", got[0])
+	}
+	if got[1].ChapterID != chapter2 || got[1].Page != 10 {
+		t.Errorf("got[1] = %+v", got[1])
+	}
+}
+
 func TestListByUserAndChapterIDsEmptySkipsQuery(t *testing.T) {
 	t.Parallel()
 
