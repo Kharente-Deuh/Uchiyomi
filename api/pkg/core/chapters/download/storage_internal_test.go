@@ -3,7 +3,10 @@
 package download
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -85,5 +88,63 @@ func TestDiskPagesOpenPageMissing(t *testing.T) {
 	_, _, err := DiskPages{Dir: t.TempDir()}.OpenPage(uuid.New(), 1, 1)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("OpenPage = %v, want ErrNotFound", err)
+	}
+}
+
+func TestDownloadPage_Success(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("page-bytes"))
+	}))
+	t.Cleanup(server.Close)
+
+	dir := t.TempDir()
+	err := downloadPage(context.Background(), server.Client(), server.URL+"/page.jpg", dir, 1, nil)
+	if err != nil {
+		t.Fatalf("downloadPage: %v", err)
+	}
+
+	expectedFile := filepath.Join(dir, "001.jpg")
+	data, err := os.ReadFile(expectedFile)
+	if err != nil {
+		t.Fatalf("os.ReadFile: %v", err)
+	}
+
+	if string(data) != "page-bytes" {
+		t.Errorf("data = %q, want %q", string(data), "page-bytes")
+	}
+
+	// Verify no temporary files left behind
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("os.ReadDir: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("expected 1 file in dir, got %d", len(entries))
+	}
+}
+
+func TestDownloadPage_Non200Error(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	dir := t.TempDir()
+	err := downloadPage(context.Background(), server.Client(), server.URL+"/page.jpg", dir, 1, nil)
+	if err == nil {
+		t.Fatal("downloadPage expected error on 404, got nil")
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("os.ReadDir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("expected 0 files in dir, got %d", len(entries))
 	}
 }

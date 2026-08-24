@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -330,10 +329,8 @@ func (w *Worker) processChapter(ctx context.Context, source sources.SourceName, 
 	for _, pageIndex := range missing {
 		errG.Go(func() error {
 			imageURL := pageURLs[pageIndex-1]
-			ext := pageExtension(imageURL)
-			destPath := filepath.Join(dir, pageFilename(pageIndex, ext))
 
-			if err := w.downloadPageWithRetries(errCtx, throttle, imageURL, destPath); err != nil {
+			if err := w.downloadPageWithRetries(errCtx, throttle, imageURL, dir, pageIndex); err != nil {
 				return err
 			}
 
@@ -362,7 +359,9 @@ func (w *Worker) processChapter(ctx context.Context, source sources.SourceName, 
 func (w *Worker) downloadPageWithRetries(
 	ctx context.Context,
 	throttle *sourceThrottle,
-	imageURL, destPath string,
+	imageURL string,
+	dir string,
+	pageIndex int,
 ) error {
 	var lastErr error
 
@@ -371,7 +370,7 @@ func (w *Worker) downloadPageWithRetries(
 			return fmt.Errorf("throttle.wait: %w", err)
 		}
 
-		lastErr = downloadPage(ctx, w.deps.HTTPClient, imageURL, destPath)
+		lastErr = downloadPage(ctx, w.deps.HTTPClient, imageURL, dir, pageIndex, w.deps.Logger)
 		if lastErr == nil {
 			return nil
 		}
