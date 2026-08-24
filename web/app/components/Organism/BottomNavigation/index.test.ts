@@ -25,9 +25,14 @@ describe('bottomNavigation', () => {
   })
 
   it('does not stretch to 100% height (that swallows the PWA home indicator)', async () => {
-    await mountSuspended(wrap())
-    const footer = document.body.querySelector('footer')
-    expect(footer).not.toBeNull()
-    expect(footer?.classList.contains('h-100')).toBe(false)
+    const wrapper = await mountSuspended(wrap())
+    expect(wrapper.find('.nvagation-bottom').classes()).not.toContain('h-100')
+  })
+
+  it('does not bake the safe-area into both height and padding (that doubles the PWA inset)', async () => {
+    const importRes = await import('./index.vue?raw')
+    const source = importRes.default as string
+    expect(source).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom/)
+    expect(source).not.toMatch(/height:\s*var\(--bottom-navigation-height\)/)
   })
 })
