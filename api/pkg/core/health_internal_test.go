@@ -43,7 +43,7 @@ func TestNewHealthRegistryDeclaresTheLatchesAndTheDBProbe(t *testing.T) {
 
 	components := []string{
 		componentMigrations,
-		componentAsura,
+		componentAsuraScans,
 		componentCovers,
 		componentDownloads,
 		componentChapterListRefresh,

@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewRegistryStartsLatchesAsStarting(t *testing.T) {
-	reg := health.NewRegistry("migrations", "asura")
+	reg := health.NewRegistry("migrations", "example")
 
 	rep := reg.Snapshot(context.Background())
 
@@ -20,7 +20,7 @@ func TestNewRegistryStartsLatchesAsStarting(t *testing.T) {
 		t.Fatalf("overall status = %q, want %q", rep.Status, health.StatusStarting)
 	}
 
-	for _, name := range []string{"migrations", "asura"} {
+	for _, name := range []string{"migrations", "example"} {
 		if got := rep.Components[name].Status; got != health.StatusStarting {
 			t.Errorf("%s = %q, want %q", name, got, health.StatusStarting)
 		}
@@ -58,7 +58,7 @@ func TestSetErrorMarksLatchFailedWithReason(t *testing.T) {
 }
 
 func TestFailedDominatesStarting(t *testing.T) {
-	reg := health.NewRegistry("migrations", "asura")
+	reg := health.NewRegistry("migrations", "example")
 
 	reg.Set("migrations", errors.New("boom"))
 

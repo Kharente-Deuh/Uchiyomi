@@ -110,18 +110,18 @@ func TestRouterMountsTheOIDCCallbackAdvertisedAsRedirectURI(t *testing.T) {
 }
 
 func TestRunComponentMarksOKBeforeEnteringTheLoop(t *testing.T) {
-	reg := health.NewRegistry(componentAsura)
+	reg := health.NewRegistry(componentAsuraScans)
 	a := &App{deps: Deps{Health: reg}}
 
 	var seen health.Status
 
 	run := func(ctx context.Context) error {
-		seen = reg.Snapshot(ctx).Components[componentAsura].Status
+		seen = reg.Snapshot(ctx).Components[componentAsuraScans].Status
 
 		return nil
 	}
 
-	if err := a.runComponent(context.Background(), componentAsura, run)(); err != nil {
+	if err := a.runComponent(context.Background(), componentAsuraScans, run)(); err != nil {
 		t.Fatalf("runComponent: %v", err)
 	}
 
@@ -158,16 +158,16 @@ func TestRunComponentMarksFailedWhenLoopReturnsError(t *testing.T) {
 }
 
 func TestRunComponentStaysOKOnCleanReturn(t *testing.T) {
-	reg := health.NewRegistry(componentAsura)
+	reg := health.NewRegistry(componentAsuraScans)
 	a := &App{deps: Deps{Health: reg}}
 
 	run := func(context.Context) error { return nil }
 
-	if err := a.runComponent(context.Background(), componentAsura, run)(); err != nil {
+	if err := a.runComponent(context.Background(), componentAsuraScans, run)(); err != nil {
 		t.Fatalf("runComponent: %v", err)
 	}
 
-	if got := reg.Snapshot(context.Background()).Components[componentAsura].Status; got != health.StatusOK {
+	if got := reg.Snapshot(context.Background()).Components[componentAsuraScans].Status; got != health.StatusOK {
 		t.Fatalf("status = %q, want %q", got, health.StatusOK)
 	}
 }
@@ -203,7 +203,7 @@ func TestRunReportsEverythingOKOnceMigrationCompletes(t *testing.T) {
 
 	body := decodeReadyz(t, raw)
 	components := []string{
-		componentMigrations, componentAsura, componentCovers, componentDownloads, componentChapterListRefresh, componentSessions, componentOIDCRevalidation, componentDB,
+		componentMigrations, componentAsuraScans, componentCovers, componentDownloads, componentChapterListRefresh, componentSessions, componentOIDCRevalidation, componentDB,
 	}
 	for _, name := range components {
 		if got := body.Components[name].Status; got != string(health.StatusOK) {

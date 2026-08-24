@@ -228,7 +228,7 @@ func (a *App) startup(ctx context.Context, errG *errgroup.Group) func() error {
 
 		a.deps.Health.Set(componentMigrations, nil)
 
-		errG.Go(a.runComponent(ctx, componentAsura, a.deps.Asura.Run))
+		errG.Go(a.runComponent(ctx, componentAsuraScans, a.deps.Asura.Run))
 		errG.Go(a.runComponent(ctx, componentCovers, a.deps.Covers.Run))
 		errG.Go(a.runComponent(ctx, componentDownloads, a.deps.Downloads.Run))
 		errG.Go(a.runComponent(ctx, componentChapterListRefresh, a.deps.ChapterListRefresh.Run))
