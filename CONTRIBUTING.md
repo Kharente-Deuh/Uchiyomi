@@ -38,8 +38,8 @@ of the instance, used to build the redirect URI registered at the identity
 provider.
 
 In dev, Nuxt proxies `/api` to `:3000`. In production the SPA is embedded into
-the binary through the `webui` build tag (`WITH_WEB=on`), so a single container
-serves both. To exercise that path:
+the binary through the `webui` build tag. The Docker image always passes that
+tag, so a single container serves both. To exercise that path:
 
 ```bash
 docker compose up --build

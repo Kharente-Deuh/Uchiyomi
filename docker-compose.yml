@@ -20,9 +20,7 @@ services:
       start_period: 10s
 
   server:
-    build:
-      args:
-        WITH_WEB: ${WITH_WEB:-on}
+    build: .
     restart: unless-stopped
     depends_on:
       uchiyomi-db:

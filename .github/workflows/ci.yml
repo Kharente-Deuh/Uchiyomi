@@ -171,6 +171,5 @@ jobs:
         with:
           context: .
           push: false
-          build-args: WITH_WEB=on
           cache-from: type=gha
           cache-to: type=gha,mode=max
