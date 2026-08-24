@@ -1,4 +1,4 @@
-FROM node:26-alpine AS web
+FROM --platform=$BUILDPLATFORM node:26-alpine AS web
 
 WORKDIR /web
 
@@ -14,7 +14,7 @@ COPY web/ ./
 
 RUN pnpm build
 
-FROM golang:1.26-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 
 WORKDIR /src
 
