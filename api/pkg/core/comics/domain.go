@@ -87,6 +87,12 @@ type RefreshComicOpts struct {
 	ID     uuid.UUID
 }
 
+type RetryChaptersOpts struct {
+	ChapterIDs []uuid.UUID
+	UserID     uuid.UUID
+	ComicID    uuid.UUID
+}
+
 type ComicsService interface {
 	Create(context.Context, CreateOpts) (*Comic, error)
 	GetByID(context.Context, GetByIDOpts) (*Comic, error)
@@ -94,6 +100,7 @@ type ComicsService interface {
 	Delete(context.Context, DeleteOpts) error
 	RefreshChapterLists(context.Context) error
 	RefreshComic(context.Context, RefreshComicOpts) (*Comic, error)
+	RetryChapters(context.Context, RetryChaptersOpts) error
 	ServeCover(ctx context.Context, opts GetByIDOpts) (diskPath, contentType string, err error)
 }
 

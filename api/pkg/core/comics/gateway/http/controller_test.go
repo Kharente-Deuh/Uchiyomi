@@ -81,6 +81,10 @@ func (s *stubComicsService) RefreshComic(_ context.Context, _ comics.RefreshComi
 	return s.refreshComicResult, s.refreshComicErr
 }
 
+func (s *stubComicsService) RetryChapters(_ context.Context, _ comics.RetryChaptersOpts) error {
+	return nil
+}
+
 func (s *stubComicsService) ServeCover(_ context.Context, opts comics.GetByIDOpts) (string, string, error) {
 	s.serveCoverCalls++
 	s.lastServeCoverID = opts.ID

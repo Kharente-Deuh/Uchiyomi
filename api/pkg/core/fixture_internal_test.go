@@ -360,6 +360,10 @@ func (fakeComicsService) RefreshComic(context.Context, comics.RefreshComicOpts) 
 	return nil, errors.New(notImplemented)
 }
 
+func (fakeComicsService) RetryChapters(context.Context, comics.RetryChaptersOpts) error {
+	return errors.New(notImplemented)
+}
+
 func (fakeComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
 	return "", "", errors.New(notImplemented)
 }

@@ -42,6 +42,10 @@ func (f *fakeComicsService) RefreshComic(context.Context, comics.RefreshComicOpt
 	panic("RefreshComic must not be called")
 }
 
+func (f *fakeComicsService) RetryChapters(context.Context, comics.RetryChaptersOpts) error {
+	panic("RetryChapters must not be called")
+}
+
 func (f *fakeComicsService) RefreshChapterLists(ctx context.Context) error {
 	f.mu.Lock()
 	f.refreshCalls++
