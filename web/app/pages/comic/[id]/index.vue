@@ -122,6 +122,7 @@ const showDeleteModal = ref(false)
   >
     <div
       v-if="comic"
+      class="bg-background pb-8"
       :class="smAndDown ? 'd-flex flex-column ga-8 px-6' : 'comic-infos-grid'"
     >
       <ComicsModalDelete
@@ -142,23 +143,21 @@ const showDeleteModal = ref(false)
           @error="coverSrc = defaultCover"
         />
 
-        <div class="d-flex justify-space-between ga-4 w-100 pa-2">
+        <div class="d-flex justify-space-between ga-4 w-100 py-2">
           <VBtn
             v-if="canRefresh"
-            v-tooltip="$t('comics.refresh.title')"
-            icon="fa6-solid:repeat"
+            :text="$t('comics.refresh.title')"
+            prepend-icon="fa6-solid:repeat"
             color="secondary"
-            size="small"
             class="border-thin-secondary"
             @click="refreshComic"
           />
 
           <VBtn
-            v-tooltip="$t('comics.remove.title')"
+            :text="$t('comics.remove.titleShort')"
             class="border-thin-error"
             color="error"
-            icon="fa6-solid:trash"
-            size="small"
+            prepend-icon="fa6-solid:trash"
             @click="showDeleteModal = true"
           />
         </div>
@@ -183,43 +182,61 @@ const showDeleteModal = ref(false)
             @error="coverSrc = defaultCover"
           />
 
-          <span
-            class="font-title font-weight-bold"
-            :class="{
-              'text-display-medium': !smAndDown,
-              'text-title-large': smAndDown,
-            }"
-          >{{ comic.title }}</span>
+          <div class="d-flex ga-2 flex-column">
+            <span
+              class="font-title font-weight-bold"
+              :class="{
+                'text-display-medium': !smAndDown,
+                'text-title-large': smAndDown,
+              }"
+            >{{ comic.title }}</span>
+
+            <template v-if="smAndDown">
+              <div v-if="comic.author" class="d-flex ga-2 justify-space-between mt-1">
+                <span class="text-body-medium text-medium-emphasis text-uppercase text-truncate">{{ $t('comic.fields.author') }}</span>
+                <span class="text-body-medium font-weight-bold text-truncate">{{ comic.author }}</span>
+              </div>
+              <div v-if="comic.artist" class="d-flex ga-2 justify-space-between">
+                <span class="text-body-medium text-medium-emphasis text-uppercase text-truncate">{{ $t('comic.fields.artist') }}</span>
+                <span class="text-body-medium font-weight-bold text-truncate">{{ comic.artist }}</span>
+              </div>
+
+              <div class="d-flex flex-wrap ga-3 align-center mt-1">
+                <ComicsIconStatus :status="comic.status" with-background />
+                <ComicsChipType :type="comic.type" size="small" />
+                <div>
+                  <ComicsChipSource
+                    :source="comic.source"
+                    size="small"
+                  />
+                </div>
+              </div>
+            </template>
+          </div>
         </div>
 
         <div
           v-if="smAndDown"
-          class="d-flex justify-space-between ga-4 w-100 pa-2"
+          class="d-flex justify-space-between ga-4 w-100"
         >
           <VBtn
             v-if="canRefresh"
-            v-tooltip="$t('comics.refresh.title')"
-            icon="fa6-solid:repeat"
+            prepend-icon="fa6-solid:repeat"
             color="secondary"
-            size="small"
+            :text="$t('comics.refresh.title')"
             class="border-thin-secondary"
             @click="refreshComic"
           />
 
           <VBtn
-            v-tooltip="$t('comics.remove.title')"
+            :text="$t('comics.remove.title')"
             class="border-thin-error"
             color="error"
-            icon="fa6-solid:trash"
-            size="small"
+            prepend-icon="fa6-solid:trash"
             @click="showDeleteModal = true"
           />
         </div>
 
-        <ComicsStatusInfos
-          v-if="smAndDown"
-          :comic
-        />
         <ComicsGeneralInfos :comic />
         <ComicsChapters
           :id="route.params.id"

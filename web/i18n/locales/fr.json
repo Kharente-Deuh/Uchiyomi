@@ -299,7 +299,8 @@
   },
   "comics": {
     "remove": {
-      "title": "Supprimer de la bibliothèque"
+      "title": "Supprimer de la bibliothèque",
+      "titleShort": "Supprimer"
     },
     "create": {
       "error": {

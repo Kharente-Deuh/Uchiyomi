@@ -17,7 +17,7 @@ const details = computed(() => getSourceDetails(props.source))
     :src="details.image"
     aspect-ratio="1"
     width="31"
-    class="rounded-lg"
+    class="rounded-lg w-fit"
     :style="{ border: `1px solid ${details.color}C8` }"
   />
   <div
@@ -29,6 +29,7 @@ const details = computed(() => getSourceDetails(props.source))
       :src="details.image"
       aspect-ratio="1"
       width="20"
+      height="20"
       class="rounded-lg"
     />
     <span class="text-body-large text-truncate">{{ details.name }}</span>

@@ -36,10 +36,6 @@ const nextChapter = computed(() => {
 })
 
 const nextChapterText = computed(() => {
-  if (smAndDown.value) {
-    return
-  }
-
   if (!nextChapter.value) {
     return $t('common.upToDate')
   }
@@ -69,8 +65,7 @@ const icon = computed(() => {
     <VBtn
       :variant="nextChapter ? 'tonal' : 'outlined'"
       :class="{ 'border-thin-primary': nextChapter }"
-      :icon="smAndDown ? icon : undefined"
-      :prepend-icon="smAndDown ? undefined : icon"
+      :prepend-icon="icon"
       :text="nextChapterText"
       :readonly="!nextChapter"
       :color="nextChapter ? 'primary' : 'secondary'"
