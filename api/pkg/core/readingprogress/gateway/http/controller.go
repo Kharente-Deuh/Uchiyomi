@@ -95,6 +95,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 		r.Get(c.cfg.Endpoint+"/{id}/progress", c.get)
 		r.Post(c.cfg.Endpoint+"/{id}/progress", c.post)
 		r.Put(c.cfg.ChaptersEndpoint+"/{id}/progress", c.put)
+		r.Delete(c.cfg.ChaptersEndpoint+"/{id}/progress", c.delete)
 	})
 }
 
@@ -156,7 +157,7 @@ func (c *Controller) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, err := httputils.DecodeJSON[markReadRequest](r)
+	req, err := httputils.DecodeJSON[setReadRequest](r)
 	if err != nil {
 		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "invalid request body")
 
@@ -167,7 +168,7 @@ func (c *Controller) post(w http.ResponseWriter, r *http.Request) {
 		UserID:     user.ID,
 		ComicID:    comicID,
 		ChapterIDs: req.ChapterIDs,
-		Read:       true,
+		Read:       *req.Read,
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
@@ -188,7 +189,7 @@ func (c *Controller) post(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		c.deps.Logger.Error("failed to mark reading progress", "error", err)
+		c.deps.Logger.Error("failed to set reading progress", "error", err)
 		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
 
 		return
@@ -257,4 +258,52 @@ func (c *Controller) put(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, progressFromDomain(saved))
+}
+
+func (c *Controller) delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		httputils.WriteError(w, c.deps.Logger, http.StatusUnauthorized, "")
+
+		return
+	}
+
+	chapterID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "id must be a valid UUID")
+
+		return
+	}
+
+	err = c.deps.Service.Delete(ctx, readingprogress.DeleteOpts{
+		UserID:    user.ID,
+		ChapterID: chapterID,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "")
+
+			return
+		}
+
+		if errors.Is(err, domain.ErrForbidden) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusForbidden, "comic not in library")
+
+			return
+		}
+
+		if errors.Is(err, readingprogress.ErrInvalid) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "invalid request body")
+
+			return
+		}
+
+		c.deps.Logger.Error("failed to delete reading progress", "error", err)
+		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
+
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
