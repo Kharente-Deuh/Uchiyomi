@@ -7,11 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/httputils"
 )
 
 type CreateProviderRequest struct {
 	RoleClaim     *string                 `json:"roleClaim"`
+	Slug          httputils.TrimmedString `json:"slug" validate:"required,max=64"`
 	DisplayName   httputils.TrimmedString `json:"displayName" validate:"required,max=64"`
 	IssuerURL     httputils.TrimmedString `json:"issuerUrl" validate:"required,url"`
 	ClientID      httputils.TrimmedString `json:"clientId" validate:"required"`
@@ -25,6 +27,7 @@ type CreateProviderRequest struct {
 
 type UpdateProviderRequest struct {
 	RoleClaim     *string                 `json:"roleClaim"`
+	Slug          httputils.TrimmedString `json:"slug" validate:"required,max=64"`
 	DisplayName   httputils.TrimmedString `json:"displayName" validate:"required,max=64"`
 	IssuerURL     httputils.TrimmedString `json:"issuerUrl" validate:"required,url"`
 	ClientID      httputils.TrimmedString `json:"clientId" validate:"required"`
@@ -35,14 +38,33 @@ type UpdateProviderRequest struct {
 	AutoProvision bool                    `json:"autoProvision"`
 }
 
-var errRoleClaimRequired = errors.New("roleClaim is required when adminValues or allowedValues is set")
+var (
+	errRoleClaimRequired = errors.New("roleClaim is required when adminValues or allowedValues is set")
+	errSlugInvalid       = errors.New("slug is invalid")
+)
 
 func (r CreateProviderRequest) validate() error {
-	return validateRoleClaim(r.RoleClaim, r.AdminValues, r.AllowedValues)
+	if err := validateRoleClaim(r.RoleClaim, r.AdminValues, r.AllowedValues); err != nil {
+		return err
+	}
+
+	if !oidcproviders.IsValidSlug(r.Slug.String()) {
+		return errSlugInvalid
+	}
+
+	return nil
 }
 
 func (r UpdateProviderRequest) validate() error {
-	return validateRoleClaim(r.RoleClaim, r.AdminValues, r.AllowedValues)
+	if err := validateRoleClaim(r.RoleClaim, r.AdminValues, r.AllowedValues); err != nil {
+		return err
+	}
+
+	if !oidcproviders.IsValidSlug(r.Slug.String()) {
+		return errSlugInvalid
+	}
+
+	return nil
 }
 
 func validateRoleClaim(claim *string, adminValues, allowedValues []string) error {
@@ -64,6 +86,7 @@ type ProbeRequest struct {
 type LightProviderResponse struct {
 	CreatedAt   time.Time `json:"createdAt"`
 	ID          string    `json:"id"`
+	Slug        string    `json:"slug"`
 	DisplayName string    `json:"displayName"`
 	UserCount   int64     `json:"userCount"`
 }
@@ -73,6 +96,7 @@ type ProviderResponse struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 	RoleClaim     *string   `json:"roleClaim"`
 	ID            string    `json:"id"`
+	Slug          string    `json:"slug"`
 	DisplayName   string    `json:"displayName"`
 	IssuerURL     string    `json:"issuerUrl"`
 	ClientID      string    `json:"clientId"`

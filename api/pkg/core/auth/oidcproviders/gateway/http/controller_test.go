@@ -32,10 +32,10 @@ const (
 	testUsername    = "alice"
 
 	//nolint:lll
-	validBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"s3cr3t","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
+	validBody = `{"slug":"keycloak","displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"s3cr3t","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 
 	//nolint:lll
-	validPutBody = `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
+	validPutBody = `{"slug":"keycloak","displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 )
 
 var errUnexpected = errors.New("boom")
@@ -174,7 +174,7 @@ func TestListReturnsOnlyTheLightFields(t *testing.T) {
 
 	id := uuid.New()
 	svc := &stubService{list: []oidcproviders.LightOIDCProvider{
-		{ID: id, DisplayName: testDisplayName, CreatedAt: time.Now(), UserCount: 3},
+		{ID: id, DisplayName: testDisplayName, Slug: "keycloak", CreatedAt: time.Now(), UserCount: 3},
 	}}
 	r := newRouter(t, svc, adminMiddlewares(t, admin()))
 
@@ -193,7 +193,7 @@ func TestListReturnsOnlyTheLightFields(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
 
-	want := map[string]bool{"id": true, "displayName": true, "createdAt": true, "userCount": true}
+	want := map[string]bool{"id": true, "slug": true, "displayName": true, "createdAt": true, "userCount": true}
 	for key := range got[0] {
 		if !want[key] {
 			t.Errorf("the list exposes %q, which belongs to the detail response", key)
@@ -210,6 +210,10 @@ func TestListReturnsOnlyTheLightFields(t *testing.T) {
 
 	if got[0]["userCount"] != float64(3) {
 		t.Errorf("userCount = %v, want 3", got[0]["userCount"])
+	}
+
+	if got[0]["slug"] != "keycloak" {
+		t.Errorf("slug = %v, want keycloak", got[0]["slug"])
 	}
 }
 
@@ -238,6 +242,10 @@ func TestGetReturnsTheProviderWithoutASecret(t *testing.T) {
 
 	if got["issuerUrl"] != testIssuerURL {
 		t.Errorf("issuerUrl = %v, want the full provider", got["issuerUrl"])
+	}
+
+	if got["slug"] != "keycloak" {
+		t.Errorf("slug = %v, want keycloak", got["slug"])
 	}
 }
 
@@ -381,6 +389,10 @@ func TestCreateReturnsCreated(t *testing.T) {
 	if got.DisplayName != testDisplayName {
 		t.Errorf("displayName = %q", got.DisplayName)
 	}
+
+	if got.Slug != "keycloak" {
+		t.Errorf("slug = %q, want keycloak", got.Slug)
+	}
 }
 
 func TestCreateAcceptsEmptyValueListsWithoutARoleClaim(t *testing.T) {
@@ -389,7 +401,7 @@ func TestCreateAcceptsEmptyValueListsWithoutARoleClaim(t *testing.T) {
 	r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
 
 	//nolint:lll
-	body := `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"adminValues":[],"allowedValues":[]}`
+	body := `{"slug":"k","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"],"adminValues":[],"allowedValues":[]}`
 
 	rec := do(r, http.MethodPost, endpoint, body)
 
@@ -404,7 +416,7 @@ func TestUpdateRejectsValuesWithoutARoleClaim(t *testing.T) {
 	r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
 
 	//nolint:lll
-	body := `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":null,"usernameClaim":"u","scopes":["openid"],"adminValues":["admins"]}`
+	body := `{"slug":"k","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":null,"usernameClaim":"u","scopes":["openid"],"adminValues":["admins"]}`
 
 	rec := do(r, http.MethodPut, endpoint+"/"+uuid.New().String(), body)
 
@@ -453,6 +465,83 @@ func TestCreateConflictOnADuplicateIssuer(t *testing.T) {
 
 	if rec.Code != http.StatusConflict {
 		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+
+	if !strings.Contains(rec.Body.String(), "issuer URL is already declared") {
+		t.Errorf("body = %s, want issuer URL conflict message", rec.Body.String())
+	}
+}
+
+func TestCreateConflictOnADuplicateSlug(t *testing.T) {
+	t.Parallel()
+
+	r := newRouter(t, &stubService{err: oidcproviders.ErrSlugTaken}, adminMiddlewares(t, admin()))
+
+	rec := do(r, http.MethodPost, endpoint, validBody)
+
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+
+	if !strings.Contains(rec.Body.String(), "slug is already declared") {
+		t.Errorf("body = %s, want slug conflict message", rec.Body.String())
+	}
+}
+
+func TestCreateRejectsAnInvalidSlug(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		"missing slug": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
+		"empty slug":   `{"slug":"","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
+		"wrong case key": `{"Slug":"Keycloak","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
+		"underscore":     `{"slug":"A_B","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`,         //nolint:lll
+	}
+
+	for name, body := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
+
+			rec := do(r, http.MethodPost, endpoint, body)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+
+			if !strings.Contains(rec.Body.String(), "slug") {
+				t.Errorf("body = %s, want slug validation message", rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestUpdateRejectsAnInvalidSlug(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		"missing slug": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
+		"wrong case key": `{"Slug":"Keycloak","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
+		"underscore":     `{"slug":"A_B","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`,         //nolint:lll
+	}
+
+	for name, body := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			r := newRouter(t, &stubService{provider: sampleProvider()}, adminMiddlewares(t, admin()))
+
+			rec := do(r, http.MethodPut, endpoint+"/"+uuid.New().String(), body)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+
+			if !strings.Contains(rec.Body.String(), "slug") {
+				t.Errorf("body = %s, want slug validation message", rec.Body.String())
+			}
+		})
 	}
 }
 
@@ -512,7 +601,7 @@ func TestUpdateRejectsAClientSecret(t *testing.T) {
 	r := newRouter(t, svc, adminMiddlewares(t, admin()))
 
 	//nolint:lll
-	body := `{"displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"rotated","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
+	body := `{"slug":"keycloak","displayName":"Keycloak","issuerUrl":"https://sso.example.com","clientId":"uchiyomi","clientSecret":"rotated","usernameClaim":"preferred_username","scopes":["openid"],"roleClaim":null,"adminValues":null,"allowedValues":null,"autoProvision":true}`
 
 	rec := do(r, http.MethodPut, endpoint+"/"+uuid.New().String(), body)
 
