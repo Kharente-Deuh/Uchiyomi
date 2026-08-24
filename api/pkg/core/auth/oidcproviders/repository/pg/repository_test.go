@@ -36,12 +36,14 @@ const (
 	scopeProfile       = "profile"
 	adminGroupValue    = "admins"
 	testIssuerURL      = "https://sso.example.com"
+	testSlug           = "keycloak"
 )
 
-func duplicateKeyErr() error {
+func duplicateKeyErr(constraint string) error {
 	return &pgconn.PgError{
-		Code:    "23505",
-		Message: `duplicate key value violates unique constraint "idx_oidc_providers_issuer_url"`,
+		Code:           "23505",
+		ConstraintName: constraint,
+		Message:        `duplicate key value violates unique constraint "` + constraint + `"`,
 	}
 }
 
@@ -60,11 +62,11 @@ func newRepo(t *testing.T) (*pg.PGOIDCProvidersRepository, sqlmock.Sqlmock) {
 
 func providerRows(id uuid.UUID) *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", colDisplayName, "issuer_url", "client_id", colClientSecretEnc,
+		"id", colDisplayName, "slug", "issuer_url", "client_id", colClientSecretEnc,
 		colScopes, "username_claim", "role_claim", "admin_values",
 		"allowed_values", "auto_provision",
 	}).AddRow(
-		id, testDisplayName, testIssuerURL, "uchiyomi", []byte("enc"),
+		id, testDisplayName, testSlug, testIssuerURL, "uchiyomi", []byte("enc"),
 		pq.StringArray{scopeOpenID, scopeProfile}, "preferred_username",
 		"groups", pq.StringArray{adminGroupValue},
 		pq.StringArray{"users"},
@@ -203,6 +205,27 @@ func TestGetByIssuerURL(t *testing.T) {
 	}
 }
 
+func TestGetBySlug(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	id := uuid.New()
+
+	mock.ExpectQuery(`SELECT \* FROM "oidc_providers" WHERE slug = \$1`).
+		WithArgs(testSlug, 1).
+		WillReturnRows(providerRows(id))
+
+	got, err := r.GetBySlug(context.Background(), testSlug)
+	if err != nil {
+		t.Fatalf("GetBySlug: %v", err)
+	}
+
+	if got.ID != id || got.Slug != testSlug {
+		t.Errorf("GetBySlug() = %+v", got)
+	}
+}
+
 func TestGetByIssuerURLNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -225,11 +248,11 @@ func TestGetAll(t *testing.T) {
 	id1, id2 := uuid.New(), uuid.New()
 	testCreatedAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 
-	mock.ExpectQuery(`COUNT\(DISTINCT federated_identities.user_id\).*LEFT JOIN federated_identities`).
+	mock.ExpectQuery(`oidc_providers\.slug.*LEFT JOIN federated_identities`).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"id", colDisplayName, "created_at", "user_count"}).
-				AddRow(id1, testDisplayName, testCreatedAt, 2).
-				AddRow(id2, "Authentik", testCreatedAt, 0),
+			sqlmock.NewRows([]string{"id", colDisplayName, "slug", "created_at", "user_count"}).
+				AddRow(id1, testDisplayName, testSlug, testCreatedAt, 2).
+				AddRow(id2, "Authentik", "authentik", testCreatedAt, 0),
 		)
 
 	got, err := r.GetAll(context.Background())
@@ -238,8 +261,8 @@ func TestGetAll(t *testing.T) {
 	}
 
 	want := []oidcproviders.LightOIDCProvider{
-		{ID: id1, DisplayName: testDisplayName, CreatedAt: testCreatedAt, UserCount: 2},
-		{ID: id2, DisplayName: "Authentik", CreatedAt: testCreatedAt, UserCount: 0},
+		{ID: id1, DisplayName: testDisplayName, Slug: testSlug, CreatedAt: testCreatedAt, UserCount: 2},
+		{ID: id2, DisplayName: "Authentik", Slug: "authentik", CreatedAt: testCreatedAt, UserCount: 0},
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -353,6 +376,7 @@ func TestCreate(t *testing.T) {
 
 	got, err := r.Create(context.Background(), oidcproviders.CreateOIDCProviderOpts{
 		DisplayName:     testDisplayName,
+		Slug:            testSlug,
 		IssuerURL:       testIssuerURL,
 		ClientID:        "uchiyomi",
 		ClientSecretEnc: []byte("enc"),
@@ -370,7 +394,7 @@ func TestCreate(t *testing.T) {
 		t.Error("Create did not generate ID")
 	}
 
-	if got.DisplayName != testDisplayName || got.IssuerURL != testIssuerURL {
+	if got.DisplayName != testDisplayName || got.IssuerURL != testIssuerURL || got.Slug != testSlug {
 		t.Errorf("Create() = %+v", got)
 	}
 
@@ -389,12 +413,31 @@ func TestCreateDuplicate(t *testing.T) {
 	r, mock := newRepo(t)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`INSERT INTO "oidc_providers"`).WillReturnError(duplicateKeyErr())
+	mock.ExpectQuery(`INSERT INTO "oidc_providers"`).WillReturnError(duplicateKeyErr("idx_oidc_providers_issuer_url"))
 	mock.ExpectRollback()
 
 	got, err := r.Create(context.Background(), oidcproviders.CreateOIDCProviderOpts{IssuerURL: testIssuerURL})
 	if !errors.Is(err, domain.ErrAlreadyExists) {
 		t.Errorf("Create = %v, want domain.ErrAlreadyExists", err)
+	}
+
+	if got != nil {
+		t.Errorf("Create returned %+v in addition to the error", got)
+	}
+}
+
+func TestCreateDuplicateSlug(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO "oidc_providers"`).WillReturnError(duplicateKeyErr("idx_oidc_providers_slug"))
+	mock.ExpectRollback()
+
+	got, err := r.Create(context.Background(), oidcproviders.CreateOIDCProviderOpts{Slug: testSlug})
+	if !errors.Is(err, oidcproviders.ErrSlugTaken) {
+		t.Errorf("Create = %v, want oidcproviders.ErrSlugTaken", err)
 	}
 
 	if got != nil {
@@ -540,12 +583,27 @@ func TestUpdateDuplicate(t *testing.T) {
 	r, mock := newRepo(t)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`UPDATE "oidc_providers"`).WillReturnError(duplicateKeyErr())
+	mock.ExpectExec(`UPDATE "oidc_providers"`).WillReturnError(duplicateKeyErr("idx_oidc_providers_issuer_url"))
 	mock.ExpectRollback()
 
 	_, err := r.Update(context.Background(), uuid.New(), oidcproviders.UpdateOIDCProviderOpts{IssuerURL: testIssuerURL})
 	if !errors.Is(err, domain.ErrAlreadyExists) {
 		t.Errorf("Update = %v, want domain.ErrAlreadyExists", err)
+	}
+}
+
+func TestUpdateDuplicateSlug(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "oidc_providers"`).WillReturnError(duplicateKeyErr("idx_oidc_providers_slug"))
+	mock.ExpectRollback()
+
+	_, err := r.Update(context.Background(), uuid.New(), oidcproviders.UpdateOIDCProviderOpts{Slug: testSlug})
+	if !errors.Is(err, oidcproviders.ErrSlugTaken) {
+		t.Errorf("Update = %v, want oidcproviders.ErrSlugTaken", err)
 	}
 }
 

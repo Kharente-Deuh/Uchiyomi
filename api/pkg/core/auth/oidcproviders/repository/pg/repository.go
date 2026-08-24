@@ -6,9 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/auth/oidcproviders"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/repository/pgmodels"
@@ -81,8 +83,19 @@ func (r *PGOIDCProvidersRepository) GetByIssuerURL(ctx context.Context, issuerUR
 	return &p, nil
 }
 
-func (r *PGOIDCProvidersRepository) GetBySlug(context.Context, string) (*oidcproviders.OIDCProvider, error) {
-	panic("GetBySlug is not implemented")
+func (r *PGOIDCProvidersRepository) GetBySlug(ctx context.Context, slug string) (*oidcproviders.OIDCProvider, error) {
+	model, err := r.db(ctx).Where("slug = ?", slug).First(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrNotFound
+		}
+
+		return nil, fmt.Errorf("r.db(ctx).Where: %w", err)
+	}
+
+	p := model.Domain()
+
+	return &p, nil
 }
 
 func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders.LightOIDCProvider, error) {
@@ -91,7 +104,7 @@ func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders
 	err := pgtx.From(ctx, r.deps.DB).
 		WithContext(ctx).
 		Model(&pgmodels.OIDCProvider{}).
-		Select("oidc_providers.id, oidc_providers.display_name, oidc_providers.created_at, " +
+		Select("oidc_providers.id, oidc_providers.display_name, oidc_providers.slug, oidc_providers.created_at, " +
 			"COUNT(DISTINCT federated_identities.user_id) AS user_count").
 		Joins("LEFT JOIN federated_identities ON federated_identities.provider_id = oidc_providers.id").
 		Group("oidc_providers.id").
@@ -142,6 +155,7 @@ func (r *PGOIDCProvidersRepository) Create(ctx context.Context, opts oidcprovide
 		UpdatedAt: now,
 
 		DisplayName:     opts.DisplayName,
+		Slug:            opts.Slug,
 		IssuerURL:       opts.IssuerURL,
 		ClientID:        opts.ClientID,
 		ClientSecretEnc: opts.ClientSecretEnc,
@@ -155,8 +169,8 @@ func (r *PGOIDCProvidersRepository) Create(ctx context.Context, opts oidcprovide
 
 	err := r.db(ctx).Create(ctx, model)
 	if err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, domain.ErrAlreadyExists
+		if mapped := mapDuplicate(err); mapped != nil {
+			return nil, mapped
 		}
 
 		return nil, fmt.Errorf("r.db(ctx).Create: %w", err)
@@ -171,6 +185,7 @@ func (r *PGOIDCProvidersRepository) Create(ctx context.Context, opts oidcprovide
 func (r *PGOIDCProvidersRepository) Update(ctx context.Context, id uuid.UUID, opts oidcproviders.UpdateOIDCProviderOpts) (*oidcproviders.OIDCProvider, error) {
 	values := map[string]any{
 		"display_name":   opts.DisplayName,
+		"slug":           opts.Slug,
 		"issuer_url":     opts.IssuerURL,
 		"client_id":      opts.ClientID,
 		"scopes":         pq.StringArray(opts.Scopes),
@@ -184,8 +199,8 @@ func (r *PGOIDCProvidersRepository) Update(ctx context.Context, id uuid.UUID, op
 
 	rows, err := r.db(ctx).Where("id = ?", id).Set(clause.Assignments(values)).Update(ctx)
 	if err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, domain.ErrAlreadyExists
+		if mapped := mapDuplicate(err); mapped != nil {
+			return nil, mapped
 		}
 
 		return nil, fmt.Errorf("r.db(ctx).Updates: %w", err)
@@ -214,6 +229,7 @@ func (r *PGOIDCProvidersRepository) DeleteByID(ctx context.Context, id uuid.UUID
 type lightProviderRow struct {
 	CreatedAt   time.Time
 	DisplayName string
+	Slug        string
 	ID          uuid.UUID
 	UserCount   int64
 }
@@ -222,9 +238,27 @@ func (r *lightProviderRow) Domain() oidcproviders.LightOIDCProvider {
 	return oidcproviders.LightOIDCProvider{
 		ID:          r.ID,
 		DisplayName: r.DisplayName,
+		Slug:        r.Slug,
 		CreatedAt:   r.CreatedAt,
 		UserCount:   r.UserCount,
 	}
+}
+
+func mapDuplicate(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && strings.Contains(pgErr.ConstraintName, "slug") {
+		return oidcproviders.ErrSlugTaken
+	}
+
+	if strings.Contains(err.Error(), "idx_oidc_providers_slug") {
+		return oidcproviders.ErrSlugTaken
+	}
+
+	if errors.Is(err, gorm.ErrDuplicatedKey) || (pgErr != nil && pgErr.Code == "23505") {
+		return domain.ErrAlreadyExists
+	}
+
+	return nil
 }
 
 type providerUserRow struct {

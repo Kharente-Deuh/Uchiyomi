@@ -17,6 +17,7 @@ type OIDCProvider struct {
 	ClientID            string
 	UsernameClaim       string
 	IssuerURL           string `gorm:"type:text;not null;uniqueIndex"`
+	Slug                string `gorm:"type:text;not null;uniqueIndex:idx_oidc_providers_slug"`
 	DisplayName         string
 	Scopes              pq.StringArray `gorm:"type:text[];not null;default:'{openid,profile}'"`
 	ClientSecretEnc     []byte
@@ -35,6 +36,7 @@ func (p *OIDCProvider) Domain() oidcproviders.OIDCProvider {
 	return oidcproviders.OIDCProvider{
 		ID:              p.ID,
 		DisplayName:     p.DisplayName,
+		Slug:            p.Slug,
 		IssuerURL:       p.IssuerURL,
 		ClientID:        p.ClientID,
 		ClientSecretEnc: p.ClientSecretEnc,
