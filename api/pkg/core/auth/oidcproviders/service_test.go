@@ -19,6 +19,7 @@ const (
 	testRedirect      = "https://manga.example.com/api/auth/oidc/callback"
 	testSecret        = "s3cr3t"
 	testDisplayName   = "Keycloak"
+	testSlug          = "keycloak"
 	testClientID      = "uchiyomi"
 	testUsernameClaim = "preferred_username"
 	testScope         = "openid"
@@ -152,6 +153,7 @@ func newService(
 func createOpts() oidcproviders.CreateOpts {
 	return oidcproviders.CreateOpts{
 		DisplayName:   testDisplayName,
+		Slug:          testSlug,
 		IssuerURL:     testIssuerURL,
 		ClientID:      testClientID,
 		ClientSecret:  testSecret,
@@ -181,6 +183,10 @@ func TestCreateEncryptsTheClientSecret(t *testing.T) {
 
 	if !bytes.Equal(repo.created.ClientSecretEnc, []byte("sealed:"+testSecret)) {
 		t.Errorf("ClientSecretEnc = %q, want the sealed secret", repo.created.ClientSecretEnc)
+	}
+
+	if repo.created.Slug != testSlug {
+		t.Errorf("Slug = %q, want %q", repo.created.Slug, testSlug)
 	}
 }
 
@@ -260,6 +266,7 @@ func TestUpdateNeverSealsASecret(t *testing.T) {
 
 	_, err := s.Update(context.Background(), uuid.New(), oidcproviders.UpdateOpts{
 		DisplayName:   testDisplayName,
+		Slug:          testSlug,
 		IssuerURL:     testIssuerURL,
 		ClientID:      testClientID,
 		Scopes:        []string{testScope},
@@ -271,6 +278,10 @@ func TestUpdateNeverSealsASecret(t *testing.T) {
 
 	if repo.updated == nil {
 		t.Fatal("the repository was never called")
+	}
+
+	if repo.updated.Slug != testSlug {
+		t.Errorf("Slug = %q, want %q", repo.updated.Slug, testSlug)
 	}
 
 	if cipher.seals != 0 {
