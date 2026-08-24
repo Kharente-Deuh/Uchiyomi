@@ -44,6 +44,7 @@ type stubComicsService struct {
 	deleteErr          error
 	serveCoverErr      error
 	refreshComicErr    error
+	retryChaptersErr   error
 	createResult       *comics.Comic
 	getByIDResult      *comics.Comic
 	refreshComicResult *comics.Comic
@@ -51,6 +52,7 @@ type stubComicsService struct {
 	serveCoverType     string
 	getManyResult      comics.Page
 	lastGetMany        comics.GetManyOpts
+	lastRetryChapters  comics.RetryChaptersOpts
 	serveCoverCalls    int
 	lastServeCoverID   uuid.UUID
 }
@@ -81,8 +83,10 @@ func (s *stubComicsService) RefreshComic(_ context.Context, _ comics.RefreshComi
 	return s.refreshComicResult, s.refreshComicErr
 }
 
-func (s *stubComicsService) RetryChapters(_ context.Context, _ comics.RetryChaptersOpts) error {
-	return nil
+func (s *stubComicsService) RetryChapters(_ context.Context, opts comics.RetryChaptersOpts) error {
+	s.lastRetryChapters = opts
+
+	return s.retryChaptersErr
 }
 
 func (s *stubComicsService) ServeCover(_ context.Context, opts comics.GetByIDOpts) (string, string, error) {
@@ -727,5 +731,123 @@ func TestRefreshInternalError(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestRetryChaptersRequiresAuthentication(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	r := newTestRouter(t, &stubComicsService{}, nil)
+
+	body := strings.NewReader(`{"chapterIds":["` + uuid.New().String() + `"]}`)
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/retry", body)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRetryChaptersInvalidComicID(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	r := newTestRouter(t, &stubComicsService{}, authenticatorFor(t, user))
+
+	body := strings.NewReader(`{"chapterIds":["` + uuid.New().String() + `"]}`)
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/invalid-uuid/retry", body)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestRetryChaptersEmptyChapterIDs(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	r := newTestRouter(t, &stubComicsService{}, authenticatorFor(t, user))
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		comicsEndpoint+"/"+uuid.New().String()+"/retry",
+		strings.NewReader(`{"chapterIds":[]}`),
+	)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestRetryChaptersNotFound(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	r := newTestRouter(t, &stubComicsService{
+		retryChaptersErr: fmt.Errorf("s.deps.ComicsRepository.FindByID: %w", domain.ErrNotFound),
+	}, authenticatorFor(t, user))
+
+	body := strings.NewReader(`{"chapterIds":["` + uuid.New().String() + `"]}`)
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/retry", body)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestRetryChaptersForbidden(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	r := newTestRouter(t, &stubComicsService{
+		retryChaptersErr: domain.ErrForbidden,
+	}, authenticatorFor(t, user))
+
+	body := strings.NewReader(`{"chapterIds":["` + uuid.New().String() + `"]}`)
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/retry", body)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestRetryChaptersAccepted(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	comicID := uuid.New()
+	chapterID := uuid.New()
+	svc := &stubComicsService{}
+	r := newTestRouter(t, svc, authenticatorFor(t, user))
+
+	body := strings.NewReader(`{"chapterIds":["` + chapterID.String() + `"]}`)
+	req := httptest.NewRequest(http.MethodPost, comicsEndpoint+"/"+comicID.String()+"/retry", body)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusAccepted)
+	}
+
+	last := svc.lastRetryChapters
+	if last.ComicID != comicID || last.UserID != user.ID || len(last.ChapterIDs) != 1 || last.ChapterIDs[0] != chapterID {
+		t.Errorf("unexpected lastRetryChapters: %+v", last)
 	}
 }

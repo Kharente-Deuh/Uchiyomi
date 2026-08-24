@@ -89,3 +89,7 @@ func comicResponseFromDomain(comic *comics.Comic) comicResponse {
 		AltTitles:    comic.AltTitles,
 	}
 }
+
+type retryChaptersRequest struct {
+	ChapterIDs []uuid.UUID `json:"chapterIds"`
+}
