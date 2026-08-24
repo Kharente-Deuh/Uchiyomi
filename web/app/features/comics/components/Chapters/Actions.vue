@@ -58,14 +58,27 @@ async function setProgress(chaptersIds: string[], read: boolean): Promise<void> 
   }
 }
 
+async function retryDownload(): Promise<void> {
+  const response = await comicsApi.retryChaptersDownload(props.comicId, retryableDownloadChaptersIds.value)
+  if (!response.success) {
+    console.error('comicsApi.retryChaptersDownload', response.error)
+    toast.error(t('error.unknown'))
+  }
+}
+
 async function doAction(action: 'retryDownload' | 'setRead' | 'setUnread'): Promise<void> {
   loading.value = true
 
-  if (action !== 'retryDownload') {
-    await setProgress(
-      action === 'setRead' ? unreadChaptersIds.value : readChaptersIds.value,
-      action === 'setRead',
-    )
+  switch (action) {
+    case 'retryDownload':
+      await retryDownload()
+      break
+    case 'setRead':
+      await setProgress(unreadChaptersIds.value, true)
+      break
+    case 'setUnread':
+      await setProgress(readChaptersIds.value, false)
+      break
   }
 
   loading.value = false
@@ -74,6 +87,34 @@ async function doAction(action: 'retryDownload' | 'setRead' | 'setUnread'): Prom
 
   emit('refetchChapters', action !== 'retryDownload')
 }
+
+interface ListItem {
+  disabled: boolean
+  title: string
+  prependIcon: string
+  onClick: () => void
+}
+
+const items = computed((): ListItem[] => [
+  {
+    title: t('comic.chapter.download.retryMany', { count: retryableDownloadChaptersIds.value.length }),
+    prependIcon: 'fa6-solid:exclamation',
+    disabled: retryableDownloadChaptersIds.value.length === 0,
+    onClick: () => doAction('retryDownload'),
+  },
+  {
+    title: t('comic.chapter.setReadMany', { count: unreadChaptersIds.value.length }),
+    prependIcon: 'fa6-solid:eye',
+    disabled: unreadChaptersIds.value.length === 0,
+    onClick: () => doAction('setRead'),
+  },
+  {
+    title: t('comic.chapter.setUnreadMany', { count: readChaptersIds.value.length }),
+    prependIcon: 'fa6-solid:eye-low-vision',
+    disabled: readChaptersIds.value.length === 0,
+    onClick: () => doAction('setUnread'),
+  },
+])
 </script>
 
 <template>
@@ -96,26 +137,11 @@ async function doAction(action: 'retryDownload' | 'setRead' | 'setUnread'): Prom
         class="border-thin"
       >
         <VListItem
-          :title="$t('comic.chapter.download.retryMany', { count: retryableDownloadChaptersIds.length })"
-          :disabled="retryableDownloadChaptersIds.length === 0"
-          prepend-icon="fa6-solid:exclamation"
+          v-for="({ onClick, ...item }, index) in items"
+          :key="index"
+          v-bind="item"
           density="compact"
-          @click="doAction('retryDownload')"
-        />
-        <VListItem
-          :title="$t('comic.chapter.setReadMany', { count: unreadChaptersIds.length })"
-          :disabled="unreadChaptersIds.length === 0"
-          prepend-icon="fa6-solid:check"
-          density="compact"
-          @click="doAction('setRead')"
-        />
-
-        <VListItem
-          :title="$t('comic.chapter.setUnreadMany', { count: readChaptersIds.length })"
-          :disabled="readChaptersIds.length === 0"
-          prepend-icon="fa6-solid:eye-low-vision"
-          density="compact"
-          @click="doAction('setUnread')"
+          @click="onClick"
         />
       </VList>
     </VMenu>

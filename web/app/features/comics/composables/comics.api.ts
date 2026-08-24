@@ -12,6 +12,7 @@ export interface ComicsApi {
   refreshById: (id: string) => Promise<ApiResponse<Comic>>
   getProgress: (id: string) => Promise<ApiResponse<ComicProgress>>
   setChaptersProgress: (params: SetChaptersProgressParams) => Promise<ApiResponse<void>>
+  retryChaptersDownload: (comicId: string, chapterIds: string[]) => Promise<ApiResponse<void>>
 }
 
 export interface CreateComicParams {
@@ -108,6 +109,16 @@ export function createComicsApi(): ComicsApi {
     }
   }
 
+  async function retryChaptersDownload(comicId: string, chapterIds: string[]): Promise<ApiResponse<void>> {
+    try {
+      await api<void>(`/${comicId}/retry`, { method: 'POST', body: { chapterIds } })
+
+      return { success: true, data: undefined }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
   return {
     create,
     deleteById,
@@ -116,5 +127,6 @@ export function createComicsApi(): ComicsApi {
     refreshById,
     getProgress,
     setChaptersProgress,
+    retryChaptersDownload,
   }
 }
