@@ -8,23 +8,25 @@ defineProps<{
 </script>
 
 <template>
-  <footer
-    class="position-fixed bottom-0 w-100 nvagation-bottom bg-surface border-thin elevation-down d-flex justify-space-evenly"
-    style="border-top-left-radius: 12px; border-top-right-radius: 12px;"
-  >
-    <OrganismBottomNavigationItem
-      v-for="(item, index) in items"
-      :key="index"
-      v-bind="item"
-    />
-  </footer>
+  <Teleport to="body">
+    <footer
+      class="position-fixed bottom-0 left-0 w-100 nvagation-bottom bg-surface border-thin elevation-down d-flex justify-space-evenly"
+      style="border-top-left-radius: 12px; border-top-right-radius: 12px;"
+    >
+      <OrganismBottomNavigationItem
+        v-for="(item, index) in items"
+        :key="index"
+        v-bind="item"
+      />
+    </footer>
+  </Teleport>
 </template>
 
 <style lang="scss">
 .nvagation-bottom {
   z-index: 1004;
   box-sizing: border-box;
-  height: var(--bottom-navigation-height);
+  min-height: var(--bottom-navigation-height);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 </style>
