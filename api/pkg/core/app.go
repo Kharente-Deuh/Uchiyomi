@@ -31,8 +31,8 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/webui"
 	"golang.org/x/sync/errgroup"
 
-	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
-	httpasura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
+	asurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
+	httpasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
 )
 
 const (
@@ -70,7 +70,7 @@ type Deps struct {
 	DB Database
 
 	SetupCtrl           *httpsetup.Controller
-	AsuraCtrl           *httpasura.Controller
+	AsuraScansCtrl      *httpasurascans.Controller
 	CoversCtrl          *httpcovers.Controller
 	HealthCtrl          *httphealth.Controller
 	AuthCtrl            *httpauth.Controller
@@ -85,7 +85,7 @@ type Deps struct {
 	Logger *slog.Logger
 	Health *health.Registry
 
-	Asura              *asura.App
+	AsuraScans         *asurascans.App
 	Covers             *covers.App
 	Downloads          interface{ Run(context.Context) error }
 	ChapterListRefresh interface{ Run(context.Context) error }
@@ -98,8 +98,8 @@ func (deps *Deps) Validate() error {
 		return errors.New("setupCtrl is required")
 	}
 
-	if deps.AsuraCtrl == nil {
-		return errors.New("asuraCtrl is required")
+	if deps.AsuraScansCtrl == nil {
+		return errors.New("asuraScansCtrl is required")
 	}
 
 	if deps.CoversCtrl == nil {
@@ -114,8 +114,8 @@ func (deps *Deps) Validate() error {
 		return errors.New("db is required")
 	}
 
-	if deps.Asura == nil {
-		return errors.New("asura is required")
+	if deps.AsuraScans == nil {
+		return errors.New("asuraScans is required")
 	}
 
 	if deps.Covers == nil {
@@ -228,7 +228,7 @@ func (a *App) startup(ctx context.Context, errG *errgroup.Group) func() error {
 
 		a.deps.Health.Set(componentMigrations, nil)
 
-		errG.Go(a.runComponent(ctx, componentAsuraScans, a.deps.Asura.Run))
+		errG.Go(a.runComponent(ctx, componentAsuraScans, a.deps.AsuraScans.Run))
 		errG.Go(a.runComponent(ctx, componentCovers, a.deps.Covers.Run))
 		errG.Go(a.runComponent(ctx, componentDownloads, a.deps.Downloads.Run))
 		errG.Go(a.runComponent(ctx, componentChapterListRefresh, a.deps.ChapterListRefresh.Run))
@@ -316,7 +316,7 @@ func (a *App) newRouter(ui http.Handler) chi.Router {
 			a.deps.ReaderSettingsCtrl.InitRouter(r)
 			r.Route("/sources", func(r chi.Router) {
 				a.deps.CoversCtrl.InitRouter(r)
-				a.deps.AsuraCtrl.InitRouter(r)
+				a.deps.AsuraScansCtrl.InitRouter(r)
 			})
 		})
 	})

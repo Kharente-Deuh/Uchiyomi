@@ -47,14 +47,14 @@ func (cfg *Config) Validate() error {
 }
 
 type Deps struct {
-	AsuraApp        *core.App
+	AsuraScansApp   *core.App
 	Logger          *slog.Logger
 	CoverURLBuilder func(source, slug string) string
 }
 
 func (deps *Deps) Validate() error {
-	if deps.AsuraApp == nil {
-		return errors.New("asuraApp is required")
+	if deps.AsuraScansApp == nil {
+		return errors.New("asuraScansApp is required")
 	}
 
 	if deps.Logger == nil {
@@ -129,7 +129,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 
 	c.deps.Logger.Debug("parseSearchOpts", "opts", opts)
 
-	res, err := c.deps.AsuraApp.Search(ctx, opts)
+	res, err := c.deps.AsuraScansApp.Search(ctx, opts)
 	if err != nil {
 		c.deps.Logger.ErrorContext(ctx, "failt to search", "error", err)
 		httputils.WriteError(w, c.deps.Logger, http.StatusInternalServerError, "")
@@ -190,7 +190,7 @@ func (c *Controller) getInfosBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s, err := c.deps.AsuraApp.GetInfosBySlug(ctx, sources.GetInfosBySlugOpts{
+	s, err := c.deps.AsuraScansApp.GetInfosBySlug(ctx, sources.GetInfosBySlugOpts{
 		Slug:   slug,
 		UserID: user.ID,
 	})
@@ -242,7 +242,7 @@ func (c *Controller) getChaptersListBySeries(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	chapters, err := c.deps.AsuraApp.GetChaptersListBySeries(ctx, slug, user.ID)
+	chapters, err := c.deps.AsuraScansApp.GetChaptersListBySeries(ctx, slug, user.ID)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			c.deps.Logger.ErrorContext(ctx, "series not found", "slug", slug)
@@ -280,7 +280,7 @@ func (c *Controller) getImageURLsByChapter(w http.ResponseWriter, r *http.Reques
 
 	ctx := r.Context()
 
-	urls, err := c.deps.AsuraApp.GetImageURLsByChapter(ctx, opts)
+	urls, err := c.deps.AsuraScansApp.GetImageURLsByChapter(ctx, opts)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			c.deps.Logger.ErrorContext(ctx, "chapter not found", "slug", opts.SeriesSlug, "chapterId", opts.ChapterID)

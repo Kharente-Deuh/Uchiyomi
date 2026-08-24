@@ -13,24 +13,24 @@ import (
 
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
-	asurahttp "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
+	asurascanshttp "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
 )
 
 func discardLogger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
 
-func testDeps(httpClient *http.Client) asurahttp.Deps {
-	return asurahttp.Deps{Http: httpClient, Logger: discardLogger()}
+func testDeps(httpClient *http.Client) asurascanshttp.Deps {
+	return asurascanshttp.Deps{Http: httpClient, Logger: discardLogger()}
 }
 
-func newTestClient(t *testing.T, handler http.HandlerFunc) *asurahttp.Client {
+func newTestClient(t *testing.T, handler http.HandlerFunc) *asurascanshttp.Client {
 	t.Helper()
 
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	c, err := asurahttp.New(testDeps(srv.Client()), asurahttp.Config{AsuraURL: srv.URL})
+	c, err := asurascanshttp.New(testDeps(srv.Client()), asurascanshttp.Config{AsuraURL: srv.URL})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -42,12 +42,12 @@ func TestConfigValidate(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		cfg     asurahttp.Config
+		cfg     asurascanshttp.Config
 		wantErr string
 	}{
-		"valide":       {cfg: asurahttp.Config{AsuraURL: "https://api.example.com"}},
-		"empty URL":    {cfg: asurahttp.Config{}, wantErr: "asuraURL is not a valid URL"},
-		"URL relative": {cfg: asurahttp.Config{AsuraURL: "example.com"}, wantErr: "asuraURL is not a valid URL"},
+		"valide":       {cfg: asurascanshttp.Config{AsuraURL: "https://api.example.com"}},
+		"empty URL":    {cfg: asurascanshttp.Config{}, wantErr: "asuraURL is not a valid URL"},
+		"URL relative": {cfg: asurascanshttp.Config{AsuraURL: "example.com"}, wantErr: "asuraURL is not a valid URL"},
 	}
 
 	for name, tc := range tests {
@@ -75,12 +75,12 @@ func TestConfigValidate(t *testing.T) {
 func TestDepsValidate(t *testing.T) {
 	t.Parallel()
 
-	var deps asurahttp.Deps
+	var deps asurascanshttp.Deps
 	if err := deps.Validate(); err == nil {
 		t.Error("Validate() without HTTP client must fail")
 	}
 
-	deps = asurahttp.Deps{Http: http.DefaultClient}
+	deps = asurascanshttp.Deps{Http: http.DefaultClient}
 	if err := deps.Validate(); err == nil {
 		t.Error("Validate() without logger must fail")
 	}
@@ -94,17 +94,17 @@ func TestDepsValidate(t *testing.T) {
 func TestNewRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 
-	if _, err := asurahttp.New(asurahttp.Deps{}, asurahttp.Config{AsuraURL: "https://x.dev"}); err == nil {
+	if _, err := asurascanshttp.New(asurascanshttp.Deps{}, asurascanshttp.Config{AsuraURL: "https://x.dev"}); err == nil {
 		t.Error("New without HTTP client must fail")
 	}
 
-	if _, err := asurahttp.New(testDeps(http.DefaultClient), asurahttp.Config{}); err == nil {
+	if _, err := asurascanshttp.New(testDeps(http.DefaultClient), asurascanshttp.Config{}); err == nil {
 		t.Error("New with empty config must fail")
 	}
 
-	_, err := asurahttp.New(
-		asurahttp.Deps{Http: http.DefaultClient},
-		asurahttp.Config{AsuraURL: "https://x.dev"},
+	_, err := asurascanshttp.New(
+		asurascanshttp.Deps{Http: http.DefaultClient},
+		asurascanshttp.Config{AsuraURL: "https://x.dev"},
 	)
 
 	if err == nil {
@@ -164,7 +164,7 @@ func TestSearchQueryParameters(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c, err := asurahttp.New(testDeps(srv.Client()), asurahttp.Config{AsuraURL: srv.URL})
+	c, err := asurascanshttp.New(testDeps(srv.Client()), asurascanshttp.Config{AsuraURL: srv.URL})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -229,7 +229,7 @@ func TestSearchDefaultOrderFollowsSort(t *testing.T) {
 			}))
 			t.Cleanup(srv.Close)
 
-			c, err := asurahttp.New(testDeps(srv.Client()), asurahttp.Config{AsuraURL: srv.URL})
+			c, err := asurascanshttp.New(testDeps(srv.Client()), asurascanshttp.Config{AsuraURL: srv.URL})
 			if err != nil {
 				t.Fatalf("New: %v", err)
 			}
@@ -398,7 +398,7 @@ func TestGetInfosBySlug(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c, err := asurahttp.New(testDeps(srv.Client()), asurahttp.Config{AsuraURL: srv.URL})
+	c, err := asurascanshttp.New(testDeps(srv.Client()), asurascanshttp.Config{AsuraURL: srv.URL})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -438,7 +438,7 @@ func TestGetChaptersListBySerie(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c, err := asurahttp.New(testDeps(srv.Client()), asurahttp.Config{AsuraURL: srv.URL})
+	c, err := asurascanshttp.New(testDeps(srv.Client()), asurascanshttp.Config{AsuraURL: srv.URL})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -501,7 +501,7 @@ func TestGetImageURLsByChapter(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c, err := asurahttp.New(testDeps(srv.Client()), asurahttp.Config{AsuraURL: srv.URL})
+	c, err := asurascanshttp.New(testDeps(srv.Client()), asurascanshttp.Config{AsuraURL: srv.URL})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
