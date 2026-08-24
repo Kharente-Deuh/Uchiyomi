@@ -5,10 +5,11 @@ import type { VueWrapper } from '@vue/test-utils'
 import type { DetailedChapter } from '~/features/chapters/types'
 import type { Comic } from '~/features/comics/types'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { h, ref } from 'vue'
-import { VApp, VImg } from 'vuetify/components'
+import { VApp, VImg, VVirtualScroll } from 'vuetify/components'
 import { ASURA_SOURCE_NAME } from '~/constants'
+import Img from './Img.vue'
 import Scroll from './index.vue'
 
 function comic(overrides: Partial<Comic> = {}): Comic {
@@ -47,6 +48,7 @@ function chapter(overrides: Partial<DetailedChapter> = {}): DetailedChapter {
 
 async function mount(opts: { page?: number } = {}): Promise<{
   wrapper: VueWrapper
+  page: ReturnType<typeof ref<number>>
   showOverlay: ReturnType<typeof ref<boolean>>
 }> {
   const page = ref(opts.page ?? 0)
@@ -70,7 +72,7 @@ async function mount(opts: { page?: number } = {}): Promise<{
     ]),
   })
 
-  return { wrapper, showOverlay }
+  return { wrapper, page, showOverlay }
 }
 
 function setScrollMetrics(el: HTMLElement, metrics: { scrollHeight: number, scrollTop: number, clientHeight: number }): void {
@@ -113,6 +115,73 @@ describe('readerModeScroll', () => {
     await wrapper.find('.v-virtual-scroll').trigger('scroll')
 
     expect(showOverlay.value).toBe(false)
+  })
+
+  it('follows the topmost intersecting page', async () => {
+    const { wrapper, page } = await mount()
+    const imgs = wrapper.findAllComponents(Img)
+
+    await imgs[1]!.vm.$emit('intersecting', true)
+    await imgs[2]!.vm.$emit('intersecting', true)
+
+    expect(page.value).toBe(1)
+  })
+
+  it('does not let leftover intersecting pages overwrite page while moving to another page', async () => {
+    const { wrapper, page } = await mount({ page: 2 })
+    const imgs = wrapper.findAllComponents(Img)
+
+    await imgs[0]!.vm.$emit('intersecting', true)
+    await imgs[1]!.vm.$emit('intersecting', true)
+
+    expect(page.value).toBe(2)
+  })
+
+  it('does not let the target intersecting unlock page updates before the scroll ends', async () => {
+    const { wrapper, page } = await mount({ page: 2 })
+    const imgs = wrapper.findAllComponents(Img)
+
+    await imgs[2]!.vm.$emit('intersecting', true)
+    await imgs[2]!.vm.$emit('intersecting', false)
+    await imgs[1]!.vm.$emit('intersecting', true)
+
+    expect(page.value).toBe(2)
+  })
+
+  it('does not hide the overlay on scroll after the target page intersects but before scroll ends', async () => {
+    const { wrapper, page, showOverlay } = await mount()
+    const el = wrapper.find('.v-virtual-scroll')
+    setScrollMetrics(el.element as HTMLElement, { scrollHeight: 1000, scrollTop: 40, clientHeight: 100 })
+    await el.trigger('scroll')
+
+    page.value = 2
+    await wrapper.vm.$nextTick()
+    await wrapper.findAllComponents(Img)[2]!.vm.$emit('intersecting', true)
+    await el.trigger('scroll')
+
+    expect(showOverlay.value).toBe(true)
+  })
+
+  it('follows intersecting pages again after the rail scroll ends', async () => {
+    const { wrapper, page } = await mount({ page: 2 })
+    const imgs = wrapper.findAllComponents(Img)
+
+    await imgs[2]!.vm.$emit('intersecting', true)
+    await wrapper.find('.v-virtual-scroll').trigger('scrollend')
+    await imgs[2]!.vm.$emit('intersecting', false)
+    await imgs[0]!.vm.$emit('intersecting', true)
+
+    expect(page.value).toBe(0)
+  })
+
+  it('scrolls the list when the page model changes from the rail', async () => {
+    const { wrapper, page } = await mount()
+    const scrollToIndex = vi.spyOn(wrapper.findComponent(VVirtualScroll).vm, 'scrollToIndex')
+
+    page.value = 2
+    await wrapper.vm.$nextTick()
+
+    expect(scrollToIndex).toHaveBeenCalledWith(2)
   })
 
   it('shows the overlay when scrolled to the bottom', async () => {

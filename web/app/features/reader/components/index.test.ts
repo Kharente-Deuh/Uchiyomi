@@ -18,6 +18,8 @@ const OverlayStub = defineComponent({
     comic: { type: Object, required: true },
     chapter: { type: Object, required: true },
     modelValue: { type: Boolean, required: true },
+    page: { type: Number, required: true },
+    doublePage: { type: Boolean, default: false },
   },
   template: '<div data-test="overlay" />',
 })

@@ -7,7 +7,7 @@ import type { Comic } from '~/features/comics/types'
 import type { ReaderSettings } from '~/features/reader/types'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
-import { h, ref } from 'vue'
+import { h, nextTick, ref } from 'vue'
 import { VApp, VImg } from 'vuetify/components'
 import { ASURA_SOURCE_NAME } from '~/constants'
 import Paged from './Paged.vue'
@@ -145,6 +145,23 @@ describe('readerModePaged', () => {
     const { wrapper, showOverlay } = await mount({ showOverlay: true })
 
     await wrapper.find('.h-screen.w-screen').trigger('click')
+
+    expect(showOverlay.value).toBe(false)
+  })
+
+  it('keeps the overlay when the page changes from the rail', async () => {
+    const { page, showOverlay } = await mount({ showOverlay: true })
+
+    page.value = 1
+    await nextTick()
+
+    expect(showOverlay.value).toBe(true)
+  })
+
+  it('hides the overlay when turning the page from a click zone', async () => {
+    const { wrapper, showOverlay } = await mount({ showOverlay: true })
+
+    await clickZones(wrapper)[1]?.trigger('click')
 
     expect(showOverlay.value).toBe(false)
   })

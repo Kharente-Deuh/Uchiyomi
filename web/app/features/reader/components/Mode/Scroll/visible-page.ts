@@ -14,19 +14,15 @@ export function recordIntersection(
 
 export function pageFromVisibleIndices(
   indices: Set<number>,
-  opts: { restoredPage: number, restoring: boolean },
+  opts: { movingToPage: number | null },
 ): number | undefined {
   if (indices.size === 0) {
     return undefined
   }
 
-  const relevant = opts.restoring
-    ? [...indices].filter(index => index >= opts.restoredPage)
-    : [...indices]
-
-  if (relevant.length === 0) {
-    return undefined
+  if (opts.movingToPage !== null) {
+    return indices.has(opts.movingToPage) ? opts.movingToPage : undefined
   }
 
-  return Math.min(...relevant)
+  return Math.min(...indices)
 }

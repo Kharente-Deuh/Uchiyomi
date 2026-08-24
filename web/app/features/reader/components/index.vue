@@ -34,8 +34,10 @@ const page = defineModel<number>('page', { required: true })
   <div class="h-screen w-screen position-relative">
     <ReaderOverlay
       v-model="showOverlay"
+      v-model:page="page"
       :comic
       :chapter
+      :double-page="settings.doublePage"
     />
 
     <div v-if="chapter.download !== 100" class="d-flex flex-column w-100 h-100 justify-center align-center ga-4">

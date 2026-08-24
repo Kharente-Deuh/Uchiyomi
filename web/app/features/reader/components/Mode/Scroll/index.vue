@@ -20,20 +20,29 @@ const scrollRoot = computed(() => {
   return el instanceof HTMLElement ? el : undefined
 })
 
-const restoredPage = page.value
-const restoring = ref(restoredPage > 0)
+const internalPage = ref<number>()
+const movingToPage = ref<number | null>(page.value === 0 ? null : page.value)
 
 const unwatchVirtualScroll = watch(virtualScrollRef, async (value) => {
   if (!value) {
     return
   }
 
-  if (restoring.value) {
+  if (movingToPage.value !== null) {
     await nextTick()
-    value.scrollToIndex(restoredPage)
+    value.scrollToIndex(movingToPage.value)
   }
 
   unwatchVirtualScroll()
+})
+
+watch(page, (value) => {
+  if (value === internalPage.value) {
+    return
+  }
+
+  movingToPage.value = value
+  virtualScrollRef.value?.scrollToIndex(value)
 })
 
 const intersectingPages = new Set<number>()
@@ -42,25 +51,31 @@ function onIntersecting(index: number, isIntersecting: boolean): void {
   recordIntersection(intersectingPages, index, isIntersecting)
 
   const current = pageFromVisibleIndices(intersectingPages, {
-    restoredPage,
-    restoring: restoring.value,
+    movingToPage: movingToPage.value,
   })
   if (current === undefined) {
     return
   }
 
-  if (restoring.value) {
-    restoring.value = false
-    for (const intersectingIndex of intersectingPages) {
-      if (intersectingIndex < restoredPage) {
-        intersectingPages.delete(intersectingIndex)
-      }
-    }
+  internalPage.value = current
+
+  if (movingToPage.value !== null) {
+    return
   }
 
   if (page.value !== current) {
     page.value = current
   }
+}
+
+function onScrollEnd(): void {
+  if (movingToPage.value === null) {
+    return
+  }
+
+  intersectingPages.clear()
+  internalPage.value = movingToPage.value
+  movingToPage.value = null
 }
 
 const preventFirstScroll = ref(true)
@@ -69,6 +84,10 @@ function onScroll(event: Event): void {
   if (preventFirstScroll.value) {
     preventFirstScroll.value = false
 
+    return
+  }
+
+  if (movingToPage.value !== null) {
     return
   }
 
@@ -83,16 +102,21 @@ function onScroll(event: Event): void {
 </script>
 
 <template>
-  <div class="h-screen w-screen overflow-hidden" @click="showOverlay = !showOverlay">
+  <div
+    class="h-screen w-screen mx-auto"
+    @click="showOverlay = !showOverlay"
+  >
     <VVirtualScroll
       ref="virtualScrollRef"
       class="h-100"
       :items="chapter.pageUrls"
       @scroll="onScroll"
+      @scrollend="onScrollEnd"
     >
       <template #default="{ item, index }">
         <ReaderModeScrollImg
           :src="item"
+          style="max-width: 70rem; margin-right: auto; margin-left: auto;"
           :root="scrollRoot"
           @intersecting="onIntersecting(index, $event)"
         />

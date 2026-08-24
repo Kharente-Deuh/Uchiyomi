@@ -6,9 +6,11 @@ import type { Comic } from '~/features/comics/types'
 defineProps<{
   comic: Comic
   chapter: DetailedChapter
+  doublePage?: boolean
 }>()
 
 const show = defineModel<boolean>({ required: true })
+const page = defineModel<number>('page', { required: true })
 </script>
 
 <template>
@@ -17,6 +19,15 @@ const show = defineModel<boolean>({ required: true })
       v-show="show"
       :comic="comic"
       :chapter="chapter"
+    />
+  </VFadeTransition>
+
+  <VFadeTransition>
+    <ReaderOverlayRail
+      v-show="show"
+      v-model:page="page"
+      :chapter="chapter"
+      :double-page="doublePage"
     />
   </VFadeTransition>
 

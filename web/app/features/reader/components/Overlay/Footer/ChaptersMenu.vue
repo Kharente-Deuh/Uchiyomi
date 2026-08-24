@@ -116,6 +116,7 @@ async function pollChapters(): Promise<void> {
   <VBtn
     prepend-icon="fa6-solid:bars"
     color="grey"
+    class="border-thin"
     :loading="chaptersLoading"
     :disabled="!chaptersLoading && chapters.length === 0"
     :append-icon="showMenu ? 'fa6-solid:chevron-up' : 'fa6-solid:chevron-down'"
