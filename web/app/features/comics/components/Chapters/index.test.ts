@@ -37,8 +37,11 @@ const ItemStub = defineComponent({
   props: {
     chapter: { type: Object, required: true },
     retryLoading: { type: Boolean, default: false },
+    selected: { type: Boolean, default: false },
+    selectable: { type: Boolean, default: false },
+    disabled: { type: Boolean, default: false },
   },
-  emits: ['retry'],
+  emits: ['retry', 'update:selected'],
   template: '<button data-test="chapter" @click="$emit(\'retry\')">{{ chapter.number }}</button>',
 })
 
@@ -55,6 +58,21 @@ function chapter(overrides: Partial<Chapter> = {}): Chapter {
     ...overrides,
   }
 }
+
+describe('selectableChapters logic in Chapters', () => {
+  it('filters out early access chapters in the future but keeps past early access and regular chapters', () => {
+    const pastEarlyAccess = new Date(Date.now() - 3600_000)
+    const futureEarlyAccess = new Date(Date.now() + 3600_000)
+    const chList = [
+      chapter({ id: 'ch-1', number: 1, earlyAccessUntil: pastEarlyAccess }),
+      chapter({ id: 'ch-2', number: 2, earlyAccessUntil: futureEarlyAccess }),
+      chapter({ id: 'ch-3', number: 3 }),
+    ]
+
+    const selectable = chList.filter(({ earlyAccessUntil }) => !earlyAccessUntil || earlyAccessUntil < new Date())
+    expect(selectable.map(c => c.id)).toEqual(['ch-1', 'ch-3'])
+  })
+})
 
 async function mount(id = 'c1'): Promise<VueWrapper> {
   return mountSuspended(
@@ -106,7 +124,7 @@ describe('comicsChapters', () => {
 
     expect(wrapper.text()).toContain('Latest')
 
-    await wrapper.findAll('button').at(0)!.trigger('click')
+    await wrapper.findAll('button').find(b => b.text().includes('Latest'))!.trigger('click')
 
     expect(wrapper.text()).toContain('Oldest')
     expect(wrapper.findAll('[data-test="chapter"]').map(n => n.text())).toEqual(['1', '2'])

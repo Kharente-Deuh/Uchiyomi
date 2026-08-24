@@ -1,6 +1,7 @@
 import type { Chapter, ChapterProgress, DetailedChapter, SaveChapterProgressRequest } from '../types'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
+import { parseOptionalDate } from '~/utils/date.utils'
 
 export interface ChaptersApi {
   retryDownload: (chapterId: string) => Promise<ApiResponse<void>>
@@ -8,11 +9,16 @@ export interface ChaptersApi {
   getByComicId: (comicId: string) => Promise<ApiResponse<Chapter[]>>
   getById: (id: string) => Promise<ApiResponse<DetailedChapter>>
   saveProgress: (req: SaveChapterProgressRequest) => Promise<ApiResponse<ChapterProgress>>
+  deleteProgress: (id: string) => Promise<ApiResponse<void>>
 }
 
-function chapterFromHTTP({ progress, ...chapter }: Chapter): Chapter {
+function chapterFromHTTP({ progress, earlyAccessUntil, publishedAt, ...chapter }: Chapter): Chapter {
+  const until = parseOptionalDate(earlyAccessUntil)
+
   return {
     ...chapter,
+    publishedAt: new Date(publishedAt),
+    ...(until && { earlyAccessUntil: until }),
     progress: progress
       ? {
           updatedAt: new Date(progress.updatedAt),
@@ -89,11 +95,22 @@ export function createChaptersApi(): ChaptersApi {
     }
   }
 
+  async function deleteProgress(id: string): Promise<ApiResponse<void>> {
+    try {
+      await api<void>(`/${id}/progress`, { method: 'DELETE' })
+
+      return { success: true, data: undefined }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
   return {
     retryDownload,
     getByIds,
     getByComicId,
     getById,
     saveProgress,
+    deleteProgress,
   }
 }

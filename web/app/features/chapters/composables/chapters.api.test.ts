@@ -15,14 +15,55 @@ beforeEach(() => {
 })
 
 describe('createChaptersApi().getByComicId', () => {
-  it('lists chapters for the comic', async () => {
-    const chapters = [{ id: 'ch-1', comicId: 'c1', number: 1 }]
+  it('lists chapters for the comic and deserializes dates', async () => {
+    const publishedAt = '2026-01-01T00:00:00.000Z'
+    const chapters = [{
+      id: 'ch-1',
+      comicId: 'c1',
+      number: 1,
+      publishedAt,
+      earlyAccessUntil: '0001-01-01T00:00:00Z',
+    }]
     call.mockResolvedValue(chapters)
 
     const res = await createChaptersApi().getByComicId('c1')
 
     expect(call).toHaveBeenCalledWith('/', { params: { comicId: 'c1' } })
-    expect(res).toEqual({ success: true, data: chapters })
+    expect(res).toEqual({
+      success: true,
+      data: [{
+        id: 'ch-1',
+        comicId: 'c1',
+        number: 1,
+        publishedAt: new Date(publishedAt),
+      }],
+    })
+  })
+
+  it('keeps valid earlyAccessUntil as Date', async () => {
+    const publishedAt = '2026-01-01T00:00:00.000Z'
+    const earlyAccessUntil = '2026-02-01T00:00:00.000Z'
+    const chapters = [{
+      id: 'ch-1',
+      comicId: 'c1',
+      number: 1,
+      publishedAt,
+      earlyAccessUntil,
+    }]
+    call.mockResolvedValue(chapters)
+
+    const res = await createChaptersApi().getByComicId('c1')
+
+    expect(res).toEqual({
+      success: true,
+      data: [{
+        id: 'ch-1',
+        comicId: 'c1',
+        number: 1,
+        publishedAt: new Date(publishedAt),
+        earlyAccessUntil: new Date(earlyAccessUntil),
+      }],
+    })
   })
 
   it('surfaces a 404 with its status', async () => {
@@ -36,13 +77,22 @@ describe('createChaptersApi().getByComicId', () => {
 
 describe('createChaptersApi().getByIds', () => {
   it('posts the chapter ids', async () => {
-    const chapters = [{ id: 'ch-1', comicId: 'c1', number: 1 }]
+    const publishedAt = '2026-01-01T00:00:00.000Z'
+    const chapters = [{ id: 'ch-1', comicId: 'c1', number: 1, publishedAt }]
     call.mockResolvedValue(chapters)
 
     const res = await createChaptersApi().getByIds(['ch-1', 'ch-2'])
 
     expect(call).toHaveBeenCalledWith('/list', { method: 'POST', body: { ids: ['ch-1', 'ch-2'] } })
-    expect(res).toEqual({ success: true, data: chapters })
+    expect(res).toEqual({
+      success: true,
+      data: [{
+        id: 'ch-1',
+        comicId: 'c1',
+        number: 1,
+        publishedAt: new Date(publishedAt),
+      }],
+    })
   })
 
   it('surfaces a failure with its status', async () => {
@@ -56,6 +106,7 @@ describe('createChaptersApi().getByIds', () => {
 
 describe('createChaptersApi().getById', () => {
   it('returns the chapter with next and previous neighbors', async () => {
+    const publishedAt = '2026-01-01T00:00:00.000Z'
     const next = { id: 'ch-3', title: 'Three', number: 3 }
     const previous = { id: 'ch-1', title: 'One', number: 1 }
     call.mockResolvedValue({
@@ -63,6 +114,7 @@ describe('createChaptersApi().getById', () => {
       comicId: 'c1',
       number: 2,
       title: 'Two',
+      publishedAt,
       pageUrls: ['/api/chapters/ch-2/pages/1'],
       next,
       previous,
@@ -78,6 +130,7 @@ describe('createChaptersApi().getById', () => {
         comicId: 'c1',
         number: 2,
         title: 'Two',
+        publishedAt: new Date(publishedAt),
         pageUrls: ['/api/chapters/ch-2/pages/1'],
         next,
         previous,

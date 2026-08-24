@@ -6,9 +6,13 @@ import { formatRelativeTime } from '~/utils/date.utils'
 const props = defineProps<{
   chapter: Chapter
   retryLoading: boolean
+  selectable: boolean
+  disabled?: boolean
 }>()
 
 defineEmits<{ retry: [] }>()
+
+const isSelected = defineModel<boolean>('selected', { required: false, default: false })
 
 const { locale } = useI18n()
 
@@ -36,12 +40,22 @@ const isChapterDownloaded = computed(() => props.chapter.download === 100)
 const isChapterDownloadingError = computed(() => props.chapter.download === -1 && !props.retryLoading)
 
 const to = computed(() => {
-  if (props.chapter.download !== 100) {
+  if (props.chapter.download !== 100 || props.disabled || props.selectable) {
     return
   }
 
   return `/comic/${props.chapter.comicId}/${props.chapter.id}`
 })
+
+function handleClick(): void {
+  if (props.disabled) {
+    return
+  }
+
+  if (props.selectable) {
+    isSelected.value = !isSelected.value
+  }
+}
 </script>
 
 <template>
@@ -51,7 +65,9 @@ const to = computed(() => {
       :class="{
         'early-access-chapter': isEarlyAccess,
         'readable-chapter': !isEarlyAccess,
+        'cursor-pointer': !props.disabled,
       }"
+      @click="handleClick"
     >
       <div class="d-flex align-center ga-4">
         <div v-if="isEarlyAccess" class="d-flex flex-column items-center justify-center border-thin-gold pa-2 text-body-small rounded-lg early-access-icon">
@@ -119,7 +135,12 @@ const to = computed(() => {
           width="2"
           color="error"
         />
-        <span class="text-body-medium text-medium-emphasis" :class="{ 'text-gold': isEarlyAccess }">{{ date }}</span>
+        <VIcon v-if="props.selectable" :icon="isSelected ? 'fa6-solid:square-check' : 'fa6-regular:square'" />
+        <span
+          v-else
+          class="text-body-medium text-medium-emphasis"
+          :class="{ 'text-gold': isEarlyAccess }"
+        >{{ date }}</span>
       </div>
     </div>
   </AtomLink>

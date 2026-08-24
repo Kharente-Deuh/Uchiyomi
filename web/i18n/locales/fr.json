@@ -213,7 +213,8 @@
       "latest": "Plus récent"
     },
     "start": "Commencer",
-    "continue": "Continuer"
+    "continue": "Continuer",
+    "actions": "Actes"
   },
   "role": {
     "admin": "Administrateur",
@@ -356,8 +357,11 @@
       "download": {
         "error": "Erreur de téléchargement de chapitre",
         "retry": "Réessayer",
-        "loading": "Téléchargement du chapitre..."
-      }
+        "loading": "Téléchargement du chapitre...",
+        "retryMany": "Re-télécharger | Re-télécharger (1) | Re-télécharger ({count})"
+      },
+      "setReadMany": "Marque comme lu | Marque comme lu (1) | Marque comme lu ({count})",
+      "setUnreadMany": "Marquer comme non-lu | Marquer comme non-lu (1) | Marquer comme non-lu ({count})"
     },
     "betweenChapters": {
       "current": "Chapitre actuel",

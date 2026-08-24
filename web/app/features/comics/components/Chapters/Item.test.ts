@@ -28,6 +28,7 @@ async function mount(value: Chapter = chapter(), isRetryLoading = false): Promis
     render: () => h(VApp, () => [h(Item, {
       chapter: value,
       retryLoading: isRetryLoading,
+      selectable: false,
       onRetry: vi.fn(),
     })]),
   })
@@ -70,6 +71,7 @@ describe('comicsChaptersItem', () => {
       render: () => h(VApp, () => [h(Item, {
         chapter: chapter({ download: -1 }),
         retryLoading: false,
+        selectable: false,
         onRetry,
       })]),
     })
