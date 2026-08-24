@@ -61,8 +61,8 @@ function chapter(overrides: Partial<Chapter> = {}): Chapter {
 
 describe('selectableChapters logic in Chapters', () => {
   it('filters out early access chapters in the future but keeps past early access and regular chapters', () => {
-    const pastEarlyAccess = new Date(Date.now() - 3600_000)
-    const futureEarlyAccess = new Date(Date.now() + 3600_000)
+    const pastEarlyAccess = new Date(Date.now() - 3_600_000)
+    const futureEarlyAccess = new Date(Date.now() + 3_600_000)
     const chList = [
       chapter({ id: 'ch-1', number: 1, earlyAccessUntil: pastEarlyAccess }),
       chapter({ id: 'ch-2', number: 2, earlyAccessUntil: futureEarlyAccess }),

@@ -6,11 +6,15 @@ import { formatRelativeTime } from '~/utils/date.utils'
 const props = defineProps<{
   chapter: Chapter
   retryLoading: boolean
+  updateProgressLoading: boolean
   selectable: boolean
   disabled?: boolean
 }>()
 
-defineEmits<{ retry: [] }>()
+defineEmits<{
+  retry: []
+  updateProgress: [mode: 'read' | 'unread']
+}>()
 
 const isSelected = defineModel<boolean>('selected', { required: false, default: false })
 
@@ -136,11 +140,27 @@ function handleClick(): void {
           color="error"
         />
         <VIcon v-if="props.selectable" :icon="isSelected ? 'fa6-solid:square-check' : 'fa6-regular:square'" />
-        <span
-          v-else
-          class="text-body-medium text-medium-emphasis"
-          :class="{ 'text-gold': isEarlyAccess }"
-        >{{ date }}</span>
+        <template v-else>
+          <span
+            class="text-body-medium text-medium-emphasis"
+            :class="{ 'text-gold': isEarlyAccess }"
+          >{{ date }}</span>
+
+          <VProgressCircular
+            v-if="props.updateProgressLoading"
+            indeterminate
+            size="18"
+            width="2"
+            color="primary"
+          />
+          <VIcon
+            v-else
+            :icon="chapter.progress && chapter.progress.page > 1 ? 'fa6-solid:eye' : 'fa6-solid:eye-low-vision'"
+            class="cursor-pointer"
+            color="surfaceVariant"
+            @click.prevent="$emit('updateProgress', (chapter.progress && chapter.progress.page > 1 ? 'unread' : 'read') as 'read' | 'unread')"
+          />
+        </template>
       </div>
     </div>
   </AtomLink>

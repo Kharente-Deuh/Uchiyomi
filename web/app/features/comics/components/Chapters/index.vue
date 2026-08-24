@@ -143,6 +143,74 @@ const sortText = computed(() => {
   return sort.value === 'asc' ? $t('common.sort.oldest') : $t('common.sort.latest')
 })
 
+const updateProgressLoading = ref<Record<string, boolean>>({})
+async function updateProgress(chapterId: string, mode: 'read' | 'unread'): Promise<void> {
+  if (updateProgressLoading.value[chapterId]) {
+    return
+  }
+
+  updateProgressLoading.value[chapterId] = true
+
+  let success = false
+
+  switch (mode) {
+    case 'read':
+      success = await setChapterRead(chapterId)
+      break
+    case 'unread':
+      success = await setChapterUnread(chapterId)
+      break
+  }
+
+  if (success) {
+    emit('refetchProgress')
+  }
+
+  delete updateProgressLoading.value[chapterId]
+}
+
+async function setChapterRead(chapterId: string): Promise<boolean> {
+  const index = chapters.value.findIndex(chapter => chapter.id === chapterId)
+  if (index === -1) {
+    return false
+  }
+
+  const res = await api.saveProgress({
+    id: chapterId,
+    page: chapters.value[index]!.pagesNb,
+  })
+
+  if (!res.success) {
+    console.error('chaptersApi.saveProgress', res.error)
+    toast.error(t('error.unknown'))
+
+    return false
+  }
+
+  chapters.value[index]!.progress = res.data
+
+  return true
+}
+
+async function setChapterUnread(chapterId: string): Promise<boolean> {
+  const index = chapters.value.findIndex(chapter => chapter.id === chapterId)
+  if (index === -1) {
+    return false
+  }
+
+  const res = await api.deleteProgress(chapterId)
+  if (!res.success) {
+    console.error('chaptersApi.deleteProgress', res.error)
+    toast.error(t('error.unknown'))
+
+    return false
+  }
+
+  chapters.value[index]!.progress = undefined
+
+  return true
+}
+
 const selectedChapters = ref<Chapter[]>([])
 const selectableChapters = computed(() => sortedChapters.value.filter(({ earlyAccessUntil }) => !earlyAccessUntil || earlyAccessUntil < new Date()))
 const selectAllChaptersIcon = computed(() => {
@@ -262,7 +330,9 @@ function onSelectionAction(updateContinue: boolean): void {
           :selectable="selectedChapters.length > 0"
           :selected="selectedChapters.some(chapter => chapter.id === item.id)"
           :retry-loading="!!retryChaptersLoading[item.id]"
+          :update-progress-loading="!!updateProgressLoading[item.id]"
           @update:selected="toggleSelectChapter(item.id)"
+          @update-progress="updateProgress(item.id, $event)"
           @retry="retryChapter(item.id)"
         />
       </template>
