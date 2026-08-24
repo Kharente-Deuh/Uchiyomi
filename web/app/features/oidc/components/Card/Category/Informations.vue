@@ -85,7 +85,7 @@ const isFormValid = computed(() => isValid.value && hasChanged.value)
     icon="fa6-regular:address-card"
   >
     <div class="provider-informations-grid">
-      <VTextField v-bind="field('displayName').props" />
+      <VTextField v-bind="field('displayName').props" class="h-fit" />
       <VTextField
         v-bind="field('slug').props"
         :messages="[$t('settings.oidc.fields.slug.hint')]"
