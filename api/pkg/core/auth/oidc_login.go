@@ -34,7 +34,7 @@ type oidcStatePayload struct {
 }
 
 func (s *Service) StartOIDCLogin(ctx context.Context, opts StartOIDCLoginOpts) (*OIDCStart, error) {
-	provider, err := s.deps.OIDCProvidersRepository.GetByID(ctx, opts.ProviderID)
+	provider, err := s.deps.OIDCProvidersRepository.GetBySlug(ctx, opts.ProviderSlug)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			return nil, ErrOIDCUnavailable
