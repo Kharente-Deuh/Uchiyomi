@@ -34,10 +34,13 @@ const (
 type stubService struct {
 	listErr    error
 	saveErr    error
+	markErr    error
 	listResult readingprogress.ListResult
+	markResult readingprogress.ListResult
 	saveResult readingprogress.Progress
-	lastList   readingprogress.ListOpts
+	lastMark   readingprogress.MarkReadOpts
 	lastSave   readingprogress.SaveOpts
+	lastList   readingprogress.ListOpts
 }
 
 func (s *stubService) List(_ context.Context, opts readingprogress.ListOpts) (readingprogress.ListResult, error) {
@@ -50,6 +53,14 @@ func (s *stubService) Save(_ context.Context, opts readingprogress.SaveOpts) (re
 	s.lastSave = opts
 
 	return s.saveResult, s.saveErr
+}
+
+func (s *stubService) MarkRead(
+	_ context.Context, opts readingprogress.MarkReadOpts,
+) (readingprogress.ListResult, error) {
+	s.lastMark = opts
+
+	return s.markResult, s.markErr
 }
 
 func (s *stubService) MapByChapterIDs(
@@ -160,6 +171,20 @@ func putProgress(t *testing.T, r chi.Router, chapterID, body string, withCookie 
 	t.Helper()
 
 	req := httptest.NewRequest(http.MethodPut, chaptersEndpoint+"/"+chapterID+"/progress", strings.NewReader(body))
+	if withCookie {
+		req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	}
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func postProgress(t *testing.T, r chi.Router, comicID, body string, withCookie bool) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, endpoint+"/"+comicID+"/progress", strings.NewReader(body))
 	if withCookie {
 		req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
 	}
@@ -494,5 +519,190 @@ func TestPutUsesSessionUser(t *testing.T) {
 
 	if svc.lastSave.UserID != user.ID {
 		t.Errorf("lastSave.UserID = %s, want session user %s", svc.lastSave.UserID, user.ID)
+	}
+}
+
+func TestPostUnauthorized(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	r := newTestRouter(t, &stubService{}, authenticatorFor(t, user))
+
+	rec := postProgress(t, r, uuid.New().String(), `{"chapterIds":["`+uuid.New().String()+`"]}`, false)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+}
+
+func TestPostOK(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	continueChapter := uuid.New()
+
+	svc := &stubService{
+		markResult: readingprogress.ListResult{
+			Continue: &readingprogress.Continue{ChapterID: continueChapter, Page: 10},
+		},
+	}
+	r := newTestRouter(t, svc, authenticatorFor(t, user))
+
+	body := `{"chapterIds":["` + ch1.String() + `","` + ch2.String() + `"]}`
+	rec := postProgress(t, r, comicID.String(), body, true)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	if svc.lastMark.UserID != user.ID {
+		t.Errorf("lastMark.UserID = %s, want %s", svc.lastMark.UserID, user.ID)
+	}
+
+	if svc.lastMark.ComicID != comicID {
+		t.Errorf("lastMark.ComicID = %s, want %s", svc.lastMark.ComicID, comicID)
+	}
+
+	if len(svc.lastMark.ChapterIDs) != 2 || svc.lastMark.ChapterIDs[0] != ch1 || svc.lastMark.ChapterIDs[1] != ch2 {
+		t.Errorf("lastMark.ChapterIDs = %v, want [%s, %s]", svc.lastMark.ChapterIDs, ch1, ch2)
+	}
+
+	var got continueJSON
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body not decodable (%q): %v", rec.Body.String(), err)
+	}
+
+	if got.Continue == nil {
+		t.Fatal("continue is nil, want object")
+	}
+
+	if got.Continue.ChapterID != continueChapter.String() || got.Continue.Page != 10 {
+		t.Errorf("continue = %+v", got.Continue)
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("decode raw body: %v", err)
+	}
+
+	if _, ok := raw["chapters"]; ok {
+		t.Error("body must not include chapters")
+	}
+
+	var continueRaw map[string]json.RawMessage
+	if err := json.Unmarshal(raw["continue"], &continueRaw); err != nil {
+		t.Fatalf("decode continue: %v", err)
+	}
+
+	if _, ok := continueRaw["updatedAt"]; ok {
+		t.Error("continue must not include updatedAt")
+	}
+}
+
+func TestPostInvalidComicID(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	r := newTestRouter(t, &stubService{}, authenticatorFor(t, user))
+
+	rec := postProgress(t, r, "not-a-uuid", `{"chapterIds":["`+uuid.New().String()+`"]}`, true)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestPostInvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	r := newTestRouter(t, &stubService{}, authenticatorFor(t, user))
+
+	rec := postProgress(t, r, uuid.New().String(), `{`, true)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestPostMissingChapterIds(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	r := newTestRouter(t, &stubService{}, authenticatorFor(t, user))
+
+	rec := postProgress(t, r, uuid.New().String(), `{}`, true)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestPostEmptyChapterIds(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	r := newTestRouter(t, &stubService{}, authenticatorFor(t, user))
+
+	rec := postProgress(t, r, uuid.New().String(), `{"chapterIds":[]}`, true)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestPostForbidden(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	svc := &stubService{markErr: domain.ErrForbidden}
+	r := newTestRouter(t, svc, authenticatorFor(t, user))
+
+	rec := postProgress(t, r, uuid.New().String(), `{"chapterIds":["`+uuid.New().String()+`"]}`, true)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+
+	var got struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode error body: %v", err)
+	}
+
+	if got.Message != "comic not in library" {
+		t.Errorf("message = %q, want %q", got.Message, "comic not in library")
+	}
+}
+
+func TestPostNotFound(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	svc := &stubService{markErr: domain.ErrNotFound}
+	r := newTestRouter(t, svc, authenticatorFor(t, user))
+
+	rec := postProgress(t, r, uuid.New().String(), `{"chapterIds":["`+uuid.New().String()+`"]}`, true)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}
+
+func TestPostInvalid(t *testing.T) {
+	t.Parallel()
+
+	user := testUser()
+	svc := &stubService{markErr: readingprogress.ErrInvalid}
+	r := newTestRouter(t, svc, authenticatorFor(t, user))
+
+	rec := postProgress(t, r, uuid.New().String(), `{"chapterIds":["`+uuid.New().String()+`"]}`, true)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d (body: %s)", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 }

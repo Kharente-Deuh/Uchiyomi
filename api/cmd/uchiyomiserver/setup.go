@@ -156,6 +156,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 
 	readingProgressSvc, err := readingprogress.NewService(readingprogress.Deps{
 		Repository: dbr.ReadingProgressRepository,
+		Transactor: dbr.Txor,
 		Library:    dbr.LibraryRepository,
 		Comics:     comicsExistsLookup{repo: dbr.ComicsRepository},
 		Chapters:   dbr.ChaptersRepository,

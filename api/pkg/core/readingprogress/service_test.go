@@ -12,20 +12,38 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/readingprogress"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
 )
 
+type fakeTransactor struct {
+	err   error
+	calls int
+}
+
+func (f *fakeTransactor) WithinTx(ctx context.Context, _ transaction.TxOpts, fn func(context.Context) error) error {
+	f.calls++
+	if err := fn(ctx); err != nil {
+		return err
+	}
+
+	return f.err
+}
+
 type fakeRepo struct {
+	latest      *readingprogress.Progress
+	existing    *readingprogress.Progress
 	listErr     error
 	getErr      error
 	upsertErr   error
-	existing    *readingprogress.Progress
+	stored      []readingprogress.Progress
 	rows        []readingprogress.Progress
+	upserts     []readingprogress.UpsertOpts
 	lastUpsert  readingprogress.UpsertOpts
+	lastGet     readingprogress.GetOpts
+	listed      readingprogress.ListOpts
 	listCalls   int
 	getCalls    int
 	upsertCalls int
-	lastGet     readingprogress.GetOpts
-	listed      readingprogress.ListOpts
 }
 
 func (f *fakeRepo) GetLatestByUserAndComic(
@@ -36,6 +54,10 @@ func (f *fakeRepo) GetLatestByUserAndComic(
 	f.listed = opts
 	if f.listErr != nil {
 		return nil, f.listErr
+	}
+
+	if f.latest != nil {
+		return f.latest, nil
 	}
 
 	if len(f.rows) == 0 {
@@ -56,6 +78,10 @@ func (f *fakeRepo) ListByUserAndChapterIDs(
 		return nil, f.listErr
 	}
 
+	if f.stored != nil {
+		return f.stored, nil
+	}
+
 	return f.rows, nil
 }
 
@@ -72,12 +98,17 @@ func (f *fakeRepo) Get(_ context.Context, opts readingprogress.GetOpts) (*readin
 func (f *fakeRepo) Upsert(_ context.Context, opts readingprogress.UpsertOpts) (readingprogress.Progress, error) {
 	f.upsertCalls++
 	f.lastUpsert = opts
-
-	return readingprogress.Progress{
+	f.upserts = append(f.upserts, opts)
+	out := readingprogress.Progress{
 		ChapterID: opts.ChapterID,
 		Page:      opts.Page,
 		UpdatedAt: opts.UpdatedAt,
-	}, f.upsertErr
+	}
+	f.latest = &out
+	row := out
+	f.rows = []readingprogress.Progress{row}
+
+	return out, f.upsertErr
 }
 
 type fakeLibrary struct {
@@ -111,10 +142,13 @@ func (f *fakeComics) Exists(_ context.Context, id uuid.UUID) (bool, error) {
 }
 
 type fakeChapters struct {
-	getErr   error
-	chapter  *chapters.Chapter
-	lastID   uuid.UUID
-	getCalls int
+	byID        map[uuid.UUID]chapters.Chapter
+	chapter     *chapters.Chapter
+	getErr      error
+	getByIdsErr error
+	lastIDs     []uuid.UUID
+	lastID      uuid.UUID
+	getCalls    int
 }
 
 func (f *fakeChapters) GetByID(_ context.Context, id uuid.UUID) (*chapters.Chapter, error) {
@@ -124,7 +158,68 @@ func (f *fakeChapters) GetByID(_ context.Context, id uuid.UUID) (*chapters.Chapt
 		return nil, f.getErr
 	}
 
+	if f.byID != nil {
+		ch, ok := f.byID[id]
+		if !ok {
+			return nil, domain.ErrNotFound
+		}
+
+		return &ch, nil
+	}
+
 	return f.chapter, nil
+}
+
+func (f *fakeChapters) GetByIds(_ context.Context, ids []uuid.UUID) ([]chapters.Chapter, error) {
+	f.lastIDs = ids
+	if f.getByIdsErr != nil {
+		return nil, f.getByIdsErr
+	}
+
+	if f.byID != nil {
+		out := make([]chapters.Chapter, 0, len(ids))
+		for _, id := range ids {
+			if ch, ok := f.byID[id]; ok {
+				out = append(out, ch)
+			}
+		}
+
+		return out, nil
+	}
+
+	if f.chapter != nil {
+		return []chapters.Chapter{*f.chapter}, nil
+	}
+
+	return nil, nil
+}
+
+func ch(id, comicID uuid.UUID, number float64, pagesNb int) chapters.Chapter {
+	return chapters.Chapter{ID: id, ComicID: comicID, Number: number, PagesNb: pagesNb}
+}
+
+func markReadSvc(
+	t *testing.T,
+	repo *fakeRepo,
+	lib readingprogress.LibraryMembership,
+	comics readingprogress.ComicLookup,
+	chaps *fakeChapters,
+	tx *fakeTransactor,
+) *readingprogress.Service {
+	t.Helper()
+
+	svc, err := readingprogress.NewService(readingprogress.Deps{
+		Repository: repo,
+		Transactor: tx,
+		Library:    lib,
+		Comics:     comics,
+		Chapters:   chaps,
+	})
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	return svc
 }
 
 func newService(
@@ -138,6 +233,7 @@ func newService(
 
 	svc, err := readingprogress.NewService(readingprogress.Deps{
 		Repository: repo,
+		Transactor: &fakeTransactor{},
 		Library:    lib,
 		Comics:     comics,
 		Chapters:   ch,
@@ -155,6 +251,20 @@ func TestNewServiceValidatesDeps(t *testing.T) {
 	_, err := readingprogress.NewService(readingprogress.Deps{})
 	if err == nil {
 		t.Fatal("NewService with empty deps must fail")
+	}
+}
+
+func TestNewServiceRequiresTransactor(t *testing.T) {
+	t.Parallel()
+
+	_, err := readingprogress.NewService(readingprogress.Deps{
+		Repository: &fakeRepo{},
+		Library:    &fakeLibrary{inLib: true},
+		Comics:     &fakeComics{exists: true},
+		Chapters:   &fakeChapters{},
+	})
+	if err == nil {
+		t.Fatal("NewService without transactor must fail")
 	}
 }
 
@@ -438,5 +548,665 @@ func TestListForbidden(t *testing.T) {
 
 	if repo.listCalls != 0 {
 		t.Error("listed without membership")
+	}
+}
+
+func TestMarkReadEmptyChapterIDs(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		ids  []uuid.UUID
+	}{
+		{name: "nil", ids: nil},
+		{name: "empty slice", ids: []uuid.UUID{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			repo := &fakeRepo{}
+			tx := &fakeTransactor{}
+			svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{}, tx)
+
+			_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+				UserID:     uuid.New(),
+				ComicID:    uuid.New(),
+				ChapterIDs: tc.ids,
+			})
+			if !errors.Is(err, readingprogress.ErrInvalid) {
+				t.Errorf("err = %v, want ErrInvalid", err)
+			}
+			if tx.calls != 0 {
+				t.Errorf("tx.calls = %d, want 0", tx.calls)
+			}
+			if repo.upsertCalls != 0 {
+				t.Errorf("repo.upsertCalls = %d, want 0", repo.upsertCalls)
+			}
+		})
+	}
+}
+
+//nolint:dupl
+func TestMarkReadForbiddenWhenNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: false}, &fakeComics{exists: true}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, comicID, 1.0, 10),
+		},
+	}, tx)
+
+	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     uuid.New(),
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{chID},
+	})
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("err = %v, want ErrForbidden", err)
+	}
+	if tx.calls != 0 {
+		t.Errorf("tx.calls = %d, want 0", tx.calls)
+	}
+	if repo.upsertCalls != 0 {
+		t.Errorf("repo.upsertCalls = %d, want 0", repo.upsertCalls)
+	}
+}
+
+//nolint:dupl
+func TestMarkReadNotFoundWhenComicMissing(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: false}, &fakeComics{exists: false}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, comicID, 2.5, 10),
+		},
+	}, tx)
+
+	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     uuid.New(),
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{chID},
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+	if tx.calls != 0 {
+		t.Errorf("tx.calls = %d, want 0", tx.calls)
+	}
+	if repo.upsertCalls != 0 {
+		t.Errorf("repo.upsertCalls = %d, want 0", repo.upsertCalls)
+	}
+}
+
+//nolint:dupl
+func TestMarkReadUnknownChapter(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			ch1: ch(ch1, comicID, 1.0, 10),
+		},
+	}, tx)
+
+	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     uuid.New(),
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{ch1, ch2},
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+	if tx.calls != 0 {
+		t.Errorf("tx.calls = %d, want 0", tx.calls)
+	}
+	if repo.upsertCalls != 0 {
+		t.Errorf("repo.upsertCalls = %d, want 0", repo.upsertCalls)
+	}
+}
+
+//nolint:dupl
+func TestMarkReadForeignComicChapter(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	otherComicID := uuid.New()
+	chID := uuid.New()
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, otherComicID, 3.0, 10),
+		},
+	}, tx)
+
+	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     uuid.New(),
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{chID},
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+	if tx.calls != 0 {
+		t.Errorf("tx.calls = %d, want 0", tx.calls)
+	}
+	if repo.upsertCalls != 0 {
+		t.Errorf("repo.upsertCalls = %d, want 0", repo.upsertCalls)
+	}
+}
+
+//nolint:dupl
+func TestMarkReadOnlyZeroPagesNb(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, comicID, 4.0, 0),
+		},
+	}, tx)
+
+	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     uuid.New(),
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{chID},
+	})
+	if !errors.Is(err, readingprogress.ErrInvalid) {
+		t.Errorf("err = %v, want ErrInvalid", err)
+	}
+	if tx.calls != 0 {
+		t.Errorf("tx.calls = %d, want 0", tx.calls)
+	}
+	if repo.upsertCalls != 0 {
+		t.Errorf("repo.upsertCalls = %d, want 0", repo.upsertCalls)
+	}
+}
+
+func TestMarkReadDedupesBeforeLookup(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	chaps := &fakeChapters{
+		byID: map[uuid.UUID]chapters.Chapter{
+			chID: ch(chID, comicID, 5.0, 10),
+		},
+	}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, chaps, tx)
+
+	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     uuid.New(),
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{chID, chID},
+	})
+	if len(chaps.lastIDs) != 1 {
+		t.Fatalf("len(chaps.lastIDs) = %d, want 1", len(chaps.lastIDs))
+	}
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+}
+
+func TestMarkReadFirstProgressContinueIsHighestNumber(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	byID := make(map[uuid.UUID]chapters.Chapter, 10)
+	ids := make([]uuid.UUID, 10)
+	for i := 0; i < 10; i++ {
+		id := uuid.New()
+		ids[i] = id
+		byID[id] = ch(id, comicID, float64(i+1), 20)
+	}
+
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: ids,
+	})
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+
+	if tx.calls != 1 {
+		t.Errorf("tx.calls = %d, want 1", tx.calls)
+	}
+	if repo.upsertCalls < 10 {
+		t.Errorf("repo.upsertCalls = %d, want >= 10", repo.upsertCalls)
+	}
+
+	seenEligible := make(map[uuid.UUID]bool, len(ids))
+	for _, up := range repo.upserts {
+		if up.Page == 20 {
+			seenEligible[up.ChapterID] = true
+		}
+	}
+	for _, id := range ids {
+		if !seenEligible[id] {
+			t.Errorf("chapter %v was not upserted with Page 20", id)
+		}
+	}
+
+	lastUpsert := repo.upserts[len(repo.upserts)-1]
+	wantWinnerID := ids[9]
+	if lastUpsert.ChapterID != wantWinnerID || lastUpsert.Page != 20 {
+		t.Errorf("last upsert = %+v, want chapter %v at page 20", lastUpsert, wantWinnerID)
+	}
+
+	if len(repo.upserts) > 1 && !lastUpsert.UpdatedAt.After(repo.upserts[0].UpdatedAt) {
+		t.Errorf(
+			"last upsert UpdatedAt %v not after first upsert UpdatedAt %v",
+			lastUpsert.UpdatedAt,
+			repo.upserts[0].UpdatedAt,
+		)
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != wantWinnerID || got.Continue.Page != 20 {
+		t.Errorf("got.Continue = %+v, want chapter %v at page 20", got.Continue, wantWinnerID)
+	}
+}
+
+func TestMarkReadKeepsEarlierContinuePage(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	ch50ID := uuid.New()
+	ch50 := ch(ch50ID, comicID, 50.0, 20)
+
+	byID := make(map[uuid.UUID]chapters.Chapter, 41)
+	byID[ch50ID] = ch50
+
+	ids := make([]uuid.UUID, 40)
+	for i := 0; i < 40; i++ {
+		id := uuid.New()
+		ids[i] = id
+		byID[id] = ch(id, comicID, float64(i+1), 10)
+	}
+
+	repo := &fakeRepo{
+		latest: &readingprogress.Progress{
+			ChapterID: ch50ID,
+			Page:      3,
+			UpdatedAt: time.Unix(10, 0).UTC(),
+		},
+	}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: ids,
+	})
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+
+	if len(repo.upserts) < 2 {
+		t.Fatalf("len(repo.upserts) = %d, want at least 2", len(repo.upserts))
+	}
+
+	for i, up := range repo.upserts[:len(repo.upserts)-1] {
+		if up.ChapterID == ch50ID {
+			t.Errorf("upsert[%d] has ch50, want only in last upsert", i)
+		}
+		if up.Page != 10 {
+			t.Errorf("upsert[%d] Page = %d, want 10", i, up.Page)
+		}
+	}
+
+	lastUpsert := repo.upserts[len(repo.upserts)-1]
+	if lastUpsert.ChapterID != ch50ID || lastUpsert.Page != 3 {
+		t.Errorf("last upsert = %+v, want ch50 at page 3", lastUpsert)
+	}
+	if !lastUpsert.UpdatedAt.After(repo.upserts[0].UpdatedAt) {
+		t.Errorf("last upsert UpdatedAt not after first upsert UpdatedAt")
+	}
+
+	if got.Continue == nil || got.Continue.ChapterID != ch50ID || got.Continue.Page != 3 {
+		t.Errorf("got.Continue = %+v, want ch50 at page 3", got.Continue)
+	}
+}
+
+func TestMarkReadKeepsCompletedLaterContinue(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	ch100ID := uuid.New()
+	ch100 := ch(ch100ID, comicID, 100.0, 50)
+
+	byID := make(map[uuid.UUID]chapters.Chapter, 11)
+	byID[ch100ID] = ch100
+
+	ids := make([]uuid.UUID, 10)
+	for i := 0; i < 10; i++ {
+		id := uuid.New()
+		ids[i] = id
+		byID[id] = ch(id, comicID, float64(i+1), 20)
+	}
+
+	repo := &fakeRepo{
+		latest: &readingprogress.Progress{
+			ChapterID: ch100ID,
+			Page:      50,
+			UpdatedAt: time.Unix(10, 0).UTC(),
+		},
+	}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: ids,
+	})
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+
+	for i, up := range repo.upserts[:len(repo.upserts)-1] {
+		if up.ChapterID == ch100ID {
+			t.Errorf("non-final upsert[%d] rewrote ch100", i)
+		}
+	}
+
+	lastUpsert := repo.upserts[len(repo.upserts)-1]
+	if lastUpsert.ChapterID != ch100ID || lastUpsert.Page != 50 {
+		t.Errorf("last upsert = %+v, want ch100 at page 50", lastUpsert)
+	}
+	if got.Continue == nil || got.Continue.ChapterID != ch100ID || got.Continue.Page != 50 {
+		t.Errorf("got.Continue = %+v, want ch100 at page 50", got.Continue)
+	}
+}
+
+func TestMarkReadMovesContinueForward(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	byID := make(map[uuid.UUID]chapters.Chapter, 50)
+	ids := make([]uuid.UUID, 50)
+	for i := 0; i < 50; i++ {
+		id := uuid.New()
+		ids[i] = id
+		byID[id] = ch(id, comicID, float64(i+1), 15)
+	}
+
+	ch5ID := ids[4]
+	ch50ID := ids[49]
+
+	repo := &fakeRepo{
+		latest: &readingprogress.Progress{
+			ChapterID: ch5ID,
+			Page:      2,
+			UpdatedAt: time.Unix(10, 0).UTC(),
+		},
+	}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: ids,
+	})
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+
+	foundCh5Upsert := false
+	for _, up := range repo.upserts[:len(repo.upserts)-1] {
+		if up.ChapterID == ch5ID && up.Page == 15 {
+			foundCh5Upsert = true
+		}
+	}
+	if !foundCh5Upsert {
+		t.Errorf("ch5 was not upserted to page 15 in loop")
+	}
+
+	lastUpsert := repo.upserts[len(repo.upserts)-1]
+	if lastUpsert.ChapterID != ch50ID || lastUpsert.Page != 15 {
+		t.Errorf("last upsert = %+v, want ch50 at page 15", lastUpsert)
+	}
+	if got.Continue == nil || got.Continue.ChapterID != ch50ID || got.Continue.Page != 15 {
+		t.Errorf("got.Continue = %+v, want ch50 at page 15", got.Continue)
+	}
+}
+
+func TestMarkReadSkipsZeroPagesNbAmongEligible(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	ch1ID := uuid.New()
+	ch2ID := uuid.New()
+	ch3ID := uuid.New()
+
+	byID := map[uuid.UUID]chapters.Chapter{
+		ch1ID: ch(ch1ID, comicID, 1.0, 0),
+		ch2ID: ch(ch2ID, comicID, 2.0, 10),
+		ch3ID: ch(ch3ID, comicID, 3.0, 10),
+	}
+
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{ch1ID, ch2ID, ch3ID},
+	})
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+
+	for _, up := range repo.upserts {
+		if up.ChapterID == ch1ID {
+			t.Errorf("ch1 (PagesNb: 0) was upserted")
+		}
+	}
+
+	lastUpsert := repo.upserts[len(repo.upserts)-1]
+	if lastUpsert.ChapterID != ch3ID || lastUpsert.Page != 10 {
+		t.Errorf("last upsert = %+v, want ch3 at page 10", lastUpsert)
+	}
+	if got.Continue == nil || got.Continue.ChapterID != ch3ID || got.Continue.Page != 10 {
+		t.Errorf("got.Continue = %+v, want ch3 at page 10", got.Continue)
+	}
+}
+
+func TestMarkReadDuplicateIDsOneWritePerChapter(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	ch1ID := uuid.New()
+
+	byID := map[uuid.UUID]chapters.Chapter{
+		ch1ID: ch(ch1ID, comicID, 1.0, 8),
+	}
+
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{ch1ID, ch1ID},
+	})
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+
+	ch1Upserts := 0
+	for _, up := range repo.upserts {
+		if up.ChapterID == ch1ID {
+			ch1Upserts++
+		}
+	}
+	if ch1Upserts > 2 {
+		t.Errorf("ch1 upserts = %d, want <= 2", ch1Upserts)
+	}
+}
+
+func TestMarkReadMissingContinueChapterTreatsAsNone(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	missingID := uuid.New()
+	ch3ID := uuid.New()
+	ch7ID := uuid.New()
+
+	byID := map[uuid.UUID]chapters.Chapter{
+		ch3ID: ch(ch3ID, comicID, 3.0, 12),
+		ch7ID: ch(ch7ID, comicID, 7.0, 12),
+	}
+
+	repo := &fakeRepo{
+		latest: &readingprogress.Progress{
+			ChapterID: missingID,
+			Page:      5,
+			UpdatedAt: time.Unix(10, 0).UTC(),
+		},
+	}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{ch3ID, ch7ID},
+	})
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+
+	for _, up := range repo.upserts {
+		if up.ChapterID == missingID {
+			t.Errorf("missing continue chapter %v was upserted", missingID)
+		}
+	}
+
+	lastUpsert := repo.upserts[len(repo.upserts)-1]
+	if lastUpsert.ChapterID != ch7ID || lastUpsert.Page != 12 {
+		t.Errorf("last upsert = %+v, want ch7 at page 12", lastUpsert)
+	}
+	if got.Continue == nil || got.Continue.ChapterID != ch7ID || got.Continue.Page != 12 {
+		t.Errorf("got.Continue = %+v, want ch7 at page 12", got.Continue)
+	}
+}
+
+func TestMarkReadTxErrorNoListSideEffect(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	chID := uuid.New()
+	byID := map[uuid.UUID]chapters.Chapter{
+		chID: ch(chID, comicID, 1.0, 10),
+	}
+
+	t.Run("upsert error inside tx", func(t *testing.T) {
+		t.Parallel()
+
+		upsertErr := errors.New("db error")
+		repo := &fakeRepo{upsertErr: upsertErr}
+		tx := &fakeTransactor{}
+		svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+		_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+			UserID:     uuid.New(),
+			ComicID:    comicID,
+			ChapterIDs: []uuid.UUID{chID},
+		})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if !errors.Is(err, upsertErr) {
+			t.Errorf("err = %v, want wrapped %v", err, upsertErr)
+		}
+	})
+
+	t.Run("withinTx returns error", func(t *testing.T) {
+		t.Parallel()
+
+		txErr := errors.New("tx commit failed")
+		repo := &fakeRepo{}
+		tx := &fakeTransactor{err: txErr}
+		svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+		_, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+			UserID:     uuid.New(),
+			ComicID:    comicID,
+			ChapterIDs: []uuid.UUID{chID},
+		})
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if !errors.Is(err, txErr) {
+			t.Errorf("err = %v, want wrapped %v", err, txErr)
+		}
+	})
+}
+
+func TestMarkReadTieBreakByUUID(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicID := uuid.New()
+	id1 := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	id2 := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+
+	byID := map[uuid.UUID]chapters.Chapter{
+		id1: ch(id1, comicID, 1.0, 10),
+		id2: ch(id2, comicID, 1.0, 10),
+	}
+
+	repo := &fakeRepo{}
+	tx := &fakeTransactor{}
+	svc := markReadSvc(t, repo, &fakeLibrary{inLib: true}, &fakeComics{exists: true}, &fakeChapters{byID: byID}, tx)
+
+	got, err := svc.MarkRead(context.Background(), readingprogress.MarkReadOpts{
+		UserID:     userID,
+		ComicID:    comicID,
+		ChapterIDs: []uuid.UUID{id2, id1},
+	})
+	if err != nil {
+		t.Fatalf("MarkRead: %v", err)
+	}
+
+	lastUpsert := repo.upserts[len(repo.upserts)-1]
+	if lastUpsert.ChapterID != id1 {
+		t.Errorf("winner = %v, want %v (smallest UUID)", lastUpsert.ChapterID, id1)
+	}
+	if got.Continue == nil || got.Continue.ChapterID != id1 {
+		t.Errorf("got.Continue = %+v, want chapter %v", got.Continue, id1)
 	}
 }
