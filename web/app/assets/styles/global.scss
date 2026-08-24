@@ -2,7 +2,9 @@
 html,
 body,
 #__nuxt {
-  height: 100vh;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   margin: 0;
   padding: 0;
   overflow-y: auto !important;

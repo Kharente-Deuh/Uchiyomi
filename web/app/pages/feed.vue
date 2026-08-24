@@ -24,7 +24,7 @@ useIntersectionObserver(loadMoreSentinel, ([entry]) => {
     <template #sub-header>
       <div
         v-if="smAndDown"
-        class="d-flex ga-4 flex-wrap px-8"
+        class="d-flex ga-4 flex-wrap px-8 pt-3"
       >
         <ComicsInputSource v-model="source" :disabled="isLoading" />
         <ComicsInputType v-model="type" :disabled="isLoading" />

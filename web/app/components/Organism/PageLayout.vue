@@ -49,7 +49,7 @@ const { height: headerHeight } = useElementSize(headerRef, undefined, { box: 'bo
       <div
         v-if="title"
         class="d-flex ga-3 align-center justify-space-between"
-        :class="[smAndDown ? 'px-6 py-3' : 'mb-8']"
+        :class="[smAndDown ? 'px-6 pb-3' : 'mb-8']"
       >
         <div class="d-flex align-center ga-4 text-truncate">
           <div v-if="backRoutes?.length" class="d-flex ga-4 align-center">
