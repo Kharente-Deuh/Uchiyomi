@@ -28,6 +28,7 @@ const (
 	cookieName      = "uchiyomi_session"
 	testToken       = "letoken"
 	testDisplayName = "Keycloak"
+	testSlug        = "keycloak"
 	testIssuerURL   = "https://sso.example.com"
 	testUsername    = "alice"
 
@@ -156,7 +157,7 @@ func sampleProvider() *oidcproviders.OIDCProvider {
 	return &oidcproviders.OIDCProvider{
 		ID:            uuid.New(),
 		DisplayName:   testDisplayName,
-		Slug:          "keycloak",
+		Slug:          testSlug,
 		IssuerURL:     testIssuerURL,
 		ClientID:      "uchiyomi",
 		UsernameClaim: "preferred_username",
@@ -174,7 +175,7 @@ func TestListReturnsOnlyTheLightFields(t *testing.T) {
 
 	id := uuid.New()
 	svc := &stubService{list: []oidcproviders.LightOIDCProvider{
-		{ID: id, DisplayName: testDisplayName, Slug: "keycloak", CreatedAt: time.Now(), UserCount: 3},
+		{ID: id, DisplayName: testDisplayName, Slug: testSlug, CreatedAt: time.Now(), UserCount: 3},
 	}}
 	r := newRouter(t, svc, adminMiddlewares(t, admin()))
 
@@ -212,8 +213,8 @@ func TestListReturnsOnlyTheLightFields(t *testing.T) {
 		t.Errorf("userCount = %v, want 3", got[0]["userCount"])
 	}
 
-	if got[0]["slug"] != "keycloak" {
-		t.Errorf("slug = %v, want keycloak", got[0]["slug"])
+	if got[0]["slug"] != testSlug {
+		t.Errorf("slug = %v, want %s", got[0]["slug"], testSlug)
 	}
 }
 
@@ -244,8 +245,8 @@ func TestGetReturnsTheProviderWithoutASecret(t *testing.T) {
 		t.Errorf("issuerUrl = %v, want the full provider", got["issuerUrl"])
 	}
 
-	if got["slug"] != "keycloak" {
-		t.Errorf("slug = %v, want keycloak", got["slug"])
+	if got["slug"] != testSlug {
+		t.Errorf("slug = %v, want %s", got["slug"], testSlug)
 	}
 }
 
@@ -390,8 +391,8 @@ func TestCreateReturnsCreated(t *testing.T) {
 		t.Errorf("displayName = %q", got.DisplayName)
 	}
 
-	if got.Slug != "keycloak" {
-		t.Errorf("slug = %q, want keycloak", got.Slug)
+	if got.Slug != testSlug {
+		t.Errorf("slug = %q, want %s", got.Slug, testSlug)
 	}
 }
 
@@ -492,10 +493,10 @@ func TestCreateRejectsAnInvalidSlug(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]string{
-		"missing slug": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
-		"empty slug":   `{"slug":"","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
+		"missing slug":   `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`,                   //nolint:lll
+		"empty slug":     `{"slug":"","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`,         //nolint:lll
 		"wrong case key": `{"Slug":"Keycloak","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
-		"underscore":     `{"slug":"A_B","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`,         //nolint:lll
+		"underscore":     `{"slug":"A_B","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","clientSecret":"s","usernameClaim":"u","scopes":["openid"]}`,      //nolint:lll
 	}
 
 	for name, body := range tests {
@@ -521,9 +522,9 @@ func TestUpdateRejectsAnInvalidSlug(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]string{
-		"missing slug": `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
+		"missing slug":   `{"displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`,                   //nolint:lll
 		"wrong case key": `{"Slug":"Keycloak","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`, //nolint:lll
-		"underscore":     `{"slug":"A_B","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`,         //nolint:lll
+		"underscore":     `{"slug":"A_B","displayName":"K","issuerUrl":"https://s.example.com","clientId":"c","usernameClaim":"u","scopes":["openid"]}`,      //nolint:lll
 	}
 
 	for name, body := range tests {

@@ -68,6 +68,7 @@ watch(() => field('displayName').props.modelValue, (name: string) => {
   if (slugDirty.value) {
     return
   }
+
   field('slug').props['onUpdate:modelValue'](slugFromDisplayName(name))
 })
 

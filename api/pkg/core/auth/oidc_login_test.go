@@ -292,8 +292,8 @@ func TestStartOIDCLoginBuildsAuthCodeURLAndCookie(t *testing.T) {
 		t.Fatalf("StartOIDCLogin: %v", err)
 	}
 
-	if f.opr.gotSlug != "keycloak" {
-		t.Errorf("gotSlug = %q, want keycloak", f.opr.gotSlug)
+	if f.opr.gotSlug != testProviderSlug {
+		t.Errorf("gotSlug = %q, want %q", f.opr.gotSlug, testProviderSlug)
 	}
 
 	if got.AuthCodeURL != f.oc.authCodeURL {
@@ -387,7 +387,7 @@ func TestStartOIDCLoginRepositoryFailureIsUnavailable(t *testing.T) {
 	f := newFakes()
 	f.opr.err = errors.New("connection refused")
 
-	_, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{ProviderSlug: "keycloak"})
+	_, err := f.svc(t).StartOIDCLogin(context.Background(), auth.StartOIDCLoginOpts{ProviderSlug: testProviderSlug})
 	if !errors.Is(err, auth.ErrOIDCUnavailable) {
 		t.Errorf("err = %v, want ErrOIDCUnavailable", err)
 	}
