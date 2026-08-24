@@ -185,3 +185,22 @@ describe('createChaptersApi().retryDownload', () => {
     expect(res.success === false && res.error.status).toBe(409)
   })
 })
+
+describe('createChaptersApi().deleteProgress', () => {
+  it('sends DELETE to /:id/progress', async () => {
+    call.mockResolvedValue(undefined)
+
+    const res = await createChaptersApi().deleteProgress('ch-1')
+
+    expect(call).toHaveBeenCalledWith('/ch-1/progress', { method: 'DELETE' })
+    expect(res).toEqual({ success: true, data: undefined })
+  })
+
+  it('surfaces a failure with its status', async () => {
+    call.mockRejectedValue({ statusCode: 500, data: {} })
+
+    const res = await createChaptersApi().deleteProgress('ch-1')
+
+    expect(res.success === false && res.error.status).toBe(500)
+  })
+})

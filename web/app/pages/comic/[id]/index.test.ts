@@ -55,8 +55,12 @@ const GeneralStub = defineComponent({
 
 const ChaptersStub = defineComponent({
   name: 'ComicsChapters',
-  props: { id: { type: String, required: true } },
-  template: '<div data-test="chapters">{{ id }}</div>',
+  props: {
+    id: { type: String, required: true },
+    continue: { type: Object, default: undefined },
+  },
+  emits: ['refetchProgress'],
+  template: '<div data-test="chapters"><button data-test="refetch-progress-btn" @click="$emit(\'refetchProgress\')">{{ id }}</button></div>',
 })
 
 const DeleteStub = defineComponent({
@@ -127,8 +131,19 @@ describe('comicPage', () => {
 
     await vi.waitFor(() => expect(wrapper.find('[data-test="status-infos"]').text()).toBe('Solo Leveling'))
     expect(getById).toHaveBeenCalledWith('c1')
+    expect(getProgress).toHaveBeenCalledWith('c1')
     expect(wrapper.find('[data-test="general-infos"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="chapters"]').text()).toBe('c1')
+    expect(wrapper.find('[data-test="chapters"]').text()).toContain('c1')
+  })
+
+  it('refetches progress when ComicsChapters emits refetchProgress', async () => {
+    const wrapper = await mount()
+    await vi.waitFor(() => expect(wrapper.find('[data-test="status-infos"]').exists()).toBe(true))
+
+    getProgress.mockClear()
+    await wrapper.find('[data-test="refetch-progress-btn"]').trigger('click')
+
+    expect(getProgress).toHaveBeenCalledWith('c1')
   })
 
   it('shows the refresh and remove-from-library actions', async () => {

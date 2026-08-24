@@ -150,3 +150,94 @@ describe('createComicsApi().search', () => {
     expect(res.success === false && res.error.status).toBe(502)
   })
 })
+
+describe('createComicsApi().refreshById', () => {
+  it('posts to /:id/refresh and returns the refreshed comic', async () => {
+    call.mockResolvedValue(comic)
+
+    const res = await createComicsApi().refreshById('c1')
+
+    expect(call).toHaveBeenCalledWith('/c1/refresh', { method: 'POST' })
+    expect(res).toEqual({ success: true, data: comic })
+  })
+
+  it('surfaces a failure with its status', async () => {
+    call.mockRejectedValue({ statusCode: 500, data: {} })
+
+    const res = await createComicsApi().refreshById('c1')
+
+    expect(res.success === false && res.error.status).toBe(500)
+  })
+})
+
+describe('createComicsApi().getProgress', () => {
+  it('gets the comic progress by id', async () => {
+    const progressData = { continue: { chapterId: 'ch-1', page: 5 } }
+    call.mockResolvedValue(progressData)
+
+    const res = await createComicsApi().getProgress('c1')
+
+    expect(call).toHaveBeenCalledWith('/c1/progress', { method: 'GET' })
+    expect(res).toEqual({ success: true, data: { continue: progressData.continue } })
+  })
+
+  it('surfaces a failure with its status', async () => {
+    call.mockRejectedValue({ statusCode: 404, data: {} })
+
+    const res = await createComicsApi().getProgress('c1')
+
+    expect(res.success === false && res.error.status).toBe(404)
+  })
+})
+
+describe('createComicsApi().setChaptersProgress', () => {
+  it('posts chapter progress updates to /:comicId/progress', async () => {
+    call.mockResolvedValue(undefined)
+
+    const res = await createComicsApi().setChaptersProgress({
+      comicId: 'c1',
+      chapterIds: ['ch-1', 'ch-2'],
+      read: true,
+    })
+
+    expect(call).toHaveBeenCalledWith('/c1/progress', {
+      method: 'POST',
+      body: { chapterIds: ['ch-1', 'ch-2'], read: true },
+    })
+    expect(res).toEqual({ success: true, data: undefined })
+  })
+
+  it('surfaces a failure with its status', async () => {
+    call.mockRejectedValue({ statusCode: 400, data: {} })
+
+    const res = await createComicsApi().setChaptersProgress({
+      comicId: 'c1',
+      chapterIds: ['ch-1'],
+      read: false,
+    })
+
+    expect(res.success === false && res.error.status).toBe(400)
+  })
+})
+
+describe('createComicsApi().retryChaptersDownload', () => {
+  it('posts retry request to /:comicId/retry', async () => {
+    call.mockResolvedValue(undefined)
+
+    const res = await createComicsApi().retryChaptersDownload('c1', ['ch-1', 'ch-2'])
+
+    expect(call).toHaveBeenCalledWith('/c1/retry', {
+      method: 'POST',
+      body: { chapterIds: ['ch-1', 'ch-2'] },
+    })
+    expect(res).toEqual({ success: true, data: undefined })
+  })
+
+  it('surfaces a failure with its status', async () => {
+    call.mockRejectedValue({ statusCode: 500, data: {} })
+
+    const res = await createComicsApi().retryChaptersDownload('c1', ['ch-1'])
+
+    expect(res.success === false && res.error.status).toBe(500)
+  })
+})

@@ -82,4 +82,93 @@ describe('comicsChaptersItem', () => {
 
     expect(onRetry).toHaveBeenCalled()
   })
+
+  it('renders selectable checkbox and toggles selection on click', async () => {
+    const onUpdateSelected = vi.fn()
+    const wrapper = await mountSuspended({
+      render: () => h(VApp, () => [h(Item, {
+        'chapter': chapter(),
+        'retryLoading': false,
+        'updateProgressLoading': false,
+        'selectable': true,
+        'selected': false,
+        'onUpdate:selected': onUpdateSelected,
+      })]),
+    })
+
+    const icon = wrapper.find('.v-icon[class*="fa6-regular:square"], .v-icon')
+    expect(icon.exists()).toBe(true)
+
+    await wrapper.find('.readable-chapter').trigger('click')
+    expect(onUpdateSelected).toHaveBeenCalledWith(true)
+  })
+
+  it('does not toggle selection when disabled', async () => {
+    const onUpdateSelected = vi.fn()
+    const wrapper = await mountSuspended({
+      render: () => h(VApp, () => [h(Item, {
+        'chapter': chapter(),
+        'retryLoading': false,
+        'updateProgressLoading': false,
+        'selectable': true,
+        'selected': false,
+        'disabled': true,
+        'onUpdate:selected': onUpdateSelected,
+      })]),
+    })
+
+    await wrapper.find('.readable-chapter').trigger('click')
+    expect(onUpdateSelected).not.toHaveBeenCalled()
+  })
+
+  it('shows progress loading indicator when updateProgressLoading is true', async () => {
+    const wrapper = await mountSuspended({
+      render: () => h(VApp, () => [h(Item, {
+        chapter: chapter(),
+        retryLoading: false,
+        updateProgressLoading: true,
+        selectable: false,
+      })]),
+    })
+
+    expect(wrapper.findComponent(VProgressCircular).exists()).toBe(true)
+  })
+
+  it('emits updateProgress with read when chapter is unread', async () => {
+    const onUpdateProgress = vi.fn()
+    const wrapper = await mountSuspended({
+      render: () => h(VApp, () => [h(Item, {
+        chapter: chapter({ progress: undefined }),
+        retryLoading: false,
+        updateProgressLoading: false,
+        selectable: false,
+        onUpdateProgress,
+      })]),
+    })
+
+    const eyeIcons = wrapper.findAll('.v-icon')
+    const progressIcon = eyeIcons.at(-1)
+    await progressIcon?.trigger('click')
+
+    expect(onUpdateProgress).toHaveBeenCalledWith('read')
+  })
+
+  it('emits updateProgress with unread when chapter is read', async () => {
+    const onUpdateProgress = vi.fn()
+    const wrapper = await mountSuspended({
+      render: () => h(VApp, () => [h(Item, {
+        chapter: chapter({ progress: { page: 20, updatedAt: new Date() } }),
+        retryLoading: false,
+        updateProgressLoading: false,
+        selectable: false,
+        onUpdateProgress,
+      })]),
+    })
+
+    const eyeIcons = wrapper.findAll('.v-icon')
+    const progressIcon = eyeIcons.at(-1)
+    await progressIcon?.trigger('click')
+
+    expect(onUpdateProgress).toHaveBeenCalledWith('unread')
+  })
 })
