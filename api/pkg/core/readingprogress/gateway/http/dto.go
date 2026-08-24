@@ -28,7 +28,8 @@ type saveRequest struct {
 	Page *int `json:"page" validate:"required"`
 }
 
-type markReadRequest struct {
+type setReadRequest struct {
+	Read       *bool       `json:"read" validate:"required"`
 	ChapterIDs []uuid.UUID `json:"chapterIds" validate:"required,min=1,dive"`
 }
 

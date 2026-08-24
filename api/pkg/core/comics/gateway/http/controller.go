@@ -91,6 +91,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 		r.Post("/", c.create)
 		r.Get("/", c.getMany)
 		r.Post("/{id}/refresh", c.refreshByID)
+		r.Post("/{id}/retry", c.retryChapters)
 		r.Get("/{id}/cover", c.serveCover)
 		r.Get("/{id}", c.getByID)
 		r.Delete("/{id}", c.deleteByID)
@@ -444,4 +445,61 @@ func (c *Controller) serveCover(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", contentType)
 	http.ServeContent(w, r, diskPath, time.Time{}, f)
+}
+
+func (c *Controller) retryChapters(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.Error("user not found in context")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+		return
+	}
+
+	comicID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "id must be a valid UUID")
+
+		return
+	}
+
+	req, err := httputils.DecodeJSON[retryChaptersRequest](r)
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "invalid request body")
+
+		return
+	}
+
+	if len(req.ChapterIDs) == 0 {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "chapterIds must not be empty")
+
+		return
+	}
+
+	err = c.deps.ComicsService.RetryChapters(ctx, comics.RetryChaptersOpts{
+		ComicID:    comicID,
+		UserID:     user.ID,
+		ChapterIDs: req.ChapterIDs,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "comic not found")
+
+			return
+		}
+
+		if errors.Is(err, domain.ErrForbidden) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusForbidden, "comic not in library")
+
+			return
+		}
+
+		c.deps.Logger.Error("failed to retry chapters download", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+
+		return
+	}
+
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusAccepted, "")
 }

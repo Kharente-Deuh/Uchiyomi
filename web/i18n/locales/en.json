@@ -213,7 +213,9 @@
       "oldest": "Oldest"
     },
     "start": "Start",
-    "continue": "Continue"
+    "continue": "Continue",
+    "actions": "Actions",
+    "upToDate": "Up to date !"
   },
   "role": {
     "admin": "Admin",
@@ -322,8 +324,11 @@
       "download": {
         "error": "Chapter download error",
         "retry": "Retry",
-        "loading": "Chapter downloading..."
-      }
+        "loading": "Chapter downloading...",
+        "retryMany": "Retry download | Retry download (1) | Retry download ({count})"
+      },
+      "setReadMany": "Mark selected as read | Mark selected as read (1) | Mark selected as read ({count})",
+      "setUnreadMany": "Mark selected as not read | Mark selected as not read (1) | Mark selected as not read ({count})"
     },
     "betweenChapters": {
       "current": "Current chapter",

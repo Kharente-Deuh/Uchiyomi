@@ -34,6 +34,7 @@ function createChaptersApiStub(): ChaptersApi {
     getByComicId: vi.fn(),
     getById: vi.fn(),
     saveProgress: vi.fn(),
+    deleteProgress: vi.fn(),
   }
 }
 

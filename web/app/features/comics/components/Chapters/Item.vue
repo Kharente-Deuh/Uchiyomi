@@ -6,9 +6,17 @@ import { formatRelativeTime } from '~/utils/date.utils'
 const props = defineProps<{
   chapter: Chapter
   retryLoading: boolean
+  updateProgressLoading: boolean
+  selectable: boolean
+  disabled?: boolean
 }>()
 
-defineEmits<{ retry: [] }>()
+defineEmits<{
+  retry: []
+  updateProgress: [mode: 'read' | 'unread']
+}>()
+
+const isSelected = defineModel<boolean>('selected', { required: false, default: false })
 
 const { locale } = useI18n()
 
@@ -36,12 +44,22 @@ const isChapterDownloaded = computed(() => props.chapter.download === 100)
 const isChapterDownloadingError = computed(() => props.chapter.download === -1 && !props.retryLoading)
 
 const to = computed(() => {
-  if (props.chapter.download !== 100) {
+  if (props.chapter.download !== 100 || props.disabled || props.selectable) {
     return
   }
 
   return `/comic/${props.chapter.comicId}/${props.chapter.id}`
 })
+
+function handleClick(): void {
+  if (props.disabled) {
+    return
+  }
+
+  if (props.selectable) {
+    isSelected.value = !isSelected.value
+  }
+}
 </script>
 
 <template>
@@ -51,7 +69,9 @@ const to = computed(() => {
       :class="{
         'early-access-chapter': isEarlyAccess,
         'readable-chapter': !isEarlyAccess,
+        'cursor-pointer': !props.disabled,
       }"
+      @click="handleClick"
     >
       <div class="d-flex align-center ga-4">
         <div v-if="isEarlyAccess" class="d-flex flex-column items-center justify-center border-thin-gold pa-2 text-body-small rounded-lg early-access-icon">
@@ -119,7 +139,28 @@ const to = computed(() => {
           width="2"
           color="error"
         />
-        <span class="text-body-medium text-medium-emphasis" :class="{ 'text-gold': isEarlyAccess }">{{ date }}</span>
+        <VIcon v-if="props.selectable" :icon="isSelected ? 'fa6-solid:square-check' : 'fa6-regular:square'" />
+        <template v-else>
+          <span
+            class="text-body-medium text-medium-emphasis"
+            :class="{ 'text-gold': isEarlyAccess }"
+          >{{ date }}</span>
+
+          <VProgressCircular
+            v-if="props.updateProgressLoading"
+            indeterminate
+            size="18"
+            width="2"
+            color="primary"
+          />
+          <VIcon
+            v-else
+            :icon="chapter.progress && chapter.progress.page > 1 ? 'fa6-solid:eye' : 'fa6-solid:eye-low-vision'"
+            class="cursor-pointer"
+            color="surfaceVariant"
+            @click.prevent="$emit('updateProgress', (chapter.progress && chapter.progress.page > 1 ? 'unread' : 'read') as 'read' | 'unread')"
+          />
+        </template>
       </div>
     </div>
   </AtomLink>

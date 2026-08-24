@@ -72,6 +72,25 @@ func (r *PGReadingProgressRepository) GetLatestByUserAndComic(
 	return &ret, nil
 }
 
+func (r *PGReadingProgressRepository) ListByUserAndComic(
+	ctx context.Context, opts readingprogress.ListOpts,
+) ([]readingprogress.Progress, error) {
+	models, err := r.db(ctx).
+		Joins(clause.JoinTarget{Association: libraryEntryAssoc}, nil).
+		Where(`"LibraryEntry".user_id = ? AND "LibraryEntry".comic_id = ?`, opts.UserID, opts.ComicID).
+		Find(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("r.db(ctx).Find: %w", err)
+	}
+
+	ret := make([]readingprogress.Progress, 0, len(models))
+	for i := range models {
+		ret = append(ret, models[i].Domain())
+	}
+
+	return ret, nil
+}
+
 func (r *PGReadingProgressRepository) ListByUserAndChapterIDs(
 	ctx context.Context, opts readingprogress.MapOpts,
 ) ([]readingprogress.Progress, error) {
@@ -149,4 +168,26 @@ func (r *PGReadingProgressRepository) Upsert(
 	}
 
 	return model.Domain(), nil
+}
+
+func (r *PGReadingProgressRepository) DeleteByUserAndChapterIDs(
+	ctx context.Context, opts readingprogress.DeleteProgressOpts,
+) error {
+	if len(opts.ChapterIDs) == 0 {
+		return nil
+	}
+
+	subQuery := r.deps.DB.WithContext(ctx).
+		Table("library_entries").
+		Select("id").
+		Where("user_id = ?", opts.UserID)
+
+	err := pgtx.From(ctx, r.deps.DB).WithContext(ctx).
+		Where("chapter_id IN ? AND library_entry_id IN (?)", opts.ChapterIDs, subQuery).
+		Delete(&pgmodels.ReadingProgress{}).Error
+	if err != nil {
+		return fmt.Errorf("pgtx.From(ctx, r.deps.DB).Delete: %w", err)
+	}
+
+	return nil
 }

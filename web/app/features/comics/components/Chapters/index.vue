@@ -8,6 +8,8 @@ const props = defineProps<{
   continue?: ComicProgressContinue
 }>()
 
+const emit = defineEmits<{ refetchProgress: [] }>()
+
 const POLL_INTERVAL_MS = 2000
 
 const { t } = useI18n()
@@ -132,41 +134,6 @@ async function retryChapter(chapterId: string): Promise<void> {
   delete retryChaptersLoading.value[chapterId]
 }
 
-const nextChapter = computed(() => {
-  if (!props.continue) {
-    return
-  }
-
-  const chaptersCpy = sort.value === 'asc' ? chapters.value : chapters.value.toSorted((a, b) => a.number - b.number)
-  const continueCpy = props.continue
-
-  if (!continueCpy) {
-    return chaptersCpy[0] as Chapter
-  }
-
-  const i = chaptersCpy.findIndex(chapter => chapter.id === continueCpy.chapterId)
-  if (i === -1) {
-    return
-  }
-
-  if (continueCpy.page === chaptersCpy[i]!.pagesNb) {
-    if (i === chaptersCpy.length - 1) {
-      return
-    }
-
-    return chaptersCpy[i + 1] as Chapter
-  }
-
-  return chaptersCpy[i] as Chapter
-})
-const nextChapterText = computed(() => {
-  if (!nextChapter.value || smAndDown.value) {
-    return
-  }
-
-  return nextChapter.value.number === 1 ? $t('common.start') : $t('common.continue')
-})
-
 const sortIcon = computed(() => sort.value === 'asc' ? 'fa6-solid:arrow-down-short-wide' : 'fa6-solid:arrow-up-short-wide')
 const sortText = computed(() => {
   if (smAndDown.value) {
@@ -175,34 +142,174 @@ const sortText = computed(() => {
 
   return sort.value === 'asc' ? $t('common.sort.oldest') : $t('common.sort.latest')
 })
+
+const updateProgressLoading = ref<Record<string, boolean>>({})
+async function updateProgress(chapterId: string, mode: 'read' | 'unread'): Promise<void> {
+  if (updateProgressLoading.value[chapterId]) {
+    return
+  }
+
+  updateProgressLoading.value[chapterId] = true
+
+  let success = false
+
+  switch (mode) {
+    case 'read':
+      success = await setChapterRead(chapterId)
+      break
+    case 'unread':
+      success = await setChapterUnread(chapterId)
+      break
+  }
+
+  if (success) {
+    emit('refetchProgress')
+  }
+
+  delete updateProgressLoading.value[chapterId]
+}
+
+async function setChapterRead(chapterId: string): Promise<boolean> {
+  const index = chapters.value.findIndex(chapter => chapter.id === chapterId)
+  if (index === -1) {
+    return false
+  }
+
+  const res = await api.saveProgress({
+    id: chapterId,
+    page: chapters.value[index]!.pagesNb,
+  })
+
+  if (!res.success) {
+    console.error('chaptersApi.saveProgress', res.error)
+    toast.error(t('error.unknown'))
+
+    return false
+  }
+
+  chapters.value[index]!.progress = res.data
+
+  return true
+}
+
+async function setChapterUnread(chapterId: string): Promise<boolean> {
+  const index = chapters.value.findIndex(chapter => chapter.id === chapterId)
+  if (index === -1) {
+    return false
+  }
+
+  const res = await api.deleteProgress(chapterId)
+  if (!res.success) {
+    console.error('chaptersApi.deleteProgress', res.error)
+    toast.error(t('error.unknown'))
+
+    return false
+  }
+
+  chapters.value[index]!.progress = undefined
+
+  return true
+}
+
+const selectedChapters = ref<Chapter[]>([])
+const selectableChapters = computed(() => sortedChapters.value.filter(({ earlyAccessUntil }) => !earlyAccessUntil || earlyAccessUntil < new Date()))
+const selectAllChaptersIcon = computed(() => {
+  if (!selectedChapters.value.length || selectableChapters.value.length === 0) {
+    return 'fa6-regular:square'
+  }
+
+  if (selectableChapters.value.length > 0 && selectedChapters.value.length === selectableChapters.value.length) {
+    return 'fa6-solid:square-check'
+  }
+
+  return 'fa6-solid:square-minus'
+})
+
+function toggleSelectAllChapters(): void {
+  if (selectedChapters.value.length === selectableChapters.value.length) {
+    selectedChapters.value = []
+
+    return
+  }
+
+  selectedChapters.value = [...selectableChapters.value]
+}
+
+function toggleSelectChapter(chapterId: string): void {
+  const chapter = chapters.value.find(chapter => chapter.id === chapterId)
+  if (!chapter || (chapter.earlyAccessUntil && chapter.earlyAccessUntil > new Date())) {
+    return
+  }
+
+  if (selectedChapters.value.some(chapter => chapter.id === chapterId)) {
+    selectedChapters.value = selectedChapters.value.filter(chapter => chapter.id !== chapterId)
+  } else {
+    selectedChapters.value.push(chapters.value.find(chapter => chapter.id === chapterId)!)
+  }
+}
+
+function onSelectionAction(updateContinue: boolean): void {
+  if (updateContinue) {
+    emit('refetchProgress')
+  }
+
+  fetchChapters()
+}
 </script>
 
 <template>
   <div class="d-flex flex-column w-100 position-relative bg-surface" style="border-radius: 12px; max-height: 40rem;">
-    <div class="d-flex justify-space-between ga-6 pa-4 border-b-thin bg-surface align-center" style="z-index: 1; border-top-left-radius: 12px; border-top-right-radius: 12px;">
+    <div
+      v-if="selectedChapters.length === 0"
+      class="d-flex justify-space-between ga-6 pa-4 border-b-thin bg-surface align-center"
+      style="z-index: 1; border-top-left-radius: 12px; border-top-right-radius: 12px;"
+    >
       <span class="text-title-large font-weight-bold">{{ $t('sources.asurascans.comic.chaptersCount', { count: chapters.length }) }}</span>
-      <AtomLink
-        v-if="nextChapter"
-        :to="nextChapter && nextChapter.download === 100 ? `/comic/${props.id}/${nextChapter.id}` : undefined"
-      >
+      <ComicsChaptersContinue
+        :comic-id="props.id"
+        :continue="props.continue"
+        :chapters="sortedChapters"
+        :sort
+      />
+
+      <div class="d-flex align-center ga-4">
         <VBtn
           variant="tonal"
-          class="border-thin-primary"
-          :icon="smAndDown ? 'fa6-solid:play' : undefined"
-          :prepend-icon="smAndDown ? undefined : 'fa6-solid:play'"
-          :text="nextChapterText"
+          class="text-body-medium"
+          color="surfaceVariant"
+          :icon="smAndDown ? sortIcon : undefined"
+          :text="sortText"
           :size="smAndDown ? 'small' : undefined"
+          :prepend-icon="smAndDown ? undefined : sortIcon"
+          @click="sort = sort === 'asc' ? 'desc' : 'asc'"
         />
-      </AtomLink>
-      <VBtn
-        variant="tonal"
-        class="text-body-medium"
-        color="surfaceVariant"
-        :icon="smAndDown ? sortIcon : undefined"
-        :text="sortText"
-        :size="smAndDown ? 'small' : undefined"
-        :prepend-icon="smAndDown ? undefined : sortIcon"
-        @click="sort = sort === 'asc' ? 'desc' : 'asc'"
+
+        <VIcon
+          :icon="selectAllChaptersIcon"
+          cursor="pointer"
+          size="large"
+          @click="toggleSelectAllChapters"
+        />
+      </div>
+    </div>
+    <div
+      v-else
+      class="d-flex ga-6 pa-4 border-b-thin bg-surface align-center"
+      style="z-index: 1; border-top-left-radius: 12px; border-top-right-radius: 12px;"
+    >
+      <div class="d-flex align-center w-100 justify-center">
+        <ComicsChaptersActions
+          v-model="selectedChapters"
+          :comic-id="props.id"
+          @refetch-chapters="onSelectionAction"
+        />
+      </div>
+
+      <VIcon
+        :icon="selectAllChaptersIcon"
+        cursor="pointer"
+        size="large"
+        @click="toggleSelectAllChapters"
       />
     </div>
 
@@ -219,7 +326,13 @@ const sortText = computed(() => {
       <template #default="{ item }">
         <ComicsChaptersItem
           :chapter="item"
+          :disabled="item.earlyAccessUntil && item.earlyAccessUntil > new Date() && selectedChapters.length > 0"
+          :selectable="selectedChapters.length > 0"
+          :selected="selectedChapters.some(chapter => chapter.id === item.id)"
           :retry-loading="!!retryChaptersLoading[item.id]"
+          :update-progress-loading="!!updateProgressLoading[item.id]"
+          @update:selected="toggleSelectChapter(item.id)"
+          @update-progress="updateProgress(item.id, $event)"
           @retry="retryChapter(item.id)"
         />
       </template>

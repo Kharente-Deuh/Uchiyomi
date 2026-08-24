@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -66,30 +67,71 @@ func (s *Service) List(ctx context.Context, opts ListOpts) (ListResult, error) {
 		return ListResult{}, err
 	}
 
-	row, err := s.deps.Repository.GetLatestByUserAndComic(ctx, opts)
+	chList, err := s.deps.Chapters.ListByComicID(ctx, opts.ComicID)
 	if err != nil {
-		return ListResult{}, fmt.Errorf("s.deps.Repository.GetLatestByUserAndComic: %w", err)
+		return ListResult{}, fmt.Errorf("s.deps.Chapters.ListByComicID: %w", err)
 	}
 
-	if row == nil {
+	if len(chList) == 0 {
 		return ListResult{}, nil
 	}
 
-	chapter, err := s.deps.Chapters.GetByID(ctx, row.ChapterID)
+	progresses, err := s.deps.Repository.ListByUserAndComic(ctx, opts)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			return ListResult{
-				Continue: &Continue{ChapterID: row.ChapterID, Page: row.Page},
-			}, nil
+		return ListResult{}, fmt.Errorf("s.deps.Repository.ListByUserAndComic: %w", err)
+	}
+
+	if len(progresses) == 0 {
+		return ListResult{}, nil
+	}
+
+	sort.SliceStable(chList, func(i, j int) bool {
+		if chList[i].Number != chList[j].Number {
+			return chList[i].Number < chList[j].Number
 		}
 
-		return ListResult{}, fmt.Errorf("s.deps.Chapters.GetByID: %w", err)
+		return bytes.Compare(chList[i].ID[:], chList[j].ID[:]) < 0
+	})
+
+	progMap := make(map[uuid.UUID]int, len(progresses))
+	for _, p := range progresses {
+		progMap[p.ChapterID] = p.Page
+	}
+
+	highestIdx := -1
+	for i := range chList {
+		page, ok := progMap[chList[i].ID]
+		if !ok {
+			continue
+		}
+
+		clamped := ClampPage(page, chList[i].PagesNb)
+		if clamped > 1 || (chList[i].PagesNb > 0 && clamped >= chList[i].PagesNb) {
+			highestIdx = i
+		}
+	}
+
+	if highestIdx == -1 {
+		return ListResult{}, nil
+	}
+
+	target := chList[highestIdx]
+	targetPage := ClampPage(progMap[target.ID], target.PagesNb)
+	if target.PagesNb > 0 && targetPage >= target.PagesNb && highestIdx+1 < len(chList) {
+		next := chList[highestIdx+1]
+
+		return ListResult{
+			Continue: &Continue{
+				ChapterID: next.ID,
+				Page:      1,
+			},
+		}, nil
 	}
 
 	return ListResult{
 		Continue: &Continue{
-			ChapterID: row.ChapterID,
-			Page:      ClampPage(row.Page, chapter.PagesNb),
+			ChapterID: target.ID,
+			Page:      targetPage,
 		},
 	}, nil
 }
@@ -164,7 +206,7 @@ func (s *Service) Save(ctx context.Context, opts SaveOpts) (Progress, error) {
 	return saved, nil
 }
 
-func (s *Service) MarkRead(ctx context.Context, opts MarkReadOpts) (ListResult, error) {
+func (s *Service) SetRead(ctx context.Context, opts SetReadOpts) (ListResult, error) {
 	ids := uniqueIDs(opts.ChapterIDs)
 	if len(ids) == 0 {
 		return ListResult{}, fmt.Errorf("%w: chapterIds is required", ErrInvalid)
@@ -198,40 +240,61 @@ func (s *Service) MarkRead(ctx context.Context, opts MarkReadOpts) (ListResult, 
 		return ListResult{}, fmt.Errorf("%w: no eligible chapters", ErrInvalid)
 	}
 
-	err = s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
-		return s.markReadTx(ctx, opts, eligible)
-	})
-	if err != nil {
-		return ListResult{}, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
+	eligibleIDs := make([]uuid.UUID, len(eligible))
+	for i, ch := range eligible {
+		eligibleIDs[i] = ch.ID
+	}
+
+	if opts.Read {
+		err = s.deps.Transactor.WithinTx(ctx, transaction.TxOpts{}, func(ctx context.Context) error {
+			return s.markReadTx(ctx, opts.UserID, opts.ComicID, eligible)
+		})
+		if err != nil {
+			return ListResult{}, fmt.Errorf("s.deps.Transactor.WithinTx: %w", err)
+		}
+	} else {
+		err = s.deps.Repository.DeleteByUserAndChapterIDs(ctx, DeleteProgressOpts{
+			UserID:     opts.UserID,
+			ChapterIDs: eligibleIDs,
+		})
+		if err != nil {
+			return ListResult{}, fmt.Errorf("s.deps.Repository.DeleteByUserAndChapterIDs: %w", err)
+		}
 	}
 
 	return s.List(ctx, ListOpts{UserID: opts.UserID, ComicID: opts.ComicID})
 }
 
-func (s *Service) markReadTx(
-	ctx context.Context,
-	opts MarkReadOpts,
-	eligible []chapters.Chapter,
-) error {
-	latest, err := s.deps.Repository.GetLatestByUserAndComic(ctx, ListOpts{
-		UserID:  opts.UserID,
-		ComicID: opts.ComicID,
+func (s *Service) Delete(ctx context.Context, opts DeleteOpts) error {
+	chapter, err := s.deps.Chapters.GetByID(ctx, opts.ChapterID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.ErrNotFound
+		}
+
+		return fmt.Errorf("s.deps.Chapters.GetByID: %w", err)
+	}
+
+	if err = s.requireLibrary(ctx, opts.UserID, chapter.ComicID); err != nil {
+		return err
+	}
+
+	err = s.deps.Repository.DeleteByUserAndChapterIDs(ctx, DeleteProgressOpts{
+		UserID:     opts.UserID,
+		ChapterIDs: []uuid.UUID{opts.ChapterID},
 	})
 	if err != nil {
-		return fmt.Errorf("s.deps.Repository.GetLatestByUserAndComic: %w", err)
+		return fmt.Errorf("s.deps.Repository.DeleteByUserAndChapterIDs: %w", err)
 	}
 
-	var (
-		cChapter *chapters.Chapter
-		cMissing bool
-	)
-	if latest != nil {
-		cChapter, cMissing, err = s.resolveContinueChapter(ctx, latest.ChapterID)
-		if err != nil {
-			return err
-		}
-	}
+	return nil
+}
 
+func (s *Service) markReadTx(
+	ctx context.Context,
+	userID, comicID uuid.UUID,
+	eligible []chapters.Chapter,
+) error {
 	eligibleIDs := make([]uuid.UUID, len(eligible))
 	for i, ch := range eligible {
 		eligibleIDs[i] = ch.ID
@@ -239,7 +302,7 @@ func (s *Service) markReadTx(
 
 	existingProgress, err := s.deps.Repository.ListByUserAndChapterIDs(ctx, MapOpts{
 		IDs:    eligibleIDs,
-		UserID: opts.UserID,
+		UserID: userID,
 	})
 	if err != nil {
 		return fmt.Errorf("s.deps.Repository.ListByUserAndChapterIDs: %w", err)
@@ -256,8 +319,8 @@ func (s *Service) markReadTx(
 		if !ok || storedPage != ch.PagesNb {
 			_, err := s.deps.Repository.Upsert(ctx, UpsertOpts{
 				UpdatedAt: writtenAt,
-				UserID:    opts.UserID,
-				ComicID:   opts.ComicID,
+				UserID:    userID,
+				ComicID:   comicID,
 				ChapterID: ch.ID,
 				Page:      ch.PagesNb,
 			})
@@ -267,80 +330,7 @@ func (s *Service) markReadTx(
 		}
 	}
 
-	winnerID, winnerPage := continueWinner(eligible, latest, cChapter, cMissing)
-
-	retouchAt := time.Now().UTC()
-	if !retouchAt.After(writtenAt) {
-		retouchAt = writtenAt.Add(time.Nanosecond)
-	}
-
-	_, err = s.deps.Repository.Upsert(ctx, UpsertOpts{
-		UpdatedAt: retouchAt,
-		UserID:    opts.UserID,
-		ComicID:   opts.ComicID,
-		ChapterID: winnerID,
-		Page:      winnerPage,
-	})
-	if err != nil {
-		return fmt.Errorf("s.deps.Repository.Upsert: %w", err)
-	}
-
 	return nil
-}
-
-func (s *Service) resolveContinueChapter(
-	ctx context.Context,
-	chapterID uuid.UUID,
-) (*chapters.Chapter, bool, error) {
-	ch, err := s.deps.Chapters.GetByID(ctx, chapterID)
-	if err == nil {
-		return ch, false, nil
-	}
-
-	if errors.Is(err, domain.ErrNotFound) {
-		return nil, true, nil
-	}
-
-	return nil, false, fmt.Errorf("s.deps.Chapters.GetByID: %w", err)
-}
-
-func continueWinner(
-	eligible []chapters.Chapter,
-	latest *Progress,
-	cChapter *chapters.Chapter,
-	cMissing bool,
-) (uuid.UUID, int) {
-	h := highestEligible(eligible)
-	if latest == nil || cMissing || cChapter == nil {
-		return h.ID, h.PagesNb
-	}
-
-	if h.Number > cChapter.Number {
-		return h.ID, h.PagesNb
-	}
-
-	for _, ch := range eligible {
-		if ch.ID == latest.ChapterID {
-			return latest.ChapterID, ch.PagesNb
-		}
-	}
-
-	return latest.ChapterID, latest.Page
-}
-
-func highestEligible(eligible []chapters.Chapter) chapters.Chapter {
-	best := eligible[0]
-	for _, ch := range eligible[1:] {
-		if ch.Number > best.Number {
-			best = ch
-		} else if ch.Number == best.Number {
-			if bytes.Compare(ch.ID[:], best.ID[:]) < 0 {
-				best = ch
-			}
-		}
-	}
-
-	return best
 }
 
 func uniqueIDs(ids []uuid.UUID) []uuid.UUID {

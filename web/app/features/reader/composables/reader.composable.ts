@@ -129,7 +129,7 @@ export function useReader(opts: ReaderComposableOptions): ReaderComposable {
     }
 
     if (!opts.ignoreProgress?.value && chapter.value.progress) {
-      page.value = chapter.value.progress.page
+      page.value = chapter.value.progress.page - 1
     }
 
     if (opts.ignoreProgress?.value && opts.onAfterProgressIgnored) {
@@ -262,9 +262,10 @@ export function useReader(opts: ReaderComposableOptions): ReaderComposable {
       return
     }
 
-    const actualPage = readerSettings.value.doublePage && value + 1 < chapter.value.pagesNb
-      ? value + 1
-      : value
+    let actualPage = value + 1
+    if (readerSettings.value.doublePage && actualPage < chapter.value.pagesNb) {
+      actualPage++
+    }
 
     if (!chapter.value.progress || chapter.value.progress.page < actualPage) {
       saveProgress(chapter.value.id, actualPage)

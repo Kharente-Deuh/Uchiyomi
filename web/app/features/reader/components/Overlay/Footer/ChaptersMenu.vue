@@ -115,7 +115,7 @@ async function pollChapters(): Promise<void> {
 <template>
   <VBtn
     prepend-icon="fa6-solid:bars"
-    color="grey"
+    color="surfaceVariant"
     class="border-thin"
     :loading="chaptersLoading"
     :disabled="!chaptersLoading && chapters.length === 0"

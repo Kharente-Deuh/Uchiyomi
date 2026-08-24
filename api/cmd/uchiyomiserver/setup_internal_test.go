@@ -105,10 +105,16 @@ func (stubReadingProgressService) Save(context.Context, readingprogress.SaveOpts
 	return readingprogress.Progress{}, nil
 }
 
-func (stubReadingProgressService) MarkRead(
-	context.Context, readingprogress.MarkReadOpts,
+func (stubReadingProgressService) SetRead(
+	context.Context, readingprogress.SetReadOpts,
 ) (readingprogress.ListResult, error) {
 	return readingprogress.ListResult{}, nil
+}
+
+func (stubReadingProgressService) Delete(
+	context.Context, readingprogress.DeleteOpts,
+) error {
+	return nil
 }
 
 type emptyOIDCProvidersRepository struct{}

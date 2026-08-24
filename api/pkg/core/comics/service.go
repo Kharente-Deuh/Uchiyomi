@@ -299,3 +299,57 @@ func (s *Service) Delete(ctx context.Context, opts DeleteOpts) error {
 
 	return nil
 }
+
+func (s *Service) RetryChapters(ctx context.Context, opts RetryChaptersOpts) error {
+	if len(opts.ChapterIDs) == 0 {
+		return errors.New("opts.ChapterIDs must not be empty")
+	}
+
+	comic, err := s.deps.ComicsRepository.FindByID(ctx, opts.ComicID)
+	if err != nil {
+		return fmt.Errorf("s.deps.ComicsRepository.FindByID: %w", err)
+	}
+
+	if comic == nil {
+		return domain.ErrNotFound
+	}
+
+	inLibrary, err := s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, opts.ComicID)
+	if err != nil {
+		return fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+	}
+
+	if !inLibrary {
+		return domain.ErrForbidden
+	}
+
+	chapterList, err := s.deps.ChaptersService.ListByComicID(ctx, opts.ComicID)
+	if err != nil {
+		return fmt.Errorf("s.deps.ChaptersService.ListByComicID: %w", err)
+	}
+
+	requestedMap := make(map[uuid.UUID]struct{}, len(opts.ChapterIDs))
+	for _, id := range opts.ChapterIDs {
+		requestedMap[id] = struct{}{}
+	}
+
+	for _, chapter := range chapterList {
+		if _, requested := requestedMap[chapter.ID]; !requested {
+			continue
+		}
+
+		if chapter.Download >= 100 {
+			continue
+		}
+
+		err = s.deps.ChaptersService.RetryDownload(ctx, chapters.RetryDownloadOpts{
+			UserID:    opts.UserID,
+			ChapterID: chapter.ID,
+		})
+		if err != nil && !errors.Is(err, domain.ErrConflict) {
+			return fmt.Errorf("s.deps.ChaptersService.RetryDownload: %w", err)
+		}
+	}
+
+	return nil
+}

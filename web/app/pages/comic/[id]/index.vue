@@ -221,7 +221,11 @@ const showDeleteModal = ref(false)
           :comic
         />
         <ComicsGeneralInfos :comic />
-        <ComicsChapters :id="route.params.id" :continue="continueProgress" />
+        <ComicsChapters
+          :id="route.params.id"
+          :continue="continueProgress"
+          @refetch-progress="fetchProgress"
+        />
       </div>
     </div>
   </OrganismPageLayout>

@@ -279,6 +279,7 @@ type fakeChaptersService struct {
 	lastCleanupChapters      []chapters.Chapter
 	listByComicIDResult      []chapters.Chapter
 	createAllResult          []chapters.Chapter
+	retryDownloadCalls       []chapters.RetryDownloadOpts
 	createAllCalls           int
 	listByComicIDCalls       int
 	enqueueDownloadableCalls int
@@ -360,7 +361,9 @@ func (f *fakeChaptersService) CleanupComic(_ context.Context, comicID uuid.UUID,
 	return f.cleanupComicErr
 }
 
-func (f *fakeChaptersService) RetryDownload(context.Context, chapters.RetryDownloadOpts) error {
+func (f *fakeChaptersService) RetryDownload(_ context.Context, opts chapters.RetryDownloadOpts) error {
+	f.retryDownloadCalls = append(f.retryDownloadCalls, opts)
+
 	return nil
 }
 
@@ -1159,5 +1162,95 @@ func TestServeCoverReturnsLocalPath(t *testing.T) {
 
 	if coverStore.serveCalls != 1 {
 		t.Errorf("ServeLocal called %d times, want 1", coverStore.serveCalls)
+	}
+}
+
+func TestServiceRetryChaptersNotFound(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	userID := uuid.New()
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = &fakeComicsRepository{findByIDErr: domain.ErrNotFound}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	err = svc.RetryChapters(context.Background(), comics.RetryChaptersOpts{
+		ComicID:    comicID,
+		UserID:     userID,
+		ChapterIDs: []uuid.UUID{uuid.New()},
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("RetryChapters = %v, want domain.ErrNotFound", err)
+	}
+}
+
+func TestServiceRetryChaptersForbiddenWhenNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	userID := uuid.New()
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = &fakeComicsRepository{findByIDResult: &comics.Comic{ID: comicID}}
+	deps.LibraryRepository = &fakeLibraryRepository{inLibrary: false}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	err = svc.RetryChapters(context.Background(), comics.RetryChaptersOpts{
+		ComicID:    comicID,
+		UserID:     userID,
+		ChapterIDs: []uuid.UUID{uuid.New()},
+	})
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("RetryChapters = %v, want domain.ErrForbidden", err)
+	}
+}
+
+func TestServiceRetryChaptersSuccess(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	userID := uuid.New()
+	ch1ID := uuid.New()
+	ch2ID := uuid.New()
+	ch3CompletedID := uuid.New()
+
+	fakeChapters := &fakeChaptersService{
+		listByComicIDResult: []chapters.Chapter{
+			{ID: ch1ID, ComicID: comicID, Download: -1},
+			{ID: ch2ID, ComicID: comicID, Download: 50},
+			{ID: ch3CompletedID, ComicID: comicID, Download: 100},
+		},
+	}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = &fakeComicsRepository{findByIDResult: &comics.Comic{ID: comicID}}
+	deps.LibraryRepository = &fakeLibraryRepository{inLibrary: true}
+	deps.ChaptersService = fakeChapters
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	err = svc.RetryChapters(context.Background(), comics.RetryChaptersOpts{
+		ComicID:    comicID,
+		UserID:     userID,
+		ChapterIDs: []uuid.UUID{ch1ID, ch2ID, ch3CompletedID},
+	})
+	if err != nil {
+		t.Fatalf("RetryChapters: %v", err)
+	}
+
+	if len(fakeChapters.retryDownloadCalls) != 2 {
+		t.Fatalf("expected 2 retry calls (excluding 100%%), got %d", len(fakeChapters.retryDownloadCalls))
 	}
 }

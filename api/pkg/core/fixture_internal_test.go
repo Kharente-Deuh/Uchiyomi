@@ -360,6 +360,10 @@ func (fakeComicsService) RefreshComic(context.Context, comics.RefreshComicOpts) 
 	return nil, errors.New(notImplemented)
 }
 
+func (fakeComicsService) RetryChapters(context.Context, comics.RetryChaptersOpts) error {
+	return errors.New(notImplemented)
+}
+
 func (fakeComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
 	return "", "", errors.New(notImplemented)
 }
@@ -450,10 +454,16 @@ func (fakeReadingProgressService) Save(context.Context, readingprogress.SaveOpts
 	return readingprogress.Progress{}, nil
 }
 
-func (fakeReadingProgressService) MarkRead(
-	context.Context, readingprogress.MarkReadOpts,
+func (fakeReadingProgressService) SetRead(
+	context.Context, readingprogress.SetReadOpts,
 ) (readingprogress.ListResult, error) {
 	return readingprogress.ListResult{}, nil
+}
+
+func (fakeReadingProgressService) Delete(
+	context.Context, readingprogress.DeleteOpts,
+) error {
+	return nil
 }
 
 func newTestCache[P any, T any](t *testing.T, name string, logger *slog.Logger) *fncache.Cache[P, T] {

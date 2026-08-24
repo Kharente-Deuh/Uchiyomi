@@ -190,7 +190,7 @@ describe('useReader', () => {
     const { reader } = await setup()
     await waitUntilIdle(reader)
 
-    expect(reader.page.value).toBe(2)
+    expect(reader.page.value).toBe(1)
   })
 
   it('skips restored progress when ignoreProgress is set', async () => {
@@ -288,7 +288,7 @@ describe('useReader', () => {
     saveProgress.mockClear()
 
     reader.page.value = 1
-    await vi.waitFor(() => expect(saveProgress).toHaveBeenCalledWith({ id: 'ch-2', page: 1 }))
+    await vi.waitFor(() => expect(saveProgress).toHaveBeenCalledWith({ id: 'ch-2', page: 2 }))
   })
 
   it('saves the right-hand page when double page is on', async () => {
@@ -303,7 +303,7 @@ describe('useReader', () => {
     saveProgress.mockClear()
 
     reader.page.value = 2
-    await vi.waitFor(() => expect(saveProgress).toHaveBeenCalledWith({ id: 'ch-2', page: 3 }))
+    await vi.waitFor(() => expect(saveProgress).toHaveBeenCalledWith({ id: 'ch-2', page: 4 }))
   })
 
   it('evicts the oldest chapter once more than three are loaded', async () => {
@@ -360,11 +360,11 @@ describe('useReader polling', () => {
     }))
     const { reader } = await setup()
     await waitUntilIdle(reader)
-    expect(reader.page.value).toBe(2)
+    expect(reader.page.value).toBe(1)
     getById.mockResolvedValue(chapterResponse({ download: 40 }))
 
     await vi.waitFor(() => expect(reader.chapter.value?.download).toBe(40), { timeout: 3000 })
-    expect(reader.page.value).toBe(2)
+    expect(reader.page.value).toBe(1)
   })
 
   it('does not poll once the download is complete', async () => {

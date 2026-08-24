@@ -57,3 +57,9 @@ export interface ComicProgressContinue {
   chapterId: string
   page: number
 }
+
+export interface SetChaptersProgressParams {
+  comicId: string
+  chapterIds: string[]
+  read: boolean
+}
