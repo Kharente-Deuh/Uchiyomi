@@ -304,8 +304,9 @@ func authenticatedRequest(method, target string) *http.Request {
 func TestSearchReturnsProxiedCoverURL(t *testing.T) {
 	t.Parallel()
 
+	endpoint := "/" + string(sources.SourceAsuraScans)
 	ctrl, err := asurahttp.New(
-		asurahttp.Config{Endpoint: "/asura"},
+		asurahttp.Config{Endpoint: endpoint},
 		asurahttp.Deps{
 			AsuraApp:        newTestAsuraApp(t),
 			Logger:          slog.New(slog.DiscardHandler),
@@ -320,7 +321,7 @@ func TestSearchReturnsProxiedCoverURL(t *testing.T) {
 	ctrl.InitRouter(r)
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, "/asura/search?sort=popular&order=desc"))
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, endpoint+"/search?sort=popular&order=desc"))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -354,8 +355,9 @@ func TestSearchReturnsProxiedCoverURL(t *testing.T) {
 func TestGetInfosBySlugReturnsProxiedCoverURL(t *testing.T) {
 	t.Parallel()
 
+	endpoint := "/" + string(sources.SourceAsuraScans)
 	ctrl, err := asurahttp.New(
-		asurahttp.Config{Endpoint: "/asura"},
+		asurahttp.Config{Endpoint: endpoint},
 		asurahttp.Deps{
 			AsuraApp:        newTestAsuraApp(t),
 			Logger:          slog.New(slog.DiscardHandler),
@@ -370,7 +372,7 @@ func TestGetInfosBySlugReturnsProxiedCoverURL(t *testing.T) {
 	ctrl.InitRouter(r)
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, "/asura/series/solo-leveling"))
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, endpoint+"/series/solo-leveling"))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -535,8 +537,9 @@ func TestGetChaptersListBySeriesEnrichesLibraryChapters(t *testing.T) {
 		t.Fatalf("fncache.New(chapters): %v", err)
 	}
 
+	endpoint := "/" + string(sources.SourceAsuraScans)
 	ctrl, err := asurahttp.New(
-		asurahttp.Config{Endpoint: "/asura"},
+		asurahttp.Config{Endpoint: endpoint},
 		asurahttp.Deps{
 			AsuraApp: newChaptersTestAsuraApp(t, asura.Deps{
 				GetChaptersListBySeriesCache: chaptersCache,
@@ -562,7 +565,7 @@ func TestGetChaptersListBySeriesEnrichesLibraryChapters(t *testing.T) {
 	ctrl.InitRouter(r)
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, "/asura/series/solo-leveling/chapters"))
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, endpoint+"/series/solo-leveling/chapters"))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -619,8 +622,9 @@ func TestGetChaptersListBySeriesWithoutLibraryEntry(t *testing.T) {
 		t.Fatalf("fncache.New(chapters): %v", err)
 	}
 
+	endpoint := "/" + string(sources.SourceAsuraScans)
 	ctrl, err := asurahttp.New(
-		asurahttp.Config{Endpoint: "/asura"},
+		asurahttp.Config{Endpoint: endpoint},
 		asurahttp.Deps{
 			AsuraApp: newChaptersTestAsuraApp(t, asura.Deps{
 				GetChaptersListBySeriesCache: chaptersCache,
@@ -638,7 +642,7 @@ func TestGetChaptersListBySeriesWithoutLibraryEntry(t *testing.T) {
 	ctrl.InitRouter(r)
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, "/asura/series/solo-leveling/chapters"))
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, endpoint+"/series/solo-leveling/chapters"))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -695,8 +699,9 @@ func TestGetImageURLsByChapter(t *testing.T) {
 		t.Fatalf("fncache.New(images): %v", err)
 	}
 
+	endpoint := "/" + string(sources.SourceAsuraScans)
 	ctrl, err := asurahttp.New(
-		asurahttp.Config{Endpoint: "/asura"},
+		asurahttp.Config{Endpoint: endpoint},
 		asurahttp.Deps{
 			AsuraApp: newChaptersTestAsuraApp(t, asura.Deps{
 				GetImageURLsByChapter: imagesCache,
@@ -715,7 +720,7 @@ func TestGetImageURLsByChapter(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, authenticatedRequest(
 		http.MethodGet,
-		"/asura/series/solo-leveling/chapters/chapter-1",
+		endpoint+"/series/solo-leveling/chapters/chapter-1",
 	))
 
 	if rec.Code != http.StatusOK {
@@ -757,8 +762,9 @@ func TestGetImageURLsByChapterNotFound(t *testing.T) {
 		t.Fatalf("fncache.New(images): %v", err)
 	}
 
+	endpoint := "/" + string(sources.SourceAsuraScans)
 	ctrl, err := asurahttp.New(
-		asurahttp.Config{Endpoint: "/asura"},
+		asurahttp.Config{Endpoint: endpoint},
 		asurahttp.Deps{
 			AsuraApp: newChaptersTestAsuraApp(t, asura.Deps{
 				GetImageURLsByChapter: imagesCache,
@@ -777,10 +783,36 @@ func TestGetImageURLsByChapterNotFound(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, authenticatedRequest(
 		http.MethodGet,
-		"/asura/series/solo-leveling/chapters/missing",
+		endpoint+"/series/solo-leveling/chapters/missing",
 	))
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestSearchNotMountedAtLegacyAsuraPath(t *testing.T) {
+	t.Parallel()
+
+	endpoint := "/" + string(sources.SourceAsuraScans)
+	ctrl, err := asurahttp.New(
+		asurahttp.Config{Endpoint: endpoint},
+		asurahttp.Deps{
+			AsuraApp:        newTestAsuraApp(t),
+			Logger:          slog.New(slog.DiscardHandler),
+			CoverURLBuilder: coverURLBuilder,
+		},
+	)
+	if err != nil {
+		t.Fatalf("asurahttp.New: %v", err)
+	}
+
+	r := chi.NewRouter()
+	ctrl.InitRouter(r)
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, "/asura/search"))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("code = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }

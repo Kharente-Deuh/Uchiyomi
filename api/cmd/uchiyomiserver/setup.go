@@ -811,7 +811,7 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 	}
 
 	asuraCtrl, err := httpasura.New(httpasura.Config{
-		Endpoint:    "/asura",
+		Endpoint:    "/" + string(sources.SourceAsuraScans),
 		Middlewares: chi.Middlewares{authenticator.Middleware},
 	},
 		httpasura.Deps{

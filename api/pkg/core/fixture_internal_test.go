@@ -576,7 +576,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 	coversApp, coversService := newTestCoversBundle(t, asuraApp)
 
 	asuraCtrl, err := httasura.New(
-		httasura.Config{Endpoint: "/asura"},
+		httasura.Config{Endpoint: "/" + string(sources.SourceAsuraScans)},
 		httasura.Deps{
 			Logger:   logger,
 			AsuraApp: asuraApp,
