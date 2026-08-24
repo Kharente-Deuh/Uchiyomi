@@ -127,9 +127,9 @@ func TestIsAPNG(t *testing.T) {
 
 func TestOptimizePage_PNGToWebP(t *testing.T) {
 	pngData := createTestPNG(t, 200, 200)
-	res := download.OptimizePage(pngData, ".png", nil)
+	res := download.OptimizePage(pngData, download.ExtPNG, nil)
 
-	if res.Extension != ".webp" {
+	if res.Extension != download.ExtWEBP {
 		t.Errorf("expected extension .webp, got %s", res.Extension)
 	}
 	if len(res.Data) >= len(pngData) {
@@ -142,9 +142,9 @@ func TestOptimizePage_PNGToWebP(t *testing.T) {
 
 func TestOptimizePage_JPEGToWebP_Smaller(t *testing.T) {
 	solidJPEG := createTestSolidJPEG(t, 200, 200)
-	res := download.OptimizePage(solidJPEG, ".jpg", nil)
+	res := download.OptimizePage(solidJPEG, download.ExtJPG, nil)
 
-	if res.Extension != ".webp" {
+	if res.Extension != download.ExtWEBP {
 		t.Errorf("expected .webp when smaller, got %s", res.Extension)
 	}
 	if len(res.Data) >= len(solidJPEG) {
@@ -155,13 +155,13 @@ func TestOptimizePage_JPEGToWebP_Smaller(t *testing.T) {
 	}
 
 	gradientJPEG := createTestJPEG(t, 200, 200)
-	resGradient := download.OptimizePage(gradientJPEG, ".jpg", nil)
+	resGradient := download.OptimizePage(gradientJPEG, download.ExtJPG, nil)
 	if len(resGradient.Data) < len(gradientJPEG) {
-		if resGradient.Extension != ".webp" {
+		if resGradient.Extension != download.ExtWEBP {
 			t.Errorf("expected .webp when smaller, got %s", resGradient.Extension)
 		}
 	} else {
-		if resGradient.Extension != ".jpg" {
+		if resGradient.Extension != download.ExtJPG {
 			t.Errorf("expected original extension when WebP is larger, got %s", resGradient.Extension)
 		}
 		if !bytes.Equal(resGradient.Data, gradientJPEG) {
@@ -172,9 +172,9 @@ func TestOptimizePage_JPEGToWebP_Smaller(t *testing.T) {
 
 func TestOptimizePage_APNG_Preserved(t *testing.T) {
 	apngData := createTestAPNG(t)
-	res := download.OptimizePage(apngData, ".png", nil)
+	res := download.OptimizePage(apngData, download.ExtPNG, nil)
 
-	if res.Extension != ".png" {
+	if res.Extension != download.ExtPNG {
 		t.Errorf("expected APNG to retain .png extension, got %s", res.Extension)
 	}
 	if !bytes.Equal(res.Data, apngData) {
@@ -184,9 +184,9 @@ func TestOptimizePage_APNG_Preserved(t *testing.T) {
 
 func TestOptimizePage_SourceWebP_Preserved(t *testing.T) {
 	webpData := append([]byte("RIFF1234WEBP"), []byte("somedata")...)
-	res := download.OptimizePage(webpData, ".webp", nil)
+	res := download.OptimizePage(webpData, download.ExtWEBP, nil)
 
-	if res.Extension != ".webp" {
+	if res.Extension != download.ExtWEBP {
 		t.Errorf("expected source WebP to retain .webp extension, got %s", res.Extension)
 	}
 	if !bytes.Equal(res.Data, webpData) {
@@ -197,9 +197,9 @@ func TestOptimizePage_SourceWebP_Preserved(t *testing.T) {
 func TestOptimizePage_MagicBytesMismatch(t *testing.T) {
 	// Content is PNG, but URL says .jpg
 	pngData := createTestPNG(t, 200, 200)
-	res := download.OptimizePage(pngData, ".jpg", nil)
+	res := download.OptimizePage(pngData, download.ExtJPG, nil)
 
-	if res.Extension != ".webp" {
+	if res.Extension != download.ExtWEBP {
 		t.Errorf("expected converted PNG to have .webp extension, got %s", res.Extension)
 	}
 	if download.SniffFormat(res.Data) != download.FormatWebP {
@@ -209,9 +209,9 @@ func TestOptimizePage_MagicBytesMismatch(t *testing.T) {
 
 func TestOptimizePage_CorruptData_Preserved(t *testing.T) {
 	corruptData := []byte("not an image")
-	res := download.OptimizePage(corruptData, ".png", nil)
+	res := download.OptimizePage(corruptData, download.ExtPNG, nil)
 
-	if res.Extension != ".png" {
+	if res.Extension != download.ExtPNG {
 		t.Errorf("expected corrupt data to retain url extension, got %s", res.Extension)
 	}
 	if !bytes.Equal(res.Data, corruptData) {

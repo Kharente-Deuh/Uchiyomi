@@ -14,6 +14,14 @@ import (
 	"github.com/KarpelesLab/gowebp"
 )
 
+const (
+	ExtWEBP = ".webp"
+	ExtGIF  = ".gif"
+	ExtJPG  = ".jpg"
+	ExtJPEG = ".jpeg"
+	ExtPNG  = ".png"
+)
+
 type ImageFormat int
 
 const (
@@ -32,8 +40,8 @@ const (
 )
 
 type OptimizedPage struct {
-	Data      []byte
 	Extension string
+	Data      []byte
 }
 
 func OptimizePage(data []byte, urlExt string, logger *slog.Logger) OptimizedPage {
@@ -87,7 +95,7 @@ func OptimizePage(data []byte, urlExt string, logger *slog.Logger) OptimizedPage
 	if len(webpBytes) < len(data) {
 		return OptimizedPage{
 			Data:      webpBytes,
-			Extension: ".webp",
+			Extension: ExtWEBP,
 		}
 	}
 
@@ -97,21 +105,21 @@ func OptimizePage(data []byte, urlExt string, logger *slog.Logger) OptimizedPage
 func fallbackExtension(format ImageFormat, urlExt string) string {
 	switch format {
 	case FormatPNG:
-		return ".png"
+		return ExtPNG
 	case FormatJPEG:
 		if strings.EqualFold(urlExt, ".jpeg") {
-			return ".jpeg"
+			return ExtJPEG
 		}
 
-		return ".jpg"
+		return ExtJPG
 	case FormatWebP:
-		return ".webp"
+		return ExtWEBP
 	case FormatGIF:
-		return ".gif"
+		return ExtGIF
 	default:
 		cleanExt := strings.ToLower(strings.TrimSpace(urlExt))
 		if cleanExt == "" || !strings.HasPrefix(cleanExt, ".") {
-			return ".webp"
+			return ExtWEBP
 		}
 
 		return cleanExt
