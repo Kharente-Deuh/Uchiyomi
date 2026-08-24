@@ -16,6 +16,7 @@ export interface AuthApi {
 
 export interface ProviderSummary {
   id: string
+  slug: string
   displayName: string
 }
 
@@ -77,8 +78,8 @@ export function createAuthApi(): AuthApi {
   }
 }
 
-export function oidcStartUrl(providerId: string, redirect: string): string {
+export function oidcStartUrl(slug: string, redirect: string): string {
   const params = new URLSearchParams({ redirect })
 
-  return `/api/auth/oidc/${providerId}/start?${params.toString()}`
+  return `/api/auth/oidc/${slug}/start?${params.toString()}`
 }

@@ -16,7 +16,7 @@ defineProps<Props>()
     <VBtn
       v-for="provider in providers"
       :key="provider.id"
-      :href="oidcStartUrl(provider.id, redirect)"
+      :href="oidcStartUrl(provider.slug, redirect)"
       variant="outlined"
       size="large"
       class="w-100"

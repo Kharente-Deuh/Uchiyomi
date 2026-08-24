@@ -8,8 +8,8 @@ const getProviders = vi.fn()
 vi.mock('./auth.api', () => ({ createAuthApi: () => ({ getProviders }) }))
 
 const providers = [
-  { id: 'google', displayName: 'Google' },
-  { id: 'okta', displayName: 'Okta' },
+  { id: 'id-google', slug: 'google', displayName: 'Google' },
+  { id: 'id-okta', slug: 'okta', displayName: 'Okta' },
 ]
 
 beforeEach(() => {
