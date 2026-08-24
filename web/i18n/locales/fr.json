@@ -102,6 +102,10 @@
         "displayName": {
           "label": "Nom d'affichage"
         },
+        "slug": {
+          "label": "Slug",
+          "hint": "Lettres minuscules, chiffres et tirets"
+        },
         "issuerUrl": {
           "label": "URL de l'émetteur"
         },

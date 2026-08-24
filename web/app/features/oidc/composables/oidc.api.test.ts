@@ -16,6 +16,7 @@ const UPDATED_AT = '2026-02-03T04:05:06.000Z'
 const payload = {
   id: 'p1',
   displayName: 'PocketID',
+  slug: 'pocket-id',
   issuerUrl: 'https://id.example.org',
   clientId: 'client',
   usernameClaim: 'preferred_username',
@@ -30,6 +31,7 @@ const payload = {
 
 const request = {
   displayName: 'PocketID',
+  slug: 'pocket-id',
   issuerUrl: 'https://id.example.org',
   clientId: 'client',
   clientSecret: 'secret',
@@ -158,6 +160,7 @@ describe('createOidcApi().create', () => {
       data: {
         id: 'p1',
         displayName: 'PocketID',
+        slug: 'pocket-id',
         issuerUrl: 'https://id.example.org',
         clientId: 'client',
         usernameClaim: 'preferred_username',

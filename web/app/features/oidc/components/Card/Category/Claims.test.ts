@@ -22,6 +22,7 @@ vi.mock('~/features/oidc/composables/oidc-provider.composable', () => ({
 const base = {
   id: 'p1',
   displayName: 'PocketID',
+  slug: 'pocket-id',
   issuerUrl: 'https://id.example.org',
   clientId: 'client',
   usernameClaim: 'preferred_username',

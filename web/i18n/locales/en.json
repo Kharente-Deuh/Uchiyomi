@@ -102,6 +102,10 @@
         "displayName": {
           "label": "Display name"
         },
+        "slug": {
+          "label": "Slug",
+          "hint": "Lowercase letters, numbers, and hyphens"
+        },
         "issuerUrl": {
           "label": "Issuer URL"
         },
