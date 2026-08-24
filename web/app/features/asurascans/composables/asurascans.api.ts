@@ -2,6 +2,7 @@
 
 import type { AsuraScansComicChapter, AsuraScansComicInfos, AsuraScansSearchParams, AsuraScansSearchResponse } from '../types'
 import type { ApiResponse } from '~/utils/api'
+import { ASURA_SOURCE_NAME } from '~/constants'
 import { ApiError, initApi } from '~/utils/api'
 
 export interface AsuraScansApi {
@@ -11,7 +12,7 @@ export interface AsuraScansApi {
 }
 
 export function createAsuraScansApi(): AsuraScansApi {
-  const api = initApi('/sources/asurascans')
+  const api = initApi(`/sources/${ASURA_SOURCE_NAME}`)
 
   async function search(params: AsuraScansSearchParams): Promise<ApiResponse<AsuraScansSearchResponse>> {
     try {

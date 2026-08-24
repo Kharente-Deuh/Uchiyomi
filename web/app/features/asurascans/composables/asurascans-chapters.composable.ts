@@ -24,7 +24,7 @@ export function useAsuraScansChapters(): AsuraScansChaptersComposable {
   const chaptersApi = createChaptersApi()
   const toast = useToast()
   const { t } = useI18n()
-  const route = useRoute('browse-sources-asura-slug')
+  const route = useRoute('browse-sources-asurascans-slug')
 
   const sort = ref<'asc' | 'desc'>('desc')
   const chapters = computed(() => store.chapters.toSorted((a, b) => {

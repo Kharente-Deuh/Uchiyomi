@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router'
 import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
+import { ASURA_SOURCE_NAME } from '~/constants'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
 definePageMeta({
@@ -32,7 +33,7 @@ const asuraDetails = getSourceDetails('asurascans')
 
 const sources: Source[] = [
   {
-    to: '/browse/sources/asura',
+    to: `/browse/sources/${ASURA_SOURCE_NAME}`,
     title: asuraDetails.name,
     src: asuraDetails.image,
   },

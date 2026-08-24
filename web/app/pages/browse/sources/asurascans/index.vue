@@ -59,7 +59,7 @@ async function doToggleComic(comic: AsuraScansSearchItem): Promise<void> {
 }
 
 onBeforeRouteLeave((to: RouteLocationNormalized) => {
-  if (to.name !== 'browse-sources-asura-slug') {
+  if (to.name !== 'browse-sources-asurascans-slug') {
     resetFilters()
   }
 })

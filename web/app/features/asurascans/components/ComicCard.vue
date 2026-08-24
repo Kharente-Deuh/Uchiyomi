@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import type { AsuraScansSearchItem } from '../types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
+import { ASURA_SOURCE_NAME } from '~/constants'
 
 const props = defineProps<{
   comic: AsuraScansSearchItem
@@ -18,7 +19,7 @@ watch(() => props.comic.cover, (newVal) => {
 <template>
   <VHover>
     <template #default="{ isHovering, props: hoverProps }">
-      <AtomLink :to="`/browse/sources/asura/${comic.slug}`" v-bind="hoverProps">
+      <AtomLink :to="`/browse/sources/${ASURA_SOURCE_NAME}/${comic.slug}`" v-bind="hoverProps">
         <div class="d-flex flex-column comic-card w-100 h-100">
           <VImg
             cover

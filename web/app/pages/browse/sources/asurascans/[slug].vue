@@ -4,7 +4,7 @@ import type AsuraScansComicChapters from '~/features/asurascans/components/Comic
 import type { AsuraScansComicInfos } from '~/features/asurascans/types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
 import asuraImg from '~/assets/images/sources/asurascans.webp'
-import { ASURA_SCANS_URL } from '~/constants'
+import { ASURA_SCANS_URL, ASURA_SOURCE_NAME } from '~/constants'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
 definePageMeta({
@@ -12,7 +12,7 @@ definePageMeta({
   authGroups: [AUTHENTICATED_ROUTE_GROUP],
 })
 
-const route = useRoute('browse-sources-asura-slug')
+const route = useRoute('browse-sources-asurascans-slug')
 const toast = useToast()
 const { t } = useI18n()
 const { smAndDown } = useDisplay()
@@ -41,7 +41,7 @@ async function fetchInfos(): Promise<void> {
       ? t('sources.asurascans.comic.notFound')
       : t('error.unknown'))
 
-    await navigateTo('/browse/sources/asura')
+    await navigateTo(`/browse/sources/${ASURA_SOURCE_NAME}`)
   }
 
   fetchInfosLoading.value = false
@@ -63,7 +63,7 @@ const comicOriginUrl = computed(() => {
     :global-loader="fetchInfosLoading"
     sticky-header
     :back-routes="[{
-      to: '/browse/sources/asura',
+      to: `/browse/sources/${ASURA_SOURCE_NAME}`,
       name: $t('sources.asurascans.title'),
       image: asuraImg }]"
   >

@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ASURA_SOURCE_NAME } from '~/constants'
 import { createAsuraScansApi } from './asurascans.api'
 
-const call = vi.fn()
+const mocks = vi.hoisted(() => {
+  const call = vi.fn()
+  const initApi = vi.fn(() => call)
+
+  return { call, initApi }
+})
 
 vi.mock('~/utils/api', async importOriginal => ({
   ...(await importOriginal<typeof import('~/utils/api')>()),
-  initApi: () => call,
+  initApi: mocks.initApi,
 }))
 
 const rawItem = {
@@ -41,16 +47,24 @@ const item = {
 }
 
 beforeEach(() => {
-  call.mockReset()
+  mocks.call.mockReset()
+  mocks.initApi.mockClear()
+})
+
+describe('createAsuraScansApi', () => {
+  it('uses ASURA_SOURCE_NAME as the API prefix', () => {
+    createAsuraScansApi()
+    expect(mocks.initApi).toHaveBeenCalledWith(`/sources/${ASURA_SOURCE_NAME}`)
+  })
 })
 
 describe('createAsuraScansApi().search', () => {
   it('requests /search with pagination', async () => {
-    call.mockResolvedValue({ items: [rawItem], total: 1 })
+    mocks.call.mockResolvedValue({ items: [rawItem], total: 1 })
 
     const res = await createAsuraScansApi().search({ offset: 0, limit: 20, sort: 'popular' })
 
-    expect(call).toHaveBeenCalledWith('/search', {
+    expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
       params: { sort: 'popular', offset: 0, limit: 20 },
     })
@@ -58,18 +72,18 @@ describe('createAsuraScansApi().search', () => {
   })
 
   it('omits empty optional filters', async () => {
-    call.mockResolvedValue({ items: [], total: 0 })
+    mocks.call.mockResolvedValue({ items: [], total: 0 })
 
     await createAsuraScansApi().search({ offset: 0, limit: 20 })
 
-    expect(call).toHaveBeenCalledWith('/search', {
+    expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
       params: { offset: 0, limit: 20 },
     })
   })
 
   it('includes status, type and search when set', async () => {
-    call.mockResolvedValue({ items: [], total: 0 })
+    mocks.call.mockResolvedValue({ items: [], total: 0 })
 
     await createAsuraScansApi().search({
       search: 'solo',
@@ -79,14 +93,14 @@ describe('createAsuraScansApi().search', () => {
       limit: 20,
     })
 
-    expect(call).toHaveBeenCalledWith('/search', {
+    expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
       params: { search: 'solo', status: 'ongoing', type: 'manhwa', offset: 20, limit: 20 },
     })
   })
 
   it('surfaces a failure with its status', async () => {
-    call.mockRejectedValue({ statusCode: 502, data: {} })
+    mocks.call.mockRejectedValue({ statusCode: 502, data: {} })
 
     const res = await createAsuraScansApi().search({ offset: 0, limit: 20 })
 

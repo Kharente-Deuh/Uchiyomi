@@ -48,7 +48,7 @@ describe('asuraScansComicCard', () => {
 
   it('links to the series page', async () => {
     const wrapper = await mount(item())
-    expect(wrapper.find('a').attributes('href')).toBe('/browse/sources/asura/solo-leveling')
+    expect(wrapper.find('a').attributes('href')).toBe('/browse/sources/asurascans/solo-leveling')
   })
 
   it('shows the add button when the comic is not in the library', async () => {
