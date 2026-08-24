@@ -156,6 +156,7 @@ func sampleProvider() *oidcproviders.OIDCProvider {
 	return &oidcproviders.OIDCProvider{
 		ID:            uuid.New(),
 		DisplayName:   testDisplayName,
+		Slug:          "keycloak",
 		IssuerURL:     testIssuerURL,
 		ClientID:      "uchiyomi",
 		UsernameClaim: "preferred_username",

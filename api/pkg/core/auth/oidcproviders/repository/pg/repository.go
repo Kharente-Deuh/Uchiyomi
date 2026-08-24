@@ -81,6 +81,10 @@ func (r *PGOIDCProvidersRepository) GetByIssuerURL(ctx context.Context, issuerUR
 	return &p, nil
 }
 
+func (r *PGOIDCProvidersRepository) GetBySlug(context.Context, string) (*oidcproviders.OIDCProvider, error) {
+	panic("GetBySlug is not implemented")
+}
+
 func (r *PGOIDCProvidersRepository) GetAll(ctx context.Context) ([]oidcproviders.LightOIDCProvider, error) {
 	var rows []lightProviderRow
 

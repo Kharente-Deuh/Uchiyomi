@@ -42,6 +42,18 @@ func (f *fakeRepository) GetByIssuerURL(context.Context, string) (*oidcproviders
 	return f.provider, f.err
 }
 
+func (f *fakeRepository) GetBySlug(_ context.Context, slug string) (*oidcproviders.OIDCProvider, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	if f.provider != nil && f.provider.Slug == slug {
+		return f.provider, nil
+	}
+
+	return nil, domain.ErrNotFound
+}
+
 //nolint:lll
 func (f *fakeRepository) Create(_ context.Context, opts oidcproviders.CreateOIDCProviderOpts) (*oidcproviders.OIDCProvider, error) {
 	f.created = &opts

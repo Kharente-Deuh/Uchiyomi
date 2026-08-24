@@ -324,6 +324,7 @@ func newFakes() *fakes {
 	provider := &oidcproviders.OIDCProvider{
 		ID:            uuid.New(),
 		DisplayName:   "Example IdP",
+		Slug:          "keycloak",
 		IssuerURL:     "https://idp.example.com",
 		ClientID:      "client-id",
 		UsernameClaim: usernameClaimKey,

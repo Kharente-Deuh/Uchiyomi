@@ -33,6 +33,7 @@ type fakeOIDCProvidersRepo struct {
 	err          error
 	issuerErr    error
 	gotIssuerURL string
+	gotSlug      string
 	gotID        uuid.UUID
 	calls        int
 	issuerCalls  int
@@ -61,6 +62,21 @@ func (f *fakeOIDCProvidersRepo) GetByIssuerURL(
 	}
 
 	if f.provider != nil && f.provider.IssuerURL == issuerURL {
+		return f.provider, nil
+	}
+
+	return nil, domain.ErrNotFound
+}
+
+func (f *fakeOIDCProvidersRepo) GetBySlug(_ context.Context, slug string) (*oidcproviders.OIDCProvider, error) {
+	f.calls++
+	f.gotSlug = slug
+
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	if f.provider != nil && f.provider.Slug == slug {
 		return f.provider, nil
 	}
 
