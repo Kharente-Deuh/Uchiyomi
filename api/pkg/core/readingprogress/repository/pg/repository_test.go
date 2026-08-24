@@ -298,3 +298,43 @@ func TestUpsertConflictUpdates(t *testing.T) {
 		t.Errorf("Upsert() = %+v, want %+v", got, want)
 	}
 }
+
+func TestDeleteByUserAndChapterIDs(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newReadingProgressRepo(t)
+	userID := uuid.New()
+	ch1 := uuid.New()
+	ch2 := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(
+		`DELETE FROM "reading_progress" WHERE chapter_id IN \(\$1,\$2\) AND `+
+			`library_entry_id IN \(SELECT (id|"id") FROM "library_entries" WHERE user_id = \$3\)`,
+	).
+		WithArgs(ch1, ch2, userID).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectCommit()
+
+	err := r.DeleteByUserAndChapterIDs(context.Background(), readingprogress.DeleteProgressOpts{
+		UserID:     userID,
+		ChapterIDs: []uuid.UUID{ch1, ch2},
+	})
+	if err != nil {
+		t.Fatalf("DeleteByUserAndChapterIDs: %v", err)
+	}
+}
+
+func TestDeleteByUserAndChapterIDsEmpty(t *testing.T) {
+	t.Parallel()
+
+	r, _ := newReadingProgressRepo(t)
+
+	err := r.DeleteByUserAndChapterIDs(context.Background(), readingprogress.DeleteProgressOpts{
+		UserID:     uuid.New(),
+		ChapterIDs: []uuid.UUID{},
+	})
+	if err != nil {
+		t.Fatalf("DeleteByUserAndChapterIDs with empty IDs should return nil, got: %v", err)
+	}
+}

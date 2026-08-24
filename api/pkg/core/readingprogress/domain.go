@@ -65,11 +65,17 @@ type UpsertOpts struct {
 	Page      int
 }
 
+type DeleteProgressOpts struct {
+	UserID     uuid.UUID
+	ChapterIDs []uuid.UUID
+}
+
 type Repository interface {
 	GetLatestByUserAndComic(context.Context, ListOpts) (*Progress, error)
 	ListByUserAndChapterIDs(context.Context, MapOpts) ([]Progress, error)
 	Get(context.Context, GetOpts) (*Progress, error)
 	Upsert(context.Context, UpsertOpts) (Progress, error)
+	DeleteByUserAndChapterIDs(context.Context, DeleteProgressOpts) error
 }
 
 type ReadingProgressService interface {

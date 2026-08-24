@@ -150,3 +150,25 @@ func (r *PGReadingProgressRepository) Upsert(
 
 	return model.Domain(), nil
 }
+
+func (r *PGReadingProgressRepository) DeleteByUserAndChapterIDs(
+	ctx context.Context, opts readingprogress.DeleteProgressOpts,
+) error {
+	if len(opts.ChapterIDs) == 0 {
+		return nil
+	}
+
+	subQuery := r.deps.DB.WithContext(ctx).
+		Table("library_entries").
+		Select("id").
+		Where("user_id = ?", opts.UserID)
+
+	err := pgtx.From(ctx, r.deps.DB).WithContext(ctx).
+		Where("chapter_id IN ? AND library_entry_id IN (?)", opts.ChapterIDs, subQuery).
+		Delete(&pgmodels.ReadingProgress{}).Error
+	if err != nil {
+		return fmt.Errorf("pgtx.From(ctx, r.deps.DB).Delete: %w", err)
+	}
+
+	return nil
+}
