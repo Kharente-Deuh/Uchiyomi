@@ -84,6 +84,9 @@ const isFormValid = computed(() => isValid.value && hasChanged.value)
     :title="$t('settings.oidc.category.providerInfos.title')"
     icon="fa6-regular:address-card"
   >
+    <template #subtitle>
+      <span class="text-body-medium text-secondary opacity-70">{{ $t('settings.oidc.startUrl', { slug: provider?.slug }) }}</span>
+    </template>
     <div class="provider-informations-grid">
       <VTextField v-bind="field('displayName').props" class="h-fit" />
       <VTextField

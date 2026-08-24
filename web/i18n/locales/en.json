@@ -189,7 +189,8 @@
       "update": {
         "success": "Provider updated !"
       },
-      "description": "Manage OIDC providers"
+      "description": "Manage OIDC providers",
+      "startUrl": "Start URL: /api/auth/oidc/{slug}/start"
     },
     "reader": {
       "title": "Reader",
