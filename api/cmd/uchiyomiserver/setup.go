@@ -20,9 +20,9 @@ import (
 	comicrefresh "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/refresh"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
-	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
-	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
-	asuraclient "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
+	asurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
+	asurascansdomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
+	asurascansclient "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/database"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
@@ -51,7 +51,7 @@ import (
 	pgcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/repository/pg"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
-	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
+	coversasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	httpfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/gateway/http"
 	pgfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/repository/pg"
@@ -68,7 +68,7 @@ import (
 	httpsetup "github.com/kharente-deuh/uchiyomi-server/pkg/core/setup/gateway/http"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
 	pgusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/repository/pg"
-	httpasura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
+	httpasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/crypto"
 )
 
@@ -101,7 +101,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, err
 	}
 
-	asuraApp, err := setupAsura(logger, dbr.ComicsRepository)
+	asuraScansApp, err := setupAsuraScans(logger, dbr.ComicsRepository)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init asura source: %w", err)
 	}
@@ -110,7 +110,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		Logger:           logger,
 		CoversDir:        coversDir,
 		DownloadsDir:     downloadsDir,
-		AsuraApp:         asuraApp,
+		AsuraScansApp:    asuraScansApp,
 		ComicsRepository: dbr.ComicsRepository,
 	})
 	if err != nil {
@@ -135,7 +135,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		ChaptersRepository: dbr.ChaptersRepository,
 		ComicsRepository:   dbr.ComicsRepository,
 		LibraryRepository:  dbr.LibraryRepository,
-		Sources:            sources.SourceMap{sources.SourceAsuraScans: asuraApp},
+		Sources:            sources.SourceMap{sources.SourceAsuraScans: asuraScansApp},
 		DownloadsDir:       downloadsDir,
 		RateLimit:          cfg.Downloads.RateLimit,
 		ScanInterval:       cfg.Downloads.ScanInterval,
@@ -165,7 +165,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, fmt.Errorf("failed to init readingProgressSvc: %w", err)
 	}
 
-	asuraApp.BindChaptersService(chaptersSvc)
+	asuraScansApp.BindChaptersService(chaptersSvc)
 
 	comicsSvc, err := comics.NewService(comics.Deps{
 		ComicsRepository:  dbr.ComicsRepository,
@@ -173,7 +173,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		LibraryRepository: dbr.LibraryRepository,
 		ChaptersService:   chaptersSvc,
 		LocalCoverStore:   coversBundle.Service,
-		Sources:           sources.SourceMap{sources.SourceAsuraScans: asuraApp},
+		Sources:           sources.SourceMap{sources.SourceAsuraScans: asuraScansApp},
 		Logger:            logger,
 	})
 	if err != nil {
@@ -188,7 +188,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, fmt.Errorf("failed to init chapter list refresh: %w", err)
 	}
 
-	apps.Asura = asuraApp
+	apps.AsuraScans = asuraScansApp
 	apps.Covers = coversBundle.App
 
 	registry := core.NewHealthRegistry(dbr.PGDB)
@@ -204,7 +204,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		SetupService:           services.Setup,
 		AuthService:            services.Auth,
 		OIDCProvidersService:   services.OIDCProviders,
-		AsuraApp:               asuraApp,
+		AsuraScansApp:          asuraScansApp,
 		CoversService:          coversBundle.Service,
 		Registry:               registry,
 	})
@@ -220,7 +220,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		},
 		core.Deps{
 			SetupCtrl:           ctrls.Setup,
-			AsuraCtrl:           ctrls.Asura,
+			AsuraScansCtrl:      ctrls.AsuraScans,
 			CoversCtrl:          ctrls.Covers,
 			HealthCtrl:          ctrls.Health,
 			AuthCtrl:            ctrls.Auth,
@@ -235,7 +235,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			Health:             registry,
 			Logger:             logger,
 			DB:                 dbr.PGDB,
-			Asura:              apps.Asura,
+			AsuraScans:         apps.AsuraScans,
 			Covers:             apps.Covers,
 			Downloads:          downloadApp,
 			ChapterListRefresh: chapterListRefresh,
@@ -475,7 +475,7 @@ func setupServices(deps servicesDeps) (*services, error) {
 }
 
 type apps struct {
-	Asura            *asura.App
+	AsuraScans       *asurascans.App
 	Covers           *covers.App
 	Sessions         *sessions.App
 	OIDCRevalidation *oidc.RevalidationApp
@@ -529,7 +529,7 @@ type coversBundle struct {
 
 type coversDeps struct {
 	Logger           *slog.Logger
-	AsuraApp         *asura.App
+	AsuraScansApp    *asurascans.App
 	ComicsRepository comics.ComicsRepository
 
 	CoversDir    string
@@ -566,20 +566,20 @@ func setupCovers(deps coversDeps) (*coversBundle, error) {
 		},
 	}
 
-	asuraResolver, err := coversasura.New(
-		coversasura.Config{CDNBaseURL: coversasura.DefaultCDNBaseURL},
-		coversasura.Deps{
-			Getter:     deps.AsuraApp,
+	asurascansResolver, err := coversasurascans.New(
+		coversasurascans.Config{CDNBaseURL: coversasurascans.DefaultCDNBaseURL},
+		coversasurascans.Deps{
+			Getter:     deps.AsuraScansApp,
 			HTTPClient: httpClient,
 			Logger:     deps.Logger,
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("coversasura.New: %w", err)
+		return nil, fmt.Errorf("coversasurascans.New: %w", err)
 	}
 
 	resolvers := map[string]covers.CoverResolver{
-		covers.SourceAsuraScans: asuraResolver,
+		covers.SourceAsuraScans: asurascansResolver,
 	}
 
 	cache, err := imgcache.New(imgcache.Config{
@@ -618,7 +618,7 @@ func setupCovers(deps coversDeps) (*coversBundle, error) {
 	return &coversBundle{App: app, Service: svc}, nil
 }
 
-func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura.App, error) {
+func setupAsuraScans(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asurascans.App, error) {
 	fetchTimeout := time.Minute
 
 	httpClient := &http.Client{
@@ -630,13 +630,13 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 		},
 	}
 
-	apiClient, err := asuraclient.New(
-		asuraclient.Deps{Http: httpClient, Logger: logger},
-		asuraclient.Config{AsuraURL: "https://api.asurascans.com/api"},
+	apiClient, err := asurascansclient.New(
+		asurascansclient.Deps{Http: httpClient, Logger: logger},
+		asurascansclient.Config{AsuraURL: "https://api.asurascans.com/api"},
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("asuraclient.New: %w", err)
+		return nil, fmt.Errorf("asurascansclient.New: %w", err)
 	}
 
 	errorTTL := 30 * time.Second
@@ -646,7 +646,7 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 	getImageURLsByChapterTTL := 2 * time.Hour
 
 	searchCache, err := fncache.New(
-		fncache.Config[asuradomain.SearchCacheOpts, asuradomain.SearchCacheResult]{
+		fncache.Config[asurascansdomain.SearchCacheOpts, asurascansdomain.SearchCacheResult]{
 			Fn:            apiClient.Search,
 			TTL:           searchTTL,
 			ErrorTTL:      errorTTL,
@@ -654,7 +654,7 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 			CleanInterval: searchTTL,
 			MaxEntries:    256,
 			Name:          "asurascans.search",
-			Key: func(opts asuradomain.SearchCacheOpts) string {
+			Key: func(opts asurascansdomain.SearchCacheOpts) string {
 				return fmt.Sprintf(
 					"%s %s %s %s %s %s %v %d %d %d",
 					opts.Search,
@@ -677,7 +677,7 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 	}
 
 	getInfosBySlugCache, err := fncache.New(
-		fncache.Config[string, asuradomain.GetInfosBySlugResponse]{
+		fncache.Config[string, asurascansdomain.GetInfosBySlugResponse]{
 			Fn:            apiClient.GetInfosBySlug,
 			TTL:           getInfosBySlugTTL,
 			ErrorTTL:      errorTTL,
@@ -696,7 +696,7 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 	}
 
 	getChaptersListBySerieCache, err := fncache.New(
-		fncache.Config[string, []asuradomain.Chapter]{
+		fncache.Config[string, []asurascansdomain.Chapter]{
 			Fn:            apiClient.GetChaptersListBySerie,
 			TTL:           getChaptersListBySeriesTTL,
 			ErrorTTL:      errorTTL,
@@ -715,7 +715,7 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 	}
 
 	getImageURLsByChapterCache, err := fncache.New(
-		fncache.Config[asuradomain.GetImageURLsByChapterOpts, []string]{
+		fncache.Config[asurascansdomain.GetImageURLsByChapterOpts, []string]{
 			Fn:            apiClient.GetImageURLsByChapter,
 			TTL:           getImageURLsByChapterTTL,
 			ErrorTTL:      errorTTL,
@@ -723,7 +723,7 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 			CleanInterval: getImageURLsByChapterTTL,
 			MaxEntries:    1024,
 			Name:          "asurascans.GetImageURLsByChapter",
-			Key: func(opts asuradomain.GetImageURLsByChapterOpts) string {
+			Key: func(opts asurascansdomain.GetImageURLsByChapterOpts) string {
 				return fmt.Sprintf("%s %s", opts.SeriesSlug, opts.ChapterID)
 			},
 		},
@@ -733,9 +733,9 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 		return nil, fmt.Errorf("fncache.New (asura.GetChaptersListBySerie): %w", err)
 	}
 
-	a, err := asura.New(
-		asura.Config{SourceName: sources.SourceAsuraScans},
-		asura.Deps{
+	a, err := asurascans.New(
+		asurascans.Config{SourceName: sources.SourceAsuraScans},
+		asurascans.Deps{
 			Logger:                       logger,
 			SearchCache:                  searchCache,
 			GetInfosBySlugCache:          getInfosBySlugCache,
@@ -744,7 +744,7 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 			ComicsRepository:             comicsRepo,
 		})
 	if err != nil {
-		return nil, fmt.Errorf("asura.New: %w", err)
+		return nil, fmt.Errorf("asurascans.New: %w", err)
 	}
 
 	return a, nil
@@ -752,7 +752,7 @@ func setupAsura(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*asura
 
 type ctrls struct {
 	Setup           *httpsetup.Controller
-	Asura           *httpasura.Controller
+	AsuraScans      *httpasurascans.Controller
 	Covers          *httpcovers.Controller
 	Health          *httphealth.Controller
 	Auth            *httpauth.Controller
@@ -769,7 +769,7 @@ type ctrlsDeps struct {
 	FeedService            feed.FeedService
 	ReaderSettingsService  readersettings.ReaderSettingsService
 	ReadingProgressService readingprogress.ReadingProgressService
-	AsuraApp               *asura.App
+	AsuraScansApp          *asurascans.App
 	CoversService          *covers.Service
 	SetupService           *setup.Service
 	SessionsService        *sessions.Service
@@ -810,13 +810,13 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 		return nil, fmt.Errorf("failed to init authenticator: %w", err)
 	}
 
-	asuraCtrl, err := httpasura.New(httpasura.Config{
-		Endpoint:    "/asura",
+	asuraScansCtrl, err := httpasurascans.New(httpasurascans.Config{
+		Endpoint:    "/" + string(sources.SourceAsuraScans),
 		Middlewares: chi.Middlewares{authenticator.Middleware},
 	},
-		httpasura.Deps{
-			AsuraApp: deps.AsuraApp,
-			Logger:   deps.Logger,
+		httpasurascans.Deps{
+			AsuraScansApp: deps.AsuraScansApp,
+			Logger:        deps.Logger,
 			CoverURLBuilder: func(source, slug string) string {
 				return deps.CoversService.BuildProxyURL(source, slug)
 			},
@@ -968,7 +968,7 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 	}
 
 	c := &ctrls{
-		Asura:           asuraCtrl,
+		AsuraScans:      asuraScansCtrl,
 		Covers:          coversCtrl,
 		Setup:           setup,
 		Health:          healthCtrl,

@@ -29,7 +29,7 @@ import (
 	httpcomics "github.com/kharente-deuh/uchiyomi-server/pkg/core/comics/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
-	coversasura "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
+	coversasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	httpfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/gateway/http"
@@ -43,9 +43,9 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/users"
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
-	asura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
-	asuradomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
-	httasura "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
+	asurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
+	asurascansdomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
+	httpasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/imgcache"
@@ -123,27 +123,27 @@ func (stubCoverFinder) FindBySourceSlug(context.Context, string, string) (uuid.U
 	return uuid.Nil, coredomain.ErrNotFound
 }
 
-func newTestCoversBundle(t *testing.T, asuraApp *asura.App) (*covers.App, *covers.Service) {
+func newTestCoversBundle(t *testing.T, asuraScansApp *asurascans.App) (*covers.App, *covers.Service) {
 	t.Helper()
 
 	logger := slog.New(slog.DiscardHandler)
 
 	httpClient := &http.Client{Timeout: time.Minute}
 
-	asuraResolver, err := coversasura.New(
-		coversasura.Config{CDNBaseURL: coversasura.DefaultCDNBaseURL},
-		coversasura.Deps{
-			Getter:     asuraApp,
+	asurascansResolver, err := coversasurascans.New(
+		coversasurascans.Config{CDNBaseURL: coversasurascans.DefaultCDNBaseURL},
+		coversasurascans.Deps{
+			Getter:     asuraScansApp,
 			HTTPClient: httpClient,
 			Logger:     logger,
 		},
 	)
 	if err != nil {
-		t.Fatalf("coversasura.New: %v", err)
+		t.Fatalf("coversasurascans.New: %v", err)
 	}
 
 	resolvers := map[string]covers.CoverResolver{
-		covers.SourceAsuraScans: asuraResolver,
+		covers.SourceAsuraScans: asurascansResolver,
 	}
 
 	cache, err := imgcache.New(imgcache.Config{
@@ -489,30 +489,30 @@ func newTestCache[P any, T any](t *testing.T, name string, logger *slog.Logger) 
 	return c
 }
 
-func newTestAsura(t *testing.T, logger *slog.Logger) *asura.App {
+func newTestAsuraScans(t *testing.T, logger *slog.Logger) *asurascans.App {
 	t.Helper()
 
-	app, err := asura.New(
-		asura.Config{SourceName: sources.SourceAsuraScans},
-		asura.Deps{
+	app, err := asurascans.New(
+		asurascans.Config{SourceName: sources.SourceAsuraScans},
+		asurascans.Deps{
 			Logger: logger,
-			SearchCache: newTestCache[asuradomain.SearchCacheOpts, asuradomain.SearchCacheResult](
+			SearchCache: newTestCache[asurascansdomain.SearchCacheOpts, asurascansdomain.SearchCacheResult](
 				t, "search", logger,
 			),
-			GetInfosBySlugCache: newTestCache[string, asuradomain.GetInfosBySlugResponse](
+			GetInfosBySlugCache: newTestCache[string, asurascansdomain.GetInfosBySlugResponse](
 				t, "infos", logger,
 			),
-			GetChaptersListBySeriesCache: newTestCache[string, []asuradomain.Chapter](
+			GetChaptersListBySeriesCache: newTestCache[string, []asurascansdomain.Chapter](
 				t, "chapters", logger,
 			),
-			GetImageURLsByChapter: newTestCache[asuradomain.GetImageURLsByChapterOpts, []string](
+			GetImageURLsByChapter: newTestCache[asurascansdomain.GetImageURLsByChapterOpts, []string](
 				t, "images", logger,
 			),
 			ComicsRepository: stubComicsRepository{},
 		},
 	)
 	if err != nil {
-		t.Fatalf("asura.New: %v", err)
+		t.Fatalf("asurascans.New: %v", err)
 	}
 
 	return app
@@ -523,7 +523,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 
 	logger := slog.New(slog.DiscardHandler)
 	registry := NewHealthRegistry(db)
-	asuraApp := newTestAsura(t, logger)
+	asuraScansApp := newTestAsuraScans(t, logger)
 
 	sessionsApp, err := sessions.New(
 		sessions.Config{RemoveExpiredSessionsInterval: time.Hour},
@@ -573,20 +573,20 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("httpusers.New: %v", err)
 	}
 
-	coversApp, coversService := newTestCoversBundle(t, asuraApp)
+	coversApp, coversService := newTestCoversBundle(t, asuraScansApp)
 
-	asuraCtrl, err := httasura.New(
-		httasura.Config{Endpoint: "/asura"},
-		httasura.Deps{
-			Logger:   logger,
-			AsuraApp: asuraApp,
+	asuraScansCtrl, err := httpasurascans.New(
+		httpasurascans.Config{Endpoint: "/" + string(sources.SourceAsuraScans)},
+		httpasurascans.Deps{
+			Logger:        logger,
+			AsuraScansApp: asuraScansApp,
 			CoverURLBuilder: func(source, slug string) string {
 				return coversService.BuildProxyURL(source, slug)
 			},
 		},
 	)
 	if err != nil {
-		t.Fatalf("httasura.New: %v", err)
+		t.Fatalf("httpasurascans.New: %v", err)
 	}
 
 	coversCtrl, err := httpcovers.New(
@@ -664,7 +664,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			SetupCtrl:           setupCtrl,
 			AuthCtrl:            authCtrl,
 			UsersCtrl:           usersCtrl,
-			AsuraCtrl:           asuraCtrl,
+			AsuraScansCtrl:      asuraScansCtrl,
 			CoversCtrl:          coversCtrl,
 			HealthCtrl:          healthCtrl,
 			OIDCProvidersCtrl:   oidcProvidersCtrl,
@@ -675,7 +675,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			ReadingProgressCtrl: readingProgressCtrl,
 			Logger:              logger,
 			Health:              registry,
-			Asura:               asuraApp,
+			AsuraScans:          asuraScansApp,
 			Covers:              coversApp,
 			Downloads:           fakeDownloadsApp{},
 			ChapterListRefresh:  fakeChapterListRefreshApp{},

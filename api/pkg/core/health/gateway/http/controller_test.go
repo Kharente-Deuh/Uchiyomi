@@ -129,8 +129,8 @@ func TestReadyzIs200WhenEverythingIsOK(t *testing.T) {
 }
 
 func TestReadyzIs503WhileStartingAndNamesWhatIsMissing(t *testing.T) {
-	reg := health.NewRegistry("migrations", "asura")
-	reg.Set("asura", nil)
+	reg := health.NewRegistry("migrations", "example")
+	reg.Set("example", nil)
 
 	code, body := get(t, newRouter(t, reg), "/readyz")
 
@@ -146,8 +146,8 @@ func TestReadyzIs503WhileStartingAndNamesWhatIsMissing(t *testing.T) {
 		t.Errorf("migrations = %q, want %q", got, "starting")
 	}
 
-	if got := body.Components["asura"].Status; got != "ok" {
-		t.Errorf("asura = %q, want %q", got, "ok")
+	if got := body.Components["example"].Status; got != "ok" {
+		t.Errorf("example = %q, want %q", got, "ok")
 	}
 }
 

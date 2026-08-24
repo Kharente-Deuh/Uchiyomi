@@ -25,7 +25,7 @@ async function handleDelete(): Promise<void> {
   if (!res.success) {
     console.error('api.deleteById failed', res.error)
     toast.error(res.error.status === 404
-      ? t('sources.asura.comic.notFound')
+      ? t('sources.asurascans.comic.notFound')
       : t('error.unknown'))
 
     return
@@ -41,7 +41,7 @@ async function handleDelete(): Promise<void> {
   <OrganismModalConfirmation
     v-model="show"
     :loading
-    :text="$t('sources.asura.delete.confirmation', { name: comic?.title ?? '' })"
+    :text="$t('sources.asurascans.delete.confirmation', { name: comic?.title ?? '' })"
     @confirm="handleDelete"
   />
 </template>

@@ -265,16 +265,16 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 
 	logger := slog.New(slog.DiscardHandler)
 
-	asuraApp, err := setupAsura(logger, stubComicsRepository{})
+	asuraScansApp, err := setupAsuraScans(logger, stubComicsRepository{})
 	if err != nil {
-		t.Fatalf("setupAsura: %v", err)
+		t.Fatalf("setupAsuraScans: %v", err)
 	}
 
 	coversBundle, err := setupCovers(coversDeps{
 		Logger:           logger,
 		CoversDir:        t.TempDir(),
 		DownloadsDir:     t.TempDir(),
-		AsuraApp:         asuraApp,
+		AsuraScansApp:    asuraScansApp,
 		ComicsRepository: stubComicsRepository{},
 	})
 	if err != nil {
@@ -282,7 +282,7 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 	}
 
 	c, err := setupCtrls(ctrlsDeps{
-		AsuraApp:               asuraApp,
+		AsuraScansApp:          asuraScansApp,
 		CoversService:          coversBundle.Service,
 		SessionsService:        newTestSessionsService(t, user),
 		Logger:                 logger,
@@ -315,16 +315,16 @@ func TestSetupCoversServeUnknownSource(t *testing.T) {
 
 	logger := slog.New(slog.DiscardHandler)
 
-	asuraApp, err := setupAsura(logger, stubComicsRepository{})
+	asuraScansApp, err := setupAsuraScans(logger, stubComicsRepository{})
 	if err != nil {
-		t.Fatalf("setupAsura: %v", err)
+		t.Fatalf("setupAsuraScans: %v", err)
 	}
 
 	bundle, err := setupCovers(coversDeps{
 		Logger:           logger,
 		CoversDir:        t.TempDir(),
 		DownloadsDir:     t.TempDir(),
-		AsuraApp:         asuraApp,
+		AsuraScansApp:    asuraScansApp,
 		ComicsRepository: stubComicsRepository{},
 	})
 	if err != nil {

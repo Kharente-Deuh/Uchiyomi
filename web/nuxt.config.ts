@@ -21,7 +21,7 @@ export default defineNuxtConfig({
     { path: '~/features/auth/components', prefix: 'Auth' },
     { path: '~/features/oidc/components', prefix: 'Oidc' },
     { path: '~/features/comics/components', prefix: 'Comics' },
-    { path: '~/features/asura/components', prefix: 'Asura' },
+    { path: '~/features/asurascans/components', prefix: 'AsuraScans' },
     { path: '~/features/library/components', prefix: 'Library' },
     { path: '~/features/feed/components', prefix: 'Feed' },
     { path: '~/features/reader/components', prefix: 'Reader' },

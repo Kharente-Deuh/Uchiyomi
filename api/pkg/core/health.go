@@ -5,13 +5,14 @@ package core
 import (
 	"net/http"
 
+	"github.com/kharente-deuh/uchiyomi-server/pkg/sources"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/httputils"
 )
 
 const (
 	componentMigrations         = "migrations"
-	componentAsura              = "asura"
+	componentAsuraScans         = string(sources.SourceAsuraScans)
 	componentCovers             = "covers"
 	componentDownloads          = "downloads"
 	componentChapterListRefresh = "chapter-list-refresh"
@@ -25,7 +26,7 @@ const notReadyMessage = "service is starting"
 func NewHealthRegistry(db Database) *health.Registry {
 	reg := health.NewRegistry(
 		componentMigrations,
-		componentAsura,
+		componentAsuraScans,
 		componentCovers,
 		componentDownloads,
 		componentChapterListRefresh,

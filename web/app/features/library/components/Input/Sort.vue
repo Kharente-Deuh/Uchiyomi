@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import type { SearchComicSort } from '~/features/comics/types'
 
@@ -27,6 +28,6 @@ const items: { value: SearchComicSort, title: string }[] = [
     :disabled
     hide-details
     :items="items"
-    :label="$t('sources.asura.sort.label')"
+    :label="$t('sources.asurascans.sort.label')"
   />
 </template>

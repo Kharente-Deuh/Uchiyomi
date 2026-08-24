@@ -43,7 +43,7 @@ func TestNewHealthRegistryDeclaresTheLatchesAndTheDBProbe(t *testing.T) {
 
 	components := []string{
 		componentMigrations,
-		componentAsura,
+		componentAsuraScans,
 		componentCovers,
 		componentDownloads,
 		componentChapterListRefresh,
@@ -90,7 +90,7 @@ func TestNewHealthRegistryWiresTheProbeToTheGivenDatabase(t *testing.T) {
 func TestApplicationRoutesAre503WhileMigrationsAreStarting(t *testing.T) {
 	h, _ := newTestHandler(t, &fakeDB{})
 
-	for _, path := range []string{"/api/setup/status", "/api/sources/asura/search"} {
+	for _, path := range []string{"/api/setup/status", "/api/sources/asurascans/search"} {
 		code, raw := serve(t, h, path)
 		if code != http.StatusServiceUnavailable {
 			t.Errorf("%s: code = %d, want %d", path, code, http.StatusServiceUnavailable)

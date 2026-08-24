@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ReaderSettings } from '../types'
 import type { DetailedChapter } from '~/features/chapters/types'
 import type { Comic } from '~/features/comics/types'
@@ -50,7 +52,7 @@ export function useReader(opts: ReaderComposableOptions): ReaderComposable {
       console.error('api.getById', res.error)
 
       if (res.error.status === 404 || res.error.status === 403) {
-        toast.error(t('sources.asura.chapter.notFound'))
+        toast.error(t('sources.asurascans.chapter.notFound'))
       } else {
         toast.error(t('error.unknown'))
       }
@@ -91,7 +93,7 @@ export function useReader(opts: ReaderComposableOptions): ReaderComposable {
       console.error('comicsApi.getById', res.error)
 
       if (res.error.status === 404 || res.error.status === 403) {
-        toast.error(t('sources.asura.comic.notFound'))
+        toast.error(t('sources.asurascans.comic.notFound'))
       } else {
         toast.error(t('error.unknown'))
       }
@@ -149,7 +151,7 @@ export function useReader(opts: ReaderComposableOptions): ReaderComposable {
     } else {
       console.error('api.retryDownload', res.error)
       if (res.error.status === 404 || res.error.status === 403) {
-        toast.error(t('sources.asura.chapter.notFound'))
+        toast.error(t('sources.asurascans.chapter.notFound'))
       } else {
         toast.error(t('error.unknown'))
       }
