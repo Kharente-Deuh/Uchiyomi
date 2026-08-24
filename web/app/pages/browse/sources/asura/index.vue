@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import type { RouteLocationNormalized } from 'vue-router'
 import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
-import type { AsuraSearchItem } from '~/features/asura/types'
+import type { AsuraScansSearchItem } from '~/features/asurascans/types'
 import asuraImg from '~/assets/images/sources/asurascans.webp'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
@@ -37,7 +37,7 @@ const {
   addComicInLibrary,
   addComicInLibraryLoading,
   resetFilters,
-} = useAsuraSearch({ doSearch: true })
+} = useAsuraScansSearch({ doSearch: true })
 const hasNextPage = computed(() => page.value < maxPage.value)
 const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel')
 useIntersectionObserver(loadMoreSentinel, ([entry]) => {
@@ -47,9 +47,9 @@ useIntersectionObserver(loadMoreSentinel, ([entry]) => {
 })
 
 const showDeleteModal = ref(false)
-const comicToDelete = ref<AsuraSearchItem>()
+const comicToDelete = ref<AsuraScansSearchItem>()
 
-async function doToggleComic(comic: AsuraSearchItem): Promise<void> {
+async function doToggleComic(comic: AsuraScansSearchItem): Promise<void> {
   if (comic.internalId) {
     comicToDelete.value = comic
     showDeleteModal.value = true
@@ -81,10 +81,10 @@ onBeforeRouteLeave((to: RouteLocationNormalized) => {
     </template>
 
     <template #sub-header>
-      <AsuraHeader />
+      <AsuraScansHeader />
     </template>
 
-    <AsuraModalDelete v-model="showDeleteModal" v-model:comic="comicToDelete" />
+    <AsuraScansModalDelete v-model="showDeleteModal" v-model:comic="comicToDelete" />
 
     <div class="pt-6" :class="{ 'px-4': smAndDown }">
       <div v-if="!isLoading && series.length === 0" class="d-flex justify-center">
@@ -92,7 +92,7 @@ onBeforeRouteLeave((to: RouteLocationNormalized) => {
       </div>
 
       <div class="comics-grid">
-        <AsuraComicCard
+        <AsuraScansComicCard
           v-for="(comic, i) in series"
           :key="i"
           :comic

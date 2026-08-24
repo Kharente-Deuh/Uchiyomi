@@ -2,7 +2,7 @@
 // @vitest-environment nuxt
 
 import type { VueWrapper } from '@vue/test-utils'
-import type { AsuraSearchItem } from '~/features/asura/types'
+import type { AsuraScansSearchItem } from '~/features/asurascans/types'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
@@ -13,7 +13,7 @@ const { series, isLoading, maxPage, smAndDown, page, addComicInLibraryLoading } 
   const { ref } = await import('vue')
 
   return {
-    series: ref<AsuraSearchItem[]>([]),
+    series: ref<AsuraScansSearchItem[]>([]),
     isLoading: ref(false),
     maxPage: ref(1),
     smAndDown: ref(false),
@@ -22,8 +22,8 @@ const { series, isLoading, maxPage, smAndDown, page, addComicInLibraryLoading } 
   }
 })
 
-vi.mock('~/features/asura/composables/asura-search.composable', () => ({
-  useAsuraSearch: () => ({
+vi.mock('~/features/asurascans/composables/asurascans-search.composable', () => ({
+  useAsuraScansSearch: () => ({
     isLoading,
     series,
     page,
@@ -47,18 +47,18 @@ function displayStub(): { smAndDown: typeof smAndDown } {
 mockNuxtImport('useDisplay', () => displayStub)
 
 const HeaderStub = defineComponent({
-  name: 'AsuraHeader',
+  name: 'AsuraScansHeader',
   template: '<div data-test="asura-header" />',
 })
 
 const CardStub = defineComponent({
-  name: 'AsuraComicCard',
+  name: 'AsuraScansComicCard',
   props: { comic: { type: Object, required: true } },
   template: '<div data-test="comic-card">{{ comic.title }}</div>',
 })
 
 const DeleteStub = defineComponent({
-  name: 'AsuraModalDelete',
+  name: 'AsuraScansModalDelete',
   template: '<div data-test="delete-modal" />',
 })
 
@@ -68,9 +68,9 @@ async function mount(): Promise<VueWrapper> {
     {
       global: {
         stubs: {
-          AsuraHeader: HeaderStub,
-          AsuraComicCard: CardStub,
-          AsuraModalDelete: DeleteStub,
+          AsuraScansHeader: HeaderStub,
+          AsuraScansComicCard: CardStub,
+          AsuraScansModalDelete: DeleteStub,
           MoleculePaginationFooter: true,
           OrganismPageLayout: false,
         },
@@ -79,7 +79,7 @@ async function mount(): Promise<VueWrapper> {
   )
 }
 
-function item(): AsuraSearchItem {
+function item(): AsuraScansSearchItem {
   return {
     slug: 'solo-leveling',
     title: 'Solo Leveling',
@@ -110,7 +110,7 @@ beforeEach(() => {
   smAndDown.value = false
 })
 
-describe('asuraBrowsePage', () => {
+describe('asuraScansBrowsePage', () => {
   it('shows an empty state when there are no series', async () => {
     const wrapper = await mount()
     expect(wrapper.text()).toContain('No results')

@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type AsuraComicChapters from '~/features/asura/components/Comic/Chapters/index.vue'
-import type { AsuraComicInfos } from '~/features/asura/types'
+import type AsuraScansComicChapters from '~/features/asurascans/components/Comic/Chapters/index.vue'
+import type { AsuraScansComicInfos } from '~/features/asurascans/types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
 import asuraImg from '~/assets/images/sources/asurascans.webp'
 import { ASURA_SCANS_URL } from '~/constants'
@@ -16,10 +16,10 @@ const route = useRoute('browse-sources-asura-slug')
 const toast = useToast()
 const { t } = useI18n()
 const { smAndDown } = useDisplay()
-const api = createAsuraApi()
+const api = createAsuraScansApi()
 
 const fetchInfosLoading = ref(false)
-const infos = ref<AsuraComicInfos>()
+const infos = ref<AsuraScansComicInfos>()
 
 const coverSrc = ref<string>()
 
@@ -83,7 +83,7 @@ const comicOriginUrl = computed(() => {
           @error="coverSrc = defaultCover"
         />
 
-        <AsuraComicStatusInfos
+        <AsuraScansComicStatusInfos
           v-if="!smAndDown"
           v-model="infos"
           :comic-origin-url="comicOriginUrl"
@@ -106,13 +106,13 @@ const comicOriginUrl = computed(() => {
 
           <span class="font-title font-weight-bold" :class="{ 'text-display-medium': !smAndDown, 'text-title-large': smAndDown }">{{ infos.title }}</span>
         </div>
-        <AsuraComicStatusInfos
+        <AsuraScansComicStatusInfos
           v-if="smAndDown"
           v-model="infos"
           :comic-origin-url="comicOriginUrl"
         />
-        <AsuraComicGeneralInfos :comic="infos" />
-        <AsuraComicChapters
+        <AsuraScansComicGeneralInfos :comic="infos" />
+        <AsuraScansComicChapters
           :slug="route.params.slug"
           :comic-origin-url="comicOriginUrl"
         />
