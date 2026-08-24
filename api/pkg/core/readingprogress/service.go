@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/core/chapters"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/transaction"
 )
@@ -163,10 +164,55 @@ func (s *Service) Save(ctx context.Context, opts SaveOpts) (Progress, error) {
 }
 
 func (s *Service) MarkRead(ctx context.Context, opts MarkReadOpts) (ListResult, error) {
-	_ = ctx
-	_ = opts
+	ids := uniqueIDs(opts.ChapterIDs)
+	if len(ids) == 0 {
+		return ListResult{}, fmt.Errorf("%w: chapterIds is required", ErrInvalid)
+	}
+
+	if err := s.requireLibrary(ctx, opts.UserID, opts.ComicID); err != nil {
+		return ListResult{}, err
+	}
+
+	found, err := s.deps.Chapters.GetByIds(ctx, ids)
+	if err != nil {
+		return ListResult{}, fmt.Errorf("s.deps.Chapters.GetByIds: %w", err)
+	}
+
+	if len(found) != len(ids) {
+		return ListResult{}, domain.ErrNotFound
+	}
+
+	eligible := make([]chapters.Chapter, 0, len(found))
+	for i := range found {
+		if found[i].ComicID != opts.ComicID {
+			return ListResult{}, domain.ErrNotFound
+		}
+
+		if found[i].PagesNb > 0 {
+			eligible = append(eligible, found[i])
+		}
+	}
+
+	if len(eligible) == 0 {
+		return ListResult{}, fmt.Errorf("%w: no eligible chapters", ErrInvalid)
+	}
 
 	return ListResult{}, fmt.Errorf("%w: not implemented", ErrInvalid)
+}
+
+func uniqueIDs(ids []uuid.UUID) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+
+	return out
 }
 
 func (s *Service) requireLibrary(ctx context.Context, userID, comicID uuid.UUID) error {
