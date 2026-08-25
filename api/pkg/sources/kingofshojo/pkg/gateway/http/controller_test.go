@@ -288,6 +288,68 @@ func TestSearchOK(t *testing.T) {
 	}
 }
 
+func TestGetInfosBySlugReturnsProxiedCoverURL(t *testing.T) {
+	t.Parallel()
+
+	seriesCache, err := fncache.New(
+		fncache.Config[string, parse.SeriesPage]{
+			Name: "series",
+			Fn: func(context.Context, string) (*parse.SeriesPage, error) {
+				return &parse.SeriesPage{
+					Infos: parse.SeriesInfos{
+						Slug:  "solo-shojo",
+						Title: "Solo Shojo",
+						Cover: testExternalCoverURL,
+						Type:  sources.SeriesTypeManhwa,
+					},
+				}, nil
+			},
+			Key:           func(slug string) string { return slug },
+			TTL:           time.Minute,
+			ErrorTTL:      time.Minute,
+			FetchTimeout:  time.Minute,
+			CleanInterval: time.Minute,
+			MaxEntries:    1,
+		},
+		fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+	)
+	if err != nil {
+		t.Fatalf("fncache.New(series): %v", err)
+	}
+
+	ctrl := newTestController(t, newTestKingOfShojoApp(t, kingofshojocore.Deps{
+		SeriesCache: seriesCache,
+	}))
+
+	r := chi.NewRouter()
+	ctrl.InitRouter(r)
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, authenticatedRequest("/kingofshojo/series/solo-shojo"))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var body struct {
+		Cover string `json:"cover"`
+		Slug  string `json:"slug"`
+	}
+
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+
+	want := coverURLBuilder(string(sources.SourceKingOfShojo), "solo-shojo")
+	if body.Cover != want {
+		t.Errorf("cover = %q, want %q", body.Cover, want)
+	}
+
+	if body.Cover == testExternalCoverURL {
+		t.Error("external cover URL leaked in response")
+	}
+}
+
 func TestSearchServiceUnavailableOnChallenge(t *testing.T) {
 	t.Parallel()
 

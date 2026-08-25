@@ -286,6 +286,7 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 		CoversDir:        t.TempDir(),
 		DownloadsDir:     t.TempDir(),
 		AsuraScansApp:    asuraScansApp,
+		KingOfShojoApp:   kingOfShojoApp,
 		ComicsRepository: stubComicsRepository{},
 	})
 	if err != nil {
@@ -332,11 +333,17 @@ func TestSetupCoversServeUnknownSource(t *testing.T) {
 		t.Fatalf("setupAsuraScans: %v", err)
 	}
 
+	kingOfShojoApp, err := setupKingOfShojo(logger, stubComicsRepository{}, nil)
+	if err != nil {
+		t.Fatalf("setupKingOfShojo: %v", err)
+	}
+
 	bundle, err := setupCovers(coversDeps{
 		Logger:           logger,
 		CoversDir:        t.TempDir(),
 		DownloadsDir:     t.TempDir(),
 		AsuraScansApp:    asuraScansApp,
+		KingOfShojoApp:   kingOfShojoApp,
 		ComicsRepository: stubComicsRepository{},
 	})
 	if err != nil {
