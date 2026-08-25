@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//nolint:goconst,lll
+//nolint:goconst,lll,dupl
 package download_test
 
 import (
@@ -654,7 +654,7 @@ func TestWorkerResumeEnqueuesWithoutClearingPages(t *testing.T) {
 	}
 }
 
-func TestWorkerOptimizesPNGToWebP(t *testing.T) {
+func TestWorkerPreservesPNGBytes(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
@@ -702,96 +702,20 @@ func TestWorkerOptimizesPNGToWebP(t *testing.T) {
 		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
 		if err == nil && updated.Download == 100 {
 			chapterDir := filepath.Join(dir, comicID.String(), "1")
-			webpPath := filepath.Join(chapterDir, "001.webp")
 			pngPath := filepath.Join(chapterDir, "001.png")
-
-			data, err := os.ReadFile(webpPath)
-			if err != nil {
-				t.Fatalf("expected 001.webp to exist: %v", err)
-			}
-
-			if len(data) >= len(pngBytes) {
-				t.Errorf("expected webp size (%d) to be smaller than png (%d)", len(data), len(pngBytes))
-			}
-
-			if download.SniffFormat(data) != download.FormatWebP {
-				t.Errorf("expected downloaded file to be webp format")
-			}
-
-			if _, err := os.Stat(pngPath); !os.IsNotExist(err) {
-				t.Errorf("expected 001.png not to exist")
-			}
-
-			return
-		}
-
-		time.Sleep(20 * time.Millisecond)
-	}
-
-	t.Fatal("chapter was not completed")
-}
-
-func TestWorkerOptimizesJPEGToWebPWhenSmaller(t *testing.T) {
-	t.Parallel()
-
-	comicID := uuid.New()
-	chapterID := uuid.New()
-	chapter := chapters.Chapter{
-		ID:                chapterID,
-		ComicID:           comicID,
-		SourceChapterSlug: "chapter-1",
-		Number:            1,
-		PagesNb:           1,
-	}
-	comic := comics.Comic{
-		ID:     comicID,
-		Source: sources.SourceAsuraScans,
-		Slug:   "series-slug",
-	}
-
-	jpegBytes := createTestSolidJPEG(t, 200, 200)
-
-	worker, dir, chaptersRepo := newTestWorker(
-		t,
-		chapter,
-		comic,
-		[]string{".jpg"},
-		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(jpegBytes)
-		}),
-	)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		_ = worker.Run(ctx)
-	}()
-
-	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
-	if err != nil {
-		t.Fatalf("Enqueue: %v", err)
-	}
-
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
-		if err == nil && updated.Download == 100 {
-			chapterDir := filepath.Join(dir, comicID.String(), "1")
 			webpPath := filepath.Join(chapterDir, "001.webp")
 
-			data, err := os.ReadFile(webpPath)
+			data, err := os.ReadFile(pngPath)
 			if err != nil {
-				t.Fatalf("expected 001.webp to exist: %v", err)
+				t.Fatalf("expected 001.png to exist: %v", err)
 			}
 
-			if len(data) >= len(jpegBytes) {
-				t.Errorf("expected webp size (%d) to be smaller than jpeg (%d)", len(data), len(jpegBytes))
+			if !bytes.Equal(data, pngBytes) {
+				t.Errorf("expected original png bytes to be preserved exactly")
 			}
 
-			if download.SniffFormat(data) != download.FormatWebP {
-				t.Errorf("expected downloaded file to be webp format")
+			if _, err := os.Stat(webpPath); !os.IsNotExist(err) {
+				t.Errorf("expected 001.webp not to exist")
 			}
 
 			return
@@ -803,7 +727,7 @@ func TestWorkerOptimizesJPEGToWebPWhenSmaller(t *testing.T) {
 	t.Fatal("chapter was not completed")
 }
 
-func TestWorkerPreservesJPEGWhenWebPLarger(t *testing.T) {
+func TestWorkerPreservesJPEGBytes(t *testing.T) {
 	t.Parallel()
 
 	comicID := uuid.New()
@@ -852,6 +776,7 @@ func TestWorkerPreservesJPEGWhenWebPLarger(t *testing.T) {
 		if err == nil && updated.Download == 100 {
 			chapterDir := filepath.Join(dir, comicID.String(), "1")
 			jpgPath := filepath.Join(chapterDir, "001.jpg")
+			webpPath := filepath.Join(chapterDir, "001.webp")
 
 			data, err := os.ReadFile(jpgPath)
 			if err != nil {
@@ -860,6 +785,10 @@ func TestWorkerPreservesJPEGWhenWebPLarger(t *testing.T) {
 
 			if !bytes.Equal(data, jpegBytes) {
 				t.Errorf("expected original jpeg bytes to be preserved")
+			}
+
+			if _, err := os.Stat(webpPath); !os.IsNotExist(err) {
+				t.Errorf("expected 001.webp not to exist")
 			}
 
 			return
@@ -952,82 +881,10 @@ func TestWorkerResumesSkippingExistingWebPAndPNG(t *testing.T) {
 				t.Fatalf("002.png modified or missing: %v", err)
 			}
 
-			// Verify page 3 was downloaded and optimized to webp
-			if _, err := os.Stat(filepath.Join(chapterDir, "003.webp")); err != nil {
-				t.Fatalf("third page not saved as webp: %v", err)
-			}
-
-			return
-		}
-
-		time.Sleep(20 * time.Millisecond)
-	}
-
-	t.Fatal("chapter was not completed")
-}
-
-func TestWorkerPreservesAPNGAsPNG(t *testing.T) {
-	t.Parallel()
-
-	comicID := uuid.New()
-	chapterID := uuid.New()
-	chapter := chapters.Chapter{
-		ID:                chapterID,
-		ComicID:           comicID,
-		SourceChapterSlug: "chapter-1",
-		Number:            1,
-		PagesNb:           1,
-	}
-	comic := comics.Comic{
-		ID:     comicID,
-		Source: sources.SourceAsuraScans,
-		Slug:   "series-slug",
-	}
-
-	apngBytes := createTestAPNG(t)
-
-	worker, dir, chaptersRepo := newTestWorker(
-		t,
-		chapter,
-		comic,
-		[]string{".png"},
-		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(apngBytes)
-		}),
-	)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		_ = worker.Run(ctx)
-	}()
-
-	err := worker.Enqueue(context.Background(), []chapters.Chapter{chapter})
-	if err != nil {
-		t.Fatalf("Enqueue: %v", err)
-	}
-
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		updated, err := chaptersRepo.GetByID(context.Background(), chapterID)
-		if err == nil && updated.Download == 100 {
-			chapterDir := filepath.Join(dir, comicID.String(), "1")
-			pngPath := filepath.Join(chapterDir, "001.png")
-			webpPath := filepath.Join(chapterDir, "001.webp")
-
-			data, err := os.ReadFile(pngPath)
-			if err != nil {
-				t.Fatalf("expected 001.png to exist: %v", err)
-			}
-
-			if !bytes.Equal(data, apngBytes) {
-				t.Errorf("expected APNG bytes to be preserved exactly")
-			}
-
-			if _, err := os.Stat(webpPath); !os.IsNotExist(err) {
-				t.Errorf("expected 001.webp not to exist for APNG")
+			// Verify page 3 was downloaded and saved as png
+			p3, err := os.ReadFile(filepath.Join(chapterDir, "003.png"))
+			if err != nil || !bytes.Equal(p3, page3PNG) {
+				t.Fatalf("third page not saved as png: %v", err)
 			}
 
 			return

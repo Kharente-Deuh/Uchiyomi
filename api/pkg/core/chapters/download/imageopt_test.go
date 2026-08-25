@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//nolint:goconst,govet
 package download_test
 
 import (
 	"bytes"
-	"encoding/binary"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -46,49 +46,6 @@ func createTestJPEG(t *testing.T, w, h int) []byte {
 	return buf.Bytes()
 }
 
-func createTestSolidJPEG(t *testing.T, w, h int) []byte {
-	t.Helper()
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			img.Set(x, y, color.RGBA{R: 255, G: 255, B: 255, A: 255})
-		}
-	}
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 100}); err != nil {
-		t.Fatalf("jpeg.Encode: %v", err)
-	}
-
-	return buf.Bytes()
-}
-
-func createTestAPNG(t *testing.T) []byte {
-	t.Helper()
-	basePNG := createTestPNG(t, 10, 10)
-	// Insert an acTL chunk before IDAT chunk
-	idatIdx := bytes.Index(basePNG, []byte("IDAT"))
-	if idatIdx == -1 {
-		t.Fatalf("IDAT chunk not found in test PNG")
-	}
-	chunkStart := idatIdx - 4
-
-	var actlChunk bytes.Buffer
-	// Length: 8 bytes (sequence_number: 4 bytes, num_plays: 4 bytes)
-	_ = binary.Write(&actlChunk, binary.BigEndian, uint32(8))
-	actlChunk.WriteString("acTL")
-	_ = binary.Write(&actlChunk, binary.BigEndian, uint32(2)) // num_frames
-	_ = binary.Write(&actlChunk, binary.BigEndian, uint32(0)) // num_plays
-	// CRC (fake 4 bytes for testing detector)
-	_ = binary.Write(&actlChunk, binary.BigEndian, uint32(0))
-
-	var out bytes.Buffer
-	out.Write(basePNG[:chunkStart])
-	out.Write(actlChunk.Bytes())
-	out.Write(basePNG[chunkStart:])
-
-	return out.Bytes()
-}
-
 func TestSniffFormat(t *testing.T) {
 	pngData := createTestPNG(t, 2, 2)
 	jpegData := createTestJPEG(t, 2, 2)
@@ -121,8 +78,8 @@ func TestDetectExtension(t *testing.T) {
 	corruptData := []byte("random bytes")
 
 	tests := []struct {
-		name     string
 		data     []byte
+		name     string
 		urlExt   string
 		expected string
 	}{
