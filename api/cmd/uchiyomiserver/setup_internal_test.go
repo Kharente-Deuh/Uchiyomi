@@ -276,6 +276,11 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 		t.Fatalf("setupAsuraScans: %v", err)
 	}
 
+	kingOfShojoApp, err := setupKingOfShojo(logger, stubComicsRepository{}, nil)
+	if err != nil {
+		t.Fatalf("setupKingOfShojo: %v", err)
+	}
+
 	coversBundle, err := setupCovers(coversDeps{
 		Logger:           logger,
 		CoversDir:        t.TempDir(),
@@ -289,6 +294,7 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 
 	c, err := setupCtrls(ctrlsDeps{
 		AsuraScansApp:          asuraScansApp,
+		KingOfShojoApp:         kingOfShojoApp,
 		CoversService:          coversBundle.Service,
 		SessionsService:        newTestSessionsService(t, user),
 		Logger:                 logger,

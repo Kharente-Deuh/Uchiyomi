@@ -46,6 +46,10 @@ import (
 	asurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	asurascansdomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	httpasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
+	kingofshojo "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/core"
+	kingofshojodomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/domain"
+	httpkingofshojo "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/gateway/http"
+	kingofshojoparse "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/parse"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/imgcache"
@@ -518,12 +522,39 @@ func newTestAsuraScans(t *testing.T, logger *slog.Logger) *asurascans.App {
 	return app
 }
 
+func newTestKingOfShojo(t *testing.T, logger *slog.Logger) *kingofshojo.App {
+	t.Helper()
+
+	app, err := kingofshojo.New(
+		kingofshojo.Config{SourceName: sources.SourceKingOfShojo, BaseURL: "https://kingofshojo.com"},
+		kingofshojo.Deps{
+			Logger: logger,
+			SearchCache: newTestCache[kingofshojodomain.SearchCacheOpts, kingofshojodomain.SearchCacheResult](
+				t, "kos-search", logger,
+			),
+			SeriesCache: newTestCache[string, kingofshojoparse.SeriesPage](
+				t, "kos-series", logger,
+			),
+			GetImageURLsByChapter: newTestCache[kingofshojodomain.GetImageURLsByChapterOpts, []string](
+				t, "kos-images", logger,
+			),
+			ComicsRepository: stubComicsRepository{},
+		},
+	)
+	if err != nil {
+		t.Fatalf("kingofshojo.New: %v", err)
+	}
+
+	return app
+}
+
 func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 	t.Helper()
 
 	logger := slog.New(slog.DiscardHandler)
 	registry := NewHealthRegistry(db)
 	asuraScansApp := newTestAsuraScans(t, logger)
+	kingOfShojoApp := newTestKingOfShojo(t, logger)
 
 	sessionsApp, err := sessions.New(
 		sessions.Config{RemoveExpiredSessionsInterval: time.Hour},
@@ -587,6 +618,20 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 	)
 	if err != nil {
 		t.Fatalf("httpasurascans.New: %v", err)
+	}
+
+	kingOfShojoCtrl, err := httpkingofshojo.New(
+		httpkingofshojo.Config{Endpoint: "/" + string(sources.SourceKingOfShojo)},
+		httpkingofshojo.Deps{
+			Logger:         logger,
+			KingOfShojoApp: kingOfShojoApp,
+			CoverURLBuilder: func(source, slug string) string {
+				return coversService.BuildProxyURL(source, slug)
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("httpkingofshojo.New: %v", err)
 	}
 
 	coversCtrl, err := httpcovers.New(
@@ -665,6 +710,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			AuthCtrl:            authCtrl,
 			UsersCtrl:           usersCtrl,
 			AsuraScansCtrl:      asuraScansCtrl,
+			KingOfShojoCtrl:     kingOfShojoCtrl,
 			CoversCtrl:          coversCtrl,
 			HealthCtrl:          healthCtrl,
 			OIDCProvidersCtrl:   oidcProvidersCtrl,
@@ -676,6 +722,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 			Logger:              logger,
 			Health:              registry,
 			AsuraScans:          asuraScansApp,
+			KingOfShojo:         kingOfShojoApp,
 			Covers:              coversApp,
 			Downloads:           fakeDownloadsApp{},
 			ChapterListRefresh:  fakeChapterListRefreshApp{},

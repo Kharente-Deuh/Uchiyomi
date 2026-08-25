@@ -13,6 +13,7 @@ import (
 const (
 	componentMigrations         = "migrations"
 	componentAsuraScans         = string(sources.SourceAsuraScans)
+	componentKingOfShojo        = string(sources.SourceKingOfShojo)
 	componentCovers             = "covers"
 	componentDownloads          = "downloads"
 	componentChapterListRefresh = "chapter-list-refresh"
@@ -27,6 +28,7 @@ func NewHealthRegistry(db Database) *health.Registry {
 	reg := health.NewRegistry(
 		componentMigrations,
 		componentAsuraScans,
+		componentKingOfShojo,
 		componentCovers,
 		componentDownloads,
 		componentChapterListRefresh,

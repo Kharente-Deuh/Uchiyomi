@@ -735,6 +735,47 @@ func TestCreateUnknownSource(t *testing.T) {
 	}
 }
 
+func TestCreateKingOfShojoSource(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	comicsRepo := &fakeComicsRepository{findBySourceSlugErr: domain.ErrNotFound}
+	source := &fakeSource{
+		infos: &sources.GetInfosBySlugResponse{
+			Slug:         testSlug,
+			Title:        "Solo Shojo",
+			Status:       sources.SeriesStatusOngoing,
+			Type:         sources.SeriesTypeManhwa,
+			ChapterCount: 1,
+		},
+		chapters: []sources.SourceChapter{
+			{SourceChapterSlug: "chapter-1", Number: 1, Title: "Chapter 1", PageCount: 20},
+		},
+	}
+
+	deps := validServiceDeps()
+	deps.ComicsRepository = comicsRepo
+	deps.Sources = sources.SourceMap{sources.SourceKingOfShojo: source}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	got, err := svc.Create(context.Background(), comics.CreateOpts{
+		UserID: userID,
+		Source: sources.SourceKingOfShojo,
+		Slug:   testSlug,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if got.Source != sources.SourceKingOfShojo {
+		t.Errorf("Create().Source = %q, want %q", got.Source, sources.SourceKingOfShojo)
+	}
+}
+
 func TestCreatePropagatesChapterListError(t *testing.T) {
 	t.Parallel()
 
