@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-package byparr
+package challengesolver
 
 import (
 	"bytes"
@@ -88,7 +88,7 @@ func (s *Solution) CookieMap() map[string]string {
 func (s *Solution) ApplyTo(jar http.CookieJar, rawURL string) error {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("byparr: invalid url %q: %w", rawURL, err)
+		return fmt.Errorf("challengesolver: invalid url %q: %w", rawURL, err)
 	}
 	cookies := make([]*http.Cookie, 0, len(s.Cookies))
 	for _, c := range s.Cookies {
@@ -126,7 +126,7 @@ func (e *Error) Error() string {
 		msg = "unexpected response"
 	}
 
-	return fmt.Sprintf("byparr: %s (http %d, status %q)", msg, e.HTTPStatus, e.Status)
+	return fmt.Sprintf("challengesolver: %s (http %d, status %q)", msg, e.HTTPStatus, e.Status)
 }
 
 type Request struct {
@@ -211,20 +211,20 @@ func (c *Client) Health(ctx context.Context) (*Health, error) {
 
 	resp, err := c.httpc.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("byparr: appel /health: %w", err)
+		return nil, fmt.Errorf("challengesolver: appel /health: %w", err)
 	}
 	defer drain(resp)
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("byparr: lecture /health: %w", err)
+		return nil, fmt.Errorf("challengesolver: lecture /health: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, &Error{HTTPStatus: resp.StatusCode, Message: extractMessage(body)}
 	}
 	var h Health
 	if err := json.Unmarshal(body, &h); err != nil {
-		return nil, fmt.Errorf("byparr: /health invalid json: %w", err)
+		return nil, fmt.Errorf("challengesolver: /health invalid json: %w", err)
 	}
 
 	return &h, nil
@@ -240,7 +240,7 @@ func (c *Client) Post(ctx context.Context, targetURL string, form url.Values) (*
 
 func (c *Client) Do(ctx context.Context, r Request) (*Solution, error) {
 	if r.URL == "" {
-		return nil, errors.New("byparr: URL manquante")
+		return nil, errors.New("challengesolver: URL manquante")
 	}
 	if r.Cmd == "" {
 		r.Cmd = CmdGet
@@ -272,7 +272,7 @@ func (c *Client) Do(ctx context.Context, r Request) (*Solution, error) {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
-				return nil, fmt.Errorf("byparr: context canceled during backoff: %w", ctx.Err())
+				return nil, fmt.Errorf("challengesolver: context canceled during backoff: %w", ctx.Err())
 			case <-time.After(time.Duration(attempt) * 2 * time.Second):
 			}
 		}
@@ -308,13 +308,13 @@ func (c *Client) solveOnce(
 
 	resp, err := c.httpc.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("byparr: appel /v1: %w", err)
+		return nil, fmt.Errorf("challengesolver: appel /v1: %w", err)
 	}
 	defer drain(resp)
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("byparr: lecture /v1: %w", err)
+		return nil, fmt.Errorf("challengesolver: lecture /v1: %w", err)
 	}
 
 	var lr linkResponse
@@ -329,7 +329,7 @@ func (c *Client) solveOnce(
 		return nil, &Error{HTTPStatus: resp.StatusCode, Status: lr.Status, Message: msg}
 	}
 	if jsonErr != nil {
-		return nil, fmt.Errorf("byparr: /v1 invalid json: %w", jsonErr)
+		return nil, fmt.Errorf("challengesolver: /v1 invalid json: %w", jsonErr)
 	}
 	sol := lr.Solution
 
@@ -373,7 +373,7 @@ func (s *Solution) HTTPClient(base http.RoundTripper) (*http.Client, error) {
 	}
 	target := s.URL
 	if target == "" {
-		return nil, errors.New("byparr: solution without URL")
+		return nil, errors.New("challengesolver: solution without URL")
 	}
 	if err := s.ApplyTo(jar, target); err != nil {
 		return nil, err
@@ -412,7 +412,7 @@ type Transport struct {
 
 func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.Client == nil {
-		return nil, errors.New("byparr: Transport.Client is nil")
+		return nil, errors.New("challengesolver: Transport.Client is nil")
 	}
 	r := Request{URL: req.URL.String()}
 	switch req.Method {
@@ -429,7 +429,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 			r.PostData = string(b)
 		}
 	default:
-		return nil, fmt.Errorf("byparr: method %s not supported", req.Method)
+		return nil, fmt.Errorf("challengesolver: method %s not supported", req.Method)
 	}
 
 	sol, err := t.Client.Do(req.Context(), r)
@@ -437,49 +437,56 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	resp := &http.Response{
-		StatusCode:    sol.Status,
-		Status:        fmt.Sprintf("%d %s", sol.Status, http.StatusText(sol.Status)),
-		Proto:         "HTTP/1.1",
-		ProtoMajor:    1,
-		ProtoMinor:    1,
-		Header:        http.Header{},
+	status := sol.Status
+	if status == 0 {
+		status = http.StatusOK
+	}
+
+	header := make(http.Header)
+	for k, v := range sol.Headers {
+		switch val := v.(type) {
+		case string:
+			header.Set(k, val)
+		case []any:
+			for _, item := range val {
+				header.Add(k, fmt.Sprint(item))
+			}
+		default:
+			header.Set(k, fmt.Sprint(v))
+		}
+	}
+	if cookieHeader := sol.CookieHeader(); cookieHeader != "" && header.Get("Set-Cookie") == "" {
+		header.Set("Set-Cookie", cookieHeader)
+	}
+
+	return &http.Response{
+		Status:        http.StatusText(status),
+		StatusCode:    status,
+		Header:        header,
 		Body:          io.NopCloser(strings.NewReader(sol.Response)),
 		ContentLength: int64(len(sol.Response)),
 		Request:       req,
-	}
-	if resp.StatusCode == 0 {
-		resp.StatusCode = http.StatusOK
-		resp.Status = "200 OK"
-	}
-	resp.Header.Set("Content-Type", "text/html; charset=utf-8")
-	for _, ck := range sol.Cookies {
-		if v := ck.AsHTTP().String(); v != "" {
-			resp.Header.Add("Set-Cookie", v)
-		}
-	}
-
-	return resp, nil
-}
-
-func extractMessage(body []byte) string {
-	var m map[string]any
-	if err := json.Unmarshal(body, &m); err == nil {
-		for _, k := range []string{"message", "detail", statusError} {
-			if v, ok := m[k]; ok {
-				return fmt.Sprint(v)
-			}
-		}
-	}
-	s := strings.TrimSpace(string(body))
-	if len(s) > 300 {
-		s = s[:300] + "…"
-	}
-
-	return s
+	}, nil
 }
 
 func drain(resp *http.Response) {
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
+}
+
+func extractMessage(b []byte) string {
+	var m struct {
+		Message string `json:"message"`
+		Error   string `json:"error"`
+	}
+	if json.Unmarshal(b, &m) == nil {
+		if m.Message != "" {
+			return m.Message
+		}
+		if m.Error != "" {
+			return m.Error
+		}
+	}
+
+	return strings.TrimSpace(string(b))
 }
