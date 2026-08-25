@@ -23,7 +23,12 @@ import (
 	asurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	asurascansdomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/domain"
 	asurascansclient "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/transport/http"
+	kingofshojo "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/core"
+	kingofshojodomain "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/domain"
+	kingofshojoparse "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/parse"
+	kingofshojohttp "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/transport/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
+	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/challengesolver"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/database"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/fncache"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
@@ -69,6 +74,7 @@ import (
 	httpusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/gateway/http"
 	pgusers "github.com/kharente-deuh/uchiyomi-server/pkg/core/users/repository/pg"
 	httpasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
+	httpkingofshojo "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/gateway/http"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/crypto"
 )
 
@@ -106,6 +112,16 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, fmt.Errorf("failed to init asura source: %w", err)
 	}
 
+	var solver kingofshojodomain.Solver
+	if cfg.ChallengeSolver.URL != "" {
+		solver = challengesolver.New(cfg.ChallengeSolver.URL)
+	}
+
+	kingOfShojoApp, err := setupKingOfShojo(logger, dbr.ComicsRepository, solver)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init kingofshojo source: %w", err)
+	}
+
 	coversBundle, err := setupCovers(coversDeps{
 		Logger:           logger,
 		CoversDir:        coversDir,
@@ -130,12 +146,17 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		return nil, err
 	}
 
+	sourceMap := sources.SourceMap{
+		sources.SourceAsuraScans:  asuraScansApp,
+		sources.SourceKingOfShojo: kingOfShojoApp,
+	}
+
 	chaptersSvc, downloadApp, err := setupChapters(chaptersDeps{
 		Logger:             logger,
 		ChaptersRepository: dbr.ChaptersRepository,
 		ComicsRepository:   dbr.ComicsRepository,
 		LibraryRepository:  dbr.LibraryRepository,
-		Sources:            sources.SourceMap{sources.SourceAsuraScans: asuraScansApp},
+		Sources:            sourceMap,
 		DownloadsDir:       downloadsDir,
 		RateLimit:          cfg.Downloads.RateLimit,
 		ScanInterval:       cfg.Downloads.ScanInterval,
@@ -166,6 +187,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	}
 
 	asuraScansApp.BindChaptersService(chaptersSvc)
+	kingOfShojoApp.BindChaptersService(chaptersSvc)
 
 	comicsSvc, err := comics.NewService(comics.Deps{
 		ComicsRepository:  dbr.ComicsRepository,
@@ -173,7 +195,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		LibraryRepository: dbr.LibraryRepository,
 		ChaptersService:   chaptersSvc,
 		LocalCoverStore:   coversBundle.Service,
-		Sources:           sources.SourceMap{sources.SourceAsuraScans: asuraScansApp},
+		Sources:           sourceMap,
 		Logger:            logger,
 	})
 	if err != nil {
@@ -189,6 +211,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 	}
 
 	apps.AsuraScans = asuraScansApp
+	apps.KingOfShojo = kingOfShojoApp
 	apps.Covers = coversBundle.App
 
 	registry := core.NewHealthRegistry(dbr.PGDB)
@@ -205,6 +228,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		AuthService:            services.Auth,
 		OIDCProvidersService:   services.OIDCProviders,
 		AsuraScansApp:          asuraScansApp,
+		KingOfShojoApp:         kingOfShojoApp,
 		CoversService:          coversBundle.Service,
 		Registry:               registry,
 	})
@@ -221,6 +245,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 		core.Deps{
 			SetupCtrl:           ctrls.Setup,
 			AsuraScansCtrl:      ctrls.AsuraScans,
+			KingOfShojoCtrl:     ctrls.KingOfShojo,
 			CoversCtrl:          ctrls.Covers,
 			HealthCtrl:          ctrls.Health,
 			AuthCtrl:            ctrls.Auth,
@@ -236,6 +261,7 @@ func setupApp(cfg *cfg) (*core.App, error) {
 			Logger:             logger,
 			DB:                 dbr.PGDB,
 			AsuraScans:         apps.AsuraScans,
+			KingOfShojo:        apps.KingOfShojo,
 			Covers:             apps.Covers,
 			Downloads:          downloadApp,
 			ChapterListRefresh: chapterListRefresh,
@@ -476,6 +502,7 @@ func setupServices(deps servicesDeps) (*services, error) {
 
 type apps struct {
 	AsuraScans       *asurascans.App
+	KingOfShojo      *kingofshojo.App
 	Covers           *covers.App
 	Sessions         *sessions.App
 	OIDCRevalidation *oidc.RevalidationApp
@@ -750,9 +777,110 @@ func setupAsuraScans(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*
 	return a, nil
 }
 
+func setupKingOfShojo(
+	logger *slog.Logger,
+	comicsRepo comics.ComicsRepository,
+	solver kingofshojodomain.Solver,
+) (*kingofshojo.App, error) {
+	fetchTimeout := time.Minute
+
+	httpClient := &http.Client{
+		Timeout: fetchTimeout,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
+
+	const kosBaseURL = "https://kingofshojo.com"
+
+	apiClient, err := kingofshojohttp.New(
+		kingofshojohttp.Config{BaseURL: kosBaseURL},
+		kingofshojohttp.Deps{HTTP: httpClient, Logger: logger, Solver: solver},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kingofshojohttp.New: %w", err)
+	}
+
+	errorTTL := 30 * time.Second
+	searchTTL := 5 * time.Minute
+	seriesTTL := 15 * time.Minute
+	getImageURLsByChapterTTL := 2 * time.Hour
+
+	searchCache, err := fncache.New(
+		fncache.Config[kingofshojodomain.SearchCacheOpts, kingofshojodomain.SearchCacheResult]{
+			Fn:            apiClient.Search,
+			TTL:           searchTTL,
+			ErrorTTL:      errorTTL,
+			FetchTimeout:  fetchTimeout,
+			CleanInterval: searchTTL,
+			MaxEntries:    256,
+			Name:          "kingofshojo.search",
+			Key:           kingofshojodomain.SearchCacheOpts.CacheKey,
+		},
+		fncache.Deps{Logger: logger},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fncache.New (kingofshojo.search): %w", err)
+	}
+
+	seriesCache, err := fncache.New(
+		fncache.Config[string, kingofshojoparse.SeriesPage]{
+			Fn:            apiClient.GetSeriesPage,
+			TTL:           seriesTTL,
+			ErrorTTL:      errorTTL,
+			FetchTimeout:  fetchTimeout,
+			CleanInterval: seriesTTL,
+			MaxEntries:    512,
+			Name:          "kingofshojo.series",
+			Key: func(slug string) string {
+				return slug
+			},
+		},
+		fncache.Deps{Logger: logger},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fncache.New (kingofshojo.series): %w", err)
+	}
+
+	getImageURLsByChapterCache, err := fncache.New(
+		fncache.Config[kingofshojodomain.GetImageURLsByChapterOpts, []string]{
+			Fn:            apiClient.GetImageURLsByChapter,
+			TTL:           getImageURLsByChapterTTL,
+			ErrorTTL:      errorTTL,
+			FetchTimeout:  fetchTimeout,
+			CleanInterval: getImageURLsByChapterTTL,
+			MaxEntries:    1024,
+			Name:          "kingofshojo.images",
+			Key:           kingofshojodomain.GetImageURLsByChapterOpts.CacheKey,
+		},
+		fncache.Deps{Logger: logger},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fncache.New (kingofshojo.images): %w", err)
+	}
+
+	a, err := kingofshojo.New(
+		kingofshojo.Config{SourceName: sources.SourceKingOfShojo, BaseURL: kosBaseURL},
+		kingofshojo.Deps{
+			Logger:                logger,
+			SearchCache:           searchCache,
+			SeriesCache:           seriesCache,
+			GetImageURLsByChapter: getImageURLsByChapterCache,
+			ComicsRepository:      comicsRepo,
+		})
+	if err != nil {
+		return nil, fmt.Errorf("kingofshojo.New: %w", err)
+	}
+
+	return a, nil
+}
+
 type ctrls struct {
 	Setup           *httpsetup.Controller
 	AsuraScans      *httpasurascans.Controller
+	KingOfShojo     *httpkingofshojo.Controller
 	Covers          *httpcovers.Controller
 	Health          *httphealth.Controller
 	Auth            *httpauth.Controller
@@ -770,6 +898,7 @@ type ctrlsDeps struct {
 	ReaderSettingsService  readersettings.ReaderSettingsService
 	ReadingProgressService readingprogress.ReadingProgressService
 	AsuraScansApp          *asurascans.App
+	KingOfShojoApp         *kingofshojo.App
 	CoversService          *covers.Service
 	SetupService           *setup.Service
 	SessionsService        *sessions.Service
@@ -824,6 +953,21 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to init asura controller: %w", err)
+	}
+
+	kingOfShojoCtrl, err := httpkingofshojo.New(httpkingofshojo.Config{
+		Endpoint:    "/" + string(sources.SourceKingOfShojo),
+		Middlewares: chi.Middlewares{authenticator.Middleware},
+	},
+		httpkingofshojo.Deps{
+			KingOfShojoApp: deps.KingOfShojoApp,
+			Logger:         deps.Logger,
+			CoverURLBuilder: func(source, slug string) string {
+				return deps.CoversService.BuildProxyURL(source, slug)
+			},
+		})
+	if err != nil {
+		return nil, fmt.Errorf("failed to init kingofshojo controller: %w", err)
 	}
 
 	coversCtrl, err := httpcovers.New(httpcovers.Config{
@@ -969,6 +1113,7 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 
 	c := &ctrls{
 		AsuraScans:      asuraScansCtrl,
+		KingOfShojo:     kingOfShojoCtrl,
 		Covers:          coversCtrl,
 		Setup:           setup,
 		Health:          healthCtrl,

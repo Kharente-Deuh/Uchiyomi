@@ -33,6 +33,8 @@ import (
 
 	asurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/core"
 	httpasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/sources/asurascans/pkg/gateway/http"
+	kingofshojo "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/core"
+	httpkingofshojo "github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/gateway/http"
 )
 
 const (
@@ -71,6 +73,7 @@ type Deps struct {
 
 	SetupCtrl           *httpsetup.Controller
 	AsuraScansCtrl      *httpasurascans.Controller
+	KingOfShojoCtrl     *httpkingofshojo.Controller
 	CoversCtrl          *httpcovers.Controller
 	HealthCtrl          *httphealth.Controller
 	AuthCtrl            *httpauth.Controller
@@ -86,6 +89,7 @@ type Deps struct {
 	Health *health.Registry
 
 	AsuraScans         *asurascans.App
+	KingOfShojo        *kingofshojo.App
 	Covers             *covers.App
 	Downloads          interface{ Run(context.Context) error }
 	ChapterListRefresh interface{ Run(context.Context) error }
@@ -102,6 +106,10 @@ func (deps *Deps) Validate() error {
 		return errors.New("asuraScansCtrl is required")
 	}
 
+	if deps.KingOfShojoCtrl == nil {
+		return errors.New("kingOfShojoCtrl is required")
+	}
+
 	if deps.CoversCtrl == nil {
 		return errors.New("coversCtrl is required")
 	}
@@ -116,6 +124,10 @@ func (deps *Deps) Validate() error {
 
 	if deps.AsuraScans == nil {
 		return errors.New("asuraScans is required")
+	}
+
+	if deps.KingOfShojo == nil {
+		return errors.New("kingOfShojo is required")
 	}
 
 	if deps.Covers == nil {
@@ -229,6 +241,7 @@ func (a *App) startup(ctx context.Context, errG *errgroup.Group) func() error {
 		a.deps.Health.Set(componentMigrations, nil)
 
 		errG.Go(a.runComponent(ctx, componentAsuraScans, a.deps.AsuraScans.Run))
+		errG.Go(a.runComponent(ctx, componentKingOfShojo, a.deps.KingOfShojo.Run))
 		errG.Go(a.runComponent(ctx, componentCovers, a.deps.Covers.Run))
 		errG.Go(a.runComponent(ctx, componentDownloads, a.deps.Downloads.Run))
 		errG.Go(a.runComponent(ctx, componentChapterListRefresh, a.deps.ChapterListRefresh.Run))
@@ -317,6 +330,7 @@ func (a *App) newRouter(ui http.Handler) chi.Router {
 			r.Route("/sources", func(r chi.Router) {
 				a.deps.CoversCtrl.InitRouter(r)
 				a.deps.AsuraScansCtrl.InitRouter(r)
+				a.deps.KingOfShojoCtrl.InitRouter(r)
 			})
 		})
 	})

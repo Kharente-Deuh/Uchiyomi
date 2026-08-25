@@ -203,7 +203,7 @@ func TestRunReportsEverythingOKOnceMigrationCompletes(t *testing.T) {
 
 	body := decodeReadyz(t, raw)
 	components := []string{
-		componentMigrations, componentAsuraScans, componentCovers, componentDownloads, componentChapterListRefresh, componentSessions, componentOIDCRevalidation, componentDB,
+		componentMigrations, componentAsuraScans, componentKingOfShojo, componentCovers, componentDownloads, componentChapterListRefresh, componentSessions, componentOIDCRevalidation, componentDB,
 	}
 	for _, name := range components {
 		if got := body.Components[name].Status; got != string(health.StatusOK) {
