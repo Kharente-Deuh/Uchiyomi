@@ -155,7 +155,7 @@ func downloadPage(
 	imageURL string,
 	dir string,
 	pageIndex int,
-	logger *slog.Logger,
+	_ *slog.Logger,
 ) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, imageURL, nil)
 	if err != nil {
@@ -179,9 +179,9 @@ func downloadPage(
 	}
 
 	urlExt := pageExtension(imageURL)
-	opt := OptimizePage(bodyBytes, urlExt, logger)
+	ext := DetectExtension(bodyBytes, urlExt)
 
-	destPath := filepath.Join(dir, pageFilename(pageIndex, opt.Extension))
+	destPath := filepath.Join(dir, pageFilename(pageIndex, ext))
 
 	if err = os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("os.MkdirAll %s: %w", dir, err)
@@ -198,7 +198,7 @@ func downloadPage(
 		os.Remove(tmpName)
 	}()
 
-	if _, err = tmp.Write(opt.Data); err != nil {
+	if _, err = tmp.Write(bodyBytes); err != nil {
 		return fmt.Errorf("tmp.Write %s: %w", tmpName, err)
 	}
 
