@@ -10,6 +10,10 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/crypto"
 )
 
+const (
+	errScheme = "must have an http or https scheme"
+)
+
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
 
@@ -73,11 +77,11 @@ func TestNewConfigRejectsAnUnusablePublicURL(t *testing.T) {
 	}{
 		"no scheme": {
 			value:   "manga.example.com",
-			wantErr: "must have an http or https scheme",
+			wantErr: errScheme,
 		},
 		"unsupported scheme": {
 			value:   "ftp://manga.example.com",
-			wantErr: "must have an http or https scheme",
+			wantErr: errScheme,
 		},
 		"no host": {
 			value:   "https://",
@@ -144,11 +148,11 @@ func TestNewConfigRejectsInvalidChallengeSolverURL(t *testing.T) {
 	}{
 		"no scheme": {
 			value:   "challenge-solver:8191",
-			wantErr: "must have an http or https scheme",
+			wantErr: errScheme,
 		},
 		"unsupported scheme": {
 			value:   "ftp://challenge-solver:8191",
-			wantErr: "must have an http or https scheme",
+			wantErr: errScheme,
 		},
 		"no host": {
 			value:   "http://",

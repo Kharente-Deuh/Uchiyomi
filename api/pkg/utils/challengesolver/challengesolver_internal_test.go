@@ -16,18 +16,20 @@ import (
 	"time"
 )
 
-const testBaseURL = "http://challenge-solver:8191"
+const cookieCfClearance = "cf_clearance"
 
 func TestNewTrimsTrailingSlashesAndV1(t *testing.T) {
+	const wantURL = "http://localhost:8191"
+
 	cases := []struct {
 		input string
 		want  string
 	}{
-		{"http://localhost:8191", "http://localhost:8191"},
-		{"http://localhost:8191/", "http://localhost:8191"},
-		{"http://localhost:8191/v1", "http://localhost:8191"},
-		{"http://localhost:8191/v1/", "http://localhost:8191"},
-		{"http://localhost:8191///", "http://localhost:8191"},
+		{"http://localhost:8191", wantURL},
+		{"http://localhost:8191/", wantURL},
+		{"http://localhost:8191/v1", wantURL},
+		{"http://localhost:8191/v1/", wantURL},
+		{"http://localhost:8191///", wantURL},
 	}
 	for _, tc := range cases {
 		c := New(tc.input)
@@ -66,7 +68,7 @@ func TestOptions(t *testing.T) {
 func TestCookieAsHTTP(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 	c := Cookie{
-		Name:     "cf_clearance",
+		Name:     cookieCfClearance,
 		Value:    "secret",
 		Domain:   ".example.com",
 		Path:     "",
@@ -75,7 +77,7 @@ func TestCookieAsHTTP(t *testing.T) {
 		Secure:   true,
 	}
 	hc := c.AsHTTP()
-	if hc.Name != "cf_clearance" || hc.Value != "secret" {
+	if hc.Name != cookieCfClearance || hc.Value != "secret" {
 		t.Errorf("unexpected name/val: %s=%s", hc.Name, hc.Value)
 	}
 	if hc.Path != "/" {
@@ -261,7 +263,7 @@ func TestDoSuccess(t *testing.T) {
 	if sol.Response != "<html>ok</html>" {
 		t.Errorf("Response = %q", sol.Response)
 	}
-	if len(sol.Cookies) != 1 || sol.Cookies[0].Name != "cf_clearance" {
+	if len(sol.Cookies) != 1 || sol.Cookies[0].Name != cookieCfClearance {
 		t.Errorf("Cookies = %v", sol.Cookies)
 	}
 }
@@ -410,6 +412,7 @@ func TestDoRetriesOn5xx(t *testing.T) {
 		if attempts < 3 {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_, _ = w.Write([]byte(`{"error":"temporarily unavailable"}`))
+
 			return
 		}
 		_, _ = w.Write([]byte(`{"status":"ok","solution":{"url":"https://x","status":200,"response":"done"}}`))
@@ -465,10 +468,11 @@ func TestDoContextCancellation(t *testing.T) {
 func TestSessionWarmupFlow(t *testing.T) {
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ua := r.Header.Get("User-Agent")
-		cookie, err := r.Cookie("cf_clearance")
+		cookie, err := r.Cookie(cookieCfClearance)
 		if err != nil || cookie.Value != "valid-clearance" || ua != "Camoufox/1.0" {
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = w.Write([]byte("blocked"))
+
 			return
 		}
 		w.WriteHeader(http.StatusOK)

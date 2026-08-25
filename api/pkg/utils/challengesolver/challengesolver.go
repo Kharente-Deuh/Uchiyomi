@@ -26,8 +26,6 @@ const (
 	CmdPost = "request.post"
 )
 
-const statusError = "error"
-
 type Cookie struct {
 	Name     string  `json:"name"`
 	Value    string  `json:"value"`

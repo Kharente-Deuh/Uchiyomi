@@ -18,6 +18,10 @@ The user-facing action that creates a comic in the database (if it does not exis
 **Source**:
 An external site from which comics can be browsed and added. AsuraScans is the first source.
 
+**Challenge solver**:
+An optional service that solves a bot-protection challenge on a source (typically a Cloudflare interstitial) so the server can obtain the real page. Distinct from Source. Not required for sources that expose a public API.
+_Avoid_: FlareSolverr (when meaning Uchiyomi's sidecar), Byparr (when meaning the role), flare solver, scraper
+
 **Source slug**:
 The identifier a source uses for a comic in its URLs (e.g. `solo-leveling` on AsuraScans). Together with the source name, it uniquely identifies a comic in the database.
 
