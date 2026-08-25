@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 :root {
   --page-header-padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
-  --bottom-navigation-content-height: 58px;
-  --bottom-navigation-height: calc(var(--bottom-navigation-content-height) + env(safe-area-inset-bottom, 0px));
+  --bottom-navigation-height: 58px;
   --navigation-drawer-width: calc(230px + env(safe-area-inset-left, 0px));
   --navigation-drawer-compact-width: calc(82px + env(safe-area-inset-left, 0px));
   --bottom-pagination-height: calc(80px + env(safe-area-inset-bottom, 0px));

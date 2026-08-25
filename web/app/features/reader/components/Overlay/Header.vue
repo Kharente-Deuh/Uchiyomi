@@ -14,11 +14,16 @@ const { smAndDown } = useDisplay()
 <template>
   <div
     class="d-flex align-center w-100 bg-surface border-b-thin pa-4 position-fixed top-0 left-0 right-0"
-    :class="{ 'pt-3': smAndDown }"
     style="z-index: 2;"
   >
-    <div class="d-flex ga-4 justify-space-between align-center w-100 mx-auto " style="max-width: 80rem;">
-      <div class="d-flex ga-4 align-center text-truncate">
+    <div
+      class="d-flex ga-4 justify-space-between align-center w-100 mx-auto "
+      style="max-width: 80rem;"
+    >
+      <div
+        class="d-flex ga-4 align-center text-truncate"
+        :style="smAndDown ? 'padding-top: var(--page-header-padding-top);' : ''"
+      >
         <AtomLink :to="`/comic/${comic.id}`">
           <VBtn
             icon="fa6-solid:angle-left"
