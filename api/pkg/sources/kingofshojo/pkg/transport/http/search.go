@@ -4,6 +4,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -93,39 +94,52 @@ func (c *Client) fetchSearchCards(ctx context.Context, opts domain.SearchCacheOp
 		total = firstPage.LastPage * len(firstPage.Items)
 	}
 
-	filtered := filterSearchCards(firstPage.Items)
+	result := appendSearchCards(nil, firstPage.Items, start, opts.Limit)
+	fullPage := len(firstPage.Items) >= kosPerPage
 
-	take1 := opts.Limit
-	if take1 > len(filtered)-start {
-		take1 = len(filtered) - start
-	}
+	for len(result) < opts.Limit && fullPage {
+		pageNum++
 
-	if take1 < 0 {
-		take1 = 0
-	}
-
-	var result []parse.SearchCard
-	if start < len(filtered) {
-		result = append(result, filtered[start:start+take1]...)
-	}
-
-	remaining := opts.Limit - len(result)
-	if remaining > 0 && start+opts.Limit > kosPerPage {
-		secondPage, err := c.fetchSearchPage(ctx, pageNum+1, opts)
+		nextPage, err := c.fetchSearchPage(ctx, pageNum, opts)
 		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				break
+			}
+
 			return nil, 0, fmt.Errorf("c.fetchSearchPage: %w", err)
 		}
 
-		secondFiltered := filterSearchCards(secondPage.Items)
-		take2 := remaining
-		if take2 > len(secondFiltered) {
-			take2 = len(secondFiltered)
+		if len(nextPage.Items) == 0 {
+			break
 		}
 
-		result = append(result, secondFiltered[:take2]...)
+		result = appendSearchCards(result, nextPage.Items, 0, opts.Limit-len(result))
+		fullPage = len(nextPage.Items) >= kosPerPage
 	}
 
 	return result, total, nil
+}
+
+func appendSearchCards(dst, cards []parse.SearchCard, start, remaining int) []parse.SearchCard {
+	filtered := filterSearchCards(cards)
+	if start < 0 {
+		start = 0
+	}
+
+	if start > len(filtered) {
+		start = len(filtered)
+	}
+
+	filtered = filtered[start:]
+	if remaining > len(filtered) {
+		remaining = len(filtered)
+	}
+
+	if remaining <= 0 {
+		return dst
+	}
+
+	return append(dst, filtered[:remaining]...)
 }
 
 func filterSearchCards(cards []parse.SearchCard) []parse.SearchCard {

@@ -307,6 +307,10 @@ func TestDepsValidate(t *testing.T) {
 		wantErr string
 	}{
 		"complet": {drop: func(*core.Deps) {}},
+		"without logger": {
+			drop:    func(d *core.Deps) { d.Logger = nil },
+			wantErr: "logger is required",
+		},
 		"without searchCache": {
 			drop:    func(d *core.Deps) { d.SearchCache = nil },
 			wantErr: "searchCache is required",
@@ -361,7 +365,7 @@ func TestNewRejectsIncompleteDeps(t *testing.T) {
 		t.Error("New returned an App in addition to the error")
 	}
 
-	if want := "deps.Validate: searchCache is required"; err.Error() != want {
+	if want := "deps.Validate: logger is required"; err.Error() != want {
 		t.Errorf("err = %q, want %q", err.Error(), want)
 	}
 }

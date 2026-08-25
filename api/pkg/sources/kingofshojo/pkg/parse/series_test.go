@@ -109,6 +109,39 @@ func TestParseSeries(t *testing.T) {
 	}
 }
 
+func TestParseSeriesUnparseableChapterDate(t *testing.T) {
+	t.Parallel()
+
+	html := strings.Replace(
+		readSeriesFixture(t),
+		`<span class="chapterdate">August 21, 2026</span>`,
+		`<span class="chapterdate">2 days ago</span>`,
+		1,
+	)
+
+	page, err := parse.ParseSeries(html, "tears-on-a-withered-flower")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if page.Infos.Title != "Tears on a Withered Flower" {
+		t.Fatalf("title = %q", page.Infos.Title)
+	}
+
+	if len(page.Chapters) != 2 {
+		t.Fatalf("len(chapters) = %d, want 2", len(page.Chapters))
+	}
+
+	if !page.Chapters[0].PublishedAt.IsZero() {
+		t.Fatalf("chapter0 PublishedAt = %v, want zero", page.Chapters[0].PublishedAt)
+	}
+
+	wantDate := time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC)
+	if !page.Chapters[1].PublishedAt.Equal(wantDate) {
+		t.Fatalf("chapter1 PublishedAt = %v, want %v", page.Chapters[1].PublishedAt, wantDate)
+	}
+}
+
 func TestParseSeriesMangaType(t *testing.T) {
 	t.Parallel()
 

@@ -43,7 +43,25 @@ func TestParsePageURLsInvalidHTML(t *testing.T) {
 
 	got := parse.ParsePageURLs("<html><body><div id=\"readerarea\">")
 
-	if got != nil {
-		t.Fatalf("got = %v, want nil", got)
+	if got == nil {
+		t.Fatal("fragment HTML still parses; got nil, want empty non-nil slice")
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("got = %v, want empty", got)
+	}
+}
+
+func TestParsePageURLsEmptyReaderArea(t *testing.T) {
+	t.Parallel()
+
+	got := parse.ParsePageURLs(`<html><body><div id="readerarea"></div></body></html>`)
+
+	if got == nil {
+		t.Fatal("got nil, want empty non-nil slice")
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("got = %v, want empty", got)
 	}
 }

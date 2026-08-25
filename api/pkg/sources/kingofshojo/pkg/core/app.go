@@ -52,6 +52,10 @@ type Deps struct {
 }
 
 func (deps *Deps) Validate() error {
+	if deps.Logger == nil {
+		return errors.New("logger is required")
+	}
+
 	if deps.SearchCache == nil {
 		return errors.New("searchCache is required")
 	}

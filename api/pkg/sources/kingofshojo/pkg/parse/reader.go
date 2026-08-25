@@ -8,13 +8,16 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// ParsePageURLs extracts http(s) image URLs from #readerarea.
+// A nil result means goquery failed to parse the HTML.
+// A non-nil empty slice means the document parsed but contained no usable images.
 func ParsePageURLs(html string) []string {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil
 	}
 
-	var urls []string
+	urls := make([]string, 0)
 
 	doc.Find("#readerarea img").Each(func(_ int, img *goquery.Selection) {
 		url := pageImageURL(img)

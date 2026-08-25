@@ -67,20 +67,10 @@ func ParseSeries(html, slug string) (SeriesPage, error) {
 		return SeriesPage{}, fmt.Errorf("parse.ParseSeries: %w", err)
 	}
 
-	createdAt, err := parseSeriesDate(tableValue(doc, "Posted On"))
-	if err != nil {
-		return SeriesPage{}, fmt.Errorf("parse.ParseSeries: %w", err)
-	}
+	createdAt := parseSeriesDate(tableValue(doc, "Posted On"))
+	updatedAt := parseSeriesDate(tableValue(doc, "Updated On"))
 
-	updatedAt, err := parseSeriesDate(tableValue(doc, "Updated On"))
-	if err != nil {
-		return SeriesPage{}, fmt.Errorf("parse.ParseSeries: %w", err)
-	}
-
-	chapters, err := parseSeriesChapters(doc, slug)
-	if err != nil {
-		return SeriesPage{}, fmt.Errorf("parse.ParseSeries: %w", err)
-	}
+	chapters := parseSeriesChapters(doc, slug)
 
 	return SeriesPage{
 		Infos: SeriesInfos{
@@ -221,7 +211,7 @@ func seriesGenres(doc *goquery.Document) []string {
 	return genres
 }
 
-func parseSeriesChapters(doc *goquery.Document, slug string) ([]SeriesChapter, error) {
+func parseSeriesChapters(doc *goquery.Document, slug string) []SeriesChapter {
 	items := doc.Find("#chapterlist li")
 	if items.Length() == 0 {
 		items = doc.Find(".eplister li")
@@ -229,13 +219,7 @@ func parseSeriesChapters(doc *goquery.Document, slug string) ([]SeriesChapter, e
 
 	chapters := make([]SeriesChapter, 0, items.Length())
 
-	var err error
-
 	items.Each(func(_ int, item *goquery.Selection) {
-		if err != nil {
-			return
-		}
-
 		numberText, _ := item.Attr("data-num")
 		if numberText == "" {
 			numberText = item.Find(".chapternum").First().Text()
@@ -255,27 +239,16 @@ func parseSeriesChapters(doc *goquery.Document, slug string) ([]SeriesChapter, e
 			dateText = chapterDateFromText(item.Text())
 		}
 
-		publishedAt, parseErr := parseSeriesDate(dateText)
-		if parseErr != nil {
-			err = parseErr
-
-			return
-		}
-
 		chapters = append(chapters, SeriesChapter{
 			ID:          SourceChapterSlug(slug, number),
 			Number:      number,
 			Title:       "",
 			PageCount:   0,
-			PublishedAt: publishedAt,
+			PublishedAt: parseSeriesDate(dateText),
 		})
 	})
 
-	if err != nil {
-		return nil, err
-	}
-
-	return chapters, nil
+	return chapters
 }
 
 func chapterDateFromText(text string) string {
@@ -287,16 +260,16 @@ func chapterDateFromText(text string) string {
 	return match
 }
 
-func parseSeriesDate(raw string) (time.Time, error) {
+func parseSeriesDate(raw string) time.Time {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return time.Time{}, nil
+		return time.Time{}
 	}
 
 	parsed, err := time.Parse("January 2, 2006", raw)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("time.Parse: %w", err)
+		return time.Time{}
 	}
 
-	return time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.UTC), nil
+	return time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.UTC)
 }
