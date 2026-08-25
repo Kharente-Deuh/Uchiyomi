@@ -10,6 +10,10 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/crypto"
 )
 
+const (
+	errScheme = "must have an http or https scheme"
+)
+
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
 
@@ -73,11 +77,11 @@ func TestNewConfigRejectsAnUnusablePublicURL(t *testing.T) {
 	}{
 		"no scheme": {
 			value:   "manga.example.com",
-			wantErr: "must have an http or https scheme",
+			wantErr: errScheme,
 		},
 		"unsupported scheme": {
 			value:   "ftp://manga.example.com",
-			wantErr: "must have an http or https scheme",
+			wantErr: errScheme,
 		},
 		"no host": {
 			value:   "https://",
@@ -106,6 +110,64 @@ func TestNewConfigRequiresTheNewVariables(t *testing.T) {
 
 			if _, err := newConfig(); err == nil {
 				t.Errorf("newConfig() without %s = nil, want an error", name)
+			}
+		})
+	}
+}
+
+func TestNewConfigAcceptsValidChallengeSolverURL(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+	}{
+		{"empty", ""},
+		{"http url", "http://challenge-solver:8191"},
+		{"https url", "https://solver.example.com"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CHALLENGE_SOLVER_URL", tc.value)
+
+			c, err := newConfig()
+			if err != nil {
+				t.Fatalf("newConfig() err = %v", err)
+			}
+			if c.ChallengeSolver.URL != tc.value {
+				t.Errorf("ChallengeSolver.URL = %q, want %q", c.ChallengeSolver.URL, tc.value)
+			}
+		})
+	}
+}
+
+func TestNewConfigRejectsInvalidChallengeSolverURL(t *testing.T) {
+	tests := map[string]struct {
+		value   string
+		wantErr string
+	}{
+		"no scheme": {
+			value:   "challenge-solver:8191",
+			wantErr: errScheme,
+		},
+		"unsupported scheme": {
+			value:   "ftp://challenge-solver:8191",
+			wantErr: errScheme,
+		},
+		"no host": {
+			value:   "http://",
+			wantErr: "must have a host",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CHALLENGE_SOLVER_URL", tc.value)
+
+			_, err := newConfig()
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("newConfig() = %v, want an error mentioning %q", err, tc.wantErr)
 			}
 		})
 	}

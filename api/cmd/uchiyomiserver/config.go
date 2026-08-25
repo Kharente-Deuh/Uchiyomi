@@ -14,6 +14,9 @@ import (
 )
 
 type cfg struct {
+	ChallengeSolver struct {
+		URL string `env:"CHALLENGE_SOLVER_URL"`
+	}
 	Logger struct {
 		Level logging.LogLevel `env:"LOG_LEVEL" envDefault:"info"`
 	}
@@ -65,6 +68,10 @@ func newConfig() (*cfg, error) {
 		return nil, err
 	}
 
+	if err := c.validateChallengeSolverURL(); err != nil {
+		return nil, err
+	}
+
 	return &c, nil
 }
 
@@ -95,6 +102,27 @@ func (c *cfg) validatePublicURL() error {
 
 	if u.Host == "" {
 		return fmt.Errorf("PUBLIC_URL must have a host, got %q", c.OIDC.PublicURL)
+	}
+
+	return nil
+}
+
+func (c *cfg) validateChallengeSolverURL() error {
+	if c.ChallengeSolver.URL == "" {
+		return nil
+	}
+
+	u, err := url.Parse(c.ChallengeSolver.URL)
+	if err != nil {
+		return fmt.Errorf("CHALLENGE_SOLVER_URL is not a valid URL: %w", err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("CHALLENGE_SOLVER_URL must have an http or https scheme, got %q", c.ChallengeSolver.URL)
+	}
+
+	if u.Host == "" {
+		return fmt.Errorf("CHALLENGE_SOLVER_URL must have a host, got %q", c.ChallengeSolver.URL)
 	}
 
 	return nil
