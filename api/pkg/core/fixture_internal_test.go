@@ -30,6 +30,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/covers"
 	httpcovers "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/gateway/http"
 	coversasurascans "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/asurascans"
+	coverskingofshojo "github.com/kharente-deuh/uchiyomi-server/pkg/core/covers/source/kingofshojo"
 	coredomain "github.com/kharente-deuh/uchiyomi-server/pkg/core/domain"
 	"github.com/kharente-deuh/uchiyomi-server/pkg/core/feed"
 	httpfeed "github.com/kharente-deuh/uchiyomi-server/pkg/core/feed/gateway/http"
@@ -127,7 +128,11 @@ func (stubCoverFinder) FindBySourceSlug(context.Context, string, string) (uuid.U
 	return uuid.Nil, coredomain.ErrNotFound
 }
 
-func newTestCoversBundle(t *testing.T, asuraScansApp *asurascans.App) (*covers.App, *covers.Service) {
+func newTestCoversBundle(
+	t *testing.T,
+	asuraScansApp *asurascans.App,
+	kingOfShojoApp *kingofshojo.App,
+) (*covers.App, *covers.Service) {
 	t.Helper()
 
 	logger := slog.New(slog.DiscardHandler)
@@ -146,8 +151,21 @@ func newTestCoversBundle(t *testing.T, asuraScansApp *asurascans.App) (*covers.A
 		t.Fatalf("coversasurascans.New: %v", err)
 	}
 
+	kingofshojoResolver, err := coverskingofshojo.New(
+		coverskingofshojo.Config{},
+		coverskingofshojo.Deps{
+			Getter:     kingOfShojoApp,
+			HTTPClient: httpClient,
+			Logger:     logger,
+		},
+	)
+	if err != nil {
+		t.Fatalf("coverskingofshojo.New: %v", err)
+	}
+
 	resolvers := map[string]covers.CoverResolver{
-		covers.SourceAsuraScans: asurascansResolver,
+		covers.SourceAsuraScans:  asurascansResolver,
+		covers.SourceKingOfShojo: kingofshojoResolver,
 	}
 
 	cache, err := imgcache.New(imgcache.Config{
@@ -604,7 +622,7 @@ func newTestApp(t *testing.T, db Database, port int) (*App, *health.Registry) {
 		t.Fatalf("httpusers.New: %v", err)
 	}
 
-	coversApp, coversService := newTestCoversBundle(t, asuraScansApp)
+	coversApp, coversService := newTestCoversBundle(t, asuraScansApp, kingOfShojoApp)
 
 	asuraScansCtrl, err := httpasurascans.New(
 		httpasurascans.Config{Endpoint: "/" + string(sources.SourceAsuraScans)},

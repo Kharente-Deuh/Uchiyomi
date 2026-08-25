@@ -10,7 +10,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const SourceAsuraScans = "asurascans"
+const (
+	SourceAsuraScans  = "asurascans"
+	SourceKingOfShojo = "kingofshojo"
+)
 
 var (
 	ErrUnknownSource     = errors.New("unknown source")
