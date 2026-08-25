@@ -24,7 +24,7 @@ defineProps<{
 .nvagation-bottom {
   z-index: 1004;
   box-sizing: content-box;
-  height: var(--bottom-navigation-content-height);
+  height: var(--bottom-navigation-height);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 </style>

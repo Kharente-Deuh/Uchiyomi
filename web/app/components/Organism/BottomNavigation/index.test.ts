@@ -29,10 +29,15 @@ describe('bottomNavigation', () => {
     expect(wrapper.find('.nvagation-bottom').classes()).not.toContain('h-100')
   })
 
-  it('does not bake the safe-area into both height and padding (that doubles the PWA inset)', async () => {
-    const importRes = await import('./index.vue?raw')
-    const source = importRes.default as string
+  it('keeps content height and safe-area padding separate so the inset is not doubled', async () => {
+    const sourceImport = (await import('./index.vue?raw'))
+    const source = sourceImport.default as string
+    expect(source).toMatch(/box-sizing:\s*content-box/)
+    expect(source).toMatch(/height:\s*var\(--bottom-navigation-height\)/)
     expect(source).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom/)
-    expect(source).not.toMatch(/height:\s*var\(--bottom-navigation-height\)/)
+
+    const constantsImport = (await import('~/assets/styles/constants.scss?raw'))
+    const constants = constantsImport.default as string
+    expect(constants).not.toMatch(/--bottom-navigation-height:[^;]*safe-area-inset-bottom/)
   })
 })
