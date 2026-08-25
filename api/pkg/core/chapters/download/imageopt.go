@@ -3,15 +3,7 @@
 package download
 
 import (
-	"bytes"
-	"encoding/binary"
-	"image"
-	"image/jpeg"
-	"image/png"
-	"log/slog"
 	"strings"
-
-	"github.com/KarpelesLab/gowebp"
 )
 
 const (
@@ -39,70 +31,9 @@ const (
 	gif89a     = "GIF89a"
 )
 
-type OptimizedPage struct {
-	Extension string
-	Data      []byte
-}
-
-func OptimizePage(data []byte, urlExt string, logger *slog.Logger) OptimizedPage {
+func DetectExtension(data []byte, urlExt string) string {
 	format := SniffFormat(data)
-	defaultExt := fallbackExtension(format, urlExt)
 
-	fallback := OptimizedPage{
-		Data:      data,
-		Extension: defaultExt,
-	}
-
-	if format == FormatPNG && IsAPNG(data) {
-		return fallback
-	}
-
-	if format != FormatPNG && format != FormatJPEG {
-		return fallback
-	}
-
-	var img image.Image
-	var err error
-
-	switch format {
-	case FormatPNG:
-		img, err = png.Decode(bytes.NewReader(data))
-	case FormatJPEG:
-		img, err = jpeg.Decode(bytes.NewReader(data))
-	default:
-		return fallback
-	}
-
-	if err != nil {
-		if logger != nil {
-			logger.Warn("failed to decode image for webp conversion", "error", err)
-		}
-
-		return fallback
-	}
-
-	var webpBuf bytes.Buffer
-	// nil options in KarpelesLab/gowebp encodes lossless VP8L by default
-	if err := gowebp.Encode(&webpBuf, img, nil); err != nil {
-		if logger != nil {
-			logger.Warn("failed to encode lossless webp", "error", err)
-		}
-
-		return fallback
-	}
-
-	webpBytes := webpBuf.Bytes()
-	if len(webpBytes) < len(data) {
-		return OptimizedPage{
-			Data:      webpBytes,
-			Extension: ExtWEBP,
-		}
-	}
-
-	return fallback
-}
-
-func fallbackExtension(format ImageFormat, urlExt string) string {
 	switch format {
 	case FormatPNG:
 		return ExtPNG
@@ -144,34 +75,4 @@ func SniffFormat(data []byte) ImageFormat {
 	}
 
 	return FormatUnknown
-}
-
-func IsAPNG(data []byte) bool {
-	if len(data) < 8 || string(data[:8]) != pngHeader {
-		return false
-	}
-
-	offset := 8
-	for offset+8 <= len(data) {
-		length := binary.BigEndian.Uint32(data[offset : offset+4])
-		chunkType := string(data[offset+4 : offset+8])
-
-		if chunkType == "acTL" {
-			return true
-		}
-
-		if chunkType == "IDAT" {
-			return false
-		}
-
-		// 4 (length) + 4 (type) + length (data) + 4 (crc)
-		chunkTotal := int64(length) + 12
-		if int64(offset)+chunkTotal > int64(len(data)) {
-			break
-		}
-
-		offset += int(chunkTotal)
-	}
-
-	return false
 }
