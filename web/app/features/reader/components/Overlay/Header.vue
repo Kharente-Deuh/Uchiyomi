@@ -18,12 +18,10 @@ const { smAndDown } = useDisplay()
   >
     <div
       class="d-flex ga-4 justify-space-between align-center w-100 mx-auto "
+      :style="smAndDown ? 'padding-top: env(safe-area-inset-top, 0px);' : ''"
       style="max-width: 80rem;"
     >
-      <div
-        class="d-flex ga-4 align-center text-truncate"
-        :style="smAndDown ? 'padding-top: var(--page-header-padding-top);' : ''"
-      >
+      <div class="d-flex ga-4 align-center text-truncate">
         <AtomLink :to="`/comic/${comic.id}`">
           <VBtn
             icon="fa6-solid:angle-left"
