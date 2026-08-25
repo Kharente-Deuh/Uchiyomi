@@ -10,6 +10,8 @@ services:
       POSTGRES_DB: ${DB_NAME:-uchiyomi}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - uchiyomi_db
     ports:
       - "${DB_EXPOSED_PORT:-5432}:5432"
     healthcheck:
@@ -42,6 +44,7 @@ services:
       PORT: 3000
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+      CHALLENGE_SOLVER_URL: ${CHALLENGE_SOLVER_URL:-http://challenge-solver:8191}
       CHAPTER_DOWNLOAD_RATE_LIMIT: ${CHAPTER_DOWNLOAD_RATE_LIMIT:-500ms}
       OIDC_ENCRYPTION_KEY: "${OIDC_ENCRYPTION_KEY:?set OIDC_ENCRYPTION_KEY, e.g. openssl rand -base64 32}"
     healthcheck:
@@ -54,6 +57,9 @@ services:
     volumes:
       - ./.data:/data
     stop_grace_period: 15s
+    networks:
+      - challenge_solver
+      - uchiyomi_db
     deploy:
       resources:
         limits:
@@ -66,8 +72,18 @@ services:
   challenge-solver:
     image: ghcr.io/thephaseless/byparr:latest
     restart: unless-stopped
-    ports:
-      - "${CHALLENGE_SOLVER_EXPOSED_PORT:-8191}:8191"
+    container_name: challenge-solver
+    init: true
+    networks:
+      - challenge_solver
 
 volumes:
   pgdata:
+
+networks:
+  npm_zbridge:
+    external: true
+  uchiyomi_db:
+    driver: bridge
+  challenge_solver:
+    driver: bridge
