@@ -20,6 +20,15 @@ func TestParseSourceName(t *testing.T) {
 		t.Fatal("AsuraScans must be invalid")
 	}
 
+	got, err = sources.ParseSourceName("kingofshojo")
+	if err != nil || got != sources.SourceKingOfShojo {
+		t.Fatalf("kingofshojo: got %q err %v", got, err)
+	}
+
+	if _, err = sources.ParseSourceName("KingOfShojo"); err == nil {
+		t.Fatal("KingOfShojo must be invalid")
+	}
+
 	if _, err = sources.ParseSourceName(""); err == nil {
 		t.Fatal("empty source name must be invalid")
 	}

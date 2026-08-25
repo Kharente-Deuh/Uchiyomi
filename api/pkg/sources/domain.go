@@ -15,13 +15,16 @@ type SourceMap map[SourceName]Source
 type SourceName string
 
 const (
-	SourceAsuraScans SourceName = "asurascans"
+	SourceAsuraScans  SourceName = "asurascans"
+	SourceKingOfShojo SourceName = "kingofshojo"
 )
 
 func ParseSourceName(s string) (SourceName, error) {
 	switch s {
 	case string(SourceAsuraScans):
 		return SourceAsuraScans, nil
+	case string(SourceKingOfShojo):
+		return SourceKingOfShojo, nil
 	default:
 		return "", fmt.Errorf("invalid source name: %s", s)
 	}
