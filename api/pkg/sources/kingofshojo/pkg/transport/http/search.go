@@ -32,9 +32,9 @@ func kosOrder(sort domain.SortType, order domain.SortOrder) string {
 
 		return "title"
 	case domain.SortTypePopular, domain.SortTypeNone:
-		return "popular"
+		return string(domain.SortTypePopular)
 	default:
-		return "popular"
+		return string(domain.SortTypePopular)
 	}
 }
 
@@ -141,7 +141,11 @@ func filterSearchCards(cards []parse.SearchCard) []parse.SearchCard {
 	return filtered
 }
 
-func (c *Client) fetchSearchPage(ctx context.Context, pageNum int, opts domain.SearchCacheOpts) (parse.SearchPage, error) {
+func (c *Client) fetchSearchPage(
+	ctx context.Context,
+	pageNum int,
+	opts domain.SearchCacheOpts,
+) (parse.SearchPage, error) {
 	targetURL := c.searchPageURL(pageNum, opts)
 
 	status, body, err := c.get(ctx, targetURL)

@@ -58,9 +58,9 @@ func (d *Deps) Validate() error {
 
 type Client struct {
 	deps        Deps
+	retryClient *http.Client
 	cfg         Config
 	mu          sync.Mutex
-	retryClient *http.Client
 }
 
 func New(cfg Config, deps Deps) (*Client, error) {

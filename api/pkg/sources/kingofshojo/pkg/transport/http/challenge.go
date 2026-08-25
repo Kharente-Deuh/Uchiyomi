@@ -13,15 +13,15 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/domain"
 )
 
-var challengeMarkers = []string{
-	"cf-browser-verification",
-	"Just a moment",
-	"challenge-platform",
-}
-
 func isChallenge(status int, body []byte) bool {
 	if status == http.StatusForbidden || status == http.StatusServiceUnavailable {
 		return true
+	}
+
+	challengeMarkers := []string{
+		"cf-browser-verification",
+		"Just a moment",
+		"challenge-platform",
 	}
 
 	text := strings.ToLower(string(body))

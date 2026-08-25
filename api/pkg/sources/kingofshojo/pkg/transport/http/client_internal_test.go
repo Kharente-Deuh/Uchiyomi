@@ -40,11 +40,11 @@ func TestKosOrder(t *testing.T) {
 		order domain.SortOrder
 		want  string
 	}{
-		"popular":      {sort: domain.SortTypePopular, want: "popular"},
-		"latest":       {sort: domain.SortTypeLatest, want: "updated"},
-		"newest":       {sort: domain.SortTypeNewest, want: "added"},
-		"title asc":    {sort: domain.SortTypeTitle, order: domain.SortOrderAsc, want: "title"},
-		"title desc":   {sort: domain.SortTypeTitle, order: domain.SortOrderDesc, want: "titlereverse"},
+		"popular":    {sort: domain.SortTypePopular, want: string(domain.SortTypePopular)},
+		"latest":     {sort: domain.SortTypeLatest, want: "updated"},
+		"newest":     {sort: domain.SortTypeNewest, want: "added"},
+		"title asc":  {sort: domain.SortTypeTitle, order: domain.SortOrderAsc, want: "title"},
+		"title desc": {sort: domain.SortTypeTitle, order: domain.SortOrderDesc, want: "titlereverse"},
 	}
 
 	for name, tc := range tests {

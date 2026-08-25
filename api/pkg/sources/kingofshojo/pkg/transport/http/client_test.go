@@ -27,13 +27,13 @@ func testDeps(httpClient *http.Client, solver domain.Solver) koshttp.Deps {
 	return koshttp.Deps{HTTP: httpClient, Logger: discardLogger(), Solver: solver}
 }
 
-func newTestClient(t *testing.T, handler http.HandlerFunc, solver domain.Solver) *koshttp.Client {
+func newTestClient(t *testing.T, handler http.HandlerFunc) *koshttp.Client {
 	t.Helper()
 
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	c, err := koshttp.New(koshttp.Config{BaseURL: srv.URL}, testDeps(srv.Client(), solver))
+	c, err := koshttp.New(koshttp.Config{BaseURL: srv.URL}, testDeps(srv.Client(), nil))
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestSearchReturnsItemsAndTotal(t *testing.T) {
 		}
 
 		_, _ = w.Write(body)
-	}, nil)
+	})
 
 	res, err := c.Search(context.Background(), domain.SearchCacheOpts{})
 	if err != nil {
@@ -91,7 +91,7 @@ func TestSearchQueryOrderOnly(t *testing.T) {
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		got = r.URL.Query()
 		_, _ = w.Write(readFixture(t, "search.html"))
-	}, nil)
+	})
 
 	if _, err := c.Search(context.Background(), domain.SearchCacheOpts{Sort: domain.SortTypePopular}); err != nil {
 		t.Fatalf("Search: %v", err)
@@ -102,8 +102,8 @@ func TestSearchQueryOrderOnly(t *testing.T) {
 	}
 
 	for _, key := range []string{"genre", "status", "type", "title"} {
-		if got.Get(key) != "" {
-			t.Errorf("query[%s] = %q, want empty", key, got.Get(key))
+		if _, ok := got[key]; ok {
+			t.Errorf("query[%s] present, want absent", key)
 		}
 	}
 }
@@ -114,7 +114,7 @@ func TestSearchChallengeWithoutSolver(t *testing.T) {
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte(`<html><body>cf-browser-verification</body></html>`))
-	}, nil)
+	})
 
 	_, err := c.Search(context.Background(), domain.SearchCacheOpts{})
 	if !errors.Is(err, domain.ErrChallenge) {
@@ -123,8 +123,8 @@ func TestSearchChallengeWithoutSolver(t *testing.T) {
 }
 
 type fakeSolver struct {
-	calls  atomic.Int32
 	client *http.Client
+	calls  atomic.Int32
 }
 
 func (f *fakeSolver) Session(
@@ -181,7 +181,7 @@ func TestGetSeriesPageNotFound(t *testing.T) {
 
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-	}, nil)
+	})
 
 	_, err := c.GetSeriesPage(context.Background(), "missing")
 	if !errors.Is(err, domain.ErrNotFound) {
@@ -198,7 +198,7 @@ func TestGetImageURLsByChapter(t *testing.T) {
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		_, _ = w.Write(body)
-	}, nil)
+	})
 
 	urlsPtr, err := c.GetImageURLsByChapter(context.Background(), domain.GetImageURLsByChapterOpts{
 		SeriesSlug: "tears-on-a-withered-flower",
