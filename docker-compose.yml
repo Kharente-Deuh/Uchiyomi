@@ -63,5 +63,11 @@ services:
           cpus: "0.25"
           memory: 128M
 
+  challenge-solver:
+    image: ghcr.io/thephaseless/byparr:latest
+    restart: unless-stopped
+    ports:
+      - "${CHALLENGE_SOLVER_EXPOSED_PORT:-8191}:8191"
+
 volumes:
   pgdata:
