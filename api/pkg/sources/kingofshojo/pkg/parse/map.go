@@ -12,15 +12,24 @@ import (
 
 var ErrUnsupportedType = errors.New("unsupported series type")
 
+const (
+	labelManga     = "manga"
+	labelMangatoon = "mangatoon"
+	labelManhwa    = "manhwa"
+	labelManhua    = "manhua"
+	labelComic     = "comic"
+	labelNovel     = "novel"
+)
+
 func MapSeriesType(raw string) (sources.SeriesType, error) {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "manga", "mangatoon":
+	case labelManga, labelMangatoon:
 		return sources.SeriesTypeMangatoon, nil
-	case "manhwa":
+	case labelManhwa:
 		return sources.SeriesTypeManhwa, nil
-	case "manhua":
+	case labelManhua:
 		return sources.SeriesTypeManhua, nil
-	case "comic", "novel":
+	case labelComic, labelNovel:
 		return "", ErrUnsupportedType
 	default:
 		return "", ErrUnsupportedType

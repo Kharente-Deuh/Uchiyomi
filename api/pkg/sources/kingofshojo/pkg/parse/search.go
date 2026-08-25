@@ -12,8 +12,8 @@ import (
 )
 
 type SearchPage struct {
-	LastPage int
 	Items    []SearchCard
+	LastPage int
 }
 
 type SearchCard struct {
@@ -112,5 +112,5 @@ func mangaSlugFromHref(href string) string {
 func cardHasComicOrNovelType(card *goquery.Selection) bool {
 	typeText := strings.ToLower(strings.TrimSpace(card.Find(".type").First().Text()))
 
-	return typeText == "comic" || typeText == "novel"
+	return typeText == labelComic || typeText == labelNovel
 }

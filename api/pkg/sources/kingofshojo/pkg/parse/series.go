@@ -14,32 +14,32 @@ import (
 )
 
 type SeriesPage struct {
-	Infos    SeriesInfos
 	Chapters []SeriesChapter
+	Infos    SeriesInfos
 }
 
 type SeriesInfos struct {
+	UpdatedAt    time.Time
+	CreatedAt    time.Time
+	Description  string
 	Title        string
 	Cover        string
 	Status       sources.SeriesStatus
 	Type         sources.SeriesType
 	Author       string
 	Artist       string
-	Description  string
 	Slug         string
 	AltTitles    []string
 	Genres       []string
 	ChapterCount int
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
 }
 
 type SeriesChapter struct {
-	ID          string
-	Number      float64
-	Title       string
-	PageCount   int
 	PublishedAt time.Time
+	ID          string
+	Title       string
+	Number      float64
+	PageCount   int
 }
 
 var (
@@ -47,13 +47,13 @@ var (
 	chapterNumberLabel = regexp.MustCompile(`(?i)chapter\s+(\d+(?:\.\d+)?)`)
 )
 
-var genreTypeLabels = map[string]struct{}{
-	"manga":     {},
-	"manhwa":    {},
-	"manhua":    {},
-	"mangatoon": {},
-	"comic":     {},
-	"novel":     {},
+func isTypeGenreLabel(genre string) bool {
+	switch genre {
+	case labelManga, labelManhwa, labelManhua, labelMangatoon, labelComic, labelNovel:
+		return true
+	default:
+		return false
+	}
 }
 
 func ParseSeries(html, slug string) (SeriesPage, error) {
@@ -211,7 +211,7 @@ func seriesGenres(doc *goquery.Document) []string {
 			return
 		}
 
-		if _, isType := genreTypeLabels[genre]; isType {
+		if isTypeGenreLabel(genre) {
 			return
 		}
 
@@ -295,7 +295,7 @@ func parseSeriesDate(raw string) (time.Time, error) {
 
 	parsed, err := time.Parse("January 2, 2006", raw)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, fmt.Errorf("time.Parse: %w", err)
 	}
 
 	return time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.UTC), nil
