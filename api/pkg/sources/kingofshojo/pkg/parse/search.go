@@ -3,6 +3,7 @@
 package parse
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,7 +32,7 @@ var (
 func ParseSearch(html string) (SearchPage, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
-		return SearchPage{}, err
+		return SearchPage{}, fmt.Errorf("parse.ParseSearch: %w", err)
 	}
 
 	page := SearchPage{}
