@@ -32,7 +32,7 @@ func TestParseSeries(t *testing.T) {
 	wantDate := time.Date(2026, 8, 21, 0, 0, 0, 0, time.UTC)
 
 	infos := page.Infos
-	if infos.Title != "Tears on a Withered Flower" {
+	if infos.Title != fixtureSeriesTitle {
 		t.Fatalf("title = %q", infos.Title)
 	}
 
@@ -124,7 +124,7 @@ func TestParseSeriesUnparseableChapterDate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if page.Infos.Title != "Tears on a Withered Flower" {
+	if page.Infos.Title != fixtureSeriesTitle {
 		t.Fatalf("title = %q", page.Infos.Title)
 	}
 

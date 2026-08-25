@@ -10,6 +10,8 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/parse"
 )
 
+const fixtureSeriesTitle = "Tears on a Withered Flower"
+
 func TestParseSearch(t *testing.T) {
 	t.Parallel()
 
@@ -31,7 +33,7 @@ func TestParseSearch(t *testing.T) {
 		t.Fatalf("len = %d", len(page.Items))
 	}
 
-	if page.Items[0].Slug != "tears-on-a-withered-flower" || page.Items[0].Title != "Tears on a Withered Flower" {
+	if page.Items[0].Slug != "tears-on-a-withered-flower" || page.Items[0].Title != fixtureSeriesTitle {
 		t.Fatalf("item0 %+v", page.Items[0])
 	}
 

@@ -12,7 +12,7 @@ import (
 )
 
 func (c *Client) GetSeriesPage(ctx context.Context, slug string) (*parse.SeriesPage, error) {
-	targetURL := c.mangaURL("/manga/" + slug + "/")
+	targetURL := c.mangaURL(mangaPath + slug + "/")
 
 	status, body, err := c.get(ctx, targetURL)
 	if err != nil {

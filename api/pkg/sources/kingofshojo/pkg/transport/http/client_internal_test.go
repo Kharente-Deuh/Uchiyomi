@@ -60,7 +60,7 @@ func TestKosOrder(t *testing.T) {
 }
 
 func cardHTML(slug, title string) string {
-	return `<div class="bsx"><a href="/manga/` + slug + `/"><div class="tt">` + title +
+	return `<div class="bsx"><a href="` + mangaPath + slug + `/"><div class="tt">` + title +
 		`</div><div class="adds">Chapter 1</div></a></div>`
 }
 
@@ -81,9 +81,9 @@ func TestSearchSpansTwoKoSPages(t *testing.T) {
 		gotPaths = append(gotPaths, r.URL.Path)
 
 		switch r.URL.Path {
-		case "/manga/":
+		case mangaPath:
 			_, _ = w.Write([]byte(pageHTML(page1Cards)))
-		case "/manga/page/2/":
+		case mangaPath + "page/2/":
 			_, _ = w.Write([]byte(pageHTML(page2Cards)))
 		default:
 			http.NotFound(w, r)
@@ -138,11 +138,11 @@ func TestSearchFetchesUntilLimit(t *testing.T) {
 		gotPaths = append(gotPaths, r.URL.Path)
 
 		switch r.URL.Path {
-		case "/manga/":
+		case mangaPath:
 			_, _ = w.Write([]byte(pageBody(1)))
-		case "/manga/page/2/":
+		case mangaPath + "page/2/":
 			_, _ = w.Write([]byte(pageBody(2)))
-		case "/manga/page/3/":
+		case mangaPath + "page/3/":
 			_, _ = w.Write([]byte(pageBody(3)))
 		default:
 			http.NotFound(w, r)

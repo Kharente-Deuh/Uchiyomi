@@ -14,7 +14,10 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/parse"
 )
 
-const kosPerPage = 40
+const (
+	kosPerPage = 40
+	mangaPath  = "/manga/"
+)
 
 func kosPage(offset, _ int) (page int, pageOffset int) {
 	return offset/kosPerPage + 1, offset % kosPerPage
@@ -182,9 +185,9 @@ func (c *Client) fetchSearchPage(
 func (c *Client) searchPageURL(pageNum int, opts domain.SearchCacheOpts) string {
 	var path string
 	if pageNum <= 1 {
-		path = "/manga/"
+		path = mangaPath
 	} else {
-		path = "/manga/page/" + strconv.Itoa(pageNum) + "/"
+		path = mangaPath + "page/" + strconv.Itoa(pageNum) + "/"
 	}
 
 	if q := c.buildSearchQuery(opts); q != "" {
@@ -209,7 +212,7 @@ func (c *Client) buildSearchQuery(opts domain.SearchCacheOpts) string {
 }
 
 func searchCardToItem(card parse.SearchCard, baseURL string) domain.SearchCacheResultItem {
-	seriesURL := baseURL + "/manga/" + card.Slug + "/"
+	seriesURL := baseURL + mangaPath + card.Slug + "/"
 
 	return domain.SearchCacheResultItem{
 		Slug:      card.Slug,
