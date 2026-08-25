@@ -7,11 +7,14 @@ defineProps<{
   comic: Comic
   chapter: Chapter
 }>()
+
+const { smAndDown } = useDisplay()
 </script>
 
 <template>
   <div
     class="d-flex align-center w-100 bg-surface border-b-thin pa-4 position-fixed top-0 left-0 right-0"
+    :class="{ 'pt-3': smAndDown }"
     style="z-index: 2;"
   >
     <div class="d-flex ga-4 justify-space-between align-center w-100 mx-auto " style="max-width: 80rem;">
