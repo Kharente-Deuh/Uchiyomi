@@ -103,6 +103,25 @@
   }
 }
 
+@media (display-mode: standalone) {
+  .text-field-override {
+    .v-input__control {
+      .v-field {
+        .v-field__field {
+          input,
+          textarea {
+            font-size: 16px;
+          }
+        }
+      }
+
+      .v-field__input {
+        font-size: 16px;
+      }
+    }
+  }
+}
+
 .v-input--density-compact {
   --v-input-control-height: 30px;
   --v-input-padding-top: 4px;
