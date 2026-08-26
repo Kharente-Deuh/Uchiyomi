@@ -81,4 +81,5 @@ export interface SourceConfig {
   image: string
   color: string
   allowedSorts: SourceSort[]
+  enrichSearchFromSeries?: boolean
 }

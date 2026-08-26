@@ -37,4 +37,12 @@ describe('sources.config', () => {
     const config = getSourceConfig('kingofshojo')!
     expect(getComicOriginUrl(config, 'https://kingofshojo.com/manga/solo-leveling')).toBe('https://kingofshojo.com/manga/solo-leveling')
   })
+
+  it('does not enrich asurascans search from series infos', () => {
+    expect(getSourceConfig('asurascans')?.enrichSearchFromSeries).toBeFalsy()
+  })
+
+  it('enriches kingofshojo search from series infos', () => {
+    expect(getSourceConfig('kingofshojo')?.enrichSearchFromSeries).toBe(true)
+  })
 })

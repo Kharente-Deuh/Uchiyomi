@@ -38,4 +38,48 @@ describe('useSourceSearchStore', () => {
     expect(store.search).toBeUndefined()
     expect(store.page).toBe(1)
   })
+
+  it('patches status type and chapterCount on both comic lists', () => {
+    const store = useSourceSearchStore('kingofshojo')
+    const comic = { slug: 'manga-1', title: 'Manga 1', status: 'ongoing', type: 'manga', chapterCount: 0, internalId: 'keep-me' } as any
+    store.setComics([comic])
+    store.setAccumulatedComics([comic])
+
+    store.patchComic('manga-1', { status: 'completed', type: 'manhwa', chapterCount: 42 })
+
+    expect(store.comics[0]).toMatchObject({
+      slug: 'manga-1',
+      status: 'completed',
+      type: 'manhwa',
+      chapterCount: 42,
+      internalId: 'keep-me',
+    })
+    expect(store.accumulatedComics[0]).toMatchObject({
+      slug: 'manga-1',
+      status: 'completed',
+      type: 'manhwa',
+      chapterCount: 42,
+      internalId: 'keep-me',
+    })
+  })
+
+  it('does not add a comic when patching an unknown slug', () => {
+    const store = useSourceSearchStore('kingofshojo')
+    store.setComics([])
+    store.patchComic('missing', { chapterCount: 9 })
+    expect(store.comics).toEqual([])
+  })
+
+  it('tracks infos loading per slug and clears it on invalidate', () => {
+    const store = useSourceSearchStore('kingofshojo')
+    store.setInfosLoading('manga-1', true)
+    expect(store.infosLoading['manga-1']).toBe(true)
+
+    store.setInfosLoading('manga-1', false)
+    expect(store.infosLoading['manga-1']).toBeUndefined()
+
+    store.setInfosLoading('manga-1', true)
+    store.invalidate()
+    expect(store.infosLoading).toEqual({})
+  })
 })

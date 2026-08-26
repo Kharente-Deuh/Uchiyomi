@@ -9,15 +9,16 @@ import { useToast } from '~/composables/toast.composable'
 import { useSourceSearchStore } from '../stores/sources-search.store'
 import { useSourceSearch } from './sources-search.composable'
 
-const { search, create, deleteById, smAndDown } = vi.hoisted(() => ({
+const { search, getInfosBySlug, create, deleteById, smAndDown } = vi.hoisted(() => ({
   search: vi.fn(),
+  getInfosBySlug: vi.fn(),
   create: vi.fn(),
   deleteById: vi.fn(),
   smAndDown: { value: false },
 }))
 
 vi.mock('./sources.api', () => ({
-  createSourceApi: () => ({ search }),
+  createSourceApi: () => ({ search, getInfosBySlug }),
 }))
 
 vi.mock('~/features/comics/composables/comics.api', () => ({
@@ -68,6 +69,7 @@ beforeEach(() => {
   useToast().messages.value.length = 0
   vi.spyOn(console, 'error').mockImplementation(() => {})
   search.mockReset()
+  getInfosBySlug.mockReset()
   create.mockReset()
   deleteById.mockReset()
   smAndDown.value = false
@@ -154,5 +156,123 @@ describe('useSourceSearch pagination', () => {
     await vi.waitFor(() => {
       expect(sourceSearch.page.value).toBe(1)
     })
+  })
+})
+
+describe('useSourceSearch series infos enrichment', () => {
+  it('does not call getInfosBySlug for asurascans search', async () => {
+    search.mockResolvedValue({ success: true, data: { items: [item('solo')], hasNextPage: false } })
+    useSourceSearch('asurascans', { doSearch: true })
+    await vi.waitFor(() => expect(search).toHaveBeenCalled())
+    expect(getInfosBySlug).not.toHaveBeenCalled()
+  })
+
+  it('does not enrich when doSearch is false', async () => {
+    useSourceSearch('kingofshojo', { doSearch: false })
+    expect(search).not.toHaveBeenCalled()
+    expect(getInfosBySlug).not.toHaveBeenCalled()
+  })
+
+  it('patches status type and chapterCount from getInfosBySlug', async () => {
+    search.mockResolvedValue({ success: true, data: { items: [item('solo')], hasNextPage: false } })
+    getInfosBySlug.mockResolvedValue({
+      success: true,
+      data: { slug: 'solo', status: 'completed', type: 'manhwa', chapterCount: 120 },
+    })
+
+    useSourceSearch('kingofshojo', { doSearch: true })
+    await vi.waitFor(() => expect(getInfosBySlug).toHaveBeenCalledWith('solo'))
+    await vi.waitFor(() => {
+      expect(useSourceSearchStore('kingofshojo').comics[0]).toMatchObject({
+        status: 'completed',
+        type: 'manhwa',
+        chapterCount: 120,
+      })
+    })
+  })
+
+  it('does not overwrite internalId when patching infos', async () => {
+    search.mockResolvedValue({ success: true, data: { items: [{ ...item('solo'), internalId: 'lib-1' }], hasNextPage: false } })
+    getInfosBySlug.mockResolvedValue({
+      success: true,
+      data: { slug: 'solo', status: 'hiatus', type: 'manga', chapterCount: 3, internalId: 'from-series' },
+    })
+
+    useSourceSearch('kingofshojo', { doSearch: true })
+    await vi.waitFor(() => {
+      expect(useSourceSearchStore('kingofshojo').comics[0]?.internalId).toBe('lib-1')
+      expect(useSourceSearchStore('kingofshojo').comics[0]?.status).toBe('hiatus')
+    })
+  })
+
+  it('leaves a failed slug unchanged, logs, and does not toast', async () => {
+    search.mockResolvedValue({
+      success: true,
+      data: { items: [item('ok'), item('missing')], hasNextPage: false },
+    })
+    getInfosBySlug.mockImplementation(async (slug: string) => {
+      if (slug === 'missing') {
+        return { success: false, error: { status: 404, message: 'missing' } }
+      }
+
+      return { success: true, data: { slug, status: 'completed', type: 'manhwa', chapterCount: 10 } }
+    })
+
+    useSourceSearch('kingofshojo', { doSearch: true })
+    await vi.waitFor(() => expect(getInfosBySlug).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => {
+      expect(useSourceSearchStore('kingofshojo').comics.find(c => c.slug === 'ok')).toMatchObject({
+        status: 'completed',
+        chapterCount: 10,
+      })
+    })
+    expect(useSourceSearchStore('kingofshojo').comics.find(c => c.slug === 'missing')?.chapterCount).toBe(1)
+    expect(console.error).toHaveBeenCalled()
+    expect(useToast().messages.value).toEqual([])
+  })
+
+  it('ignores stale enrichment after a new search', async () => {
+    const { promise: firstInfos, resolve: resolveFirst } = Promise.withResolvers<unknown>()
+
+    search
+      .mockResolvedValueOnce({ success: true, data: { items: [item('old')], hasNextPage: false } })
+      .mockResolvedValueOnce({ success: true, data: { items: [item('new')], hasNextPage: false } })
+
+    getInfosBySlug.mockImplementation(async (slug: string) => {
+      if (slug === 'old') {
+        await firstInfos
+
+        return { success: true, data: { slug: 'old', status: 'completed', type: 'manga', chapterCount: 99 } }
+      }
+
+      return { success: true, data: { slug: 'new', status: 'ongoing', type: 'manhwa', chapterCount: 2 } }
+    })
+
+    const sourceSearch = useSourceSearch('kingofshojo', { doSearch: true })
+    await vi.waitFor(() => expect(getInfosBySlug).toHaveBeenCalledWith('old'))
+
+    sourceSearch.sort.value = 'latest'
+    await vi.waitFor(() => expect(getInfosBySlug).toHaveBeenCalledWith('new'))
+    await vi.waitFor(() => {
+      expect(useSourceSearchStore('kingofshojo').comics.map(c => c.slug)).toEqual(['new'])
+    })
+
+    resolveFirst(undefined)
+    await Promise.resolve()
+    expect(useSourceSearchStore('kingofshojo').comics[0]?.slug).toBe('new')
+    expect(useSourceSearchStore('kingofshojo').comics[0]?.chapterCount).not.toBe(99)
+  })
+
+  it('exposes infosLoading while enrichment is in flight', async () => {
+    const { promise: infosPromise, resolve: resolveInfos } = Promise.withResolvers<unknown>()
+
+    getInfosBySlug.mockImplementation(() => infosPromise)
+    search.mockResolvedValue({ success: true, data: { items: [item('solo')], hasNextPage: false } })
+
+    const sourceSearch = useSourceSearch('kingofshojo', { doSearch: true })
+    await vi.waitFor(() => expect(sourceSearch.infosLoading.value.solo).toBe(true))
+
+    resolveInfos({ success: true, data: { slug: 'solo', status: 'ongoing', type: 'manga', chapterCount: 4 } })
+    await vi.waitFor(() => expect(sourceSearch.infosLoading.value.solo).toBeUndefined())
   })
 })

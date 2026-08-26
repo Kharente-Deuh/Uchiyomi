@@ -22,6 +22,7 @@ export const SOURCES_CONFIG: Record<ComicSource, SourceConfig> = {
     image: kingOfShojoImg,
     color: '#2503e5',
     allowedSorts: ['popular', 'latest', 'title', 'newest'],
+    enrichSearchFromSeries: true,
   },
 }
 
