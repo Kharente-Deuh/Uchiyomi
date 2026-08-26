@@ -12,8 +12,8 @@ import (
 )
 
 type SearchPage struct {
-	Items    []SearchCard
-	LastPage int
+	Items   []SearchCard
+	HasNext bool
 }
 
 type SearchCard struct {
@@ -25,8 +25,7 @@ type SearchCard struct {
 }
 
 var (
-	chapterRe  = regexp.MustCompile(`(?i)chapter\s+(\d+(?:\.\d+)?)`)
-	lastPageRe = regexp.MustCompile(`(?i)page\s+\d+\s+of\s+(\d+)`)
+	chapterRe = regexp.MustCompile(`(?i)chapter\s+(\d+(?:\.\d+)?)`)
 )
 
 func ParseSearch(html string) (SearchPage, error) {
@@ -35,10 +34,8 @@ func ParseSearch(html string) (SearchPage, error) {
 		return SearchPage{}, fmt.Errorf("parse.ParseSearch: %w", err)
 	}
 
-	page := SearchPage{}
-
-	if m := lastPageRe.FindStringSubmatch(doc.Text()); len(m) > 1 {
-		page.LastPage, _ = strconv.Atoi(m[1])
+	page := SearchPage{
+		HasNext: doc.Find(".hpage a.r").Length() > 0,
 	}
 
 	cards := doc.Find(".listupd .bsx")

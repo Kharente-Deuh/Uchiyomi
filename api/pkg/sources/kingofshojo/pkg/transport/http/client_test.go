@@ -70,8 +70,8 @@ func TestSearchReturnsItemsAndTotal(t *testing.T) {
 		t.Fatalf("Search: %v", err)
 	}
 
-	if res.Meta.Total != 942 {
-		t.Errorf("total = %d, want 942", res.Meta.Total)
+	if res.Meta.Total != 21 {
+		t.Errorf("total = %d, want 21", res.Meta.Total)
 	}
 
 	if len(res.Items) != 2 {
@@ -80,6 +80,31 @@ func TestSearchReturnsItemsAndTotal(t *testing.T) {
 
 	if res.Items[0].Slug != "tears-on-a-withered-flower" {
 		t.Errorf("item0 slug = %q", res.Items[0].Slug)
+	}
+}
+
+func TestSearchTotalWithoutNextIsOffsetPlusLen(t *testing.T) {
+	t.Parallel()
+
+	body := `<!DOCTYPE html><html><body><div class="listupd">` +
+		`<div class="bsx"><a href="/manga/only/"><div class="tt">Only</div><div class="adds">Chapter 1</div></a></div>` +
+		`</div><div class="hpage"></div></body></html>`
+
+	c := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(body))
+	})
+
+	res, err := c.Search(context.Background(), domain.SearchCacheOpts{Offset: 40, Limit: 20})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+
+	if len(res.Items) != 1 {
+		t.Fatalf("len(items) = %d, want 1", len(res.Items))
+	}
+
+	if res.Meta.Total != 41 {
+		t.Errorf("total = %d, want 41", res.Meta.Total)
 	}
 }
 

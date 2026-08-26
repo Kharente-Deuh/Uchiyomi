@@ -806,7 +806,7 @@ func TestAppGetChaptersBySlug(t *testing.T) {
 			return &parse.SeriesPage{
 				Infos: parse.SeriesInfos{Slug: slug},
 				Chapters: []parse.SeriesChapter{{
-					ID:          "chapter-1",
+					ID:          parse.SourceChapterSlug(slug, 1),
 					Title:       "Chapter 1",
 					Number:      1,
 					PageCount:   20,
@@ -829,7 +829,7 @@ func TestAppGetChaptersBySlug(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
 
-	if got[0].SourceChapterSlug != "chapter-1" || got[0].Title != "Chapter 1" || got[0].PageCount != 20 {
+	if got[0].SourceChapterSlug != "solo-leveling-chapter-1" || got[0].Title != "Chapter 1" || got[0].PageCount != 20 {
 		t.Errorf("GetChaptersBySlug() = %+v", got[0])
 	}
 

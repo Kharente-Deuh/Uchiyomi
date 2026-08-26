@@ -60,6 +60,18 @@ func TestCleanPerson(t *testing.T) {
 	}
 }
 
+func TestCleanDescription(t *testing.T) {
+	t.Parallel()
+
+	if parse.CleanDescription("Not available") != "" || parse.CleanDescription(" not available ") != "" {
+		t.Fatal("not available must be empty")
+	}
+
+	if parse.CleanDescription("A floral romance.") != "A floral romance." {
+		t.Fatal("keep real descriptions")
+	}
+}
+
 func TestCleanAltTitles(t *testing.T) {
 	t.Parallel()
 
