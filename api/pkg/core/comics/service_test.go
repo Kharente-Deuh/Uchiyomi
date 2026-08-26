@@ -89,6 +89,7 @@ type fakeComicsRepository struct {
 	getManyErr             error
 	listByStatusesErr      error
 	updateStatusErr        error
+	updateTypeErr          error
 	getByIDResult          *comics.Comic
 	findByIDResult         *comics.Comic
 	findBySourceSlugResult *comics.Comic
@@ -98,6 +99,7 @@ type fakeComicsRepository struct {
 	listByStatusesResult   []comics.Comic
 	getManyResult          comics.Page
 	lastUpdateStatus       comics.UpdateStatusAndChapterCountOpts
+	lastUpdateType         comics.UpdateTypeOpts
 	lastCreateOpts         comics.CreateComicOpts
 	findBySourceSlugCalls  int
 	createCalls            int
@@ -107,6 +109,7 @@ type fakeComicsRepository struct {
 	deleteCalls            int
 	listByStatusesCalls    int
 	updateStatusCalls      int
+	updateTypeCalls        int
 	lastDeleteID           uuid.UUID
 }
 
@@ -212,6 +215,17 @@ func (f *fakeComicsRepository) UpdateStatusAndChapterCount(
 	}
 
 	return f.updateStatusErr
+}
+
+func (f *fakeComicsRepository) UpdateType(_ context.Context, opts comics.UpdateTypeOpts) error {
+	f.updateTypeCalls++
+	f.lastUpdateType = opts
+
+	if f.findByIDResult != nil && f.findByIDResult.ID == opts.ID {
+		f.findByIDResult.Type = opts.Type
+	}
+
+	return f.updateTypeErr
 }
 
 type fakeLibraryRepository struct {
@@ -430,6 +444,31 @@ func (f *fakeSource) GetChaptersBySlug(
 
 func (f *fakeSource) GetPageURLsByChapter(context.Context, sources.GetPageURLsByChapterOpts) ([]string, error) {
 	return nil, nil
+}
+
+type serviceDepsOverrides struct {
+	comicsRepo  *fakeComicsRepository
+	libraryRepo *fakeLibraryRepository
+}
+
+func newServiceWithDeps(t *testing.T, overrides serviceDepsOverrides) *comics.Service {
+	t.Helper()
+
+	deps := validServiceDeps()
+	if overrides.comicsRepo != nil {
+		deps.ComicsRepository = overrides.comicsRepo
+	}
+
+	if overrides.libraryRepo != nil {
+		deps.LibraryRepository = overrides.libraryRepo
+	}
+
+	svc, err := comics.NewService(deps)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	return svc
 }
 
 func validServiceDeps() comics.Deps {
@@ -1293,5 +1332,113 @@ func TestServiceRetryChaptersSuccess(t *testing.T) {
 
 	if len(fakeChapters.retryDownloadCalls) != 2 {
 		t.Fatalf("expected 2 retry calls (excluding 100%%), got %d", len(fakeChapters.retryDownloadCalls))
+	}
+}
+
+func TestUpdateTypeSuccess(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	userID := uuid.New()
+	existingComic := &comics.Comic{
+		ID:   comicID,
+		Type: sources.SeriesTypeMangatoon,
+	}
+
+	repo := &fakeComicsRepository{
+		findByIDResult: existingComic,
+	}
+	libRepo := &fakeLibraryRepository{
+		inLibrary: true,
+	}
+
+	svc := newServiceWithDeps(t, serviceDepsOverrides{
+		comicsRepo:  repo,
+		libraryRepo: libRepo,
+	})
+
+	res, err := svc.UpdateType(context.Background(), comics.UpdateTypeOpts{
+		UserID: userID,
+		ID:     comicID,
+		Type:   sources.SeriesTypeManga,
+	})
+	if err != nil {
+		t.Fatalf("UpdateType: %v", err)
+	}
+
+	if res == nil {
+		t.Fatal("expected non-nil comic response")
+	}
+
+	if res.Type != sources.SeriesTypeManga {
+		t.Errorf("res.Type = %v, want manga", res.Type)
+	}
+
+	if repo.updateTypeCalls != 1 {
+		t.Errorf("repo.updateTypeCalls = %d, want 1", repo.updateTypeCalls)
+	}
+
+	if repo.lastUpdateType.Type != sources.SeriesTypeManga {
+		t.Errorf("repo.lastUpdateType.Type = %v, want manga", repo.lastUpdateType.Type)
+	}
+}
+
+func TestUpdateTypeInvalidSeriesType(t *testing.T) {
+	t.Parallel()
+
+	svc := newServiceWithDeps(t, serviceDepsOverrides{})
+
+	_, err := svc.UpdateType(context.Background(), comics.UpdateTypeOpts{
+		UserID: uuid.New(),
+		ID:     uuid.New(),
+		Type:   sources.SeriesType("invalid"),
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid series type, got nil")
+	}
+}
+
+func TestUpdateTypeComicNotFound(t *testing.T) {
+	t.Parallel()
+
+	repo := &fakeComicsRepository{
+		findByIDErr: domain.ErrNotFound,
+	}
+	svc := newServiceWithDeps(t, serviceDepsOverrides{
+		comicsRepo: repo,
+	})
+
+	_, err := svc.UpdateType(context.Background(), comics.UpdateTypeOpts{
+		UserID: uuid.New(),
+		ID:     uuid.New(),
+		Type:   sources.SeriesTypeManga,
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("UpdateType = %v, want ErrNotFound", err)
+	}
+}
+
+func TestUpdateTypeNotInLibrary(t *testing.T) {
+	t.Parallel()
+
+	comicID := uuid.New()
+	repo := &fakeComicsRepository{
+		findByIDResult: &comics.Comic{ID: comicID},
+	}
+	libRepo := &fakeLibraryRepository{
+		inLibrary: false,
+	}
+	svc := newServiceWithDeps(t, serviceDepsOverrides{
+		comicsRepo:  repo,
+		libraryRepo: libRepo,
+	})
+
+	_, err := svc.UpdateType(context.Background(), comics.UpdateTypeOpts{
+		UserID: uuid.New(),
+		ID:     comicID,
+		Type:   sources.SeriesTypeManga,
+	})
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("UpdateType = %v, want ErrForbidden", err)
 	}
 }
