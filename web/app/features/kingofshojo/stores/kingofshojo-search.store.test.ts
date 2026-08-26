@@ -19,7 +19,6 @@ function item(slug: string, internalId?: string): KingOfShojoSearchItem {
     description: '',
     altTitles: [],
     genres: [],
-    latestChapters: [],
     chapterCount: 1,
     rating: 0,
     releaseYear: 2020,

@@ -59,7 +59,7 @@ async function doToggleComic(comic: KingOfShojoSearchItem): Promise<void> {
 }
 
 onBeforeRouteLeave((to: RouteLocationNormalized) => {
-  if (to.name !== 'browse-sources-kingofshojo-slug') {
+  if ((to.name as string) !== 'browse-sources-kingofshojo-slug') {
     resetFilters()
   }
 })
