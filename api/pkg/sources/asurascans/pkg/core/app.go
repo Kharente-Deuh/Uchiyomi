@@ -125,8 +125,7 @@ func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Searc
 		Type:        opts.Type,
 		Artist:      opts.Artist,
 		Genres:      opts.Genres,
-		Offset:      opts.Offset,
-		Limit:       opts.Limit,
+		Page:        opts.Page,
 		MinChapters: opts.MinChapters,
 	})
 

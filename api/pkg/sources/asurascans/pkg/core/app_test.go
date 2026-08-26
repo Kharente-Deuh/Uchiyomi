@@ -267,8 +267,7 @@ func searchCacheKey(opts domain.SearchCacheOpts) string {
 		Type:        opts.Type,
 		Artist:      opts.Artist,
 		Genres:      opts.Genres,
-		Offset:      opts.Offset,
-		Limit:       opts.Limit,
+		Page:        opts.Page,
 		MinChapters: opts.MinChapters,
 	}.CacheKey()
 }
@@ -400,7 +399,7 @@ func TestAppSearchDelegatesToCache(t *testing.T) {
 		func(_ context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
 			called <- opts
 
-			return &domain.SearchCacheResult{Meta: domain.SearchResultMeta{Total: 3}}, nil
+			return &domain.SearchCacheResult{Meta: domain.SearchResultMeta{HasNextPage: true}}, nil
 		})
 
 	app, err := core.New(testConfig(), deps)
@@ -413,7 +412,7 @@ func TestAppSearchDelegatesToCache(t *testing.T) {
 		t.Fatalf("Search: %v", err)
 	}
 
-	if res == nil || res.Meta.Total != 3 {
+	if res == nil || !res.Meta.HasNextPage {
 		t.Errorf("result = %+v", res)
 	}
 

@@ -140,7 +140,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 	buildCover := c.deps.CoverURLBuilder
 
 	dto := searchResDTO{
-		Total: res.Meta.Total,
+		HasNextPage: res.Meta.HasNextPage,
 		Items: utils.MapSlice(res.Items, func(i domain.SearchResultItem) searchResItemDTO {
 			return searchResItemDTO{
 				LastChapterAt: utils.OptionalTime(i.LastChapterAt),

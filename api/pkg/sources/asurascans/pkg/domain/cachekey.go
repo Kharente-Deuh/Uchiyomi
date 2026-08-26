@@ -13,8 +13,8 @@ func (o SearchOpts) CacheKey() string {
 	genres = slices.Compact(genres)
 
 	return fmt.Sprintf(
-		"offset=%d limit=%d search=%q sort=%q order=%q status=%q type=%q artist=%q genres=%q minchapters=%d",
-		o.Offset, o.Limit, o.Search, o.Sort, o.SortOrder,
+		"page=%d search=%q sort=%q order=%q status=%q type=%q artist=%q genres=%q minchapters=%d",
+		o.Page, o.Search, o.Sort, o.SortOrder,
 		o.Status, o.Type, o.Artist, genres, o.MinChapters,
 	)
 }

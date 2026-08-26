@@ -127,7 +127,7 @@ func TestSearchRequestShape(t *testing.T) {
 		_, _ = w.Write([]byte(`{"data":[],"meta":{}}`))
 	})
 
-	if _, err := c.Search(context.Background(), domain.SearchCacheOpts{Offset: 1}); err != nil {
+	if _, err := c.Search(context.Background(), domain.SearchCacheOpts{Page: 1}); err != nil {
 		t.Fatalf("Search: %v", err)
 	}
 
@@ -170,8 +170,7 @@ func TestSearchQueryParameters(t *testing.T) {
 	}
 
 	opts := domain.SearchCacheOpts{
-		Offset:    40,
-		Limit:     5,
+		Page:      3,
 		Search:    "one piece",
 		Sort:      domain.SortTypeTitle,
 		SortOrder: domain.SortOrderAsc,
@@ -186,9 +185,8 @@ func TestSearchQueryParameters(t *testing.T) {
 	}
 
 	tests := map[string]string{
-		// Asura offset = items skipped; SearchCacheOpts.Offset is 1-based page → (40-1)*5
-		"offset": "195",
-		"limit":  "5",
+		"offset": "40",
+		"limit":  "20",
 		"search": "one piece",
 		"sort":   "title",
 		"order":  "asc",
@@ -276,7 +274,7 @@ func TestSearchDecodesResponse(t *testing.T) {
 		t.Fatalf("Search: %v", err)
 	}
 
-	if res.Meta.Total != 1 || res.Meta.PerPage != 20 || !res.Meta.HasMore {
+	if !res.Meta.HasNextPage {
 		t.Errorf("meta = %+v", res.Meta)
 	}
 

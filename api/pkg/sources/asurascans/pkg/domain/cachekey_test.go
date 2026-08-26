@@ -85,14 +85,13 @@ func TestSearchOptsCacheKeyDistinguishesEveryField(t *testing.T) {
 	t.Parallel()
 
 	base := domain.SearchOpts{
-		Offset: 1, Limit: 2, Search: "s", Sort: domain.SortTypeLatest,
+		Page: 1, Search: "s", Sort: domain.SortTypeLatest,
 		SortOrder: domain.SortOrderAsc, Status: "st", Type: "ty", Artist: "ar",
 		Genres: []string{"g"}, MinChapters: 3,
 	}
 
 	variants := map[string]domain.SearchOpts{
-		"Offset":      {Offset: 9},
-		"Limit":       {Limit: 9},
+		"Page":        {Page: 9},
 		"Search":      {Search: testValueAutre},
 		"Sort":        {Sort: domain.SortTypeRating},
 		"SortOrder":   {SortOrder: domain.SortOrderDesc},
@@ -111,10 +110,8 @@ func TestSearchOptsCacheKeyDistinguishesEveryField(t *testing.T) {
 			opts := base
 
 			switch field {
-			case "Offset":
-				opts.Offset = variant.Offset
-			case "Limit":
-				opts.Limit = variant.Limit
+			case "Page":
+				opts.Page = variant.Page
 			case "Search":
 				opts.Search = variant.Search
 			case "Sort":

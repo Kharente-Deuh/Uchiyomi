@@ -699,7 +699,7 @@ func setupAsuraScans(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*
 			Name:          "asurascans.search",
 			Key: func(opts asurascansdomain.SearchCacheOpts) string {
 				return fmt.Sprintf(
-					"%s %s %s %s %s %s %v %d %d %d",
+					"%s %s %s %s %s %s %v %d %d",
 					opts.Search,
 					opts.Sort,
 					opts.SortOrder,
@@ -707,8 +707,7 @@ func setupAsuraScans(logger *slog.Logger, comicsRepo comics.ComicsRepository) (*
 					opts.Type,
 					opts.Artist,
 					opts.Genres,
-					opts.Offset,
-					opts.Limit,
+					opts.Page,
 					opts.MinChapters,
 				)
 			},

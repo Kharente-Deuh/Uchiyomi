@@ -17,6 +17,8 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils"
 )
 
+const SearchLimit = 20
+
 func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/series", c.cfg.AsuraURL), nil)
 	if err != nil {
@@ -56,8 +58,8 @@ func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*doma
 func (c *Client) builSearchQuery(opts domain.SearchCacheOpts) string {
 	withDefaults := c.getSearchOptsWithDefaults(opts)
 	q := url.Values{}
-	q.Add("offset", strconv.Itoa((withDefaults.Offset-1)*withDefaults.Limit))
-	q.Add("limit", strconv.Itoa(withDefaults.Limit))
+	q.Add("offset", strconv.Itoa((withDefaults.Page-1)*SearchLimit))
+	q.Add("limit", strconv.Itoa(SearchLimit))
 	q.Add("sort", string(withDefaults.Sort))
 	q.Add("order", string(withDefaults.SortOrder))
 
@@ -91,8 +93,9 @@ func (c *Client) builSearchQuery(opts domain.SearchCacheOpts) string {
 
 func (c *Client) getSearchOptsWithDefaults(opts domain.SearchCacheOpts) domain.SearchCacheOpts {
 	withDefaults := opts
-	if withDefaults.Limit == 0 {
-		withDefaults.Limit = 20
+
+	if withDefaults.Page < 1 {
+		withDefaults.Page = 1
 	}
 
 	if withDefaults.Sort == "" {
@@ -112,11 +115,7 @@ type searchHTTPResponse struct {
 }
 
 func (r *searchHTTPResponse) Domain() *domain.SearchCacheResult {
-	meta := domain.SearchResultMeta{
-		Total:   r.Meta.Total,
-		PerPage: r.Meta.PerPage,
-		HasMore: r.Meta.HasMore,
-	}
+	meta := domain.SearchResultMeta{HasNextPage: r.Meta.HasMore}
 
 	items := make([]domain.SearchCacheResultItem, len(r.Data))
 	for i, data := range r.Data {
@@ -174,14 +173,6 @@ type searchHTTPResponseMeta struct {
 	Total   int  `json:"total"`
 	PerPage int  `json:"per_page"`
 	HasMore bool `json:"has_more"`
-}
-
-func (meta *searchHTTPResponseMeta) Domain() domain.SearchResultMeta {
-	return domain.SearchResultMeta{
-		Total:   meta.Total,
-		PerPage: meta.PerPage,
-		HasMore: meta.HasMore,
-	}
 }
 
 type searchHTTPResponseData struct {
