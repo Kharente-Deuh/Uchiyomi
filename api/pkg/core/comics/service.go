@@ -353,3 +353,39 @@ func (s *Service) RetryChapters(ctx context.Context, opts RetryChaptersOpts) err
 
 	return nil
 }
+
+func (s *Service) UpdateType(ctx context.Context, opts UpdateTypeOpts) (*Comic, error) {
+	if _, err := sources.ParseSeriesType(string(opts.Type)); err != nil {
+		return nil, fmt.Errorf("sources.ParseSeriesType: %w", err)
+	}
+
+	comic, err := s.deps.ComicsRepository.FindByID(ctx, opts.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ComicsRepository.FindByID: %w", err)
+	}
+
+	if comic == nil {
+		return nil, domain.ErrNotFound
+	}
+
+	inLibrary, err := s.deps.LibraryRepository.ExistsByUserAndComic(ctx, opts.UserID, opts.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.LibraryRepository.ExistsByUserAndComic: %w", err)
+	}
+
+	if !inLibrary {
+		return nil, domain.ErrForbidden
+	}
+
+	err = s.deps.ComicsRepository.UpdateType(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ComicsRepository.UpdateType: %w", err)
+	}
+
+	updated, err := s.deps.ComicsRepository.FindByID(ctx, opts.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.deps.ComicsRepository.FindByID: %w", err)
+	}
+
+	return updated, nil
+}

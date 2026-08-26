@@ -76,6 +76,10 @@ func (f *fakeComicsService) ServeCover(context.Context, comics.GetByIDOpts) (str
 	panic("ServeCover must not be called")
 }
 
+func (f *fakeComicsService) UpdateType(context.Context, comics.UpdateTypeOpts) (*comics.Comic, error) {
+	panic("UpdateType must not be called")
+}
+
 func TestNewRejectsShortInterval(t *testing.T) {
 	t.Parallel()
 

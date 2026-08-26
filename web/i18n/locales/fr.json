@@ -359,6 +359,12 @@
     },
     "refresh": {
       "title": "Rafraîchir"
+    },
+    "type": {
+      "manga": "Manga",
+      "manhua": "Manhua",
+      "manhwa": "Manhwa",
+      "mangatoon": "Mangatoon"
     }
   },
   "library": {

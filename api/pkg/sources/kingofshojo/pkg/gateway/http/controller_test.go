@@ -86,6 +86,10 @@ func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.
 	return nil
 }
 
+func (stubComicsRepository) UpdateType(context.Context, comics.UpdateTypeOpts) error {
+	return nil
+}
+
 func coverURLBuilder(source, slug string) string {
 	return "/api/sources/cover/" + slug + "?source=" + source
 }

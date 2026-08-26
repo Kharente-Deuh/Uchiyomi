@@ -356,6 +356,10 @@ func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.
 	return nil
 }
 
+func (stubComicsRepository) UpdateType(context.Context, comics.UpdateTypeOpts) error {
+	return nil
+}
+
 type fakeComicsService struct{}
 
 func (fakeComicsService) Create(context.Context, comics.CreateOpts) (*comics.Comic, error) {
@@ -388,6 +392,10 @@ func (fakeComicsService) RetryChapters(context.Context, comics.RetryChaptersOpts
 
 func (fakeComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
 	return "", "", errors.New(notImplemented)
+}
+
+func (fakeComicsService) UpdateType(context.Context, comics.UpdateTypeOpts) (*comics.Comic, error) {
+	return nil, errors.New(notImplemented)
 }
 
 type fakeChaptersService struct{}

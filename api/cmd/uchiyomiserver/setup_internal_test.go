@@ -73,6 +73,10 @@ func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.
 	return nil
 }
 
+func (stubComicsRepository) UpdateType(context.Context, comics.UpdateTypeOpts) error {
+	return nil
+}
+
 type stubFeedService struct{}
 
 func (stubFeedService) Get(context.Context, feed.GetOpts) (feed.Page, error) {

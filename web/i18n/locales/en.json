@@ -360,6 +360,12 @@
     },
     "refresh": {
       "title": "Refresh"
+    },
+    "type": {
+      "manga": "Manga",
+      "manhua": "Manhua",
+      "manhwa": "Manhwa",
+      "mangatoon": "Mangatoon"
     }
   },
   "comic": {

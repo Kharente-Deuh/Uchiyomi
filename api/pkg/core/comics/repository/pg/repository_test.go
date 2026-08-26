@@ -596,6 +596,56 @@ func TestUpdateStatusAndChapterCountNotFound(t *testing.T) {
 	}
 }
 
+func TestUpdateType(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "comics" SET "comic_type"=\$1,"updated_at"=\$2 WHERE id = \$3`).
+		WithArgs(string(sources.SeriesTypeManga), sqlmock.AnyArg(), id).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := r.UpdateType(context.Background(), comics.UpdateTypeOpts{
+		ID:   id,
+		Type: sources.SeriesTypeManga,
+	})
+	if err != nil {
+		t.Fatalf("UpdateType: %v", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet sqlmock expectations: %v", err)
+	}
+}
+
+func TestUpdateTypeNotFound(t *testing.T) {
+	t.Parallel()
+
+	r, mock := newComicsRepo(t)
+	id := uuid.New()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE "comics" SET "comic_type"=\$1,"updated_at"=\$2 WHERE id = \$3`).
+		WithArgs(string(sources.SeriesTypeManga), sqlmock.AnyArg(), id).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
+
+	err := r.UpdateType(context.Background(), comics.UpdateTypeOpts{
+		ID:   id,
+		Type: sources.SeriesTypeManga,
+	})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("UpdateType = %v, want ErrNotFound", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet sqlmock expectations: %v", err)
+	}
+}
+
 func TestGetBySlugsAndSource(t *testing.T) {
 	t.Parallel()
 

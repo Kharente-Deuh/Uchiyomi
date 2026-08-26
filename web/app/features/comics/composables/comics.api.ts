@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { Comic, ComicProgress, LightComic, SearchComicParams, SearchComicResponse, SetChaptersProgressParams } from '../types'
+import type { Comic, ComicProgress, ComicType, LightComic, SearchComicParams, SearchComicResponse, SetChaptersProgressParams } from '../types'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
 
@@ -13,6 +13,7 @@ export interface ComicsApi {
   getProgress: (id: string) => Promise<ApiResponse<ComicProgress>>
   setChaptersProgress: (params: SetChaptersProgressParams) => Promise<ApiResponse<void>>
   retryChaptersDownload: (comicId: string, chapterIds: string[]) => Promise<ApiResponse<void>>
+  updateType: (id: string, type: ComicType) => Promise<ApiResponse<void>>
 }
 
 export interface CreateComicParams {
@@ -119,6 +120,16 @@ export function createComicsApi(): ComicsApi {
     }
   }
 
+  async function updateType(id: string, type: ComicType): Promise<ApiResponse<void>> {
+    try {
+      await api<void>(`/${id}`, { method: 'PATCH', body: { type } })
+
+      return { success: true, data: undefined }
+    } catch (error) {
+      return { success: false, error: ApiError.fromFetchError(error) }
+    }
+  }
+
   return {
     create,
     deleteById,
@@ -128,5 +139,6 @@ export function createComicsApi(): ComicsApi {
     getProgress,
     setChaptersProgress,
     retryChaptersDownload,
+    updateType,
   }
 }

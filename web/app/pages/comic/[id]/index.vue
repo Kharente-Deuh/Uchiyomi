@@ -110,6 +110,20 @@ async function refreshComic(): Promise<void> {
 }
 
 const showDeleteModal = ref(false)
+
+watch(() => comic.value?.type, async (newType, oldType) => {
+  if (!comic.value) {
+    return
+  }
+
+  if (!!newType && !!oldType && newType !== oldType) {
+    const response = await api.updateType(comic.value.id, newType)
+    if (!response.success) {
+      console.error('api.updateType', response.error)
+      comic.value.type = oldType
+    }
+  }
+})
 </script>
 
 <template>
@@ -165,6 +179,7 @@ const showDeleteModal = ref(false)
         <ComicsStatusInfos
           v-if="!smAndDown"
           :comic
+          @update:type="comic.type = $event"
         />
       </div>
 
@@ -194,7 +209,12 @@ const showDeleteModal = ref(false)
             <template v-if="smAndDown">
               <div class="d-flex flex-wrap ga-3 align-center my-1">
                 <ComicsIconStatus :status="comic.status" with-background />
-                <ComicsChipType :type="comic.type" size="small" />
+                <ComicsChipType
+                  :type="comic.type"
+                  size="small"
+                  updatable
+                  @update:type="comic.type = $event"
+                />
                 <ComicsChipSource
                   :source="comic.source"
                   size="small"
