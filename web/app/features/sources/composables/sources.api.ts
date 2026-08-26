@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { ComicSource } from '~/features/comics/types'
 import type { SourceComicChapter, SourceComicInfos, SourceSearchParams, SourceSearchResponse } from '../types'
+import type { ComicSource } from '~/features/comics/types'
 import type { ApiResponse } from '~/utils/api'
 import { ApiError, initApi } from '~/utils/api'
 

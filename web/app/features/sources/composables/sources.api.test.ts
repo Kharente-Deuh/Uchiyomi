@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createSourceApi } from './sources.api'
 import * as apiModule from '~/utils/api'
+import { createSourceApi } from './sources.api'
 
-vi.mock('~/utils/api', async importOriginal => {
+vi.mock('~/utils/api', async (importOriginal) => {
   const actual = await importOriginal<typeof apiModule>()
+
   return {
     ...actual,
     initApi: vi.fn(),
@@ -36,7 +37,8 @@ describe('createSourceApi', () => {
     }))
     expect(res.success).toBe(true)
     if (res.success) {
-      expect(res.data.items[0].updatedAt).toBeInstanceOf(Date)
+      expect(res.data.items).toHaveLength(1)
+      expect(res.data.items[0]!.updatedAt).toBeInstanceOf(Date)
     }
   })
 
@@ -67,7 +69,8 @@ describe('createSourceApi', () => {
     expect(mockApi).toHaveBeenCalledWith('/series/test-comic/chapters', { method: 'GET' })
     expect(res.success).toBe(true)
     if (res.success) {
-      expect(res.data[0].publishedAt).toBeInstanceOf(Date)
+      expect(res.data).toHaveLength(1)
+      expect(res.data[0]!.publishedAt).toBeInstanceOf(Date)
     }
   })
 })
