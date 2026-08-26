@@ -22,15 +22,14 @@ export function createAsuraScansApi(): AsuraScansApi {
         ...(params.status && { status: params.status }),
         ...(params.type && { type: params.type }),
         ...(params.artist && { artist: params.artist }),
-        ...(params.offset >= 0 && { offset: params.offset }),
-        ...(params.limit > 0 && { limit: params.limit }),
+        ...(params.page >= 1 && { page: params.page }),
         ...(params.minChapters && params.minChapters > 0 && { minChapters: params.minChapters }),
       } })
 
       return {
         success: true,
         data: {
-          total: response.total,
+          hasNextPage: response.hasNextPage,
           items: response.items.map(({ lastChapterAt, updatedAt, createdAt, latestChapters, ...rest }) => ({
             ...rest,
             ...(lastChapterAt && { lastChapterAt: new Date(lastChapterAt) }),

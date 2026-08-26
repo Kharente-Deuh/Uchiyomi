@@ -35,11 +35,11 @@ describe('useAsuraScansSearchStore', () => {
     setActivePinia(createPinia())
   })
 
-  it('starts with default sort and offset', () => {
+  it('starts with default sort and page', () => {
     const store = useAsuraScansSearchStore()
 
     expect(store.sort).toBe('popular')
-    expect(store.offset).toBe(1)
+    expect(store.page).toBe(1)
     expect(store.comics).toEqual([])
   })
 
@@ -74,13 +74,13 @@ describe('useAsuraScansSearchStore', () => {
     store.setSearch('solo')
     store.setSort('title')
     store.setComics([item('solo-leveling')])
-    store.setOffset(3)
+    store.setPage(3)
 
     store.invalidate()
 
     expect(store.search).toBeUndefined()
     expect(store.sort).toBe('popular')
-    expect(store.offset).toBe(1)
+    expect(store.page).toBe(1)
     expect(store.comics).toEqual([])
   })
 })

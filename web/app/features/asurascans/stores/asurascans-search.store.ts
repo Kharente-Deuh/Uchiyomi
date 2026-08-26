@@ -4,7 +4,7 @@ import type { AsuraScansSearchItem, AsuraScansSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
 
 const DEFAULT_SORT: AsuraScansSort = 'popular'
-const DEFAULT_OFFSET = 1
+const DEFAULT_PAGE = 1
 
 export interface AsuraScansSearchStore {
   comics: Ref<AsuraScansSearchItem[]>
@@ -37,9 +37,9 @@ export interface AsuraScansSearchStore {
   setType: (value: ComicType) => void
   clearType: () => void
 
-  offset: Ref<number>
-  setOffset: (value: number) => void
-  clearOffset: () => void
+  page: Ref<number>
+  setPage: (value: number) => void
+  clearPage: () => void
 
   invalidate: () => void
 }
@@ -49,7 +49,7 @@ export const useAsuraScansSearchStore = defineStore('asurascans-search', (): Asu
   const sort = ref<AsuraScansSort>(DEFAULT_SORT)
   const status = ref<ComicStatus>()
   const type = ref<ComicType>()
-  const offset = ref<number>(DEFAULT_OFFSET)
+  const page = ref<number>(DEFAULT_PAGE)
   const loading = ref<boolean>(false)
 
   const comics = ref<AsuraScansSearchItem[]>([])
@@ -129,12 +129,12 @@ export const useAsuraScansSearchStore = defineStore('asurascans-search', (): Asu
     type.value = undefined
   }
 
-  function setOffset(value: number): void {
-    offset.value = value
+  function setPage(value: number): void {
+    page.value = value
   }
 
-  function clearOffset(): void {
-    offset.value = DEFAULT_OFFSET
+  function clearPage(): void {
+    page.value = DEFAULT_PAGE
   }
 
   function invalidate(): void {
@@ -142,7 +142,7 @@ export const useAsuraScansSearchStore = defineStore('asurascans-search', (): Asu
     clearSort()
     clearStatus()
     clearType()
-    clearOffset()
+    clearPage()
     clearLoading()
     clearComics()
     clearAccumulatedComics()
@@ -179,9 +179,9 @@ export const useAsuraScansSearchStore = defineStore('asurascans-search', (): Asu
     setType,
     clearType,
 
-    offset,
-    setOffset,
-    clearOffset,
+    page,
+    setPage,
+    clearPage,
 
     invalidate,
   }
