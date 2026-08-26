@@ -33,12 +33,11 @@ const {
   isLoading,
   series,
   page,
-  maxPage,
+  hasNextPage,
   addComicInLibrary,
   addComicInLibraryLoading,
   resetFilters,
 } = useKingOfShojoSearch({ doSearch: true })
-const hasNextPage = computed(() => page.value < maxPage.value)
 const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel')
 useIntersectionObserver(loadMoreSentinel, ([entry]) => {
   if (entry?.isIntersecting && smAndDown.value && !isLoading.value && hasNextPage.value) {

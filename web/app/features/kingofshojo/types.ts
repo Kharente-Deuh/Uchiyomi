@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { ComicStatus, ComicType } from '../comics/types'
 
 export type KingOfShojoSort = 'popular' | 'latest' | 'title' | 'newest'
@@ -7,13 +9,12 @@ export interface KingOfShojoSearchParams {
   status?: ComicStatus
   type?: ComicType
   artist?: string
-  offset: number
-  limit: number
+  page: number
 }
 
 export interface KingOfShojoSearchResponse {
   items: KingOfShojoSearchItem[]
-  total: number
+  hasNextPage: boolean
 }
 
 export interface KingOfShojoSearchItem {

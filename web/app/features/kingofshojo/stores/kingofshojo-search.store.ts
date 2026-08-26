@@ -4,7 +4,7 @@ import type { KingOfShojoSearchItem, KingOfShojoSort } from '../types'
 import type { ComicStatus, ComicType } from '~/features/comics/types'
 
 const DEFAULT_SORT: KingOfShojoSort = 'popular'
-const DEFAULT_OFFSET = 1
+const DEFAULT_PAGE = 1
 
 export interface KingOfShojoSearchStore {
   comics: Ref<KingOfShojoSearchItem[]>
@@ -37,9 +37,9 @@ export interface KingOfShojoSearchStore {
   setType: (value: ComicType) => void
   clearType: () => void
 
-  offset: Ref<number>
-  setOffset: (value: number) => void
-  clearOffset: () => void
+  page: Ref<number>
+  setPage: (value: number) => void
+  clearPage: () => void
 
   invalidate: () => void
 }
@@ -49,7 +49,7 @@ export const useKingOfShojoSearchStore = defineStore('kingofshojo-search', (): K
   const sort = ref<KingOfShojoSort>(DEFAULT_SORT)
   const status = ref<ComicStatus>()
   const type = ref<ComicType>()
-  const offset = ref<number>(DEFAULT_OFFSET)
+  const page = ref<number>(DEFAULT_PAGE)
   const loading = ref<boolean>(false)
 
   const comics = ref<KingOfShojoSearchItem[]>([])
@@ -129,12 +129,12 @@ export const useKingOfShojoSearchStore = defineStore('kingofshojo-search', (): K
     type.value = undefined
   }
 
-  function setOffset(value: number): void {
-    offset.value = value
+  function setPage(value: number): void {
+    page.value = value
   }
 
-  function clearOffset(): void {
-    offset.value = DEFAULT_OFFSET
+  function clearPage(): void {
+    page.value = DEFAULT_PAGE
   }
 
   function invalidate(): void {
@@ -142,7 +142,7 @@ export const useKingOfShojoSearchStore = defineStore('kingofshojo-search', (): K
     clearSort()
     clearStatus()
     clearType()
-    clearOffset()
+    clearPage()
     clearLoading()
     clearComics()
     clearAccumulatedComics()
@@ -179,9 +179,9 @@ export const useKingOfShojoSearchStore = defineStore('kingofshojo-search', (): K
     setType,
     clearType,
 
-    offset,
-    setOffset,
-    clearOffset,
+    page,
+    setPage,
+    clearPage,
 
     invalidate,
   }

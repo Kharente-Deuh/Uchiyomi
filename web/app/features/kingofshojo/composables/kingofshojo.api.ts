@@ -22,14 +22,13 @@ export function createKingOfShojoApi(): KingOfShojoApi {
         ...(params.status && { status: params.status }),
         ...(params.type && { type: params.type }),
         ...(params.artist && { artist: params.artist }),
-        ...(params.offset >= 0 && { offset: params.offset }),
-        ...(params.limit > 0 && { limit: params.limit }),
+        ...(params.page >= 1 && { page: params.page }),
       } })
 
       return {
         success: true,
         data: {
-          total: response.total,
+          hasNextPage: response.hasNextPage,
           items: response.items.map(({ lastChapterAt, updatedAt, createdAt, ...rest }) => ({
             ...rest,
             ...(lastChapterAt && { lastChapterAt: new Date(lastChapterAt) }),

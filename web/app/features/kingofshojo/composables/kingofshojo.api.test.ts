@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ASURA_SOURCE_NAME } from '~/constants'
+import { KING_OF_SHOJO_SOURCE_NAME } from '~/constants'
 import { createKingOfShojoApi } from './kingofshojo.api'
 
 const mocks = vi.hoisted(() => {
@@ -52,57 +52,56 @@ beforeEach(() => {
 })
 
 describe('createKingOfShojoApi', () => {
-  it('uses ASURA_SOURCE_NAME as the API prefix', () => {
+  it('uses KING_OF_SHOJO_SOURCE_NAME as the API prefix', () => {
     createKingOfShojoApi()
-    expect(mocks.initApi).toHaveBeenCalledWith(`/sources/${ASURA_SOURCE_NAME}`)
+    expect(mocks.initApi).toHaveBeenCalledWith(`/sources/${KING_OF_SHOJO_SOURCE_NAME}`)
   })
 })
 
 describe('createKingOfShojoApi().search', () => {
-  it('requests /search with pagination', async () => {
-    mocks.call.mockResolvedValue({ items: [rawItem], total: 1 })
+  it('requests /search with page', async () => {
+    mocks.call.mockResolvedValue({ items: [rawItem], hasNextPage: true })
 
-    const res = await createKingOfShojoApi().search({ offset: 0, limit: 20, sort: 'popular' })
+    const res = await createKingOfShojoApi().search({ page: 1, sort: 'popular' })
 
     expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
-      params: { sort: 'popular', offset: 0, limit: 20 },
+      params: { sort: 'popular', page: 1 },
     })
-    expect(res).toEqual({ success: true, data: { items: [item], total: 1 } })
+    expect(res).toEqual({ success: true, data: { items: [item], hasNextPage: true } })
   })
 
   it('omits empty optional filters', async () => {
-    mocks.call.mockResolvedValue({ items: [], total: 0 })
+    mocks.call.mockResolvedValue({ items: [], hasNextPage: false })
 
-    await createKingOfShojoApi().search({ offset: 0, limit: 20 })
+    await createKingOfShojoApi().search({ page: 1 })
 
     expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
-      params: { offset: 0, limit: 20 },
+      params: { page: 1 },
     })
   })
 
   it('includes status, type and search when set', async () => {
-    mocks.call.mockResolvedValue({ items: [], total: 0 })
+    mocks.call.mockResolvedValue({ items: [], hasNextPage: false })
 
     await createKingOfShojoApi().search({
       search: 'solo',
       status: 'ongoing',
       type: 'manhwa',
-      offset: 20,
-      limit: 20,
+      page: 2,
     })
 
     expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
-      params: { search: 'solo', status: 'ongoing', type: 'manhwa', offset: 20, limit: 20 },
+      params: { search: 'solo', status: 'ongoing', type: 'manhwa', page: 2 },
     })
   })
 
   it('surfaces a failure with its status', async () => {
     mocks.call.mockRejectedValue({ statusCode: 502, data: {} })
 
-    const res = await createKingOfShojoApi().search({ offset: 0, limit: 20 })
+    const res = await createKingOfShojoApi().search({ page: 1 })
 
     expect(res.success === false && res.error.status).toBe(502)
   })

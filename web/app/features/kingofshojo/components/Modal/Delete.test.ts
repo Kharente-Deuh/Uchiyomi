@@ -13,7 +13,7 @@ const { removeComicFromLibrary } = vi.hoisted(() => ({
   removeComicFromLibrary: vi.fn(),
 }))
 
-vi.mock('~/features/asurascans/composables/asurascans-search.composable', () => ({
+vi.mock('../../composables/kingofshojo-search.composable', () => ({
   useKingOfShojoSearch: () => ({ removeComicFromLibrary }),
 }))
 

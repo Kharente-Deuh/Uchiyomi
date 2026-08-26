@@ -5,15 +5,13 @@ import type { ComicStatus, ComicType } from '~/features/comics/types'
 import { KING_OF_SHOJO_SOURCE_NAME } from '~/constants'
 import { createComicsApi } from '~/features/comics/composables/comics.api'
 
-const PAGE_SIZE = 20
-
 export interface KingOfShojoSearchComposable {
   search: Ref<string | undefined>
   sort: Ref<KingOfShojoSort>
   status: Ref<ComicStatus | undefined>
   type: Ref<ComicType | undefined>
   page: Ref<number>
-  maxPage: Ref<number>
+  hasNextPage: Ref<boolean>
   series: Ref<KingOfShojoSearchItem[]>
   isLoading: Ref<boolean>
   resetFilters: () => void
@@ -51,9 +49,9 @@ export function useKingOfShojoSearch(opts: { doSearch: boolean }): KingOfShojoSe
     set: (value?: ComicType) => value ? store.setType(value) : store.clearType(),
   })
 
-  const offset = computed({
-    get: () => store.offset,
-    set: (value: number) => store.setOffset(value),
+  const page = computed({
+    get: () => store.page,
+    set: (value: number) => store.setPage(value),
   })
 
   const isLoading = computed({
@@ -75,7 +73,7 @@ export function useKingOfShojoSearch(opts: { doSearch: boolean }): KingOfShojoSe
     store.invalidate()
   }
 
-  const maxPage = ref(0)
+  const hasNextPage = ref(false)
   const addComicInLibraryLoading = ref<Record<string, boolean>>({})
 
   const debouncedSearchFn = useDebounceFn(async () => {
@@ -86,8 +84,7 @@ export function useKingOfShojoSearch(opts: { doSearch: boolean }): KingOfShojoSe
       ...(sort.value && { sort: sort.value }),
       ...(status.value && { status: status.value }),
       ...(type.value && { type: type.value }),
-      offset: offset.value,
-      limit: PAGE_SIZE,
+      page: page.value,
     })
 
     isLoading.value = false
@@ -96,7 +93,7 @@ export function useKingOfShojoSearch(opts: { doSearch: boolean }): KingOfShojoSe
       toast.error(t('sources.kingofshojo.search.error'))
 
       accumulatedComics.value = []
-      maxPage.value = 0
+      hasNextPage.value = false
       comics.value = []
 
       return
@@ -106,17 +103,17 @@ export function useKingOfShojoSearch(opts: { doSearch: boolean }): KingOfShojoSe
       accumulatedComics.value = [...accumulatedComics.value, ...res.data.items]
     }
 
-    maxPage.value = Math.ceil(res.data.total / PAGE_SIZE)
+    hasNextPage.value = res.data.hasNextPage
     comics.value = res.data.items
   }, 200)
 
   watch([search, sort, status, type], () => {
-    offset.value = 0
+    page.value = 1
     accumulatedComics.value = []
     comics.value = []
   })
 
-  watch([search, sort, status, type, offset], () => {
+  watch([search, sort, status, type, page], () => {
     if (opts.doSearch) {
       debouncedSearchFn()
     }
@@ -177,8 +174,8 @@ export function useKingOfShojoSearch(opts: { doSearch: boolean }): KingOfShojoSe
     sort,
     status,
     type,
-    page: offset,
-    maxPage,
+    page,
+    hasNextPage,
     series: computed(() => smAndDown.value ? accumulatedComics.value : comics.value),
     isLoading,
     resetFilters,
