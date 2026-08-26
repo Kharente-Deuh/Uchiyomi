@@ -3,6 +3,7 @@
 import type { SourceComicInfos, SourceSearchItem, SourceSort } from '../types'
 import type { ComicSource, ComicStatus, ComicType } from '~/features/comics/types'
 import { createComicsApi } from '~/features/comics/composables/comics.api'
+import { getSourceConfig } from '../config/sources.config'
 import { useSourceSearchStore } from '../stores/sources-search.store'
 import { createSourceApi } from './sources.api'
 
@@ -20,6 +21,7 @@ export interface SourceSearchComposable {
   removeComicFromLibrary: (comic: SourceSearchItem) => Promise<boolean>
   addComicInLibrary: (comic: SourceSearchItem | SourceComicInfos) => Promise<string | undefined>
   addComicInLibraryLoading: Ref<Record<string, boolean>>
+  infosLoading: ComputedRef<Record<string, boolean>>
 }
 
 export function useSourceSearch(sourceId: ComicSource, opts: { doSearch: boolean }): SourceSearchComposable {
@@ -76,6 +78,31 @@ export function useSourceSearch(sourceId: ComicSource, opts: { doSearch: boolean
 
   const hasNextPage = ref(false)
   const addComicInLibraryLoading = ref<Record<string, boolean>>({})
+  let enrichGeneration = 0
+
+  const infosLoading = computed(() => store.infosLoading)
+
+  async function enrichSearchItems(items: SourceSearchItem[], generation: number): Promise<void> {
+    await Promise.all(items.map(async (item) => {
+      store.setInfosLoading(item.slug, true)
+      const infos = await api.getInfosBySlug(item.slug)
+      if (generation !== enrichGeneration) {
+        return
+      }
+
+      store.setInfosLoading(item.slug, false)
+      if (!infos.success) {
+        console.error('api.getInfosBySlug', infos.error)
+        return
+      }
+
+      store.patchComic(item.slug, {
+        status: infos.data.status,
+        type: infos.data.type,
+        chapterCount: infos.data.chapterCount,
+      })
+    }))
+  }
 
   const debouncedSearchFn = useDebounceFn(async () => {
     isLoading.value = true
@@ -106,6 +133,16 @@ export function useSourceSearch(sourceId: ComicSource, opts: { doSearch: boolean
 
     hasNextPage.value = res.data.hasNextPage
     comics.value = res.data.items
+
+    const isNewResultSet = page.value === 1 || !smAndDown.value
+    if (isNewResultSet) {
+      enrichGeneration += 1
+      store.clearInfosLoading()
+    }
+
+    if (getSourceConfig(sourceId)?.enrichSearchFromSeries) {
+      void enrichSearchItems(res.data.items, enrichGeneration)
+    }
   }, 200)
 
   watch([search, sort, status, type], () => {
@@ -184,5 +221,6 @@ export function useSourceSearch(sourceId: ComicSource, opts: { doSearch: boolean
     addComicInLibrary,
     addComicInLibraryLoading,
     removeComicFromLibrary,
+    infosLoading,
   }
 }
