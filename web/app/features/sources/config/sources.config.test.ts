@@ -23,4 +23,8 @@ describe('sources.config', () => {
   it('returns undefined for unknown source', () => {
     expect(getSourceConfig('unknown-source')).toBeUndefined()
   })
+
+  it('defines configs for all registered sources', () => {
+    expect(Object.keys(SOURCES_CONFIG)).toEqual(expect.arrayContaining(['asurascans', 'kingofshojo']))
+  })
 })

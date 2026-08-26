@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { ComicSource } from '~/features/comics/types'
 import type { SourceConfig } from '../types'
+import type { ComicSource } from '~/features/comics/types'
 import asuraImg from '~/assets/images/sources/asurascans.webp'
 import kingOfShojoImg from '~/assets/images/sources/kingofshojo.webp'
 import { ASURA_SCANS_URL, ASURA_SOURCE_NAME, KING_OF_SHOJO_SOURCE_NAME, KING_OF_SHOJO_URL } from '~/constants'
