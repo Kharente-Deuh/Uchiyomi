@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router'
 import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
-import { ASURA_SOURCE_NAME } from '~/constants'
+import { ASURA_SOURCE_NAME, KING_OF_SHOJO_SOURCE_NAME } from '~/constants'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 
 definePageMeta({
@@ -30,12 +30,18 @@ interface Source {
 
 const { getSourceDetails } = useSources()
 const asuraDetails = getSourceDetails('asurascans')
+const kingOfShojoDetails = getSourceDetails('kingofshojo')
 
 const sources: Source[] = [
   {
     to: `/browse/sources/${ASURA_SOURCE_NAME}`,
     title: asuraDetails.name,
     src: asuraDetails.image,
+  },
+  {
+    to: `/browse/sources/${KING_OF_SHOJO_SOURCE_NAME}`,
+    title: kingOfShojoDetails.name,
+    src: kingOfShojoDetails.image,
   },
 ]
 </script>

@@ -7,7 +7,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
 import { h } from 'vue'
 import { VApp, VSelect } from 'vuetify/components'
-import { ASURA_SOURCE_NAME } from '~/constants'
+import { ASURA_SOURCE_NAME, KING_OF_SHOJO_SOURCE_NAME } from '~/constants'
 import Source from './Source.vue'
 
 async function mount(source?: ComicSource, isDisabled = false): Promise<VueWrapper> {
@@ -21,7 +21,7 @@ describe('libraryInputSource', () => {
     const wrapper = await mount()
     const items = wrapper.findComponent(VSelect).props('items') as { value: string, title: string }[]
 
-    expect(items.map(i => i.value)).toEqual([ASURA_SOURCE_NAME])
+    expect(items.map(i => i.value)).toEqual([ASURA_SOURCE_NAME, KING_OF_SHOJO_SOURCE_NAME])
   })
 
   it('is clearable', async () => {
