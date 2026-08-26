@@ -16,6 +16,7 @@ const config = getSourceConfig(sourceParam)
 
 if (!config) {
   await navigateTo('/browse/sources', { replace: true })
+
   throw createError({ statusCode: 404, fatal: true })
 }
 

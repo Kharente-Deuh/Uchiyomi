@@ -85,21 +85,6 @@ function chapter(overrides: Partial<Chapter> = {}): Chapter {
   }
 }
 
-describe('selectableChapters logic in Chapters', () => {
-  it('filters out early access chapters in the future but keeps past early access and regular chapters', () => {
-    const pastEarlyAccess = new Date(Date.now() - 3_600_000)
-    const futureEarlyAccess = new Date(Date.now() + 3_600_000)
-    const chList = [
-      chapter({ id: 'ch-1', number: 1, earlyAccessUntil: pastEarlyAccess }),
-      chapter({ id: 'ch-2', number: 2, earlyAccessUntil: futureEarlyAccess }),
-      chapter({ id: 'ch-3', number: 3 }),
-    ]
-
-    const selectable = chList.filter(({ earlyAccessUntil }) => !earlyAccessUntil || earlyAccessUntil < new Date())
-    expect(selectable.map(c => c.id)).toEqual(['ch-1', 'ch-3'])
-  })
-})
-
 async function mount(id = 'c1', onRefetchProgress = vi.fn()): Promise<VueWrapper> {
   return mountSuspended(
     { render: () => h(VApp, () => [h(Chapters, { id, onRefetchProgress })]) },
@@ -204,6 +189,29 @@ describe('comicsChapters', () => {
 
     expect(deleteProgress).toHaveBeenCalledWith('ch-1')
     expect(onRefetchProgress).toHaveBeenCalled()
+  })
+
+  it('select-all skips future early-access chapters', async () => {
+    const pastEarlyAccess = new Date(Date.now() - 3_600_000)
+    const futureEarlyAccess = new Date(Date.now() + 3_600_000)
+    getByComicId.mockResolvedValue({
+      success: true,
+      data: [
+        chapter({ id: 'ch-1', number: 1, earlyAccessUntil: pastEarlyAccess }),
+        chapter({ id: 'ch-2', number: 2, earlyAccessUntil: futureEarlyAccess }),
+        chapter({ id: 'ch-3', number: 3 }),
+      ],
+    })
+    const wrapper = await mount()
+    await vi.waitFor(() => expect(wrapper.findAll('[data-test="chapter"]').length).toBe(3))
+
+    const selectAllIcon = wrapper.findAllComponents(VIcon).find(icon => icon.props('size') === 'large')!
+    await selectAllIcon.trigger('click')
+
+    expect(wrapper.find('[data-test="actions-component"]').exists()).toBe(true)
+    expect(
+      (wrapper.findComponent(ActionsStub).props('modelValue') as Chapter[]).map(selected => selected.id),
+    ).toEqual(['ch-3', 'ch-1'])
   })
 
   it('selects and deselects all selectable chapters when clicking the select-all icon', async () => {

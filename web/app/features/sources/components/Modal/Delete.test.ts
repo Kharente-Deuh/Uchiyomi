@@ -88,10 +88,20 @@ describe('sourcesModalDelete', () => {
   })
 
   it('removes the comic on confirmation', async () => {
-    const { wrapper } = await mount()
+    const { wrapper, comic } = await mount()
 
     await wrapper.find('[data-test="confirm"]').trigger('click')
 
     expect(removeComicFromLibrary).toHaveBeenCalled()
+    await vi.waitFor(() => expect(comic.value?.internalId).toBeUndefined())
+  })
+
+  it('keeps the comic in the library when removal fails', async () => {
+    removeComicFromLibrary.mockResolvedValue(false)
+    const { wrapper, comic } = await mount()
+
+    await wrapper.find('[data-test="confirm"]').trigger('click')
+
+    expect(comic.value?.internalId).toBe('c1')
   })
 })

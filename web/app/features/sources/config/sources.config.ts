@@ -14,7 +14,6 @@ export const SOURCES_CONFIG: Record<ComicSource, SourceConfig> = {
     image: asuraImg,
     color: '#913fe2',
     allowedSorts: ['popular', 'latest', 'rating', 'title', 'newest'],
-    supportsMinChapters: true,
   },
   [KING_OF_SHOJO_SOURCE_NAME]: {
     id: KING_OF_SHOJO_SOURCE_NAME,

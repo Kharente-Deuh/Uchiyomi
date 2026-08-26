@@ -73,4 +73,40 @@ describe('createSourceApi', () => {
       expect(res.data[0]!.publishedAt).toBeInstanceOf(Date)
     }
   })
+
+  it('includes minChapters when greater than 0', async () => {
+    mockApi.mockResolvedValueOnce({ items: [], hasNextPage: false })
+
+    const sourceApi = createSourceApi('asurascans')
+    await sourceApi.search({ page: 1, minChapters: 5 })
+
+    expect(mockApi).toHaveBeenCalledWith('/search', {
+      method: 'GET',
+      params: { page: 1, minChapters: 5 },
+    })
+  })
+
+  it('omits minChapters when zero or unset', async () => {
+    mockApi.mockResolvedValueOnce({ items: [], hasNextPage: false })
+
+    const sourceApi = createSourceApi('asurascans')
+    await sourceApi.search({ page: 1, minChapters: 0 })
+
+    expect(mockApi).toHaveBeenCalledWith('/search', {
+      method: 'GET',
+      params: { page: 1 },
+    })
+  })
+
+  it('surfaces a failure with its status', async () => {
+    mockApi.mockRejectedValueOnce({ statusCode: 502, data: {} })
+
+    const sourceApi = createSourceApi('asurascans')
+    const res = await sourceApi.search({ page: 1 })
+
+    expect(res.success).toBe(false)
+    if (!res.success) {
+      expect(res.error.status).toBe(502)
+    }
+  })
 })

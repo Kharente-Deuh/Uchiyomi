@@ -81,5 +81,4 @@ export interface SourceConfig {
   image: string
   color: string
   allowedSorts: SourceSort[]
-  supportsMinChapters?: boolean
 }

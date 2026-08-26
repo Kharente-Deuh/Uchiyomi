@@ -17,6 +17,7 @@ const config = getSourceConfig(sourceParam)
 
 if (!config) {
   await navigateTo('/browse/sources', { replace: true })
+
   throw createError({ statusCode: 404, fatal: true })
 }
 
@@ -106,7 +107,7 @@ onBeforeRouteLeave((to: RouteLocationNormalized) => {
 
       <div class="comics-grid">
         <SourcesComicCard
-          v-for="(comic, i) in series"
+          v-for="comic in series"
           :key="comic.slug"
           :source-id="sourceId"
           :comic
