@@ -39,6 +39,7 @@ onBeforeUnmount(() => {
         @click="page--"
       />
       <span v-if="pagesTotal" class="px-1">{{ page }} / {{ pagesTotal }}</span>
+      <span v-else class="px-1">{{ page }}</span>
       <VBtn
         style="border-top-left-radius: 0; border-bottom-left-radius: 0;"
         icon="fa6-solid:chevron-right"
