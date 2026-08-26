@@ -135,6 +135,11 @@ const { mainStyles } = useLayoutPadding()
       :items="bottomNavigationItems"
     />
 
-    <VSnackbarQueue v-model="messages" />
+    <VSnackbarQueue
+      v-model="messages"
+      :timeout="2000"
+      location="top right"
+      closable
+    />
   </VApp>
 </template>
