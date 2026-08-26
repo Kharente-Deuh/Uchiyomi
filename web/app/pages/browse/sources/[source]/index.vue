@@ -47,6 +47,7 @@ const {
   hasNextPage,
   addComicInLibrary,
   addComicInLibraryLoading,
+  infosLoading,
   resetFilters,
 } = useSourceSearch(sourceId, { doSearch: true })
 const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel')
@@ -112,6 +113,8 @@ onBeforeRouteLeave((to: RouteLocationNormalized) => {
           :source-id="sourceId"
           :comic
           :loading="addComicInLibraryLoading[comic.slug]"
+          :status-loading="infosLoading[comic.slug]"
+          :chapter-count-loading="infosLoading[comic.slug]"
           @toggle="doToggleComic(comic)"
         />
       </div>

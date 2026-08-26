@@ -10,7 +10,7 @@ import { VApp } from 'vuetify/components'
 import { ASURA_SOURCE_NAME } from '~/constants'
 import SourceBrowsePage from './index.vue'
 
-const { series, isLoading, hasNextPage, smAndDown, page, addComicInLibrary, addComicInLibraryLoading, resetFilters, params, navigateTo } = await vi.hoisted(async () => {
+const { series, isLoading, hasNextPage, smAndDown, page, addComicInLibrary, addComicInLibraryLoading, infosLoading, resetFilters, params, navigateTo } = await vi.hoisted(async () => {
   const { ref } = await import('vue')
 
   return {
@@ -21,6 +21,7 @@ const { series, isLoading, hasNextPage, smAndDown, page, addComicInLibrary, addC
     page: ref(1),
     addComicInLibrary: vi.fn(),
     addComicInLibraryLoading: ref<Record<string, boolean>>({}),
+    infosLoading: ref<Record<string, boolean>>({}),
     resetFilters: vi.fn(),
     params: { source: 'asurascans' },
     navigateTo: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock('~/features/sources/composables/sources-search.composable', () => ({
     hasNextPage,
     addComicInLibrary,
     addComicInLibraryLoading,
+    infosLoading,
     resetFilters,
   }),
 }))
@@ -72,9 +74,14 @@ const HeaderStub = defineComponent({
 
 const CardStub = defineComponent({
   name: 'SourcesComicCard',
-  props: { comic: { type: Object, required: true }, sourceId: { type: String, required: true } },
+  props: {
+    comic: { type: Object, required: true },
+    sourceId: { type: String, required: true },
+    statusLoading: { type: Boolean, default: false },
+    chapterCountLoading: { type: Boolean, default: false },
+  },
   emits: ['toggle'],
-  template: '<button data-test="comic-card" @click="$emit(\'toggle\')">{{ comic.title }}</button>',
+  template: '<button data-test="comic-card" :data-status-loading="statusLoading" :data-chapter-count-loading="chapterCountLoading" @click="$emit(\'toggle\')">{{ comic.title }}</button>',
 })
 
 const DeleteStub = defineComponent({
@@ -127,6 +134,7 @@ beforeEach(() => {
   hasNextPage.value = false
   smAndDown.value = false
   page.value = 1
+  infosLoading.value = {}
   params.source = ASURA_SOURCE_NAME
   addComicInLibrary.mockReset()
   resetFilters.mockReset()
@@ -143,6 +151,15 @@ describe('browse Source Page', () => {
     series.value = [item()]
     const wrapper = await mount()
     expect(wrapper.findAll('[data-test="comic-card"]').map(n => n.text())).toEqual(['Solo Leveling'])
+  })
+
+  it('forwards infos loading onto each card', async () => {
+    series.value = [item()]
+    infosLoading.value = { 'solo-leveling': true }
+    const wrapper = await mount()
+    const card = wrapper.find('[data-test="comic-card"]')
+    expect(card.attributes('data-status-loading')).toBe('true')
+    expect(card.attributes('data-chapter-count-loading')).toBe('true')
   })
 
   it('adds a comic that is not in the library', async () => {
