@@ -160,10 +160,6 @@ describe('useSourceSearch pagination', () => {
 })
 
 describe('useSourceSearch series infos enrichment', () => {
-  function kosItem(slug: string): SourceSearchItem {
-    return item(slug)
-  }
-
   it('does not call getInfosBySlug for asurascans search', async () => {
     search.mockResolvedValue({ success: true, data: { items: [item('solo')], hasNextPage: false } })
     useSourceSearch('asurascans', { doSearch: true })
@@ -178,7 +174,7 @@ describe('useSourceSearch series infos enrichment', () => {
   })
 
   it('patches status type and chapterCount from getInfosBySlug', async () => {
-    search.mockResolvedValue({ success: true, data: { items: [kosItem('solo')], hasNextPage: false } })
+    search.mockResolvedValue({ success: true, data: { items: [item('solo')], hasNextPage: false } })
     getInfosBySlug.mockResolvedValue({
       success: true,
       data: { slug: 'solo', status: 'completed', type: 'manhwa', chapterCount: 120 },
@@ -212,12 +208,13 @@ describe('useSourceSearch series infos enrichment', () => {
   it('leaves a failed slug unchanged, logs, and does not toast', async () => {
     search.mockResolvedValue({
       success: true,
-      data: { items: [kosItem('ok'), kosItem('missing')], hasNextPage: false },
+      data: { items: [item('ok'), item('missing')], hasNextPage: false },
     })
     getInfosBySlug.mockImplementation(async (slug: string) => {
       if (slug === 'missing') {
         return { success: false, error: { status: 404, message: 'missing' } }
       }
+
       return { success: true, data: { slug, status: 'completed', type: 'manhwa', chapterCount: 10 } }
     })
 
@@ -235,20 +232,19 @@ describe('useSourceSearch series infos enrichment', () => {
   })
 
   it('ignores stale enrichment after a new search', async () => {
-    let resolveFirst: (value: unknown) => void = () => {}
-    const firstInfos = new Promise((resolve) => {
-      resolveFirst = resolve
-    })
+    const { promise: firstInfos, resolve: resolveFirst } = Promise.withResolvers<unknown>()
 
     search
-      .mockResolvedValueOnce({ success: true, data: { items: [kosItem('old')], hasNextPage: false } })
-      .mockResolvedValueOnce({ success: true, data: { items: [kosItem('new')], hasNextPage: false } })
+      .mockResolvedValueOnce({ success: true, data: { items: [item('old')], hasNextPage: false } })
+      .mockResolvedValueOnce({ success: true, data: { items: [item('new')], hasNextPage: false } })
 
     getInfosBySlug.mockImplementation(async (slug: string) => {
       if (slug === 'old') {
         await firstInfos
+
         return { success: true, data: { slug: 'old', status: 'completed', type: 'manga', chapterCount: 99 } }
       }
+
       return { success: true, data: { slug: 'new', status: 'ongoing', type: 'manhwa', chapterCount: 2 } }
     })
 
@@ -268,16 +264,15 @@ describe('useSourceSearch series infos enrichment', () => {
   })
 
   it('exposes infosLoading while enrichment is in flight', async () => {
-    let resolveInfos: (value: unknown) => void = () => {}
-    getInfosBySlug.mockImplementation(() => new Promise((resolve) => {
-      resolveInfos = resolve
-    }))
-    search.mockResolvedValue({ success: true, data: { items: [kosItem('solo')], hasNextPage: false } })
+    const { promise: infosPromise, resolve: resolveInfos } = Promise.withResolvers<unknown>()
+
+    getInfosBySlug.mockImplementation(() => infosPromise)
+    search.mockResolvedValue({ success: true, data: { items: [item('solo')], hasNextPage: false } })
 
     const sourceSearch = useSourceSearch('kingofshojo', { doSearch: true })
-    await vi.waitFor(() => expect(sourceSearch.infosLoading.value['solo']).toBe(true))
+    await vi.waitFor(() => expect(sourceSearch.infosLoading.value.solo).toBe(true))
 
     resolveInfos({ success: true, data: { slug: 'solo', status: 'ongoing', type: 'manga', chapterCount: 4 } })
-    await vi.waitFor(() => expect(sourceSearch.infosLoading.value['solo']).toBeUndefined())
+    await vi.waitFor(() => expect(sourceSearch.infosLoading.value.solo).toBeUndefined())
   })
 })

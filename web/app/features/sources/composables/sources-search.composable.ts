@@ -93,6 +93,7 @@ export function useSourceSearch(sourceId: ComicSource, opts: { doSearch: boolean
       store.setInfosLoading(item.slug, false)
       if (!infos.success) {
         console.error('api.getInfosBySlug', infos.error)
+
         return
       }
 

@@ -112,6 +112,7 @@ function createSearchStoreDefinition(sourceId: ComicSource): SearchStoreDefiniti
 
       const next = [...list]
       next[i] = { ...next[i]!, ...patch }
+
       return next
     }
 
@@ -123,6 +124,7 @@ function createSearchStoreDefinition(sourceId: ComicSource): SearchStoreDefiniti
     function setInfosLoading(slug: string, isLoading: boolean): void {
       if (isLoading) {
         infosLoading.value = { ...infosLoading.value, [slug]: true }
+
         return
       }
 
