@@ -229,6 +229,47 @@
     "title": "Parcourir"
   },
   "sources": {
+    "title": "Sources",
+    "search": {
+      "error": "Échec du chargement des séries"
+    },
+    "sort": {
+      "popular": "Populaire",
+      "latest": "Dernière mise à jour",
+      "title": "Titre",
+      "rating": "Notation",
+      "newest": "Plus récent",
+      "label": "Trier par"
+    },
+    "delete": {
+      "confirmation": "Vous êtes sur le point de supprimer \"{name}\" de votre bibliothèque"
+    },
+    "label": {
+      "inLibrary": "En bibliothèque"
+    },
+    "add": {
+      "title": "Ajouter à la bibliothèque"
+    },
+    "comic": {
+      "viewOnSource": "Voir sur le site d'origine",
+      "notFound": "Serie introuvable",
+      "chaptersCount": "Aucun chapitre | 1 Chapitre | {count} Chapitres",
+      "chapter": "Chapitre {number}",
+      "chapterUnlocksIn": "Accessible {time}",
+      "retryDownloadChapter": {
+        "tooltip": "Cliquez pour réessayer le téléchargement"
+      },
+      "chapters": {
+        "error": {
+          "fetch": "Échec du chargement des chapitres",
+          "retry": {
+            "notFound": "Chapitre introuvable",
+            "forbidden": "Cette série n'est pas dans votre bibliothèque",
+            "conflict": "Ce chapitre est déjà téléchargé"
+          }
+        }
+      }
+    },
     "asurascans": {
       "title": "Asura Scans",
       "search": {
@@ -284,12 +325,6 @@
       "chapter": {
         "notFound": "Chapitre introuvable"
       }
-    },
-    "add": {
-      "title": "Ajouter à la bibliothèque"
-    },
-    "comic": {
-      "viewOnSource": "Voir sur le site d'origine"
     },
     "kingofshojo": {
       "title": "KingOfShojo",
