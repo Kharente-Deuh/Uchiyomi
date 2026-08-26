@@ -357,7 +357,7 @@ func TestSearchRejectsNonIntegerPage(t *testing.T) {
 	ctrl.InitRouter(r)
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, endpoint+"/search?page=x"))
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, endpoint+"/search?page=x&sort=popular&order=desc"))
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
