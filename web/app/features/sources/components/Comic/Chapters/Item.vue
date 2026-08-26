@@ -147,7 +147,7 @@ const isChapterDownloadingError = computed(() => props.chapter.internalId && pro
           v-if="isChapterDownloadingError && !retryDownloadLoading"
           v-tooltip:bottom="$t('sources.comic.retryDownloadChapter.tooltip')"
           icon="fa6-solid:exclamation"
-          classs="cursor-pointer"
+          class="cursor-pointer"
           size="x-small"
           color="error"
           @click.prevent="retryDownload(chapter.internalId as string)"

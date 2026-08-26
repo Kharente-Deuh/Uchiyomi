@@ -17,7 +17,6 @@ const loading = ref(false)
 watch(show, (value) => {
   if (!value) {
     loading.value = false
-    comic.value = undefined
   }
 })
 
@@ -28,9 +27,14 @@ async function handleDelete(): Promise<void> {
 
   loading.value = true
 
-  await removeComicFromLibrary(comic.value as SourceSearchItem)
+  const removed = await removeComicFromLibrary(comic.value as SourceSearchItem)
 
-  show.value = false
+  if (removed) {
+    comic.value = { ...comic.value, internalId: undefined }
+    show.value = false
+  }
+
+  loading.value = false
 }
 </script>
 

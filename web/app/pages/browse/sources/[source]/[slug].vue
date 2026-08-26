@@ -1,6 +1,5 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { ComicSource } from '~/features/comics/types'
 import type { SourceComicInfos } from '~/features/sources/types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
@@ -16,10 +15,11 @@ const sourceParam = route.params.source as string
 const config = getSourceConfig(sourceParam)
 
 if (!config) {
-  await navigateTo('/browse/sources')
+  await navigateTo('/browse/sources', { replace: true })
+  throw createError({ statusCode: 404, fatal: true })
 }
 
-const sourceId = sourceParam as ComicSource
+const sourceId = config.id
 const toast = useToast()
 const { t } = useI18n()
 const { smAndDown } = useDisplay()

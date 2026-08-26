@@ -56,7 +56,6 @@ watch(() => comic.value.internalId, () => {
     v-model="showDeleteModal"
     :source
     :comic
-    @update:comic="comic = { ...comic, internalId: $event?.internalId }"
   />
 
   <div

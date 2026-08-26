@@ -2,7 +2,6 @@
 <script setup lang="ts">
 import type { RouteLocationNormalized } from 'vue-router'
 import type { PageLayoutBackRoute } from '~/components/Organism/PageLayout.vue'
-import type { ComicSource } from '~/features/comics/types'
 import type { SourceSearchItem } from '~/features/sources/types'
 import { AUTHENTICATED_ROUTE_GROUP } from '~/constants/auth'
 import { getSourceConfig } from '~/features/sources/config/sources.config'
@@ -17,10 +16,11 @@ const sourceParam = route.params.source as string
 const config = getSourceConfig(sourceParam)
 
 if (!config) {
-  await navigateTo('/browse/sources')
+  await navigateTo('/browse/sources', { replace: true })
+  throw createError({ statusCode: 404, fatal: true })
 }
 
-const sourceId = sourceParam as ComicSource
+const sourceId = config.id
 const { t } = useI18n()
 const { smAndDown } = useDisplay()
 
@@ -107,7 +107,7 @@ onBeforeRouteLeave((to: RouteLocationNormalized) => {
       <div class="comics-grid">
         <SourcesComicCard
           v-for="(comic, i) in series"
-          :key="i"
+          :key="comic.slug"
           :source-id="sourceId"
           :comic
           :loading="addComicInLibraryLoading[comic.slug]"
