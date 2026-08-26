@@ -14,10 +14,6 @@ export interface AsuraScansChaptersComposable {
   retryDownloadLoading: Ref<boolean>
 }
 
-export function isChapterDownloadInProgress(chapter: AsuraScansComicChapter): boolean {
-  return chapter.download !== undefined && chapter.download >= 0 && chapter.download < 100
-}
-
 export function useAsuraScansChapters(): AsuraScansChaptersComposable {
   const store = useAsuraScansChaptersStore()
   const api = createAsuraScansApi()

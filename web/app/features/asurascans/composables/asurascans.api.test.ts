@@ -59,50 +59,60 @@ describe('createAsuraScansApi', () => {
 })
 
 describe('createAsuraScansApi().search', () => {
-  it('requests /search with pagination', async () => {
-    mocks.call.mockResolvedValue({ items: [rawItem], total: 1 })
+  it('requests /search with page', async () => {
+    mocks.call.mockResolvedValue({ items: [rawItem], hasNextPage: true })
 
-    const res = await createAsuraScansApi().search({ offset: 0, limit: 20, sort: 'popular' })
+    const res = await createAsuraScansApi().search({ page: 1, sort: 'popular' })
 
     expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
-      params: { sort: 'popular', offset: 0, limit: 20 },
+      params: { sort: 'popular', page: 1 },
     })
-    expect(res).toEqual({ success: true, data: { items: [item], total: 1 } })
+    expect(res).toEqual({ success: true, data: { items: [item], hasNextPage: true } })
   })
 
   it('omits empty optional filters', async () => {
-    mocks.call.mockResolvedValue({ items: [], total: 0 })
+    mocks.call.mockResolvedValue({ items: [], hasNextPage: false })
 
-    await createAsuraScansApi().search({ offset: 0, limit: 20 })
+    await createAsuraScansApi().search({ page: 1 })
 
     expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
-      params: { offset: 0, limit: 20 },
+      params: { page: 1 },
     })
   })
 
   it('includes status, type and search when set', async () => {
-    mocks.call.mockResolvedValue({ items: [], total: 0 })
+    mocks.call.mockResolvedValue({ items: [], hasNextPage: false })
 
     await createAsuraScansApi().search({
       search: 'solo',
       status: 'ongoing',
       type: 'manhwa',
-      offset: 20,
-      limit: 20,
+      page: 2,
     })
 
     expect(mocks.call).toHaveBeenCalledWith('/search', {
       method: 'GET',
-      params: { search: 'solo', status: 'ongoing', type: 'manhwa', offset: 20, limit: 20 },
+      params: { search: 'solo', status: 'ongoing', type: 'manhwa', page: 2 },
+    })
+  })
+
+  it('includes minChapters when greater than 0', async () => {
+    mocks.call.mockResolvedValue({ items: [], hasNextPage: false })
+
+    await createAsuraScansApi().search({ page: 1, minChapters: 5 })
+
+    expect(mocks.call).toHaveBeenCalledWith('/search', {
+      method: 'GET',
+      params: { page: 1, minChapters: 5 },
     })
   })
 
   it('surfaces a failure with its status', async () => {
     mocks.call.mockRejectedValue({ statusCode: 502, data: {} })
 
-    const res = await createAsuraScansApi().search({ offset: 0, limit: 20 })
+    const res = await createAsuraScansApi().search({ page: 1 })
 
     expect(res.success === false && res.error.status).toBe(502)
   })

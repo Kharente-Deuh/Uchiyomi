@@ -125,3 +125,26 @@ describe('useAsuraScansSearch library', () => {
     expect(useToast().messages.value).toEqual([{ text: 'error.unknown', color: 'error' }])
   })
 })
+
+describe('useAsuraScansSearch pagination', () => {
+  it('searches with page 1 and stores hasNextPage', async () => {
+    search.mockResolvedValue({ success: true, data: { items: [item('solo')], hasNextPage: true } })
+    const asura = useAsuraScansSearch({ doSearch: true })
+    await vi.waitFor(() => {
+      expect(search).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }))
+    })
+    expect(asura.hasNextPage.value).toBe(true)
+    expect(asura.series.value).toHaveLength(1)
+  })
+
+  it('resets page to 1 when filters change', async () => {
+    search.mockResolvedValue({ success: true, data: { items: [], hasNextPage: false } })
+    const asura = useAsuraScansSearch({ doSearch: true })
+    await vi.waitFor(() => expect(search).toHaveBeenCalled())
+    asura.page.value = 3
+    asura.sort.value = 'latest'
+    await vi.waitFor(() => {
+      expect(asura.page.value).toBe(1)
+    })
+  })
+})

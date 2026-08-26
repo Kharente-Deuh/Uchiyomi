@@ -4,7 +4,6 @@ package http
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,14 +13,7 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/sources/kingofshojo/pkg/parse"
 )
 
-const (
-	kosPerPage = 40
-	mangaPath  = "/manga/"
-)
-
-func kosPage(offset, _ int) (page int, pageOffset int) {
-	return offset/kosPerPage + 1, offset % kosPerPage
-}
+const mangaPath = "/manga/"
 
 func kosOrder(sort domain.SortType, order domain.SortOrder) string {
 	switch sort {
@@ -45,32 +37,30 @@ func kosOrder(sort domain.SortType, order domain.SortOrder) string {
 func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
 	withDefaults := searchOptsWithDefaults(opts)
 
-	cards, total, err := c.fetchSearchCards(ctx, withDefaults)
+	page, err := c.fetchSearchPage(ctx, withDefaults)
 	if err != nil {
-		return nil, fmt.Errorf("c.fetchSearchCards: %w", err)
+		return nil, fmt.Errorf("c.fetchSearchPage: %w", err)
 	}
 
+	cards := filterSearchCards(page.Items)
 	items := make([]domain.SearchCacheResultItem, len(cards))
 	for i, card := range cards {
 		items[i] = searchCardToItem(card, c.cfg.BaseURL)
 	}
 
-	hasMore := withDefaults.Offset+len(items) < total
-
 	return &domain.SearchCacheResult{
 		Items: items,
 		Meta: domain.SearchResultMeta{
-			Total:   total,
-			PerPage: withDefaults.Limit,
-			HasMore: hasMore,
+			HasNextPage: page.HasNext,
 		},
 	}, nil
 }
 
 func searchOptsWithDefaults(opts domain.SearchCacheOpts) domain.SearchCacheOpts {
 	withDefaults := opts
-	if withDefaults.Limit == 0 {
-		withDefaults.Limit = 20
+
+	if withDefaults.Page < 1 {
+		withDefaults.Page = 1
 	}
 
 	if withDefaults.Sort == "" {
@@ -82,78 +72,6 @@ func searchOptsWithDefaults(opts domain.SearchCacheOpts) domain.SearchCacheOpts 
 	}
 
 	return withDefaults
-}
-
-func searchTotal(offset, limit, nItems int, hasNext bool) int {
-	if hasNext {
-		return offset + limit + 1
-	}
-
-	return offset + nItems
-}
-
-func (c *Client) fetchSearchCards(ctx context.Context, opts domain.SearchCacheOpts) ([]parse.SearchCard, int, error) {
-	pageNum, start := kosPage(opts.Offset, opts.Limit)
-
-	page, err := c.fetchSearchPage(ctx, pageNum, opts)
-	if err != nil {
-		return nil, 0, fmt.Errorf("c.fetchSearchPage: %w", err)
-	}
-
-	result, leftover := appendSearchCards(nil, page.Items, start, opts.Limit)
-	hasNext := leftover || page.HasNext
-	fullPage := len(page.Items) >= kosPerPage
-
-	for len(result) < opts.Limit && fullPage {
-		pageNum++
-
-		nextPage, err := c.fetchSearchPage(ctx, pageNum, opts)
-		if err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				hasNext = leftover
-
-				break
-			}
-
-			return nil, 0, fmt.Errorf("c.fetchSearchPage: %w", err)
-		}
-
-		if len(nextPage.Items) == 0 {
-			hasNext = leftover
-
-			break
-		}
-
-		page = nextPage
-		result, leftover = appendSearchCards(result, page.Items, 0, opts.Limit-len(result))
-		hasNext = leftover || page.HasNext
-		fullPage = len(page.Items) >= kosPerPage
-	}
-
-	return result, searchTotal(opts.Offset, opts.Limit, len(result), hasNext), nil
-}
-
-func appendSearchCards(dst, cards []parse.SearchCard, start, remaining int) ([]parse.SearchCard, bool) {
-	filtered := filterSearchCards(cards)
-	if start < 0 {
-		start = 0
-	}
-
-	if start > len(filtered) {
-		start = len(filtered)
-	}
-
-	available := filtered[start:]
-	leftover := remaining < len(available)
-	if remaining > len(available) {
-		remaining = len(available)
-	}
-
-	if remaining <= 0 {
-		return dst, leftover
-	}
-
-	return append(dst, available[:remaining]...), leftover
 }
 
 func filterSearchCards(cards []parse.SearchCard) []parse.SearchCard {
@@ -171,10 +89,9 @@ func filterSearchCards(cards []parse.SearchCard) []parse.SearchCard {
 
 func (c *Client) fetchSearchPage(
 	ctx context.Context,
-	pageNum int,
 	opts domain.SearchCacheOpts,
 ) (parse.SearchPage, error) {
-	targetURL := c.searchPageURL(pageNum, opts)
+	targetURL := c.searchPageURL(opts)
 
 	status, body, err := c.get(ctx, targetURL)
 	if err != nil {
@@ -193,19 +110,12 @@ func (c *Client) fetchSearchPage(
 	return page, nil
 }
 
-func (c *Client) searchPageURL(pageNum int, opts domain.SearchCacheOpts) string {
-	var path string
-	if pageNum <= 1 {
-		path = mangaPath
-	} else {
-		path = mangaPath + "page/" + strconv.Itoa(pageNum) + "/"
-	}
-
+func (c *Client) searchPageURL(opts domain.SearchCacheOpts) string {
 	if q := c.buildSearchQuery(opts); q != "" {
-		return c.mangaURL(path) + "?" + q
+		return c.mangaURL(mangaPath) + "?" + q
 	}
 
-	return c.mangaURL(path)
+	return c.mangaURL(mangaPath)
 }
 
 func (c *Client) buildSearchQuery(opts domain.SearchCacheOpts) string {
@@ -217,6 +127,10 @@ func (c *Client) buildSearchQuery(opts domain.SearchCacheOpts) string {
 
 	if order := kosOrder(opts.Sort, opts.SortOrder); order != "" {
 		q.Set("order", order)
+	}
+
+	if opts.Page > 1 {
+		q.Set("page", strconv.Itoa(opts.Page))
 	}
 
 	return q.Encode()

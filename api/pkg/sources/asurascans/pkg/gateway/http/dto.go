@@ -16,8 +16,8 @@ import (
 )
 
 type searchResDTO struct {
-	Items []searchResItemDTO `json:"items"`
-	Total int                `json:"total"`
+	Items       []searchResItemDTO `json:"items"`
+	HasNextPage bool               `json:"hasNextPage"`
 }
 
 type searchResItemDTO struct {
@@ -102,29 +102,17 @@ func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
 
 	opts.Genres = genres
 
-	for _, p := range []struct {
-		dst *int
-		key string
-	}{
-		{key: "offset", dst: &opts.Offset},
-		{key: "limit", dst: &opts.Limit},
-		{key: "min_chapters", dst: &opts.MinChapters},
-	} {
-		if *p.dst, err = parsePositiveInt(q.Get(p.key)); err != nil {
-			return domain.SearchOpts{}, fmt.Errorf("invalid %s: %w", p.key, err)
-		}
+	page, err := parseSearchPage(q.Get("page"))
+	if err != nil {
+		return domain.SearchOpts{}, fmt.Errorf("invalid page: %w", err)
 	}
 
-	if opts.Limit > 100 {
-		opts.Limit = 100
-	}
+	opts.Page = page
 
-	if opts.Limit <= 0 {
-		opts.Limit = 20
-	}
-
-	if opts.Offset < 0 {
-		opts.Offset = 0
+	if minChapters, err := parsePositiveInt(q.Get("min_chapters")); err != nil {
+		return domain.SearchOpts{}, fmt.Errorf("invalid min_chapters: %w", err)
+	} else {
+		opts.MinChapters = minChapters
 	}
 
 	if opts.MinChapters < 0 {
@@ -132,6 +120,23 @@ func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
 	}
 
 	return opts, nil
+}
+
+func parseSearchPage(raw string) (int, error) {
+	if raw == "" {
+		return 1, nil
+	}
+
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%q is not a number", raw)
+	}
+
+	if n < 1 {
+		return 1, nil
+	}
+
+	return n, nil
 }
 
 func parseGenres(raw string) ([]string, error) {

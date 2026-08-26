@@ -10,14 +10,13 @@ export interface AsuraScansSearchParams {
   status?: ComicStatus
   type?: ComicType
   artist?: string
-  offset: number
-  limit: number
+  page: number
   minChapters?: number
 }
 
 export interface AsuraScansSearchResponse {
   items: AsuraScansSearchItem[]
-  total: number
+  hasNextPage: boolean
 }
 
 export interface AsuraScansSearchItem {

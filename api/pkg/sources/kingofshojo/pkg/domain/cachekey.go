@@ -5,10 +5,7 @@ package domain
 import "fmt"
 
 func (o SearchCacheOpts) CacheKey() string {
-	return fmt.Sprintf(
-		"offset=%d limit=%d search=%q sort=%q order=%q",
-		o.Offset, o.Limit, o.Search, o.Sort, o.SortOrder,
-	)
+	return fmt.Sprintf("page=%d search=%q sort=%q order=%q", o.Page, o.Search, o.Sort, o.SortOrder)
 }
 
 func (o GetImageURLsByChapterOpts) CacheKey() string {

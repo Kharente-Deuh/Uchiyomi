@@ -25,6 +25,8 @@ export default defineNuxtConfig({
     { path: '~/features/library/components', prefix: 'Library' },
     { path: '~/features/feed/components', prefix: 'Feed' },
     { path: '~/features/reader/components', prefix: 'Reader' },
+    { path: '~/features/sources/components', prefix: 'Sources' },
+    { path: '~/features/kingofshojo/components', prefix: 'KingOfShojo' },
   ],
 
   imports: {

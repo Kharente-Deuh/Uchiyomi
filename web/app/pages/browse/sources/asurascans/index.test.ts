@@ -9,13 +9,13 @@ import { defineComponent, h } from 'vue'
 import { VApp } from 'vuetify/components'
 import AsuraIndex from './index.vue'
 
-const { series, isLoading, maxPage, smAndDown, page, addComicInLibraryLoading } = await vi.hoisted(async () => {
+const { series, isLoading, hasNextPage, smAndDown, page, addComicInLibraryLoading } = await vi.hoisted(async () => {
   const { ref } = await import('vue')
 
   return {
     series: ref<AsuraScansSearchItem[]>([]),
     isLoading: ref(false),
-    maxPage: ref(1),
+    hasNextPage: ref(false),
     smAndDown: ref(false),
     page: ref(1),
     addComicInLibraryLoading: ref<Record<string, boolean>>({}),
@@ -27,7 +27,7 @@ vi.mock('~/features/asurascans/composables/asurascans-search.composable', () => 
     isLoading,
     series,
     page,
-    maxPage,
+    hasNextPage,
     addComicInLibrary: vi.fn(),
     addComicInLibraryLoading,
   }),
@@ -106,7 +106,7 @@ function item(): AsuraScansSearchItem {
 beforeEach(() => {
   series.value = []
   isLoading.value = false
-  maxPage.value = 1
+  hasNextPage.value = false
   smAndDown.value = false
 })
 

@@ -26,6 +26,7 @@ type SearchCard struct {
 
 var (
 	chapterRe = regexp.MustCompile(`(?i)chapter\s+(\d+(?:\.\d+)?)`)
+	pageOfRe  = regexp.MustCompile(`(?i)page\s+(\d+)\s+of\s+(\d+)`)
 )
 
 func ParseSearch(html string) (SearchPage, error) {
@@ -35,7 +36,7 @@ func ParseSearch(html string) (SearchPage, error) {
 	}
 
 	page := SearchPage{
-		HasNext: doc.Find(".hpage a.r").Length() > 0,
+		HasNext: searchHasNext(doc),
 	}
 
 	cards := doc.Find(".listupd .bsx")
@@ -83,6 +84,26 @@ func ParseSearch(html string) (SearchPage, error) {
 	})
 
 	return page, nil
+}
+
+func searchHasNext(doc *goquery.Document) bool {
+	if doc.Find(".hpage a.r").Length() > 0 {
+		return true
+	}
+
+	hpage := strings.TrimSpace(doc.Find(".hpage").First().Text())
+	m := pageOfRe.FindStringSubmatch(hpage)
+	if len(m) != 3 {
+		return false
+	}
+
+	cur, errCur := strconv.Atoi(m[1])
+	last, errLast := strconv.Atoi(m[2])
+	if errCur != nil || errLast != nil {
+		return false
+	}
+
+	return cur < last
 }
 
 func mangaSlugFromHref(href string) string {

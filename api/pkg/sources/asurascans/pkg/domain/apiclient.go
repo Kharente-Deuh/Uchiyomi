@@ -69,8 +69,7 @@ type SearchCacheOpts struct {
 	Type        sources.SeriesType
 	Artist      string
 	Genres      []string
-	Offset      int
-	Limit       int
+	Page        int
 	MinChapters int
 }
 
@@ -82,8 +81,7 @@ type SearchOpts struct {
 	Type        sources.SeriesType
 	Artist      string
 	Genres      []string
-	Offset      int
-	Limit       int
+	Page        int
 	MinChapters int
 	UserID      uuid.UUID
 }
@@ -99,9 +97,7 @@ type SearchResult struct {
 }
 
 type SearchResultMeta struct {
-	Total   int
-	PerPage int
-	HasMore bool
+	HasNextPage bool
 }
 
 type SearchResultItem struct {

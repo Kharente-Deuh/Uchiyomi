@@ -3,8 +3,9 @@
 import type { ComicStatus } from '~/features/comics/types'
 
 const props = defineProps<{
-  status: ComicStatus
+  status?: ComicStatus
   withBackground?: boolean
+  loading?: boolean
 }>()
 
 const modelValue = computed((): { icon: string, color: string } | undefined => {
@@ -31,14 +32,27 @@ const modelValue = computed((): { icon: string, color: string } | undefined => {
       :color="modelValue.color"
     />
 
-    <div v-else class="d-flex flex-column items-center justify-center rounded-lg border-thin transition-smooth status-icon-box">
-      <VIcon
-        v-tooltip="$t(`sources.asurascans.status.${status}`)"
-        :icon="modelValue.icon"
-        :color="modelValue.color"
-        size="x-small"
-      />
-    </div>
+    <VTooltip v-else :text="$t(`sources.asurascans.status.${status}`)">
+      <template #activator="{ props: tooltipProps }">
+        <div
+          v-bind="tooltipProps"
+          class="d-flex flex-column items-center justify-center rounded-lg border-thin transition-smooth status-icon-box"
+        >
+          <VProgressCircular
+            v-if="loading"
+            indeterminate
+            size="16"
+            width="2"
+            color="primary"
+          />
+          <VIcon
+            :icon="modelValue.icon"
+            :color="modelValue.color"
+            size="x-small"
+          />
+        </div>
+      </template>
+    </VTooltip>
   </template>
 </template>
 

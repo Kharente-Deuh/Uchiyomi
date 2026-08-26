@@ -187,101 +187,137 @@ func (s libraryChaptersService) ServePage(context.Context, chapters.ServePageOpt
 	return "", "", nil
 }
 
-func newTestAsuraScansApp(t *testing.T) *asurascans.App {
+func newTestAsuraScansApp(t *testing.T, deps ...asurascans.Deps) *asurascans.App {
 	t.Helper()
 
-	searchCache, err := fncache.New(
-		fncache.Config[domain.SearchCacheOpts, domain.SearchCacheResult]{
-			Name: "search",
-			Fn: func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
-				return &domain.SearchCacheResult{
-					Meta: domain.SearchResultMeta{Total: 1},
-					Items: []domain.SearchCacheResultItem{{
-						Slug:  "solo-leveling",
+	var partial asurascans.Deps
+	if len(deps) > 0 {
+		partial = deps[0]
+	}
+
+	searchCache := partial.SearchCache
+	if searchCache == nil {
+		var err error
+
+		searchCache, err = fncache.New(
+			fncache.Config[domain.SearchCacheOpts, domain.SearchCacheResult]{
+				Name: "search",
+				Fn: func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
+					return &domain.SearchCacheResult{
+						Meta: domain.SearchResultMeta{HasNextPage: true},
+						Items: []domain.SearchCacheResultItem{{
+							Slug:  "solo-leveling",
+							Title: "Solo Leveling",
+							Cover: testExternalCoverURL,
+						}},
+					}, nil
+				},
+				Key:           func(domain.SearchCacheOpts) string { return "k" },
+				TTL:           time.Minute,
+				ErrorTTL:      time.Minute,
+				FetchTimeout:  time.Minute,
+				CleanInterval: time.Minute,
+				MaxEntries:    1,
+			},
+			fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+		)
+		if err != nil {
+			t.Fatalf("fncache.New(search): %v", err)
+		}
+	}
+
+	infosCache := partial.GetInfosBySlugCache
+	if infosCache == nil {
+		var err error
+
+		infosCache, err = fncache.New(
+			fncache.Config[string, domain.GetInfosBySlugResponse]{
+				Name: "infos",
+				Fn: func(_ context.Context, slug string) (*domain.GetInfosBySlugResponse, error) {
+					return &domain.GetInfosBySlugResponse{
+						Slug:  slug,
 						Title: "Solo Leveling",
 						Cover: testExternalCoverURL,
-					}},
-				}, nil
+					}, nil
+				},
+				Key:           func(slug string) string { return slug },
+				TTL:           time.Minute,
+				ErrorTTL:      time.Minute,
+				FetchTimeout:  time.Minute,
+				CleanInterval: time.Minute,
+				MaxEntries:    1,
 			},
-			Key:           func(domain.SearchCacheOpts) string { return "k" },
-			TTL:           time.Minute,
-			ErrorTTL:      time.Minute,
-			FetchTimeout:  time.Minute,
-			CleanInterval: time.Minute,
-			MaxEntries:    1,
-		},
-		fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
-	)
-	if err != nil {
-		t.Fatalf("fncache.New(search): %v", err)
+			fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+		)
+		if err != nil {
+			t.Fatalf("fncache.New(infos): %v", err)
+		}
 	}
 
-	infosCache, err := fncache.New(
-		fncache.Config[string, domain.GetInfosBySlugResponse]{
-			Name: "infos",
-			Fn: func(_ context.Context, slug string) (*domain.GetInfosBySlugResponse, error) {
-				return &domain.GetInfosBySlugResponse{
-					Slug:  slug,
-					Title: "Solo Leveling",
-					Cover: testExternalCoverURL,
-				}, nil
+	chaptersCache := partial.GetChaptersListBySeriesCache
+	if chaptersCache == nil {
+		var err error
+
+		chaptersCache, err = fncache.New(
+			fncache.Config[string, []domain.Chapter]{
+				Name:          "chapters",
+				Fn:            func(context.Context, string) (*[]domain.Chapter, error) { return nil, errors.New("n/a") },
+				Key:           func(slug string) string { return slug },
+				TTL:           time.Minute,
+				ErrorTTL:      time.Minute,
+				FetchTimeout:  time.Minute,
+				CleanInterval: time.Minute,
+				MaxEntries:    1,
 			},
-			Key:           func(slug string) string { return slug },
-			TTL:           time.Minute,
-			ErrorTTL:      time.Minute,
-			FetchTimeout:  time.Minute,
-			CleanInterval: time.Minute,
-			MaxEntries:    1,
-		},
-		fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
-	)
-	if err != nil {
-		t.Fatalf("fncache.New(infos): %v", err)
+			fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+		)
+		if err != nil {
+			t.Fatalf("fncache.New(chapters): %v", err)
+		}
 	}
 
-	chaptersCache, err := fncache.New(
-		fncache.Config[string, []domain.Chapter]{
-			Name:          "chapters",
-			Fn:            func(context.Context, string) (*[]domain.Chapter, error) { return nil, errors.New("n/a") },
-			Key:           func(slug string) string { return slug },
-			TTL:           time.Minute,
-			ErrorTTL:      time.Minute,
-			FetchTimeout:  time.Minute,
-			CleanInterval: time.Minute,
-			MaxEntries:    1,
-		},
-		fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
-	)
-	if err != nil {
-		t.Fatalf("fncache.New(chapters): %v", err)
+	imagesCache := partial.GetImageURLsByChapter
+	if imagesCache == nil {
+		var err error
+
+		imagesCache, err = fncache.New(
+			fncache.Config[domain.GetImageURLsByChapterOpts, []string]{
+				Name: "images",
+				Fn: func(context.Context, domain.GetImageURLsByChapterOpts) (*[]string, error) {
+					return nil, errors.New("n/a")
+				},
+				Key:           func(domain.GetImageURLsByChapterOpts) string { return "k" },
+				TTL:           time.Minute,
+				ErrorTTL:      time.Minute,
+				FetchTimeout:  time.Minute,
+				CleanInterval: time.Minute,
+				MaxEntries:    1,
+			},
+			fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+		)
+		if err != nil {
+			t.Fatalf("fncache.New(images): %v", err)
+		}
 	}
 
-	imagesCache, err := fncache.New(
-		fncache.Config[domain.GetImageURLsByChapterOpts, []string]{
-			Name: "images",
-			Fn: func(context.Context, domain.GetImageURLsByChapterOpts) (*[]string, error) {
-				return nil, errors.New("n/a")
-			},
-			Key:           func(domain.GetImageURLsByChapterOpts) string { return "k" },
-			TTL:           time.Minute,
-			ErrorTTL:      time.Minute,
-			FetchTimeout:  time.Minute,
-			CleanInterval: time.Minute,
-			MaxEntries:    1,
-		},
-		fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
-	)
-	if err != nil {
-		t.Fatalf("fncache.New(images): %v", err)
+	comicsRepo := partial.ComicsRepository
+	if comicsRepo == nil {
+		comicsRepo = stubComicsRepository{}
+	}
+
+	logger := partial.Logger
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
 	}
 
 	app, err := asurascans.New(asurascans.Config{SourceName: sources.SourceAsuraScans}, asurascans.Deps{
-		Logger:                       slog.New(slog.DiscardHandler),
+		Logger:                       logger,
 		SearchCache:                  searchCache,
 		GetInfosBySlugCache:          infosCache,
 		GetChaptersListBySeriesCache: chaptersCache,
 		GetImageURLsByChapter:        imagesCache,
-		ComicsRepository:             stubComicsRepository{},
+		ComicsRepository:             comicsRepo,
+		ChaptersService:              partial.ChaptersService,
 	})
 	if err != nil {
 		t.Fatalf("asurascans.New: %v", err)
@@ -299,6 +335,94 @@ func authenticatedRequest(method, target string) *http.Request {
 	user := &users.User{ID: uuid.New()}
 
 	return req.WithContext(sessionshttp.WithAuth(req.Context(), user, sessions.Session{}))
+}
+
+func TestSearchRejectsNonIntegerPage(t *testing.T) {
+	t.Parallel()
+
+	endpoint := "/" + string(sources.SourceAsuraScans)
+	ctrl, err := asurascanshttp.New(
+		asurascanshttp.Config{Endpoint: endpoint},
+		asurascanshttp.Deps{
+			AsuraScansApp:   newTestAsuraScansApp(t),
+			Logger:          slog.New(slog.DiscardHandler),
+			CoverURLBuilder: coverURLBuilder,
+		},
+	)
+	if err != nil {
+		t.Fatalf("asurascanshttp.New: %v", err)
+	}
+
+	r := chi.NewRouter()
+	ctrl.InitRouter(r)
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, endpoint+"/search?page=x&sort=popular&order=desc"))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestSearchClampsPageBelowOne(t *testing.T) {
+	t.Parallel()
+
+	endpoint := "/" + string(sources.SourceAsuraScans)
+
+	for _, query := range []string{"?sort=popular&order=desc", "?sort=popular&order=desc&page=0", "?sort=popular&order=desc&page=-1"} {
+		t.Run(query, func(t *testing.T) {
+			t.Parallel()
+
+			var got domain.SearchCacheOpts
+
+			searchCache, err := fncache.New(
+				fncache.Config[domain.SearchCacheOpts, domain.SearchCacheResult]{
+					Name: "search",
+					Fn: func(_ context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
+						got = opts
+
+						return &domain.SearchCacheResult{}, nil
+					},
+					Key:           func(domain.SearchCacheOpts) string { return "k" },
+					TTL:           time.Minute,
+					ErrorTTL:      time.Minute,
+					FetchTimeout:  time.Minute,
+					CleanInterval: time.Minute,
+					MaxEntries:    1,
+				},
+				fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+			)
+			if err != nil {
+				t.Fatalf("fncache.New: %v", err)
+			}
+
+			ctrl, err := asurascanshttp.New(
+				asurascanshttp.Config{Endpoint: endpoint},
+				asurascanshttp.Deps{
+					AsuraScansApp:   newTestAsuraScansApp(t, asurascans.Deps{SearchCache: searchCache}),
+					Logger:          slog.New(slog.DiscardHandler),
+					CoverURLBuilder: coverURLBuilder,
+				},
+			)
+			if err != nil {
+				t.Fatalf("asurascanshttp.New: %v", err)
+			}
+
+			r := chi.NewRouter()
+			ctrl.InitRouter(r)
+
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, authenticatedRequest(http.MethodGet, endpoint+"/search"+query))
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+			}
+
+			if got.Page != 1 {
+				t.Errorf("page = %d, want 1", got.Page)
+			}
+		})
+	}
 }
 
 func TestSearchReturnsProxiedCoverURL(t *testing.T) {

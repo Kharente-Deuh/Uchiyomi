@@ -7,7 +7,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 import { VApp } from 'vuetify/components'
-import ComicCard from './ComicCard.vue'
+import ComicCard from './Comic/Card.vue'
 
 function item(internalId?: string): AsuraScansSearchItem {
   return {

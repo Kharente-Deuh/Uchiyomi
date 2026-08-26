@@ -17,8 +17,8 @@ import (
 )
 
 type searchResDTO struct {
-	Items []searchResItemDTO `json:"items"`
-	Total int                `json:"total"`
+	Items       []searchResItemDTO `json:"items"`
+	HasNextPage bool               `json:"hasNextPage"`
 }
 
 type searchResItemDTO struct {
@@ -99,31 +99,12 @@ func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
 
 	opts.SortOrder = domain.SortOrder(order)
 
-	var err error
-
-	for _, p := range []struct {
-		dst *int
-		key string
-	}{
-		{key: "offset", dst: &opts.Offset},
-		{key: "limit", dst: &opts.Limit},
-	} {
-		if *p.dst, err = parsePositiveInt(q.Get(p.key)); err != nil {
-			return domain.SearchOpts{}, fmt.Errorf("invalid %s: %w", p.key, err)
-		}
+	page, err := parseSearchPage(q.Get("page"))
+	if err != nil {
+		return domain.SearchOpts{}, fmt.Errorf("invalid page: %w", err)
 	}
 
-	if opts.Limit > 100 {
-		opts.Limit = 100
-	}
-
-	if opts.Limit <= 0 {
-		opts.Limit = 20
-	}
-
-	if opts.Offset < 0 {
-		opts.Offset = 0
-	}
+	opts.Page = page
 
 	if opts.Sort == "" {
 		opts.Sort = domain.SortTypePopular
@@ -140,9 +121,9 @@ func parseSearchOpts(q url.Values) (domain.SearchOpts, error) {
 	return opts, nil
 }
 
-func parsePositiveInt(raw string) (int, error) {
+func parseSearchPage(raw string) (int, error) {
 	if raw == "" {
-		return 0, nil
+		return 1, nil
 	}
 
 	n, err := strconv.Atoi(raw)
@@ -150,8 +131,8 @@ func parsePositiveInt(raw string) (int, error) {
 		return 0, fmt.Errorf("%q is not a number", raw)
 	}
 
-	if n < 0 {
-		return 0, fmt.Errorf("%d is negative", n)
+	if n < 1 {
+		return 1, nil
 	}
 
 	return n, nil

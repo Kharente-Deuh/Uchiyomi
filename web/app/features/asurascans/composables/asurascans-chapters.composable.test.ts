@@ -7,8 +7,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope } from 'vue'
 import { useToast } from '~/composables/toast.composable'
+import { isChapterDownloadInProgress } from '../../sources/composables/sources.composable'
 import { useAsuraScansChaptersStore } from '../stores/asurascans-chapters.store'
-import { isChapterDownloadInProgress, useAsuraScansChapters } from './asurascans-chapters.composable'
+import { useAsuraScansChapters } from './asurascans-chapters.composable'
 
 const { getSeriesChapters, retryDownloadApi } = vi.hoisted(() => ({
   getSeriesChapters: vi.fn(),

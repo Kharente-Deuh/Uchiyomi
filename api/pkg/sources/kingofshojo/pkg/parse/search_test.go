@@ -50,6 +50,24 @@ func TestParseSearch(t *testing.T) {
 	}
 }
 
+func TestParseSearchPageOfImpliesHasNext(t *testing.T) {
+	t.Parallel()
+
+	page, err := parse.ParseSearch(`<!DOCTYPE html><html><body>
+<div class="listupd"><div class="bsx">
+  <a href="/manga/one/"><div class="tt">One</div></a>
+</div></div>
+<div class="hpage">Page 1 of 2</div>
+</body></html>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !page.HasNext {
+		t.Fatal("HasNext = false, want true")
+	}
+}
+
 func TestParseSearchWithoutNext(t *testing.T) {
 	t.Parallel()
 
