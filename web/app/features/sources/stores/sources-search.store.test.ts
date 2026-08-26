@@ -25,7 +25,8 @@ describe('useSourceSearchStore', () => {
     ])
 
     store.setComicInternalId('manga-1', 'internal-id-123')
-    expect(store.comics[0].internalId).toBe('internal-id-123')
+    expect(store.comics).toHaveLength(1)
+    expect(store.comics[0]!.internalId).toBe('internal-id-123')
   })
 
   it('invalidates state properly', () => {
