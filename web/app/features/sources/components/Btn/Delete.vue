@@ -10,9 +10,7 @@ const props = defineProps<{
 const icon = computed(() => props.mode === 'btn' ? 'fa6-solid:trash' : 'fa6-solid:check')
 const { smAndDown } = useDisplay()
 
-const inLibraryKey = computed(() => props.sourceId
-  ? `sources.${props.sourceId}.label.inLibrary`
-  : 'sources.asurascans.label.inLibrary')
+const inLibraryKey = 'sources.label.inLibrary'
 </script>
 
 <template>

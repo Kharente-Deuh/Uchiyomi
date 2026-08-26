@@ -1,7 +1,5 @@
 import type { ComicSource } from '~/features/comics/types'
-import asuraImg from '~/assets/images/sources/asurascans.webp'
-import kingOfShojoImg from '~/assets/images/sources/kingofshojo.webp'
-import { ASURA_SCANS_URL, KING_OF_SHOJO_URL } from '~/constants'
+import { getSourceConfig } from '~/features/sources/config/sources.config'
 
 export interface SourceDetails {
   url: string
@@ -17,23 +15,18 @@ export interface SourcesComposable {
 export function useSources(): SourcesComposable {
   const { t } = useI18n()
 
-  const sourceDetails: Record<ComicSource, SourceDetails> = {
-    asurascans: {
-      url: ASURA_SCANS_URL,
-      name: t('sources.asurascans.title'),
-      image: asuraImg,
-      color: '#913fe2',
-    },
-    kingofshojo: {
-      url: KING_OF_SHOJO_URL,
-      name: t('sources.kingofshojo.title'),
-      image: kingOfShojoImg,
-      color: '#2503e5',
-    },
-  }
-
   function getSourceDetails(source: ComicSource): SourceDetails {
-    return sourceDetails[source]
+    const config = getSourceConfig(source)
+    if (!config) {
+      throw new Error(`Unknown source: ${source}`)
+    }
+
+    return {
+      url: config.url,
+      name: t(config.nameKey),
+      image: config.image,
+      color: config.color,
+    }
   }
 
   return {

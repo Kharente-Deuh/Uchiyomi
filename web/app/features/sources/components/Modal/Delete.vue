@@ -38,7 +38,7 @@ async function handleDelete(): Promise<void> {
   <OrganismModalConfirmation
     v-model="show"
     :loading
-    :text="$t(`sources.${source}.delete.confirmation`, { name: comic?.title ?? '' })"
+    :text="$t('sources.delete.confirmation', { name: comic?.title ?? '' })"
     @confirm="handleDelete"
   />
 </template>

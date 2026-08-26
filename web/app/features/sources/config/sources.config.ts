@@ -29,3 +29,15 @@ export const SOURCES_CONFIG: Record<ComicSource, SourceConfig> = {
 export function getSourceConfig(source: string): SourceConfig | undefined {
   return (SOURCES_CONFIG as Record<string, SourceConfig>)[source]
 }
+
+export function getComicOriginUrl(config: SourceConfig, publicUrl: string): string {
+  if (!publicUrl) {
+    return ''
+  }
+
+  if (publicUrl.startsWith('http')) {
+    return publicUrl
+  }
+
+  return `${config.url}${publicUrl}`
+}

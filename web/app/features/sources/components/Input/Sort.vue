@@ -20,7 +20,7 @@ const items = computed(() => {
 
   return config.allowedSorts.map(value => ({
     value,
-    title: t(`sources.${props.source}.sort.${value}`),
+    title: t(`sources.sort.${value}`),
   }))
 })
 </script>
@@ -35,6 +35,6 @@ const items = computed(() => {
     :disabled
     hide-details
     :items="items"
-    :label="$t(`sources.${source}.sort.label`)"
+    :label="$t('sources.sort.label')"
   />
 </template>

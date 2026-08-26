@@ -68,7 +68,7 @@ const to = computed<RouteLocationRaw>(() => `/browse/sources/${props.sourceId}/$
             type="text"
             class="mt-1 w-33"
           />
-          <span v-else class="text-body-medium text-medium-emphasis">{{ $t(`sources.${sourceId}.comic.chaptersCount`, { count: comic.chapterCount }) }}</span>
+          <span v-else class="text-body-medium text-medium-emphasis">{{ $t('sources.comic.chaptersCount', { count: comic.chapterCount }) }}</span>
         </div>
       </AtomLink>
     </template>

@@ -69,7 +69,7 @@ const canHover = useMediaQuery('(hover: hover) and (pointer: fine)')
             type="text"
             class="mt-1 w-33"
           />
-          <span v-else class="text-body-medium text-medium-emphasis">{{ $t('sources.asurascans.comic.chaptersCount', { count: chapterCount }) }}</span>
+          <span v-else class="text-body-medium text-medium-emphasis">{{ $t('sources.comic.chaptersCount', { count: chapterCount }) }}</span>
         </div>
       </AtomLink>
     </template>

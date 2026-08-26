@@ -18,7 +18,7 @@ watch(() => props.slug, (slug) => {
 <template>
   <div class="d-flex flex-column w-100 position-relative bg-surface" style="border-radius: 12px; max-height: 40rem;">
     <div class="d-flex justify-space-between ga-6 pa-4 border-b-thin bg-surface align-center" style="z-index: 1; border-top-left-radius: 12px; border-top-right-radius: 12px;">
-      <span class="text-title-large font-weight-bold">{{ $t(`sources.${source}.comic.chaptersCount`, { count: chapters.length }) }}</span>
+      <span class="text-title-large font-weight-bold">{{ $t('sources.comic.chaptersCount', { count: chapters.length }) }}</span>
       <VBtn
         variant="tonal"
         class="text-body-medium"
@@ -36,7 +36,7 @@ watch(() => props.slug, (slug) => {
         indeterminate
         color="primary"
       />
-      <span v-else class="text-medium-emphasis">{{ $t(`sources.${source}.comic.chaptersCount`, { count: 0 }) }}</span>
+      <span v-else class="text-medium-emphasis">{{ $t('sources.comic.chaptersCount', { count: 0 }) }}</span>
     </div>
     <VVirtualScroll :items="chapters" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
       <template #default="{ item }">

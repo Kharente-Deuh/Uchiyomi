@@ -228,6 +228,46 @@
   },
   "sources": {
     "title": "Sources",
+    "search": {
+      "error": "Failed to load series"
+    },
+    "sort": {
+      "popular": "Popular",
+      "latest": "Latest update",
+      "title": "Title",
+      "rating": "Rating",
+      "newest": "Newest",
+      "label": "Sort by"
+    },
+    "delete": {
+      "confirmation": "You are about to remove \"{name}\" from you library"
+    },
+    "label": {
+      "inLibrary": "In library"
+    },
+    "add": {
+      "title": "Add to library"
+    },
+    "comic": {
+      "viewOnSource": "See on origin website",
+      "notFound": "Comic not found",
+      "chaptersCount": "No chapters | 1 Chapter | {count} Chapters",
+      "chapter": "Chapter {number}",
+      "chapterUnlocksIn": "Unlocks {time}",
+      "retryDownloadChapter": {
+        "tooltip": "Click to retry download"
+      },
+      "chapters": {
+        "error": {
+          "fetch": "Failed to fetch chapters",
+          "retry": {
+            "notFound": "Chapter not found",
+            "forbidden": "This comic is not in your library",
+            "conflict": "This chapter is already downloaded"
+          }
+        }
+      }
+    },
     "asurascans": {
       "title": "Asura Scans",
       "search": {
@@ -283,12 +323,6 @@
       "chapter": {
         "notFound": "Chapter not found"
       }
-    },
-    "add": {
-      "title": "Add to library"
-    },
-    "comic": {
-      "viewOnSource": "See on origin website"
     },
     "kingofshojo": {
       "title": "KingOfShojo",

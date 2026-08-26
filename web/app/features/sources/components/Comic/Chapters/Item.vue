@@ -30,13 +30,13 @@ async function retryDownload(chapterId: string): Promise<void> {
 
     switch (res.error.status) {
       case 404:
-        toast.error(t(`sources.${props.source}.comic.chapters.error.retry.notFound`))
+        toast.error(t('sources.comic.chapters.error.retry.notFound'))
         break
       case 403:
-        toast.error(t(`sources.${props.source}.comic.chapters.error.retry.forbidden`))
+        toast.error(t('sources.comic.chapters.error.retry.forbidden'))
         break
       case 409:
-        toast.error(t(`sources.${props.source}.comic.chapters.error.retry.conflict`))
+        toast.error(t('sources.comic.chapters.error.retry.conflict'))
         break
       default:
         toast.error(t('error.unknown'))
@@ -117,13 +117,13 @@ const isChapterDownloadingError = computed(() => props.chapter.internalId && pro
             'ga-4': !isEarlyAccess,
           }"
         >
-          <span class="text-body-large font-weight-bold">{{ $t(`sources.${source}.comic.chapter`, { number: chapter.number }) }}</span>
+          <span class="text-body-large font-weight-bold">{{ $t('sources.comic.chapter', { number: chapter.number }) }}</span>
           <span v-if="chapter.title && !isEarlyAccess" class="text-body-medium text-medium-emphasis text-truncate">{{ chapter.title }}</span>
           <span
             v-else-if="isEarlyAccess"
             class="text-body-medium text-medium-emphasis text-truncate text-gold"
           >
-            {{ $t(`sources.${source}.comic.chapterUnlocksIn`, { time: formatRelativeTime(chapter.earlyAccessUntil as Date, { locale, direction: 'future' }) }) }}
+            {{ $t('sources.comic.chapterUnlocksIn', { time: formatRelativeTime(chapter.earlyAccessUntil as Date, { locale, direction: 'future' }) }) }}
           </span>
         </div>
       </div>
@@ -145,7 +145,7 @@ const isChapterDownloadingError = computed(() => props.chapter.internalId && pro
         />
         <VIcon
           v-if="isChapterDownloadingError && !retryDownloadLoading"
-          v-tooltip:bottom="$t(`sources.${source}.comic.retryDownloadChapter.tooltip`)"
+          v-tooltip:bottom="$t('sources.comic.retryDownloadChapter.tooltip')"
           icon="fa6-solid:exclamation"
           classs="cursor-pointer"
           size="x-small"

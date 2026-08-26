@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
-import { getSourceConfig, SOURCES_CONFIG } from './sources.config'
+import { getComicOriginUrl, getSourceConfig, SOURCES_CONFIG } from './sources.config'
 
 describe('sources.config', () => {
   it('defines valid config for asurascans', () => {
@@ -26,5 +26,15 @@ describe('sources.config', () => {
 
   it('defines configs for all registered sources', () => {
     expect(Object.keys(SOURCES_CONFIG)).toEqual(expect.arrayContaining(['asurascans', 'kingofshojo']))
+  })
+
+  it('builds comic origin url from relative public url', () => {
+    const config = getSourceConfig('asurascans')!
+    expect(getComicOriginUrl(config, '/series/solo-leveling')).toBe('https://asurascans.com/series/solo-leveling')
+  })
+
+  it('returns absolute public url unchanged', () => {
+    const config = getSourceConfig('kingofshojo')!
+    expect(getComicOriginUrl(config, 'https://kingofshojo.com/manga/solo-leveling')).toBe('https://kingofshojo.com/manga/solo-leveling')
   })
 })
