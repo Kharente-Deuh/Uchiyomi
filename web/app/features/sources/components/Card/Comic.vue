@@ -1,17 +1,24 @@
-<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { AsuraScansSearchItem } from '../types'
+import type { RouteLocationRaw } from 'vue-router'
+import type { ComicStatus } from '~/features/comics/types'
 import defaultCover from '~/assets/images/default/comic-cover.webp'
-import { ASURA_SOURCE_NAME } from '~/constants'
 
 const props = defineProps<{
-  comic: AsuraScansSearchItem
+  internalId?: string
+  status?: ComicStatus
+  to: RouteLocationRaw
+  cover: string
+  title: string
+  chapterCount: number
+  chapterCountLoading?: boolean
   loading?: boolean
+  statusLoading?: boolean
 }>()
+
 defineEmits<{ toggle: [] }>()
 
-const src = ref<string>(props.comic.cover)
-watch(() => props.comic.cover, (newVal) => {
+const src = ref<string>(props.cover)
+watch(() => props.cover, (newVal) => {
   src.value = newVal
 }, { immediate: true })
 
@@ -21,7 +28,7 @@ const canHover = useMediaQuery('(hover: hover) and (pointer: fine)')
 <template>
   <VHover :disabled="!canHover">
     <template #default="{ isHovering, props: hoverProps }">
-      <AtomLink :to="`/browse/sources/${ASURA_SOURCE_NAME}/${comic.slug}`" v-bind="hoverProps">
+      <AtomLink :to v-bind="hoverProps">
         <div class="d-flex flex-column comic-card w-100 h-100">
           <VImg
             cover
@@ -31,28 +38,37 @@ const canHover = useMediaQuery('(hover: hover) and (pointer: fine)')
             :lazy-src="defaultCover"
             width="100%"
             class="border-thin rounded-lg position-relative"
-            :class="{ 'cover-in-library': comic.internalId }"
+            :class="{ 'cover-in-library': internalId }"
             @error="src = defaultCover"
           >
             <div class="d-flex w-100 justify-space-between position-absolute pa-2 top-0 left-0" style="z-index: 1;">
               <AsuraScansBtnDelete
-                v-if="comic.internalId"
+                v-if="internalId"
                 :mode="isHovering ? 'btn' : 'label'"
                 @click.prevent="$emit('toggle')"
               />
               <AsuraScansBtnAdd
                 v-else
-                :is-in-library="!!comic.internalId"
+                :is-in-library="!!internalId"
                 :loading
                 class="add-library-btn"
                 :class="{ 'add-library-btn-loading': loading }"
                 @click.prevent="$emit('toggle')"
               />
-              <ComicsIconStatus :status="comic.status" with-background />
+              <ComicsIconStatus
+                :status
+                with-background
+                :loading="statusLoading"
+              />
             </div>
           </VImg>
-          <span class="text-body-large font-weight-bold text-truncate mt-2 comic-card-title">{{ comic.title }}</span>
-          <span class="text-body-medium text-medium-emphasis">{{ $t('sources.asurascans.comic.chaptersCount', { count: comic.chapterCount }) }}</span>
+          <span class="text-body-large font-weight-bold text-truncate mt-2 comic-card-title">{{ title }}</span>
+          <VSkeletonLoader
+            v-if="chapterCountLoading"
+            type="text"
+            class="mt-1 w-33"
+          />
+          <span v-else class="text-body-medium text-medium-emphasis">{{ $t('sources.asurascans.comic.chaptersCount', { count: chapterCount }) }}</span>
         </div>
       </AtomLink>
     </template>

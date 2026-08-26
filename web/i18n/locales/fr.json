@@ -264,7 +264,7 @@
       },
       "comic": {
         "notFound": "Serie introuvable",
-        "chaptersCount": "Aucun chapitre | \n1 Chapitre | \n{count} Chapitres",
+        "chaptersCount": "Aucun chapitre | 1 Chapitre | {count} Chapitres",
         "chapter": "Chapitre {number}",
         "chapterUnlocksIn": "Accessible {time}",
         "retryDownloadChapter": {
@@ -290,6 +290,20 @@
     },
     "comic": {
       "viewOnSource": "Voir sur le site d'origine"
+    },
+    "kingofshojo": {
+      "title": "KingOfShojo",
+      "comic": {
+        "notFound": "BD Introuvable",
+        "chaptersCount": "Aucun chapitre | 1 Chapitre | {count} Chapitres",
+        "chapter": "Chapitre {number}",
+        "retryDownloadChapter": {
+          "tooltip": "Cliquez pour réessayer le téléchargement"
+        }
+      },
+      "delete": {
+        "confirmation": "Vous êtes sur le point de supprimer \"{name}\" de votre bibliothèque"
+      }
     }
   },
   "fields": {

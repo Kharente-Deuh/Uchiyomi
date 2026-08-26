@@ -289,6 +289,20 @@
     },
     "comic": {
       "viewOnSource": "See on origin website"
+    },
+    "kingofshojo": {
+      "title": "KingOfShojo",
+      "comic": {
+        "notFound": "Comic not found",
+        "chaptersCount": "No chapters | 1 Chapter | {count} Chapters",
+        "chapter": "Chapter {number}",
+        "retryDownloadChapter": {
+          "tooltip": "Click to retry download"
+        }
+      },
+      "delete": {
+        "confirmation": "You are about to remove \"{name}\" from you library"
+      }
     }
   },
   "browse": {

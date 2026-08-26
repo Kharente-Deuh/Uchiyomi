@@ -25,4 +25,14 @@ describe('asuraIconStatus', () => {
     const wrapper = await mount('completed', true)
     expect(wrapper.find('.status-icon-box').exists()).toBe(true)
   })
+
+  it('activates the tooltip from the background box, not the icon', async () => {
+    const wrapper = await mount('completed', true)
+    const tooltip = wrapper.findComponent({ name: 'VTooltip' })
+    const box = wrapper.find('.status-icon-box')
+
+    expect(tooltip.exists()).toBe(true)
+    expect(tooltip.find('.status-icon-box').exists()).toBe(true)
+    expect(box.findComponent({ name: 'VIcon' }).exists()).toBe(true)
+  })
 })
