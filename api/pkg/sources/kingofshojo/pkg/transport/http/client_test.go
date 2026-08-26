@@ -19,6 +19,8 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/challengesolver"
 )
 
+const KingOfShojoComicEndpoint = "/manga/"
+
 func discardLogger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
@@ -58,7 +60,7 @@ func TestSearchReturnsItemsAndHasNextPage(t *testing.T) {
 	body := readFixture(t, "search.html")
 
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/manga/" {
+		if r.URL.Path != KingOfShojoComicEndpoint {
 			t.Errorf("path = %q, want /manga/", r.URL.Path)
 		}
 
@@ -98,7 +100,7 @@ func TestSearchPageTwoHitsMangaPageQuery(t *testing.T) {
 		t.Fatalf("Search: %v", err)
 	}
 
-	if gotPath != "/manga/" {
+	if gotPath != KingOfShojoComicEndpoint {
 		t.Errorf("path = %q, want /manga/", gotPath)
 	}
 
@@ -136,7 +138,7 @@ func TestSearchLastPageHasNextPageFalse(t *testing.T) {
 		t.Fatalf("Search: %v", err)
 	}
 
-	if gotPath != "/manga/" {
+	if gotPath != KingOfShojoComicEndpoint {
 		t.Errorf("path = %q, want /manga/", gotPath)
 	}
 
