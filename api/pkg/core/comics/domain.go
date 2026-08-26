@@ -57,6 +57,7 @@ type ComicsRepository interface {
 	GetMany(context.Context, GetManyOpts) (Page, error)
 	ListByStatuses(context.Context, ListByStatusesOpts) ([]Comic, error)
 	UpdateStatusAndChapterCount(context.Context, UpdateStatusAndChapterCountOpts) error
+	UpdateType(context.Context, UpdateTypeOpts) error
 }
 
 type CreateComicOpts struct {
@@ -102,6 +103,7 @@ type ComicsService interface {
 	RefreshComic(context.Context, RefreshComicOpts) (*Comic, error)
 	RetryChapters(context.Context, RetryChaptersOpts) error
 	ServeCover(ctx context.Context, opts GetByIDOpts) (diskPath, contentType string, err error)
+	UpdateType(context.Context, UpdateTypeOpts) (*Comic, error)
 }
 
 type CreateOpts struct {
@@ -182,4 +184,10 @@ type UpdateStatusAndChapterCountOpts struct {
 	Status       sources.SeriesStatus
 	ID           uuid.UUID
 	ChapterCount int
+}
+
+type UpdateTypeOpts struct {
+	UserID uuid.UUID
+	ID     uuid.UUID
+	Type   sources.SeriesType
 }

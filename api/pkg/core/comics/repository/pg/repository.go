@@ -292,6 +292,27 @@ func (r *PGComicsRepository) UpdateStatusAndChapterCount(
 	return nil
 }
 
+func (r *PGComicsRepository) UpdateType(
+	ctx context.Context,
+	opts comics.UpdateTypeOpts,
+) error {
+	values := map[string]any{
+		"comic_type": pgmodels.ComicTypeFromDomain(opts.Type),
+		"updated_at": time.Now(),
+	}
+
+	rows, err := r.db(ctx).Where("id = ?", opts.ID).Set(clause.Assignments(values)).Update(ctx)
+	if err != nil {
+		return fmt.Errorf("r.db(ctx).Update: %w", err)
+	}
+
+	if rows == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
+}
+
 // nolint:lll
 func (r *PGComicsRepository) GetBySlugsAndSource(ctx context.Context, opts comics.GetBySlugsAndSource) ([]comics.Comic, error) {
 	if len(opts.Slugs) == 0 {
