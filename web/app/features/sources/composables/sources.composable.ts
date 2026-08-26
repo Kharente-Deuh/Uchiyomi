@@ -1,6 +1,7 @@
-import type { AsuraScansComicChapter } from '~/features/asurascans/types'
-import type { KingOfShojoComicChapter } from '~/features/kingofshojo/types'
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
-export function isChapterDownloadInProgress(chapter: KingOfShojoComicChapter | AsuraScansComicChapter): boolean {
+import type { SourceComicChapter } from '../types'
+
+export function isChapterDownloadInProgress(chapter: SourceComicChapter): boolean {
   return chapter.download !== undefined && chapter.download >= 0 && chapter.download < 100
 }
