@@ -1,8 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import type { Comic } from '../types'
+import type { Comic, ComicType } from '../types'
 
 defineProps<{ comic: Comic }>()
+
+defineEmits<{ 'update:type': [ComicType] }>()
 </script>
 
 <template>
@@ -12,7 +14,11 @@ defineProps<{ comic: Comic }>()
   >
     <div class="d-flex flex-wrap ga-4">
       <ComicsChipStatus :status="comic.status" />
-      <ComicsChipType :type="comic.type" />
+      <ComicsChipType
+        :type="comic.type"
+        updatable
+        @update:type="$emit('update:type', $event)"
+      />
       <ComicsChipSource :source="comic.source" />
     </div>
 
