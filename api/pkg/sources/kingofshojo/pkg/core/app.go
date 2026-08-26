@@ -126,8 +126,7 @@ func (a *App) Search(ctx context.Context, opts domain.SearchOpts) (*domain.Searc
 		Search:    opts.Search,
 		Sort:      opts.Sort,
 		SortOrder: opts.SortOrder,
-		Offset:    opts.Offset,
-		Limit:     opts.Limit,
+		Page:      opts.Page,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("a.deps.SearchCache.Get: %w", err)

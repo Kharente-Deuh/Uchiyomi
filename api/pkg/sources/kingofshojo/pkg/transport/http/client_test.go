@@ -52,7 +52,7 @@ func readFixture(t *testing.T, name string) []byte {
 	return raw
 }
 
-func TestSearchReturnsItemsAndTotal(t *testing.T) {
+func TestSearchReturnsItemsAndHasNextPage(t *testing.T) {
 	t.Parallel()
 
 	body := readFixture(t, "search.html")
@@ -70,31 +70,61 @@ func TestSearchReturnsItemsAndTotal(t *testing.T) {
 		t.Fatalf("Search: %v", err)
 	}
 
-	if res.Meta.Total != 21 {
-		t.Errorf("total = %d, want 21", res.Meta.Total)
+	if !res.Meta.HasNextPage {
+		t.Error("HasNextPage = false, want true")
 	}
 
 	if len(res.Items) != 2 {
 		t.Fatalf("len(items) = %d, want 2", len(res.Items))
 	}
+}
 
-	if res.Items[0].Slug != "tears-on-a-withered-flower" {
-		t.Errorf("item0 slug = %q", res.Items[0].Slug)
+func TestSearchPageTwoHitsMangaPagePath(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	var n int
+
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		n++
+		gotPath = r.URL.Path
+		_, _ = w.Write(readFixture(t, "search.html"))
+	})
+
+	res, err := c.Search(context.Background(), domain.SearchCacheOpts{Page: 2})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+
+	if gotPath != "/manga/page/2/" {
+		t.Errorf("path = %q, want /manga/page/2/", gotPath)
+	}
+
+	if n != 1 {
+		t.Errorf("requests = %d, want 1", n)
+	}
+
+	if !res.Meta.HasNextPage {
+		t.Error("HasNextPage = false, want true")
 	}
 }
 
-func TestSearchTotalWithoutNextIsOffsetPlusLen(t *testing.T) {
+func TestSearchLastPageHasNextPageFalse(t *testing.T) {
 	t.Parallel()
 
 	body := `<!DOCTYPE html><html><body><div class="listupd">` +
 		`<div class="bsx"><a href="/manga/only/"><div class="tt">Only</div><div class="adds">Chapter 1</div></a></div>` +
 		`</div><div class="hpage"></div></body></html>`
 
-	c := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/manga/page/3/" {
+			t.Errorf("path = %q, want /manga/page/3/", r.URL.Path)
+		}
+
 		_, _ = w.Write([]byte(body))
 	})
 
-	res, err := c.Search(context.Background(), domain.SearchCacheOpts{Offset: 40, Limit: 20})
+	res, err := c.Search(context.Background(), domain.SearchCacheOpts{Page: 3})
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -103,8 +133,8 @@ func TestSearchTotalWithoutNextIsOffsetPlusLen(t *testing.T) {
 		t.Fatalf("len(items) = %d, want 1", len(res.Items))
 	}
 
-	if res.Meta.Total != 41 {
-		t.Errorf("total = %d, want 41", res.Meta.Total)
+	if res.Meta.HasNextPage {
+		t.Error("HasNextPage = true, want false")
 	}
 }
 

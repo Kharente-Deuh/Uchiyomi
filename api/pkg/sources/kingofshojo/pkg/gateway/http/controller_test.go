@@ -110,7 +110,7 @@ func newTestKingOfShojoApp(t *testing.T, deps kingofshojocore.Deps) *kingofshojo
 				Name: "search",
 				Fn: func(context.Context, domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
 					return &domain.SearchCacheResult{
-						Meta: domain.SearchResultMeta{Total: 1},
+						Meta: domain.SearchResultMeta{HasNextPage: true},
 						Items: []domain.SearchCacheResultItem{{
 							Slug:  "solo-shojo",
 							Title: "Solo Shojo",
@@ -262,16 +262,16 @@ func TestSearchOK(t *testing.T) {
 	}
 
 	var body struct {
-		Items []searchResponseItem `json:"items"`
-		Total int                  `json:"total"`
+		Items       []searchResponseItem `json:"items"`
+		HasNextPage bool                 `json:"hasNextPage"`
 	}
 
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("json.Unmarshal: %v", err)
 	}
 
-	if body.Total != 1 || len(body.Items) != 1 {
-		t.Fatalf("total/items = %d/%d, want 1/1", body.Total, len(body.Items))
+	if !body.HasNextPage || len(body.Items) != 1 {
+		t.Fatalf("hasNextPage/items = %v/%d, want true/1", body.HasNextPage, len(body.Items))
 	}
 
 	wantCover := coverURLBuilder(string(sources.SourceKingOfShojo), "solo-shojo")
@@ -285,6 +285,69 @@ func TestSearchOK(t *testing.T) {
 
 	if body.Items[0].Status != "" {
 		t.Errorf("status = %q, want empty", body.Items[0].Status)
+	}
+}
+
+func TestSearchRejectsNonIntegerPage(t *testing.T) {
+	t.Parallel()
+
+	ctrl := newTestController(t, newTestKingOfShojoApp(t, kingofshojocore.Deps{}))
+	r := chi.NewRouter()
+	ctrl.InitRouter(r)
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, authenticatedRequest("/kingofshojo/search?page=x"))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestSearchClampsPageBelowOne(t *testing.T) {
+	t.Parallel()
+
+	for _, query := range []string{"", "?page=0", "?page=-1"} {
+		t.Run(query, func(t *testing.T) {
+			t.Parallel()
+
+			var got domain.SearchCacheOpts
+
+			searchCache, err := fncache.New(
+				fncache.Config[domain.SearchCacheOpts, domain.SearchCacheResult]{
+					Name: "search",
+					Fn: func(_ context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
+						got = opts
+
+						return &domain.SearchCacheResult{}, nil
+					},
+					Key:           func(domain.SearchCacheOpts) string { return "k" },
+					TTL:           time.Minute,
+					ErrorTTL:      time.Minute,
+					FetchTimeout:  time.Minute,
+					CleanInterval: time.Minute,
+					MaxEntries:    1,
+				},
+				fncache.Deps{Logger: slog.New(slog.DiscardHandler)},
+			)
+			if err != nil {
+				t.Fatalf("fncache.New: %v", err)
+			}
+
+			ctrl := newTestController(t, newTestKingOfShojoApp(t, kingofshojocore.Deps{SearchCache: searchCache}))
+			r := chi.NewRouter()
+			ctrl.InitRouter(r)
+
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, authenticatedRequest("/kingofshojo/search"+query))
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+			}
+
+			if got.Page != 1 {
+				t.Errorf("page = %d, want 1", got.Page)
+			}
+		})
 	}
 }
 

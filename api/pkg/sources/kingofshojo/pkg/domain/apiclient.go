@@ -46,16 +46,14 @@ type SearchCacheOpts struct {
 	Search    string
 	Sort      SortType
 	SortOrder SortOrder
-	Offset    int
-	Limit     int
+	Page      int
 }
 
 type SearchOpts struct {
 	Search    string
 	Sort      SortType
 	SortOrder SortOrder
-	Offset    int
-	Limit     int
+	Page      int
 	UserID    uuid.UUID
 }
 
@@ -94,9 +92,7 @@ type SearchCacheResult struct {
 }
 
 type SearchResultMeta struct {
-	Total   int
-	PerPage int
-	HasMore bool
+	HasNextPage bool
 }
 
 type SearchCacheResultItem struct {
