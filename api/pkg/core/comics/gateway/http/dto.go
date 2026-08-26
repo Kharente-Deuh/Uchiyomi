@@ -56,6 +56,10 @@ type createRequest struct {
 	Slug   string             `json:"slug" validate:"required"`
 }
 
+type updateComicRequest struct {
+	Type sources.SeriesType `json:"type"`
+}
+
 type comicResponse struct {
 	Artist       string               `json:"artist"`
 	Type         sources.SeriesType   `json:"type"`

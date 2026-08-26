@@ -37,6 +37,7 @@ const (
 	testComicSlug  = "solo-leveling"
 )
 
+//nolint:govet // fieldalignment on a test fake is not worth the unreadable field order
 type stubComicsService struct {
 	createErr          error
 	getByIDErr         error
@@ -45,16 +46,20 @@ type stubComicsService struct {
 	serveCoverErr      error
 	refreshComicErr    error
 	retryChaptersErr   error
+	updateTypeErr      error
 	createResult       *comics.Comic
 	getByIDResult      *comics.Comic
 	refreshComicResult *comics.Comic
-	serveCoverPath     string
-	serveCoverType     string
+	updateTypeResult   *comics.Comic
 	getManyResult      comics.Page
 	lastGetMany        comics.GetManyOpts
 	lastRetryChapters  comics.RetryChaptersOpts
-	serveCoverCalls    int
+	serveCoverPath     string
+	serveCoverType     string
+	lastUpdateType     comics.UpdateTypeOpts
 	lastServeCoverID   uuid.UUID
+	serveCoverCalls    int
+	updateTypeCalls    int
 }
 
 func (s *stubComicsService) Create(_ context.Context, _ comics.CreateOpts) (*comics.Comic, error) {
@@ -94,6 +99,13 @@ func (s *stubComicsService) ServeCover(_ context.Context, opts comics.GetByIDOpt
 	s.lastServeCoverID = opts.ID
 
 	return s.serveCoverPath, s.serveCoverType, s.serveCoverErr
+}
+
+func (s *stubComicsService) UpdateType(_ context.Context, opts comics.UpdateTypeOpts) (*comics.Comic, error) {
+	s.updateTypeCalls++
+	s.lastUpdateType = opts
+
+	return s.updateTypeResult, s.updateTypeErr
 }
 
 type stubSessionService struct {
@@ -284,10 +296,11 @@ type comicshttpPage struct {
 }
 
 type comicshttpDetail struct {
-	Cover        string    `json:"cover"`
-	AltTitles    []string  `json:"altTitles"`
-	ChapterCount int       `json:"chapterCount"`
-	ID           uuid.UUID `json:"id"`
+	Type         sources.SeriesType `json:"type"`
+	Cover        string             `json:"cover"`
+	AltTitles    []string           `json:"altTitles"`
+	ChapterCount int                `json:"chapterCount"`
+	ID           uuid.UUID          `json:"id"`
 }
 
 func TestGetByIDNotFound(t *testing.T) {
@@ -849,5 +862,137 @@ func TestRetryChaptersAccepted(t *testing.T) {
 	last := svc.lastRetryChapters
 	if last.ComicID != comicID || last.UserID != user.ID || len(last.ChapterIDs) != 1 || last.ChapterIDs[0] != chapterID {
 		t.Errorf("unexpected lastRetryChapters: %+v", last)
+	}
+}
+
+func TestUpdateTypeSuccess(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+	userID := uuid.New()
+	user := &users.User{ID: userID, Name: testUsername}
+	stub := &stubComicsService{
+		updateTypeResult: &comics.Comic{
+			ID:           id,
+			Title:        testComicTitle,
+			Slug:         testComicSlug,
+			Source:       sources.SourceKingOfShojo,
+			Status:       sources.SeriesStatusOngoing,
+			Type:         sources.SeriesTypeManga,
+			ChapterCount: 10,
+		},
+	}
+	r := newTestRouter(t, stub, authenticatorFor(t, user))
+
+	body := []byte(`{"type":"manga"}`)
+	req := httptest.NewRequest(http.MethodPatch, comicsEndpoint+"/"+id.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var res comicshttpDetail
+	if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+		t.Fatalf("json decode: %v", err)
+	}
+
+	if res.Type != sources.SeriesTypeManga {
+		t.Errorf("res.Type = %q, want %q", res.Type, sources.SeriesTypeManga)
+	}
+	if stub.lastUpdateType.ID != id {
+		t.Errorf("stub.lastUpdateType.ID = %v, want %v", stub.lastUpdateType.ID, id)
+	}
+	if stub.lastUpdateType.UserID != userID {
+		t.Errorf("stub.lastUpdateType.UserID = %v, want %v", stub.lastUpdateType.UserID, userID)
+	}
+}
+
+func TestUpdateTypeInvalidUUID(t *testing.T) {
+	t.Parallel()
+
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	r := newTestRouter(t, &stubComicsService{}, authenticatorFor(t, user))
+
+	body := []byte(`{"type":"manga"}`)
+	req := httptest.NewRequest(http.MethodPatch, comicsEndpoint+"/invalid-uuid", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestUpdateTypeInvalidType(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	r := newTestRouter(t, &stubComicsService{}, authenticatorFor(t, user))
+
+	body := []byte(`{"type":"invalid_type"}`)
+	req := httptest.NewRequest(http.MethodPatch, comicsEndpoint+"/"+id.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestUpdateTypeNotFound(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	stub := &stubComicsService{
+		updateTypeErr: domain.ErrNotFound,
+	}
+	r := newTestRouter(t, stub, authenticatorFor(t, user))
+
+	body := []byte(`{"type":"manga"}`)
+	req := httptest.NewRequest(http.MethodPatch, comicsEndpoint+"/"+id.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestUpdateTypeForbidden(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+	user := &users.User{ID: uuid.New(), Name: testUsername}
+	stub := &stubComicsService{
+		updateTypeErr: domain.ErrForbidden,
+	}
+	r := newTestRouter(t, stub, authenticatorFor(t, user))
+
+	body := []byte(`{"type":"manga"}`)
+	req := httptest.NewRequest(http.MethodPatch, comicsEndpoint+"/"+id.String(), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: testToken})
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
 }

@@ -94,6 +94,7 @@ func (c *Controller) InitRouter(r chi.Router) {
 		r.Post("/{id}/retry", c.retryChapters)
 		r.Get("/{id}/cover", c.serveCover)
 		r.Get("/{id}", c.getByID)
+		r.Patch("/{id}", c.updateType)
 		r.Delete("/{id}", c.deleteByID)
 	})
 }
@@ -162,6 +163,64 @@ func (c *Controller) getByID(w http.ResponseWriter, r *http.Request) {
 		}
 
 		c.deps.Logger.Error("failed to get comic by id", "error", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+
+		return
+	}
+
+	httputils.WriteJSON(w, c.deps.Logger, http.StatusOK, comicResponseFromDomain(comic))
+}
+
+func (c *Controller) updateType(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, ok := httpsession.UserFrom(ctx)
+	if !ok {
+		c.deps.Logger.Error("user not found in context")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+
+		return
+	}
+
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "id must be a valid UUID")
+
+		return
+	}
+
+	req, err := httputils.DecodeJSON[updateComicRequest](r)
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "invalid request body")
+
+		return
+	}
+
+	seriesType, err := sources.ParseSeriesType(string(req.Type))
+	if err != nil {
+		httputils.WriteError(w, c.deps.Logger, http.StatusBadRequest, "invalid comic type")
+
+		return
+	}
+
+	comic, err := c.deps.ComicsService.UpdateType(ctx, comics.UpdateTypeOpts{
+		UserID: user.ID,
+		ID:     id,
+		Type:   seriesType,
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusNotFound, "comic not found")
+
+			return
+		}
+
+		if errors.Is(err, domain.ErrForbidden) {
+			httputils.WriteError(w, c.deps.Logger, http.StatusForbidden, "comic not in library")
+
+			return
+		}
+
+		c.deps.Logger.Error("failed to update comic type", "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 
 		return

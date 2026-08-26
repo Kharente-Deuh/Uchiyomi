@@ -145,6 +145,10 @@ func (f *fakeComicsRepository) UpdateStatusAndChapterCount(context.Context, comi
 	panic("not implemented")
 }
 
+func (f *fakeComicsRepository) UpdateType(context.Context, comics.UpdateTypeOpts) error {
+	panic("not implemented")
+}
+
 type fakeSource struct {
 	pageURLs []string
 }

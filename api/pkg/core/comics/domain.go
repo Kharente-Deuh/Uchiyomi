@@ -187,7 +187,7 @@ type UpdateStatusAndChapterCountOpts struct {
 }
 
 type UpdateTypeOpts struct {
+	Type   sources.SeriesType
 	UserID uuid.UUID
 	ID     uuid.UUID
-	Type   sources.SeriesType
 }

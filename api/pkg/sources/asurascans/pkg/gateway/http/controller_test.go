@@ -79,6 +79,10 @@ func (stubComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.
 	return nil
 }
 
+func (stubComicsRepository) UpdateType(context.Context, comics.UpdateTypeOpts) error {
+	return nil
+}
+
 type inLibraryComicsRepository struct {
 	comic *comics.Comic
 }
@@ -126,6 +130,10 @@ func (r inLibraryComicsRepository) ListByStatuses(context.Context, comics.ListBy
 }
 
 func (r inLibraryComicsRepository) UpdateStatusAndChapterCount(context.Context, comics.UpdateStatusAndChapterCountOpts) error {
+	return nil
+}
+
+func (r inLibraryComicsRepository) UpdateType(context.Context, comics.UpdateTypeOpts) error {
 	return nil
 }
 
