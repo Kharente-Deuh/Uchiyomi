@@ -142,6 +142,26 @@ func TestParseSeriesUnparseableChapterDate(t *testing.T) {
 	}
 }
 
+func TestParseSeriesNotAvailableDescription(t *testing.T) {
+	t.Parallel()
+
+	html := strings.Replace(
+		readSeriesFixture(t),
+		"<div class=\"desc\"><p>A floral romance story that spans seasons.</p></div>",
+		"<div class=\"desc\"><p>Not available</p></div>",
+		1,
+	)
+
+	page, err := parse.ParseSeries(html, "tears-on-a-withered-flower")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if page.Infos.Description != "" {
+		t.Fatalf("description = %q, want empty", page.Infos.Description)
+	}
+}
+
 func TestParseSeriesMangaType(t *testing.T) {
 	t.Parallel()
 

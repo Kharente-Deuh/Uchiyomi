@@ -168,13 +168,13 @@ func imageURL(img *goquery.Selection) string {
 
 func seriesDescription(doc *goquery.Document) string {
 	if paragraph := doc.Find(".desc p").First(); paragraph.Length() > 0 {
-		return strings.TrimSpace(paragraph.Text())
+		return CleanDescription(paragraph.Text())
 	}
 
 	var description string
 
 	doc.Find(".postbody p").EachWithBreak(func(_ int, paragraph *goquery.Selection) bool {
-		text := strings.TrimSpace(paragraph.Text())
+		text := CleanDescription(paragraph.Text())
 		if text == "" {
 			return true
 		}

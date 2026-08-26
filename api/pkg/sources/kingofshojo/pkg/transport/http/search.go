@@ -84,21 +84,25 @@ func searchOptsWithDefaults(opts domain.SearchCacheOpts) domain.SearchCacheOpts 
 	return withDefaults
 }
 
+func searchTotal(offset, limit, nItems int, hasNext bool) int {
+	if hasNext {
+		return offset + limit + 1
+	}
+
+	return offset + nItems
+}
+
 func (c *Client) fetchSearchCards(ctx context.Context, opts domain.SearchCacheOpts) ([]parse.SearchCard, int, error) {
 	pageNum, start := kosPage(opts.Offset, opts.Limit)
 
-	firstPage, err := c.fetchSearchPage(ctx, pageNum, opts)
+	page, err := c.fetchSearchPage(ctx, pageNum, opts)
 	if err != nil {
 		return nil, 0, fmt.Errorf("c.fetchSearchPage: %w", err)
 	}
 
-	total := 0
-	if len(firstPage.Items) > 0 {
-		total = firstPage.LastPage * len(firstPage.Items)
-	}
-
-	result := appendSearchCards(nil, firstPage.Items, start, opts.Limit)
-	fullPage := len(firstPage.Items) >= kosPerPage
+	result, leftover := appendSearchCards(nil, page.Items, start, opts.Limit)
+	hasNext := leftover || page.HasNext
+	fullPage := len(page.Items) >= kosPerPage
 
 	for len(result) < opts.Limit && fullPage {
 		pageNum++
@@ -106,6 +110,8 @@ func (c *Client) fetchSearchCards(ctx context.Context, opts domain.SearchCacheOp
 		nextPage, err := c.fetchSearchPage(ctx, pageNum, opts)
 		if err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
+				hasNext = leftover
+
 				break
 			}
 
@@ -113,17 +119,21 @@ func (c *Client) fetchSearchCards(ctx context.Context, opts domain.SearchCacheOp
 		}
 
 		if len(nextPage.Items) == 0 {
+			hasNext = leftover
+
 			break
 		}
 
-		result = appendSearchCards(result, nextPage.Items, 0, opts.Limit-len(result))
-		fullPage = len(nextPage.Items) >= kosPerPage
+		page = nextPage
+		result, leftover = appendSearchCards(result, page.Items, 0, opts.Limit-len(result))
+		hasNext = leftover || page.HasNext
+		fullPage = len(page.Items) >= kosPerPage
 	}
 
-	return result, total, nil
+	return result, searchTotal(opts.Offset, opts.Limit, len(result), hasNext), nil
 }
 
-func appendSearchCards(dst, cards []parse.SearchCard, start, remaining int) []parse.SearchCard {
+func appendSearchCards(dst, cards []parse.SearchCard, start, remaining int) ([]parse.SearchCard, bool) {
 	filtered := filterSearchCards(cards)
 	if start < 0 {
 		start = 0
@@ -133,16 +143,17 @@ func appendSearchCards(dst, cards []parse.SearchCard, start, remaining int) []pa
 		start = len(filtered)
 	}
 
-	filtered = filtered[start:]
-	if remaining > len(filtered) {
-		remaining = len(filtered)
+	available := filtered[start:]
+	leftover := remaining < len(available)
+	if remaining > len(available) {
+		remaining = len(available)
 	}
 
 	if remaining <= 0 {
-		return dst
+		return dst, leftover
 	}
 
-	return append(dst, filtered[:remaining]...)
+	return append(dst, available[:remaining]...), leftover
 }
 
 func filterSearchCards(cards []parse.SearchCard) []parse.SearchCard {

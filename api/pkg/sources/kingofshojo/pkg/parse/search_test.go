@@ -25,8 +25,8 @@ func TestParseSearch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if page.LastPage != 471 {
-		t.Fatalf("LastPage = %d", page.LastPage)
+	if !page.HasNext {
+		t.Fatal("HasNext = false, want true")
 	}
 
 	if len(page.Items) != 2 {
@@ -47,5 +47,27 @@ func TestParseSearch(t *testing.T) {
 
 	if page.Items[1].Cover != "https://cdn.example/cover2.jpg" {
 		t.Fatalf("cover2 %q", page.Items[1].Cover)
+	}
+}
+
+func TestParseSearchWithoutNext(t *testing.T) {
+	t.Parallel()
+
+	page, err := parse.ParseSearch(`<!DOCTYPE html><html><body>
+<div class="listupd"><div class="bsx">
+  <a href="/manga/last-one/"><div class="tt">Last</div></a>
+</div></div>
+<div class="hpage"></div>
+</body></html>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if page.HasNext {
+		t.Fatal("HasNext = true, want false")
+	}
+
+	if len(page.Items) != 1 {
+		t.Fatalf("len = %d", len(page.Items))
 	}
 }

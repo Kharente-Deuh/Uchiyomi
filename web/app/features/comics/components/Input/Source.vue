@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import type { ComicSource } from '~/features/comics/types'
-import { ASURA_SOURCE_NAME } from '~/constants'
+import { ASURA_SOURCE_NAME, KING_OF_SHOJO_SOURCE_NAME } from '~/constants'
 
 defineProps<{ disabled?: boolean }>()
 const source = defineModel<ComicSource | undefined>({ required: true })
 const { getSourceDetails } = useSources()
 const asuraDetails = getSourceDetails('asurascans')
+const kingOfShojoDetails = getSourceDetails('kingofshojo')
 
 const items = computed((): { value: ComicSource, title: string, img: string }[] => [
   {
     value: ASURA_SOURCE_NAME,
     title: asuraDetails.name,
     img: asuraDetails.image,
+  },
+  {
+    value: KING_OF_SHOJO_SOURCE_NAME,
+    title: kingOfShojoDetails.name,
+    img: kingOfShojoDetails.image,
   },
 ])
 </script>

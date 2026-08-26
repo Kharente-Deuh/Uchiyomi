@@ -56,6 +56,15 @@ func CleanPerson(raw string) string {
 	return s
 }
 
+func CleanDescription(raw string) string {
+	s := strings.TrimSpace(raw)
+	if strings.EqualFold(s, "not available") || strings.EqualFold(s, "Not available") {
+		return ""
+	}
+
+	return s
+}
+
 func CleanAltTitles(raw string) []string {
 	s := strings.TrimSpace(raw)
 	if s == "" || strings.EqualFold(s, "unknown") {

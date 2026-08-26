@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { ASURA_SOURCE_NAME } from '~/constants'
+import type { ASURA_SOURCE_NAME, KING_OF_SHOJO_SOURCE_NAME } from '~/constants'
 
 export type ComicStatus = 'ongoing' | 'completed' | 'hiatus' | 'cancelled'
 export type ComicType = 'manga' | 'manhua' | 'manhwa' | 'mangatoon'
-export type ComicSource = typeof ASURA_SOURCE_NAME
+export type ComicSource = typeof ASURA_SOURCE_NAME | typeof KING_OF_SHOJO_SOURCE_NAME
 
 export interface LightComic {
   id: string
