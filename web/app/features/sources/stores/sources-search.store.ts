@@ -16,6 +16,11 @@ export interface SourceSearchStore {
   clearAccumulatedComics: () => void
 
   setComicInternalId: (slug: string, internalId: string | undefined) => void
+  patchComic: (slug: string, patch: Partial<SourceSearchItem>) => void
+
+  infosLoading: Ref<Record<string, boolean>>
+  setInfosLoading: (slug: string, isLoading: boolean) => void
+  clearInfosLoading: () => void
 
   loading: Ref<boolean>
   setLoading: (isLoading: boolean) => void
@@ -59,6 +64,7 @@ function createSearchStoreDefinition(sourceId: ComicSource): SearchStoreDefiniti
 
     const comics = ref<SourceSearchItem[]>([])
     const accumulatedComics = ref<SourceSearchItem[]>([])
+    const infosLoading = ref<Record<string, boolean>>({})
 
     function setComics(value: SourceSearchItem[]): void {
       comics.value = [...value]
@@ -96,6 +102,36 @@ function createSearchStoreDefinition(sourceId: ComicSource): SearchStoreDefiniti
         const { internalId: _, ...comic } = accumulatedComics.value[i]!
         accumulatedComics.value[i] = { ...comic, internalId }
       }
+    }
+
+    function patchList(list: SourceSearchItem[], slug: string, patch: Partial<SourceSearchItem>): SourceSearchItem[] {
+      const i = list.findIndex(c => c.slug === slug)
+      if (i === -1) {
+        return list
+      }
+
+      const next = [...list]
+      next[i] = { ...next[i]!, ...patch }
+      return next
+    }
+
+    function patchComic(slug: string, patch: Partial<SourceSearchItem>): void {
+      comics.value = patchList(comics.value, slug, patch)
+      accumulatedComics.value = patchList(accumulatedComics.value, slug, patch)
+    }
+
+    function setInfosLoading(slug: string, isLoading: boolean): void {
+      if (isLoading) {
+        infosLoading.value = { ...infosLoading.value, [slug]: true }
+        return
+      }
+
+      const { [slug]: _, ...rest } = infosLoading.value
+      infosLoading.value = rest
+    }
+
+    function clearInfosLoading(): void {
+      infosLoading.value = {}
     }
 
     function setSearch(value: string): void {
@@ -147,6 +183,7 @@ function createSearchStoreDefinition(sourceId: ComicSource): SearchStoreDefiniti
       clearLoading()
       clearComics()
       clearAccumulatedComics()
+      clearInfosLoading()
     }
 
     return {
@@ -157,6 +194,10 @@ function createSearchStoreDefinition(sourceId: ComicSource): SearchStoreDefiniti
       setAccumulatedComics,
       clearAccumulatedComics,
       setComicInternalId,
+      patchComic,
+      infosLoading,
+      setInfosLoading,
+      clearInfosLoading,
       loading,
       setLoading,
       clearLoading,
