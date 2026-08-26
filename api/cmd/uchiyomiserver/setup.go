@@ -921,7 +921,7 @@ type ctrlsDeps struct {
 	Registry               *health.Registry
 	AuthService            *auth.Service
 	OIDCProvidersService   *oidcproviders.Service
-	ComicsService          *comics.Service
+	ComicsService          comics.ComicsService
 	ChaptersService        *chapters.Service
 }
 
@@ -1061,7 +1061,7 @@ func setupCtrls(deps ctrlsDeps) (*ctrls, error) {
 	comicsCtrl, err := httpcomics.New(
 		httpcomics.Config{
 			Endpoint:    "/comics",
-			Middlewares: chi.Middlewares{authenticator.Middleware, authenticator.RequireAdmin},
+			Middlewares: chi.Middlewares{authenticator.Middleware},
 		},
 		httpcomics.Deps{
 			Logger:        deps.Logger,

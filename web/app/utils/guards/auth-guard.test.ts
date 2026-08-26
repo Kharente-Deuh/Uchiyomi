@@ -51,17 +51,37 @@ describe('resolveAuthGuard', () => {
 })
 
 describe('resolveAuthGuard, admin group', () => {
-  const admin = routeStub({ name: 'settings', fullPath: '/settings', meta: { authGroups: [ADMIN_ROUTE_GROUP] } })
+  const oidc = routeStub({
+    name: 'settings-oidc',
+    fullPath: '/settings/oidc',
+    meta: { authGroups: [ADMIN_ROUTE_GROUP] },
+  })
 
   it('sends anonymous user to /login rather than bouncing through home', () => {
-    expect(resolveAuthGuard({ to: admin, ...ANONYMOUS })).toBe('/login?redirect=%2Fsettings')
+    expect(resolveAuthGuard({ to: oidc, ...ANONYMOUS })).toBe('/login?redirect=%2Fsettings%2Foidc')
   })
 
   it('redirects authenticated user without rights to home', () => {
-    expect(resolveAuthGuard({ to: admin, ...USER })).toBe(DEFAULT_PAGE)
+    expect(resolveAuthGuard({ to: oidc, ...USER })).toBe(DEFAULT_PAGE)
   })
 
   it('allows an admin through', () => {
-    expect(resolveAuthGuard({ to: admin, ...ADMIN })).toBeUndefined()
+    expect(resolveAuthGuard({ to: oidc, ...ADMIN })).toBeUndefined()
+  })
+})
+
+describe('resolveAuthGuard, settings hub', () => {
+  const settings = routeStub({
+    name: 'settings',
+    fullPath: '/settings',
+    meta: { authGroups: [AUTHENTICATED_ROUTE_GROUP] },
+  })
+
+  it('allows an authenticated non-admin through', () => {
+    expect(resolveAuthGuard({ to: settings, ...USER })).toBeUndefined()
+  })
+
+  it('sends anonymous user to /login', () => {
+    expect(resolveAuthGuard({ to: settings, ...ANONYMOUS })).toBe('/login?redirect=%2Fsettings')
   })
 })

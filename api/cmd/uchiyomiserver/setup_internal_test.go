@@ -25,6 +25,44 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
 
+type stubComicsService struct{}
+
+func (stubComicsService) Create(context.Context, comics.CreateOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsService) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsService) GetMany(context.Context, comics.GetManyOpts) (comics.Page, error) {
+	return comics.Page{}, nil
+}
+
+func (stubComicsService) Delete(context.Context, comics.DeleteOpts) error {
+	return nil
+}
+
+func (stubComicsService) RefreshChapterLists(context.Context) error {
+	return nil
+}
+
+func (stubComicsService) RefreshComic(context.Context, comics.RefreshComicOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsService) RetryChapters(context.Context, comics.RetryChaptersOpts) error {
+	return nil
+}
+
+func (stubComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
+	return "", "", coredomain.ErrNotFound
+}
+
+func (stubComicsService) UpdateType(context.Context, comics.UpdateTypeOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
 type stubComicsRepository struct{}
 
 func (stubComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
@@ -301,6 +339,7 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 		AsuraScansApp:          asuraScansApp,
 		KingOfShojoApp:         kingOfShojoApp,
 		CoversService:          coversBundle.Service,
+		ComicsService:          stubComicsService{},
 		SessionsService:        newTestSessionsService(t, user),
 		Logger:                 logger,
 		Registry:               health.NewRegistry(),
@@ -360,18 +399,65 @@ func TestSetupCoversServeUnknownSource(t *testing.T) {
 	}
 }
 
-func TestOIDCProvidersController(t *testing.T) {
+const (
+	testSessionCookie = "uchiyomi_session"
+	comicsPath        = "/comics"
+	oidcProvidersPath = "/oidc/providers"
+)
+
+func serveAuthedGET(
+	t *testing.T,
+	user *users.User,
+	path string,
+	mount func(*ctrls, chi.Router),
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	c := newTestCtrlsForUser(t, user)
+	r := chi.NewRouter()
+	mount(c, r)
+
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req.AddCookie(&http.Cookie{Name: testSessionCookie, Value: "any-token"})
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	return rec
+}
+
+type adminGateCase struct {
+	mount      func(*ctrls, chi.Router)
+	user       *users.User
+	path       string
+	wantStatus int
+}
+
+func TestControllerAdminGates(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		user       *users.User
-		wantStatus int
-	}{
-		"non-admin is rejected": {
+	tests := map[string]adminGateCase{
+		"comics: non-admin is let through": {
+			path:       comicsPath,
+			mount:      func(c *ctrls, r chi.Router) { c.Comics.InitRouter(r) },
+			user:       &users.User{ID: uuid.New(), Name: "alice", IsAdmin: false},
+			wantStatus: http.StatusOK,
+		},
+		"comics: admin is let through": {
+			path:       comicsPath,
+			mount:      func(c *ctrls, r chi.Router) { c.Comics.InitRouter(r) },
+			user:       &users.User{ID: uuid.New(), Name: "root", IsAdmin: true},
+			wantStatus: http.StatusOK,
+		},
+		"oidc: non-admin is rejected": {
+			path:       oidcProvidersPath,
+			mount:      func(c *ctrls, r chi.Router) { c.OIDCProviders.InitRouter(r) },
 			user:       &users.User{ID: uuid.New(), Name: "alice", IsAdmin: false},
 			wantStatus: http.StatusForbidden,
 		},
-		"admin is let through": {
+		"oidc: admin is let through": {
+			path:       oidcProvidersPath,
+			mount:      func(c *ctrls, r chi.Router) { c.OIDCProviders.InitRouter(r) },
 			user:       &users.User{ID: uuid.New(), Name: "root", IsAdmin: true},
 			wantStatus: http.StatusOK,
 		},
@@ -381,19 +467,9 @@ func TestOIDCProvidersController(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			c := newTestCtrlsForUser(t, tc.user)
-
-			r := chi.NewRouter()
-			c.OIDCProviders.InitRouter(r)
-
-			req := httptest.NewRequest(http.MethodGet, "/oidc/providers", nil)
-			req.AddCookie(&http.Cookie{Name: "uchiyomi_session", Value: "any-token"})
-
-			rec := httptest.NewRecorder()
-			r.ServeHTTP(rec, req)
-
+			rec := serveAuthedGET(t, tc.user, tc.path, tc.mount)
 			if rec.Code != tc.wantStatus {
-				t.Errorf("GET /oidc/providers = %d, want %d (body: %s)", rec.Code, tc.wantStatus, rec.Body.String())
+				t.Errorf("GET %s = %d, want %d (body: %s)", tc.path, rec.Code, tc.wantStatus, rec.Body.String())
 			}
 		})
 	}
