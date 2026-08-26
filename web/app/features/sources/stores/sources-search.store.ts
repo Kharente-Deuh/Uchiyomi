@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { ComicSource, ComicStatus, ComicType } from '~/features/comics/types'
 import type { SourceSearchItem, SourceSort } from '../types'
+import type { ComicSource, ComicStatus, ComicType } from '~/features/comics/types'
 
 const DEFAULT_SORT: SourceSort = 'popular'
 const DEFAULT_PAGE = 1
@@ -44,9 +44,11 @@ export interface SourceSearchStore {
   invalidate: () => void
 }
 
-const storesMap = new Map<ComicSource, ReturnType<typeof createSearchStoreDefinition>>()
+type SearchStoreDefinition = ReturnType<typeof defineStore<string, SourceSearchStore>>
 
-function createSearchStoreDefinition(sourceId: ComicSource) {
+const storesMap = new Map<ComicSource, SearchStoreDefinition>()
+
+function createSearchStoreDefinition(sourceId: ComicSource): SearchStoreDefinition {
   return defineStore(`sources-search-${sourceId}`, (): SourceSearchStore => {
     const search = ref<string>()
     const sort = ref<SourceSort>(DEFAULT_SORT)
@@ -178,9 +180,10 @@ function createSearchStoreDefinition(sourceId: ComicSource) {
   })
 }
 
-export function useSourceSearchStore(sourceId: ComicSource): ReturnType<ReturnType<typeof createSearchStoreDefinition>> {
+export function useSourceSearchStore(sourceId: ComicSource): ReturnType<SearchStoreDefinition> {
   if (!storesMap.has(sourceId)) {
     storesMap.set(sourceId, createSearchStoreDefinition(sourceId))
   }
+
   return storesMap.get(sourceId)!()
 }

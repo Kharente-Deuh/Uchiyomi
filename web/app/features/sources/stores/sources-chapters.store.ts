@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { ComicSource } from '~/features/comics/types'
 import type { SourceComicChapter } from '../types'
+import type { ComicSource } from '~/features/comics/types'
 
 export interface SourceChaptersStore {
   chapters: Ref<SourceComicChapter[]>
@@ -9,9 +9,11 @@ export interface SourceChaptersStore {
   invalidate: () => void
 }
 
-const chaptersStoresMap = new Map<ComicSource, ReturnType<typeof createChaptersStoreDefinition>>()
+type ChaptersStoreDefinition = ReturnType<typeof defineStore<string, SourceChaptersStore>>
 
-function createChaptersStoreDefinition(sourceId: ComicSource) {
+const chaptersStoresMap = new Map<ComicSource, ChaptersStoreDefinition>()
+
+function createChaptersStoreDefinition(sourceId: ComicSource): ChaptersStoreDefinition {
   return defineStore(`sources-chapters-${sourceId}`, (): SourceChaptersStore => {
     const chapters = ref<SourceComicChapter[]>([])
 
@@ -31,9 +33,10 @@ function createChaptersStoreDefinition(sourceId: ComicSource) {
   })
 }
 
-export function useSourceChaptersStore(sourceId: ComicSource): ReturnType<ReturnType<typeof createChaptersStoreDefinition>> {
+export function useSourceChaptersStore(sourceId: ComicSource): ReturnType<ChaptersStoreDefinition> {
   if (!chaptersStoresMap.has(sourceId)) {
     chaptersStoresMap.set(sourceId, createChaptersStoreDefinition(sourceId))
   }
+
   return chaptersStoresMap.get(sourceId)!()
 }
