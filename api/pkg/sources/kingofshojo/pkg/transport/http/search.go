@@ -37,7 +37,7 @@ func kosOrder(sort domain.SortType, order domain.SortOrder) string {
 func (c *Client) Search(ctx context.Context, opts domain.SearchCacheOpts) (*domain.SearchCacheResult, error) {
 	withDefaults := searchOptsWithDefaults(opts)
 
-	page, err := c.fetchSearchPage(ctx, withDefaults.Page, withDefaults)
+	page, err := c.fetchSearchPage(ctx, withDefaults)
 	if err != nil {
 		return nil, fmt.Errorf("c.fetchSearchPage: %w", err)
 	}
@@ -89,10 +89,9 @@ func filterSearchCards(cards []parse.SearchCard) []parse.SearchCard {
 
 func (c *Client) fetchSearchPage(
 	ctx context.Context,
-	pageNum int,
 	opts domain.SearchCacheOpts,
 ) (parse.SearchPage, error) {
-	targetURL := c.searchPageURL(pageNum, opts)
+	targetURL := c.searchPageURL(opts)
 
 	status, body, err := c.get(ctx, targetURL)
 	if err != nil {
@@ -111,19 +110,12 @@ func (c *Client) fetchSearchPage(
 	return page, nil
 }
 
-func (c *Client) searchPageURL(pageNum int, opts domain.SearchCacheOpts) string {
-	var path string
-	if pageNum <= 1 {
-		path = mangaPath
-	} else {
-		path = mangaPath + "page/" + strconv.Itoa(pageNum) + "/"
-	}
-
+func (c *Client) searchPageURL(opts domain.SearchCacheOpts) string {
 	if q := c.buildSearchQuery(opts); q != "" {
-		return c.mangaURL(path) + "?" + q
+		return c.mangaURL(mangaPath) + "?" + q
 	}
 
-	return c.mangaURL(path)
+	return c.mangaURL(mangaPath)
 }
 
 func (c *Client) buildSearchQuery(opts domain.SearchCacheOpts) string {
@@ -135,6 +127,10 @@ func (c *Client) buildSearchQuery(opts domain.SearchCacheOpts) string {
 
 	if order := kosOrder(opts.Sort, opts.SortOrder); order != "" {
 		q.Set("order", order)
+	}
+
+	if opts.Page > 1 {
+		q.Set("page", strconv.Itoa(opts.Page))
 	}
 
 	return q.Encode()

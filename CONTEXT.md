@@ -108,7 +108,7 @@ Search and explore comics on an external source before adding them. The AsuraSca
 Lists all available sources as cards. Each card links to that source's browse page. Only AsuraScans for now.
 
 **Search pagination**:
-Mobile: infinite scroll — next page loads when the user reaches the bottom, previous results stay visible. Desktop: classic pagination footer with page numbers. Applies to source browse, library, and feed.
+Mobile: infinite scroll — next page loads when the user reaches the bottom, previous results stay visible. Desktop: a pagination footer. Source browse uses a 1-based page and a next-page flag from the source; there is no result total, and page size is whatever that source returns. Library and feed use offset, limit, and a counted total, with page numbers on desktop.
 
 **Chapter**:
 A single instalment of a comic, stored in the database and linked to one comic. Chapters are created when a comic is added to a library, and when a chapter list refresh finds source chapters with no matching source chapter slug. Each chapter tracks its download progress independently. The expected page count (`pagesNb`) is initialized from the source chapter list and updated when page URLs are fetched if the source reports a different count.

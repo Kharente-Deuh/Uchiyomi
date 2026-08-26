@@ -79,15 +79,17 @@ func TestSearchReturnsItemsAndHasNextPage(t *testing.T) {
 	}
 }
 
-func TestSearchPageTwoHitsMangaPagePath(t *testing.T) {
+func TestSearchPageTwoHitsMangaPageQuery(t *testing.T) {
 	t.Parallel()
 
 	var gotPath string
+	var gotQuery url.Values
 	var n int
 
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		n++
 		gotPath = r.URL.Path
+		gotQuery = r.URL.Query()
 		_, _ = w.Write(readFixture(t, "search.html"))
 	})
 
@@ -96,8 +98,12 @@ func TestSearchPageTwoHitsMangaPagePath(t *testing.T) {
 		t.Fatalf("Search: %v", err)
 	}
 
-	if gotPath != "/manga/page/2/" {
-		t.Errorf("path = %q, want /manga/page/2/", gotPath)
+	if gotPath != "/manga/" {
+		t.Errorf("path = %q, want /manga/", gotPath)
+	}
+
+	if gotQuery.Get("page") != "2" {
+		t.Errorf("page = %q, want 2", gotQuery.Get("page"))
 	}
 
 	if n != 1 {
@@ -112,21 +118,30 @@ func TestSearchPageTwoHitsMangaPagePath(t *testing.T) {
 func TestSearchLastPageHasNextPageFalse(t *testing.T) {
 	t.Parallel()
 
+	var gotPath string
+	var gotQuery url.Values
+
 	body := `<!DOCTYPE html><html><body><div class="listupd">` +
 		`<div class="bsx"><a href="/manga/only/"><div class="tt">Only</div><div class="adds">Chapter 1</div></a></div>` +
 		`</div><div class="hpage"></div></body></html>`
 
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/manga/page/3/" {
-			t.Errorf("path = %q, want /manga/page/3/", r.URL.Path)
-		}
-
+		gotPath = r.URL.Path
+		gotQuery = r.URL.Query()
 		_, _ = w.Write([]byte(body))
 	})
 
 	res, err := c.Search(context.Background(), domain.SearchCacheOpts{Page: 3})
 	if err != nil {
 		t.Fatalf("Search: %v", err)
+	}
+
+	if gotPath != "/manga/" {
+		t.Errorf("path = %q, want /manga/", gotPath)
+	}
+
+	if gotQuery.Get("page") != "3" {
+		t.Errorf("page = %q, want 3", gotQuery.Get("page"))
 	}
 
 	if len(res.Items) != 1 {
