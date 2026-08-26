@@ -25,6 +25,44 @@ import (
 	"github.com/kharente-deuh/uchiyomi-server/pkg/utils/health"
 )
 
+type stubComicsService struct{}
+
+func (stubComicsService) Create(context.Context, comics.CreateOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsService) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsService) GetMany(context.Context, comics.GetManyOpts) (comics.Page, error) {
+	return comics.Page{}, nil
+}
+
+func (stubComicsService) Delete(context.Context, comics.DeleteOpts) error {
+	return nil
+}
+
+func (stubComicsService) RefreshChapterLists(context.Context) error {
+	return nil
+}
+
+func (stubComicsService) RefreshComic(context.Context, comics.RefreshComicOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
+func (stubComicsService) RetryChapters(context.Context, comics.RetryChaptersOpts) error {
+	return nil
+}
+
+func (stubComicsService) ServeCover(context.Context, comics.GetByIDOpts) (string, string, error) {
+	return "", "", coredomain.ErrNotFound
+}
+
+func (stubComicsService) UpdateType(context.Context, comics.UpdateTypeOpts) (*comics.Comic, error) {
+	return nil, coredomain.ErrNotFound
+}
+
 type stubComicsRepository struct{}
 
 func (stubComicsRepository) GetByID(context.Context, comics.GetByIDOpts) (*comics.Comic, error) {
@@ -301,6 +339,7 @@ func newTestCtrlsForUser(t *testing.T, user *users.User) *ctrls {
 		AsuraScansApp:          asuraScansApp,
 		KingOfShojoApp:         kingOfShojoApp,
 		CoversService:          coversBundle.Service,
+		ComicsService:          stubComicsService{},
 		SessionsService:        newTestSessionsService(t, user),
 		Logger:                 logger,
 		Registry:               health.NewRegistry(),
@@ -357,6 +396,45 @@ func TestSetupCoversServeUnknownSource(t *testing.T) {
 	_, _, err = bundle.Service.Serve(context.Background(), "unknown", "solo-leveling")
 	if !errors.Is(err, covers.ErrUnknownSource) {
 		t.Errorf("Serve = %v, want ErrUnknownSource", err)
+	}
+}
+
+func TestComicsController(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		user       *users.User
+		wantStatus int
+	}{
+		"non-admin is let through": {
+			user:       &users.User{ID: uuid.New(), Name: "alice", IsAdmin: false},
+			wantStatus: http.StatusOK,
+		},
+		"admin is let through": {
+			user:       &users.User{ID: uuid.New(), Name: "root", IsAdmin: true},
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			c := newTestCtrlsForUser(t, tc.user)
+
+			r := chi.NewRouter()
+			c.Comics.InitRouter(r)
+
+			req := httptest.NewRequest(http.MethodGet, "/comics", nil)
+			req.AddCookie(&http.Cookie{Name: "uchiyomi_session", Value: "any-token"})
+
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
+
+			if rec.Code != tc.wantStatus {
+				t.Errorf("GET /comics = %d, want %d (body: %s)", rec.Code, tc.wantStatus, rec.Body.String())
+			}
+		})
 	}
 }
 
